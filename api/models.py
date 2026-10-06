@@ -2,22 +2,23 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+# Models used for Gemini Reader Prompt response schema (without evidence, date_status, evidence_summary)
 class ReaderAction(BaseModel):
     text: str = Field(description="Action description in the requested language")
     due_date: Optional[str] = Field(
         default=None,
-        description="Due date in YYYY-MM-DD format if printed, else null"
+        description="Due date in YYYY-MM-DD format if printed, else null",
     )
     deadline_rule: Optional[str] = Field(
         default=None,
-        description="Relative deadline rule text, e.g. 'within 30 days of this letter', else null"
+        description="Relative deadline rule text, e.g. 'within 30 days of this letter', else null",
     )
     quote: str = Field(
         description="Exact verbatim source text from the document in original language"
     )
     page: int = Field(
         default=1,
-        description="Page number where the quote is located"
+        description="Page number where the quote is located",
     )
 
 
@@ -28,7 +29,7 @@ class ReaderWarning(BaseModel):
     )
     page: int = Field(
         default=1,
-        description="Page number where the quote is located"
+        description="Page number where the quote is located",
     )
 
 
@@ -39,7 +40,7 @@ class ReaderFact(BaseModel):
     )
     page: int = Field(
         default=1,
-        description="Page number where the quote is located"
+        description="Page number where the quote is located",
     )
 
 
@@ -51,35 +52,81 @@ class ReaderResponse(BaseModel):
     language: str = Field(description="Language code, e.g. ta, hi, en")
     letter_date: Optional[str] = Field(
         default=None,
-        description="Date of the notice or letter in YYYY-MM-DD if printed, else null"
+        description="Date of the notice or letter in YYYY-MM-DD if printed, else null",
     )
     summary: List[str] = Field(
         description="2-4 sentence explanation in the requested language"
     )
     actions: List[ReaderAction] = Field(
         default_factory=list,
-        description="Actions required, most important first"
+        description="Actions required, most important first",
     )
     warnings: List[ReaderWarning] = Field(
         default_factory=list,
-        description="Only warnings stated in the document itself"
+        description="Only warnings stated in the document itself",
     )
     facts: List[ReaderFact] = Field(
         default_factory=list,
-        description="Key facts (amounts, IDs, dates, names) from the document"
+        description="Key facts (amounts, IDs, dates, names) from the document",
     )
     conflicts: List[str] = Field(
         default_factory=list,
-        description="Contradictory dates or amounts if present in the document"
+        description="Contradictory dates or amounts if present in the document",
     )
     unreadable: bool = Field(
         default=False,
-        description="True if document or page is blurry, cut off or unreadable"
+        description="True if document or page is blurry, cut off or unreadable",
     )
     unreadable_reason: Optional[str] = Field(
         default=None,
-        description="Reason why the document is unreadable, else null"
+        description="Reason why the document is unreadable, else null",
     )
+
+
+# Final API Response Models (Section 6 contract with evidence, date_status, and evidence_summary)
+class EvidenceSummary(BaseModel):
+    matched: int = 0
+    check_original: int = 0
+    calculated: int = 0
+
+
+class ExplainAction(BaseModel):
+    text: str
+    due_date: Optional[str] = None
+    deadline_rule: Optional[str] = None
+    date_status: str = "none"  # upcoming | passed | calculated | none
+    quote: str
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original | calculated
+
+
+class ExplainWarning(BaseModel):
+    text: str
+    quote: str
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original
+
+
+class ExplainFact(BaseModel):
+    text: str
+    quote: str
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original
+
+
+class ExplainResponse(BaseModel):
+    doc_type: str
+    title: str
+    language: str
+    letter_date: Optional[str] = None
+    summary: List[str]
+    actions: List[ExplainAction] = Field(default_factory=list)
+    warnings: List[ExplainWarning] = Field(default_factory=list)
+    facts: List[ExplainFact] = Field(default_factory=list)
+    conflicts: List[str] = Field(default_factory=list)
+    evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
+    unreadable: bool = False
+    unreadable_reason: Optional[str] = None
 
 
 class ErrorResponse(BaseModel):
