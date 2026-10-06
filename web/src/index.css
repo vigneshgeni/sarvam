@@ -27,6 +27,28 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+@keyframes svScan {
+  0% { top: 6%; }
+  100% { top: 90%; }
+}
+
+@keyframes svSpin {
+  to { transform: rotate(360deg); }
+}
+
+.sv-scan {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  border-radius: 2px;
+  animation: svScan 1.4s ease-in-out infinite alternate;
+}
+
+.sv-spin {
+  animation: svSpin 1s linear infinite;
+}
+
 /* Respect prefers-reduced-motion per Section 4 */
 @media (prefers-reduced-motion: reduce) {
   *,
