@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sarvam prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Figtree:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;600&amp;family=Noto+Sans+Devanagari:wght@400;600&amp;family=Noto+Sans+Kannada:wght@400;600&amp;family=Noto+Sans+Malayalam:wght@400;600&amp;family=Noto+Sans+Telugu:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#146B4E}a:hover{color:#0E4A36}
+.sv *{box-sizing:border-box}
+.sv button,.sv select{font-family:inherit;cursor:pointer}
+.sv a{text-decoration:none}
+.sv-scroll{scrollbar-width:none}.sv-scroll::-webkit-scrollbar{display:none}
+@keyframes svIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes svSheet{from{transform:translateY(100%)}to{transform:none}}
+@keyframes svFade{from{opacity:0}to{opacity:1}}
+@keyframes svWave{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+@keyframes svSpin{to{transform:rotate(360deg)}}
+@keyframes svScan{0%{top:6%}100%{top:90%}}
+@keyframes svPulse{0%,100%{box-shadow:0 0 0 0 rgba(180,35,24,.45)}50%{box-shadow:0 0 0 6px rgba(180,35,24,0)}}
+@keyframes svBreath{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.12);opacity:.9}}
+.sv-in{animation:svIn .38s cubic-bezier(.2,.7,.2,1) both}
+.sv-in2{animation:svIn .38s .06s cubic-bezier(.2,.7,.2,1) both}
+.sv-in3{animation:svIn .38s .12s cubic-bezier(.2,.7,.2,1) both}
+.sv-in4{animation:svIn .38s .18s cubic-bezier(.2,.7,.2,1) both}
+.sv-sheet{animation:svSheet .32s cubic-bezier(.2,.8,.2,1) both}
+.sv-fade{animation:svFade .25s ease both}
+.sv-wave{display:block;width:4px;height:26px;border-radius:2px;background:currentColor;transform-origin:center;animation:svWave 1s ease-in-out infinite}
+.sv-wave:nth-child(2){animation-delay:.12s}.sv-wave:nth-child(3){animation-delay:.24s}.sv-wave:nth-child(4){animation-delay:.36s}.sv-wave:nth-child(5){animation-delay:.48s}.sv-wave:nth-child(6){animation-delay:.6s}.sv-wave:nth-child(7){animation-delay:.72s}
+.sv-spin{animation:svSpin 1s linear infinite}
+.sv-scan{position:absolute;left:5%;right:5%;height:3px;border-radius:2px;animation:svScan 1.4s ease-in-out infinite alternate}
+.sv-pulse{animation:svPulse 1.4s ease-in-out infinite}
+.sv-breath{animation:svBreath 2.4s ease-in-out infinite}
+.sv button:active{transform:scale(.98)}
+</style>
+</helmet>
+<div class="sv" style="width: 390px; height: 844px; background: {{c.bg}}; color: {{c.ink}}; font-family: 'Figtree', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Telugu', sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+<!-- ================= HOME ================= -->
+<sc-if value="{{isHome}}" hint-placeholder-val="{{true}}">
+<div class="sv-scroll" style="flex: 1; overflow-y: auto; padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 20px">
+
+  <div class="sv-in" style="display: flex; align-items: center; justify-content: space-between; height: 48px">
+    <div style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -0.02em">Sarvam<span style="color: {{accent}}">.</span></div>
+    <button aria-label="Accessibility settings" onClick="{{openA11y}}" style="width: 48px; height: 48px; border-radius: 24px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="4.5" r="1.8"></circle><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M9 21l3-6.5 3 6.5"></path></svg>
+    </button>
+  </div>
+
+  <div class="sv-in2" style="display: flex; flex-direction: column; gap: 10px">
+    <div class="sv-scroll" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 0 20px">
+      <sc-for list="{{topLangs}}" as="l" hint-placeholder-count="6">
+        <button onClick="{{l.pick}}" aria-pressed="{{l.on}}" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid {{l.border}}; background: {{l.bg}}; color: {{l.fg}}; font-size: 15px; font-weight: 600; white-space: nowrap">{{l.label}}</button>
+      </sc-for>
+      <label style="flex-shrink: 0; position: relative; height: 44px; padding: 0 36px 0 16px; border-radius: 22px; border: 1px solid {{moreBorder}}; background: {{moreBg}}; color: {{moreFg}}; font-size: 15px; font-weight: 600; display: flex; align-items: center; white-space: nowrap">
+        {{moreLabel}}
+        <svg width="16" height="16" viewBox="0 0 24 24" style="position: absolute; right: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 9l6 6 6-6"></path></svg>
+        <select aria-label="More Indian languages" value="{{moreVal}}" onChange="{{pickSelect}}" style="position: absolute; inset: 0; opacity: 0; width: 100%">
+          <option value="">More languages</option>
+          <sc-for list="{{moreLangs}}" as="o" hint-placeholder-count="10"><option value="{{o.id}}">{{o.label}}</option></sc-for>
+        </select>
+      </label>
+    </div>
+    <sc-if value="{{showPreviewNote}}" hint-placeholder-val="{{false}}">
+      <div style="font-size: 13px; line-height: 1.4; color: {{c.muted}}; background: {{c.soft}}; border-radius: 12px; padding: 10px 12px">{{previewNote}}</div>
+    </sc-if>
+  </div>
+
+  <h1 class="sv-in2" style="margin: 0; font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-weight: 700; font-size: {{fs.h1}}; line-height: 1.15; letter-spacing: -0.015em">{{t.hello}}</h1>
+
+  <div class="sv-in3" style="display: flex; flex-direction: column; gap: 10px">
+    <button onClick="{{openCamera}}" style="display: flex; align-items: center; gap: 16px; padding: 20px; border: none; border-radius: 24px; background: {{accent}}; color: #FFFFFF; text-align: left; min-height: 112px">
+      <span style="width: 56px; height: 56px; border-radius: 18px; background: rgba(255,255,255,0.16); display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="28" height="28" viewBox="0 0 24 24" style="fill: none; stroke: #FFFFFF; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+      </span>
+      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: {{fs.title}}; font-weight: 700; line-height: 1.25">{{t.scan}}</span>
+        <span style="font-size: {{fs.small}}; line-height: 1.4; color: rgba(255,255,255,0.82)">{{t.scanSub}}</span>
+      </span>
+      <svg width="22" height="22" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg>
+    </button>
+
+    <button onClick="{{openUpload}}" style="display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 1px solid {{c.line}}; border-radius: 24px; background: {{c.surface}}; color: {{c.ink}}; text-align: left; min-height: 84px">
+      <span style="width: 48px; height: 48px; border-radius: 16px; background: {{accentSoft}}; color: {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="24" height="24" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19.5h14"></path></svg>
+      </span>
+      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <span style="font-size: {{fs.body}}; font-weight: 700">{{t.upload}}</span>
+        <span style="font-size: 13.5px; color: {{c.muted}}">{{t.uploadSub}}</span>
+      </span>
+      <svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: {{c.muted}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg>
+    </button>
+  </div>
+
+  <div class="sv-in4" style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.samples}}</div>
+    <div style="background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 20px; overflow: hidden">
+      <sc-for list="{{samples}}" as="s" hint-placeholder-count="3">
+        <button onClick="{{s.pick}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: none; border-bottom: 1px solid {{s.divider}}; background: transparent; color: {{c.ink}}; text-align: left; min-height: 68px">
+          <span style="width: 40px; height: 40px; border-radius: 12px; background: {{c.soft}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 700; color: {{c.muted}}">{{s.ext}}</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: {{fs.body}}; font-weight: 600">{{s.title}}</span>
+            <span style="font-size: 13px; color: {{c.muted}}">{{s.sub}}</span>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: {{c.muted}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="sv-in4" style="display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.recent}}</div>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: {{accent}}; background: {{accentSoft}}; padding: 4px 10px; border-radius: 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l4 4 10-10"></path></svg>{{t.offline}}</span>
+    </div>
+    <button onClick="{{openSaved}}" style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px; border: 1px dashed {{c.chip}}; background: transparent; color: {{c.ink}}; text-align: left; min-height: 64px">
+      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: {{fs.body}}; font-weight: 600">{{savedTitle}}</span>
+        <span style="font-size: 13px; color: {{c.muted}}">2 Oct 2026 · 1 file</span>
+      </span>
+      <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: {{c.muted}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 6l6 6-6 6"></path></svg>
+    </button>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{c.muted}}">
+    <svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+    {{t.privacy}}
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= CAMERA (multi-page) ================= -->
+<sc-if value="{{isCamera}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="flex: 1; background: #0C1110; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; padding: 20px 20px 28px; gap: 18px">
+  <div style="align-self: stretch; display: flex; align-items: center; justify-content: space-between; height: 48px">
+    <button aria-label="Close camera" onClick="{{goHome}}" style="width: 48px; height: 48px; border-radius: 24px; border: none; background: rgba(255,255,255,0.12); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <span style="font-size: 14px; font-weight: 600; background: rgba(255,255,255,0.12); padding: 8px 14px; border-radius: 16px">{{pageLabel}}</span>
+    <span style="width: 48px"></span>
+  </div>
+  <div style="position: relative; width: 290px; height: 400px; margin-top: 6px">
+    <div style="position: absolute; inset: 22px; background: #F5F3EE; border-radius: 6px; transform: rotate(-2deg); padding: 26px 22px; display: flex; flex-direction: column; gap: 9px">
+      <div style="height: 10px; width: 55%; background: #2B3133; border-radius: 3px"></div>
+      <div style="height: 6px; width: 35%; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 14px"></div>
+      <div style="height: 6px; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 6px; width: 88%; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 6px; background: #9CCBB6; border-radius: 3px"></div>
+      <div style="height: 6px; width: 76%; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 6px; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 6px; width: 64%; background: #C2C4BE; border-radius: 3px"></div>
+      <div style="height: 6px; background: #9CCBB6; border-radius: 3px"></div>
+    </div>
+    <div style="position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-left: 4px solid #6FE0B0; border-top: 4px solid #6FE0B0; border-top-left-radius: 14px"></div>
+    <div style="position: absolute; right: 0; top: 0; width: 34px; height: 34px; border-right: 4px solid #6FE0B0; border-top: 4px solid #6FE0B0; border-top-right-radius: 14px"></div>
+    <div style="position: absolute; left: 0; bottom: 0; width: 34px; height: 34px; border-left: 4px solid #6FE0B0; border-bottom: 4px solid #6FE0B0; border-bottom-left-radius: 14px"></div>
+    <div style="position: absolute; right: 0; bottom: 0; width: 34px; height: 34px; border-right: 4px solid #6FE0B0; border-bottom: 4px solid #6FE0B0; border-bottom-right-radius: 14px"></div>
+    <div class="sv-scan" style="background: #6FE0B0"></div>
+  </div>
+  <div style="font-size: {{fs.body}}; text-align: center; line-height: 1.4; color: rgba(255,255,255,0.88); max-width: 290px">{{t.camHint}}</div>
+  <div style="margin-top: auto; align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center">
+    <div style="display: flex; justify-content: flex-start">
+      <sc-if value="{{hasPages}}" hint-placeholder-val="{{false}}">
+        <span style="position: relative; width: 48px; height: 60px; border-radius: 8px; background: #F5F3EE; border: 2px solid #FFFFFF; display: flex; align-items: flex-end; justify-content: flex-end">
+          <span style="position: absolute; top: -8px; right: -8px; min-width: 24px; height: 24px; border-radius: 12px; background: #6FE0B0; color: #0C1110; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{pages}}</span>
+        </span>
+      </sc-if>
+    </div>
+    <div style="display: flex; justify-content: center">
+      <button aria-label="Capture page" onClick="{{shoot}}" style="width: 78px; height: 78px; border-radius: 39px; border: 4px solid #FFFFFF; background: transparent; padding: 5px; display: flex">
+        <span style="flex: 1; border-radius: 50%; background: #FFFFFF"></span>
+      </button>
+    </div>
+    <div style="display: flex; justify-content: flex-end">
+      <sc-if value="{{hasPages}}" hint-placeholder-val="{{false}}">
+        <button onClick="{{cameraDone}}" style="height: 48px; padding: 0 18px; border-radius: 24px; border: none; background: #6FE0B0; color: #0C1110; font-size: 15px; font-weight: 700">{{t.done}}</button>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= TRAY ================= -->
+<sc-if value="{{isTray}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="display: flex; align-items: center; gap: 12px; padding: 16px 20px 8px">
+  <button aria-label="Back to home" onClick="{{goHome}}" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M15 6l-6 6 6 6"></path></svg>
+  </button>
+  <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 22px; font-weight: 700">{{t.trayTitle}}</div>
+</div>
+<div class="sv-scroll" style="flex: 1; overflow-y: auto; padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 12px">
+  <div style="font-size: 14px; line-height: 1.45; color: {{c.muted}}">{{t.multiHint}}</div>
+  <div style="background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 20px; overflow: hidden">
+    <sc-for list="{{docs}}" as="f" hint-placeholder-count="2">
+      <div class="sv-in" style="display: flex; align-items: center; gap: 14px; padding: 12px 8px 12px 16px; border-bottom: 1px solid {{f.divider}}; min-height: 64px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: {{f.tagBg}}; color: {{f.tagFg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 700">{{f.ext}}</span>
+        <span style="flex: 1; min-width: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{f.name}}</span>
+        <button aria-label="{{f.removeLabel}}" onClick="{{f.remove}}" style="width: 44px; height: 44px; border-radius: 22px; border: none; background: transparent; color: {{c.muted}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+          <svg width="18" height="18" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+    </sc-for>
+  </div>
+  <button onClick="{{openUpload}}" style="height: 52px; border-radius: 26px; border: 1px dashed {{c.chip}}; background: transparent; color: {{c.ink}}; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px">
+    <svg width="18" height="18" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 5v14M5 12h14"></path></svg>
+    {{t.addMore}}
+  </button>
+</div>
+<div style="padding: 12px 20px 20px; border-top: 1px solid {{c.line}}; background: {{c.bg}}">
+  <button onClick="{{explainAll}}" style="width: 100%; height: 56px; border-radius: 28px; border: none; background: {{accent}}; color: #FFFFFF; font-size: {{fs.body}}; font-weight: 700">{{explainLabel}}</button>
+</div>
+</sc-if>
+
+<!-- ================= READING ================= -->
+<sc-if value="{{isReading}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 72px 24px 24px; gap: 28px">
+  <div style="position: relative; width: 168px; height: 200px">
+    <div style="position: absolute; left: 22px; top: 14px; width: 136px; height: 180px; background: {{c.soft}}; border-radius: 10px; transform: rotate(6deg)"></div>
+    <div style="position: absolute; left: 10px; top: 6px; width: 140px; height: 186px; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 10px; padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+      <div style="height: 8px; width: 60%; background: {{c.ink}}; border-radius: 3px"></div>
+      <div style="height: 5px; background: {{c.line}}; border-radius: 3px; margin-top: 10px"></div>
+      <div style="height: 5px; width: 80%; background: {{c.line}}; border-radius: 3px"></div>
+      <div style="height: 5px; background: {{accentSoft}}; border-radius: 3px"></div>
+      <div style="height: 5px; width: 70%; background: {{c.line}}; border-radius: 3px"></div>
+      <div style="height: 5px; background: {{c.line}}; border-radius: 3px"></div>
+      <div style="height: 5px; width: 60%; background: {{accentSoft}}; border-radius: 3px"></div>
+      <div class="sv-scan" style="background: {{accent}}"></div>
+    </div>
+  </div>
+  <div style="text-align: center; display: flex; flex-direction: column; gap: 6px">
+    <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 24px; font-weight: 700">{{d.title}}</div>
+    <div style="font-size: 14px; color: {{c.muted}}">{{docCountLabel}}</div>
+  </div>
+  <div style="align-self: stretch; background: {{c.surface}}; border: 1px solid {{c.line}}; border-radius: 20px; padding: 6px 18px">
+    <sc-for list="{{steps}}" as="st" hint-placeholder-count="3">
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 56px; border-bottom: 1px solid {{st.divider}}">
+        <span style="width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center">
+          <sc-if value="{{st.isDone}}" hint-placeholder-val="{{false}}">
+            <span style="width: 28px; height: 28px; border-radius: 14px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+              <svg width="15" height="15" viewBox="0 0 24 24" style="fill: none; stroke: #FFFFFF; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l4 4 10-10"></path></svg>
+            </span>
+          </sc-if>
+          <sc-if value="{{st.isActive}}" hint-placeholder-val="{{false}}">
+            <span class="sv-spin" style="width: 26px; height: 26px; border-radius: 13px; border: 3px solid {{accentSoft}}; border-top-color: {{accent}}"></span>
+          </sc-if>
+          <sc-if value="{{st.isPending}}" hint-placeholder-val="{{true}}">
+            <span style="width: 24px; height: 24px; border-radius: 12px; border: 2px solid {{c.chip}}"></span>
+          </sc-if>
+        </span>
+        <span style="font-size: {{fs.body}}; font-weight: 600; color: {{st.color}}">{{st.label}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= RESULT ================= -->
+<sc-if value="{{isResult}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px 8px">
+  <button aria-label="Back to home" onClick="{{goHome}}" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M15 6l-6 6 6 6"></path></svg>
+  </button>
+  <label style="flex: 1; position: relative; height: 44px; border-radius: 22px; border: 1px solid {{c.line}}; background: {{c.surface}}; display: flex; align-items: center; gap: 8px; padding: 0 36px 0 14px; font-size: 15px; font-weight: 600; min-width: 0">
+    <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: {{accent}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"></path></svg>
+    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{langName}}</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" style="position: absolute; right: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 9l6 6 6-6"></path></svg>
+    <select aria-label="Explanation language" value="{{lang}}" onChange="{{pickSelect}}" style="position: absolute; inset: 0; opacity: 0; width: 100%">
+      <sc-for list="{{allLangs}}" as="o" hint-placeholder-count="10"><option value="{{o.id}}">{{o.label}}</option></sc-for>
+    </select>
+  </label>
+  <button aria-label="Accessibility settings" onClick="{{openA11y}}" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="4.5" r="1.8"></circle><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M9 21l3-6.5 3 6.5"></path></svg>
+  </button>
+</div>
+
+<div class="sv-scroll" style="flex: 1; overflow-y: auto; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 12px">
+
+  <div class="sv-in" style="display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 6px">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{accent}}">{{kind}}</span>
+    <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em">{{d.title}}</div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: {{accent}}">
+      <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+      <span>{{checked}}</span>
+    </div>
+    <sc-if value="{{showPreviewNote}}" hint-placeholder-val="{{false}}">
+      <div style="font-size: 13px; line-height: 1.4; color: {{c.muted}}; background: {{c.soft}}; border-radius: 12px; padding: 10px 12px">{{previewNote}}</div>
+    </sc-if>
+  </div>
+
+  <div class="sv-in" style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{docsHeading}}</div>
+    <div class="sv-scroll" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 0 20px">
+      <sc-for list="{{docs}}" as="f" hint-placeholder-count="2">
+        <span style="flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 6px; border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.surface}}; max-width: 220px">
+          <span style="width: 30px; height: 28px; border-radius: 8px; background: {{f.tagBg}}; color: {{f.tagFg}}; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0">{{f.ext}}</span>
+          <span style="font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{f.name}}</span>
+        </span>
+      </sc-for>
+    </div>
+  </div>
+
+  <section class="sv-in2" style="background: {{c.surface}}; border: {{c.cardBorder}}; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.summaryTitle}}</h2>
+      <sc-if value="{{voiceOn}}" hint-placeholder-val="{{false}}">
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #4B3DB0">
+          <span class="sv-breath" style="width: 8px; height: 8px; border-radius: 4px; background: #5B4BC4"></span>{{t.nowReading}}</span>
+      </sc-if>
+    </div>
+    <p style="margin: 0; font-size: {{fs.sum}}; line-height: 1.5; font-weight: 500">
+      <sc-for list="{{sentences}}" as="se" hint-placeholder-count="3"><span style="background: {{se.bg}}; color: {{se.fg}}; border-radius: 6px; padding: 1px 2px; transition: background .3s ease, color .3s ease">{{se.text}} </span></sc-for>
+    </p>
+  </section>
+
+  <section class="sv-in2" style="background: {{c.surface}}; border: {{c.cardBorder}}; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.actionsTitle}}</h2>
+    <sc-for list="{{actions}}" as="a" hint-placeholder-count="3">
+      <div style="display: flex; align-items: flex-start; gap: 12px; padding: 8px 0">
+        <button aria-label="{{a.boxLabel}}" aria-pressed="{{a.done}}" onClick="{{a.toggle}}" style="width: 44px; height: 44px; margin: -8px -6px -8px -10px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+          <span style="width: 26px; height: 26px; border-radius: 8px; border: 2px solid {{a.boxBorder}}; background: {{a.boxBg}}; display: flex; align-items: center; justify-content: center">
+            <svg width="15" height="15" viewBox="0 0 24 24" style="fill: none; stroke: #FFFFFF; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12l4 4 10-10"></path></svg>
+          </span>
+        </button>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; opacity: {{a.op}}">
+          <span style="font-size: {{fs.body}}; line-height: 1.45; text-decoration: {{a.deco}}">{{a.text}}</span>
+          <sc-if value="{{a.hasDue}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+              <span style="display: flex; align-items: center; gap: 6px; height: 32px; font-size: 13px; font-weight: 700; background: {{c.soft}}; padding: 0 10px; border-radius: 10px">
+                <svg width="14" height="14" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>{{a.due}}</span>
+              <button onClick="{{a.remind}}" aria-pressed="{{a.reminded}}" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 10px; border: 1px solid {{a.remBorder}}; background: {{a.remBg}}; color: {{a.remFg}}; font-size: 13px; font-weight: 700">
+                <svg width="14" height="14" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>{{a.remLabel}}</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section class="{{riskClass}}" style="background: #FFF4DE; border: {{riskBorder}}; border-radius: 22px; padding: 18px 20px; display: flex; gap: 14px; color: #5A3500">
+    <svg width="24" height="24" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 1px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 3.5l9 16h-18z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+      <h2 style="margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase">{{t.riskTitle}}</h2>
+      <div style="font-size: {{fs.body}}; line-height: 1.45">{{d.risk}}</div>
+      <sc-if value="{{vibrate}}" hint-placeholder-val="{{false}}">
+        <span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; background: rgba(90,53,0,0.1); padding: 5px 10px; border-radius: 10px">
+          <svg width="14" height="14" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><rect x="8" y="3" width="8" height="18" rx="2"></rect><path d="M4 9v6M20 9v6"></path></svg>{{t.urgent}}</span>
+      </sc-if>
+    </div>
+  </section>
+
+  <sc-if value="{{full}}" hint-placeholder-val="{{true}}">
+  <section class="sv-in3" style="background: {{c.surface}}; border: {{c.cardBorder}}; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.contactsTitle}}</h2>
+    <sc-for list="{{contacts}}" as="ct" hint-placeholder-count="2">
+      <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid {{ct.divider}}">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: {{fs.body}}; font-weight: 700">{{ct.name}}</span>
+          <span style="font-size: 14px; line-height: 1.4; color: {{c.muted}}">{{ct.role}}</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <sc-if value="{{ct.hasPhone}}" hint-placeholder-val="{{true}}">
+            <a href="{{ct.tel}}" aria-label="{{ct.callLabel}}" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; background: {{accentSoft}}; color: {{accent}}; font-size: 14px; font-weight: 700">
+              <svg width="16" height="16" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg>{{ct.phone}}</a>
+          </sc-if>
+          <sc-if value="{{ct.hasPlace}}" hint-placeholder-val="{{true}}">
+            <a href="{{ct.map}}" target="_blank" rel="noopener" aria-label="{{ct.mapLabel}}" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid {{c.line}}; color: {{c.ink}}; font-size: 14px; font-weight: 700">
+              <svg width="16" height="16" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>{{t.map}}</a>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 13px; font-weight: 700; color: {{c.muted}}">{{t.askTitle}}</span>
+      <sc-for list="{{d.ask}}" as="q" hint-placeholder-count="2">
+        <div style="display: flex; gap: 10px; font-size: {{fs.body}}; line-height: 1.45"><span style="color: {{accent}}; font-weight: 700; flex-shrink: 0">?</span><span>{{q}}</span></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section class="sv-in3" style="background: {{c.surface}}; border: {{c.cardBorder}}; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.factsTitle}}</h2>
+    <sc-for list="{{facts}}" as="f" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-bottom: 1px solid {{c.line}}">
+        <div style="display: flex; gap: 12px; align-items: flex-start">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: {{f.dot}}; margin-top: 8px; flex-shrink: 0"></span>
+          <span style="flex: 1; min-width: 0; font-size: {{fs.body}}; line-height: 1.45">{{f.text}}</span>
+        </div>
+        <button onClick="{{f.toggle}}" aria-expanded="{{f.open}}" style="align-self: flex-start; margin-left: 22px; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font-size: 13px; font-weight: 600">
+          <svg width="14" height="14" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4M9 13h6M9 17h4"></path></svg>
+          {{t.fromDoc}}
+          <svg width="14" height="14" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: {{f.chev}}; transition: transform .2s ease"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+        <sc-if value="{{f.open}}" hint-placeholder-val="{{false}}">
+          <div class="sv-fade" style="margin-left: 22px; background: {{c.soft}}; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{f.line}}</span>
+            <code style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word">{{f.quote}}</code>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <div style="margin-top: 12px; background: {{accentSoft}}; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: {{accent}}">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 17l6-6 4 4 6-7"></path><path d="M15 8h5v5"></path></svg>{{t.improveTitle}}</span>
+      <sc-for list="{{d.improve}}" as="im" hint-placeholder-count="2">
+        <div style="display: flex; gap: 10px; font-size: {{fs.body}}; line-height: 1.45"><span style="width: 6px; height: 6px; border-radius: 3px; background: {{accent}}; margin-top: 9px; flex-shrink: 0"></span><span>{{im}}</span></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section class="sv-in4" style="background: {{c.surface}}; border: {{c.cardBorder}}; border-radius: 22px; padding: 16px 20px; display: flex; gap: 12px; align-items: flex-start">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink: 0; margin-top: 2px; fill: none; stroke: {{accent}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M20 12a8 8 0 1 1-2.3-5.7"></path><path d="M20 4v5h-5"></path></svg>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: {{c.muted}}">{{t.latestTitle}}</h2>
+      <span style="font-size: {{fs.body}}; line-height: 1.45">{{d.latest}}</span>
+    </div>
+  </section>
+  </sc-if>
+
+  <div style="font-size: 12.5px; line-height: 1.5; color: {{c.muted}}; padding: 4px 2px 0">{{t.disclaimer}}</div>
+</div>
+
+<!-- bottom: actions or voice layer -->
+<sc-if value="{{voiceIdle}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; gap: 10px; padding: 12px 20px 20px; border-top: 1px solid {{c.line}}; background: {{c.bg}}">
+  <button onClick="{{startVoice}}" style="flex: 1; height: 56px; border-radius: 28px; border: 1.5px solid #5B4BC4; background: #EEEBFC; color: #3B2E96; font-size: {{fs.body}}; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path></svg>{{t.listen}}</button>
+  <button onClick="{{openShare}}" style="flex: 1; height: 56px; border-radius: 28px; border: none; background: {{accent}}; color: #FFFFFF; font-size: {{fs.body}}; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"></path><path d="M5 13v6h14v-6"></path></svg>{{t.share}}</button>
+</div>
+</sc-if>
+<sc-if value="{{voiceOn}}" hint-placeholder-val="{{false}}">
+<div class="sv-sheet" style="margin: 0 12px 12px; border-radius: 28px; background: #1E1838; color: #FFFFFF; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 14px">
+  <div style="display: flex; align-items: center; gap: 14px">
+    <span style="position: relative; width: 52px; height: 52px; flex-shrink: 0; display: flex; align-items: center; justify-content: center">
+      <span class="sv-breath" style="position: absolute; inset: 0; border-radius: 26px; background: #5B4BC4"></span>
+      <span style="position: relative; display: flex; align-items: center; gap: 3px; height: 26px; color: #FFFFFF">
+        <sc-if value="{{playing}}" hint-placeholder-val="{{true}}"><span class="sv-wave"></span><span class="sv-wave"></span><span class="sv-wave"></span><span class="sv-wave"></span><span class="sv-wave"></span></sc-if>
+        <sc-if value="{{paused}}" hint-placeholder-val="{{false}}"><svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"><path d="M9 6v12M15 6v12"></path></svg></sc-if>
+      </span>
+    </span>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #BDB4F5">{{voiceLabel}}</span>
+      <span style="font-size: {{fs.body}}; line-height: 1.4; font-weight: 500">{{currentSentence}}</span>
+    </div>
+  </div>
+  <div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.14); overflow: hidden"><div style="height: 100%; width: {{progress}}; background: #9C8FF2; transition: width .4s ease"></div></div>
+  <div style="display: flex; align-items: center; gap: 8px">
+    <button onClick="{{toggleVoice}}" aria-label="{{pauseLabel}}" style="width: 48px; height: 48px; border-radius: 24px; border: none; background: #FFFFFF; color: #1E1838; display: flex; align-items: center; justify-content: center">
+      <sc-if value="{{playing}}" hint-placeholder-val="{{true}}"><svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round"><path d="M9 6v12M15 6v12"></path></svg></sc-if>
+      <sc-if value="{{paused}}" hint-placeholder-val="{{false}}"><svg width="20" height="20" viewBox="0 0 24 24" style="fill: currentColor; stroke: none"><path d="M8 5l11 7-11 7z"></path></svg></sc-if>
+    </button>
+    <button onClick="{{toggleSpeed}}" aria-label="Change reading speed" style="height: 48px; padding: 0 16px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #FFFFFF; font-size: 14px; font-weight: 700">{{speedLabel}}</button>
+    <span style="flex: 1"></span>
+    <button onClick="{{stopVoice}}" style="height: 48px; padding: 0 18px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #FFFFFF; font-size: 14px; font-weight: 700">{{t.stop}}</button>
+  </div>
+</div>
+</sc-if>
+</sc-if>
+
+<!-- ================= UPLOAD SHEET ================= -->
+<sc-if value="{{uploadOpen}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="position: absolute; inset: 0; background: rgba(12,17,16,0.45); display: flex; flex-direction: column; justify-content: flex-end">
+  <button aria-label="Close" onClick="{{closeSheets}}" style="flex: 1; border: none; background: transparent"></button>
+  <div class="sv-sheet" style="background: {{c.surface}}; border-radius: 28px 28px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 6px">
+    <div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: {{c.chip}}; margin-bottom: 10px"></div>
+    <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 22px; font-weight: 700">{{t.uploadTitle}}</div>
+    <div style="font-size: 14px; line-height: 1.45; color: {{c.muted}}; margin-bottom: 8px">{{t.multiHint}}</div>
+    <button onClick="{{openCamera}}" style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 4px; border: none; border-bottom: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; text-align: left">
+      <span style="width: 44px; height: 44px; border-radius: 14px; background: {{accentSoft}}; color: {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="22" height="22" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></span>
+      <span style="font-size: 16px; font-weight: 600">{{t.fromCamera}}</span>
+    </button>
+    <button onClick="{{addPhotos}}" style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 4px; border: none; border-bottom: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; text-align: left">
+      <span style="width: 44px; height: 44px; border-radius: 14px; background: {{accentSoft}}; color: {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="22" height="22" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><circle cx="9" cy="10" r="1.8"></circle><path d="M20.5 16l-5-5-8.5 8.5"></path></svg></span>
+      <span style="font-size: 16px; font-weight: 600">{{t.fromGallery}}</span>
+    </button>
+    <label style="position: relative; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 4px; cursor: pointer">
+      <span style="width: 44px; height: 44px; border-radius: 14px; background: {{accentSoft}}; color: {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="22" height="22" viewBox="0 0 24 24" style="fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4"></path></svg></span>
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 16px; font-weight: 600">{{t.fromFiles}}</span>
+        <span style="font-size: 13px; color: {{c.muted}}">PDF · DOCX · JPG · PNG · HEIC</span>
+      </span>
+      <input type="file" multiple accept=".pdf,.doc,.docx,image/*" onChange="{{onFiles}}" aria-label="Choose files" style="position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer">
+    </label>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= SHARE SHEET ================= -->
+<sc-if value="{{shareOpen}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="position: absolute; inset: 0; background: rgba(12,17,16,0.45); display: flex; flex-direction: column; justify-content: flex-end">
+  <button aria-label="Close" onClick="{{closeSheets}}" style="flex: 1; border: none; background: transparent"></button>
+  <div class="sv-sheet" style="background: {{c.surface}}; border-radius: 28px 28px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 12px">
+    <div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: {{c.chip}}"></div>
+    <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 22px; font-weight: 700">{{t.shareTitle}}</div>
+    <div class="sv-scroll" style="max-height: 150px; overflow-y: auto; background: {{c.soft}}; border-radius: 16px; padding: 12px 14px; font-size: 13.5px; line-height: 1.5; white-space: pre-line">{{msg}}</div>
+    <button onClick="{{toggleAttach}}" aria-pressed="{{attach}}" style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 2px; border: none; background: transparent; color: {{c.ink}}; text-align: left">
+      <span style="flex: 1; font-size: 15px; font-weight: 600">{{attachLabel}}</span>
+      <span style="width: 48px; height: 28px; border-radius: 14px; background: {{attachTrack}}; padding: 3px; display: flex; justify-content: {{attachKnob}}; transition: background .2s ease"><span style="width: 22px; height: 22px; border-radius: 11px; background: #FFFFFF"></span></span>
+    </button>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <a href="{{waHref}}" target="_blank" rel="noopener" onClick="{{afterWA}}" style="height: 52px; border-radius: 26px; background: {{accent}}; color: #FFFFFF; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px">WhatsApp</a>
+      <a href="{{mailHref}}" onClick="{{afterMail}}" style="height: 52px; border-radius: 26px; border: 1px solid {{c.line}}; color: {{c.ink}}; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{t.email}}</a>
+      <button onClick="{{copyAll}}" style="height: 52px; border-radius: 26px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font-size: 15px; font-weight: 700">{{t.copyAll}}</button>
+      <button onClick="{{savePdf}}" style="height: 52px; border-radius: 26px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font-size: 15px; font-weight: 700">{{t.pdf}}</button>
+    </div>
+    <div style="font-size: 12.5px; line-height: 1.45; color: {{c.muted}}">{{t.copyHint}}</div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= ACCESSIBILITY SHEET ================= -->
+<sc-if value="{{a11yOpen}}" hint-placeholder-val="{{false}}">
+<div class="sv-fade" style="position: absolute; inset: 0; background: rgba(12,17,16,0.45); display: flex; flex-direction: column; justify-content: flex-end">
+  <button aria-label="Close" onClick="{{closeSheets}}" style="flex: 1; border: none; background: transparent"></button>
+  <div class="sv-sheet" style="background: {{c.surface}}; border-radius: 28px 28px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 2px">
+    <div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: {{c.chip}}; margin-bottom: 10px"></div>
+    <div style="font-family: 'Bricolage Grotesque', 'Noto Sans Tamil', 'Noto Sans Devanagari', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 6px">{{t.a11yTitle}}</div>
+    <sc-for list="{{a11yItems}}" as="o" hint-placeholder-count="6">
+      <button onClick="{{o.toggle}}" aria-pressed="{{o.on}}" style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 2px; border: none; border-bottom: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; text-align: left">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 16px; font-weight: 600">{{o.label}}</span>
+          <span style="font-size: 13px; line-height: 1.35; color: {{c.muted}}">{{o.sub}}</span>
+        </span>
+        <span style="width: 48px; height: 28px; border-radius: 14px; background: {{o.track}}; padding: 3px; display: flex; justify-content: {{o.knob}}; flex-shrink: 0; transition: background .2s ease"><span style="width: 22px; height: 22px; border-radius: 11px; background: #FFFFFF"></span></span>
+      </button>
+    </sc-for>
+    <button onClick="{{closeSheets}}" style="margin-top: 14px; height: 52px; border-radius: 26px; border: none; background: {{c.ink}}; color: {{c.surface}}; font-size: 16px; font-weight: 700">{{t.done}}</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div class="sv-in" role="status" style="position: absolute; left: 20px; right: 20px; bottom: 100px; background: {{c.ink}}; color: {{c.surface}}; border-radius: 16px; padding: 14px 16px; font-size: 14px; font-weight: 600; text-align: center">{{toast}}</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844},"accent":{"editor":"color","default":"#146B4E","options":["#146B4E","#5B4BC4","#0E6E7A"]}}'>
+var TOP = [
+  { id: "en", label: "English" }, { id: "hi", label: "हिंदी" }, { id: "ta", label: "தமிழ்" },
+  { id: "kn", label: "ಕನ್ನಡ" }, { id: "ml", label: "മലയാളം" }, { id: "te", label: "తెలుగు" }
+];
+var MORE = [
+  { id: "bn", label: "বাংলা · Bengali" }, { id: "mr", label: "मराठी · Marathi" }, { id: "gu", label: "ગુજરાતી · Gujarati" },
+  { id: "pa", label: "ਪੰਜਾਬੀ · Punjabi" }, { id: "or", label: "ଓଡ଼ିଆ · Odia" }, { id: "as", label: "অসমীয়া · Assamese" },
+  { id: "ur", label: "اردو · Urdu" }, { id: "kok", label: "कोंकणी · Konkani" }, { id: "mai", label: "मैथिली · Maithili" },
+  { id: "ne", label: "नेपाली · Nepali" }, { id: "sa", label: "संस्कृतम् · Sanskrit" }, { id: "sd", label: "سنڌي · Sindhi" },
+  { id: "ks", label: "کٲشُر · Kashmiri" }, { id: "doi", label: "डोगरी · Dogri" }, { id: "mni", label: "মৈতৈলোন্ · Manipuri" },
+  { id: "brx", label: "बड़ो · Bodo" }, { id: "sat", label: "Santali" }
+];
+var ACCENT_SOFT = { "#146B4E": "#E3F1EA", "#5B4BC4": "#EEEBFC", "#0E6E7A": "#E0F1F3" };
+
+var L = {
+  en: {
+    hello: "What would you like to understand today?", scan: "Scan documents", scanSub: "One page or many. Sarvam reads them together.",
+    upload: "Upload files", uploadSub: "PDF, Word or photos", samples: "Try a sample", recent: "Saved on this phone", offline: "Works offline",
+    privacy: "Your documents stay on this phone.", camHint: "Fit the whole page inside the frame. Tap again for the next page.",
+    pageWord: "Page", done: "Done", trayTitle: "Ready to explain", multiHint: "Add as many pages or files as you like. Sarvam reads them together and gives one answer.",
+    addMore: "Add more", explainOne: "Explain this", explainMany: "Explain all {n} together",
+    readOne: "Reading your document", readMany: "Reading {n} documents together", steps2: "Checking every fact", steps3: "Writing it in {lang}",
+    summaryTitle: "In simple words", actionsTitle: "What to do", riskTitle: "Watch out", factsTitle: "Key facts",
+    contactsTitle: "Who to contact", askTitle: "Ask them", improveTitle: "How to improve", latestTitle: "Up-to-date check",
+    checked: "All {n} points checked against your document", docsHeading: "Your documents ({n})",
+    remind: "Remind me", reminded: "Reminder set", markDone: "Mark as done", map: "Map", call: "Call",
+    listen: "Listen", nowReading: "Reading aloud", stop: "Stop", pause: "Pause", resume: "Resume",
+    urgent: "Urgent: phone will vibrate and flash", fromDoc: "From your document", line: "Line",
+    disclaimer: "Sarvam explains your document. It does not replace your doctor, insurer or government office.",
+    shareTitle: "Share or save", attach: "Attach original documents ({n})", email: "Email", copyAll: "Copy full text", pdf: "Save as PDF",
+    copyHint: "Copy full text includes every fact and quote, so you can paste it into any AI tool to ask more.",
+    uploadTitle: "Add documents", fromCamera: "Take photos", fromGallery: "Choose photos", fromFiles: "Choose files",
+    a11yTitle: "Accessibility",
+    toastCopied: "Copied. Paste it into any AI tool.", toastRemind: "Reminder added to your calendar", toastPdf: "PDF saved to your phone",
+    toastWA: "Opening WhatsApp…", toastMail: "Opening your email app…",
+    msgFoot: "Explained by Sarvam. Please check with the original document.", remove: "Remove"
+  },
+  ta: {
+    hello: "இன்று எதைப் புரிந்துகொள்ள வேண்டும்?", scan: "ஆவணங்களை ஸ்கேன் செய்யுங்கள்", scanSub: "ஒரு பக்கமோ பல பக்கங்களோ. சர்வம் ஒன்றாகப் படிக்கும்.",
+    upload: "கோப்புகளைப் பதிவேற்றுங்கள்", uploadSub: "PDF, Word அல்லது படங்கள்", samples: "மாதிரியை முயற்சிக்கவும்", recent: "இந்த போனில் சேமித்தவை", offline: "இணையம் இல்லாமலும்",
+    privacy: "உங்கள் ஆவணங்கள் இந்த போனிலேயே இருக்கும்.", camHint: "முழுப் பக்கத்தையும் சட்டத்திற்குள் வையுங்கள். அடுத்த பக்கத்திற்கு மீண்டும் தட்டுங்கள்.",
+    pageWord: "பக்கம்", done: "முடிந்தது", trayTitle: "விளக்கத் தயார்", multiHint: "எத்தனை பக்கங்கள் அல்லது கோப்புகள் வேண்டுமானாலும் சேர்க்கலாம். சர்வம் அனைத்தையும் ஒன்றாகப் படித்து ஒரே பதில் தரும்.",
+    addMore: "மேலும் சேர்", explainOne: "இதை விளக்கு", explainMany: "{n} ஆவணங்களையும் ஒன்றாக விளக்கு",
+    readOne: "ஆவணத்தைப் படிக்கிறது", readMany: "{n} ஆவணங்களை ஒன்றாகப் படிக்கிறது", steps2: "ஒவ்வொரு தகவலையும் சரிபார்க்கிறது", steps3: "தமிழில் எழுதுகிறது",
+    summaryTitle: "எளிய வார்த்தைகளில்", actionsTitle: "என்ன செய்ய வேண்டும்", riskTitle: "கவனம்", factsTitle: "முக்கிய தகவல்கள்",
+    contactsTitle: "யாரைத் தொடர்புகொள்ள", askTitle: "அவர்களிடம் கேளுங்கள்", improveTitle: "எப்படி மேம்படுத்துவது", latestTitle: "சமீபத்திய சரிபார்ப்பு",
+    checked: "{n} தகவல்களும் உங்கள் ஆவணத்துடன் சரிபார்க்கப்பட்டன", docsHeading: "உங்கள் ஆவணங்கள் ({n})",
+    remind: "நினைவூட்டு", reminded: "நினைவூட்டல் வைக்கப்பட்டது", markDone: "முடிந்ததாகக் குறி", map: "வரைபடம்", call: "அழைக்க",
+    listen: "கேளுங்கள்", nowReading: "வாசிக்கிறது", stop: "நிறுத்து", pause: "இடைநிறுத்து", resume: "தொடர்",
+    urgent: "அவசரம்: போன் அதிர்ந்து ஒளிரும்", fromDoc: "உங்கள் ஆவணத்திலிருந்து", line: "வரி",
+    disclaimer: "சர்வம் உங்கள் ஆவணத்தை விளக்குகிறது. இது மருத்துவர், காப்பீட்டு நிறுவனம் அல்லது அரசு அலுவலகத்திற்கு மாற்று அல்ல.",
+    shareTitle: "பகிர் அல்லது சேமி", attach: "மூல ஆவணங்களை இணை ({n})", email: "மின்னஞ்சல்", copyAll: "முழு உரையை நகலெடு", pdf: "PDF ஆகச் சேமி",
+    copyHint: "முழு உரையில் எல்லா தகவல்களும் மேற்கோள்களும் உள்ளன. மேலும் கேட்க எந்த AI கருவியிலும் ஒட்டலாம்.",
+    uploadTitle: "ஆவணங்களைச் சேர்க்கவும்", fromCamera: "படம் எடுக்க", fromGallery: "புகைப்படங்களைத் தேர்வு செய்", fromFiles: "கோப்புகளைத் தேர்வு செய்",
+    a11yTitle: "அணுகல் வசதிகள்",
+    toastCopied: "நகலெடுக்கப்பட்டது. எந்த AI கருவியிலும் ஒட்டுங்கள்.", toastRemind: "காலெண்டரில் நினைவூட்டல் சேர்க்கப்பட்டது", toastPdf: "PDF உங்கள் போனில் சேமிக்கப்பட்டது",
+    toastWA: "வாட்ஸ்அப் திறக்கிறது…", toastMail: "மின்னஞ்சல் செயலி திறக்கிறது…",
+    msgFoot: "சர்வம் விளக்கம். மூல ஆவணத்துடன் சரிபார்க்கவும்.", remove: "நீக்கு"
+  },
+  hi: {
+    hello: "आज आप क्या समझना चाहते हैं?", scan: "दस्तावेज़ स्कैन करें", scanSub: "एक पेज या कई। सर्वम सबको साथ पढ़ेगा।",
+    upload: "फ़ाइलें अपलोड करें", uploadSub: "PDF, Word या फ़ोटो", samples: "नमूना आज़माएँ", recent: "इस फ़ोन पर सहेजे गए", offline: "बिना इंटरनेट भी",
+    privacy: "आपके दस्तावेज़ इसी फ़ोन पर रहते हैं।", camHint: "पूरा पेज फ़्रेम के अंदर रखें। अगले पेज के लिए फिर टैप करें।",
+    pageWord: "पेज", done: "हो गया", trayTitle: "समझाने के लिए तैयार", multiHint: "जितने चाहें पेज या फ़ाइलें जोड़ें। सर्वम सबको साथ पढ़कर एक जवाब देगा।",
+    addMore: "और जोड़ें", explainOne: "इसे समझाएँ", explainMany: "सभी {n} साथ में समझाएँ",
+    readOne: "दस्तावेज़ पढ़ रहे हैं", readMany: "{n} दस्तावेज़ साथ में पढ़ रहे हैं", steps2: "हर तथ्य जाँच रहे हैं", steps3: "हिंदी में लिख रहे हैं",
+    summaryTitle: "आसान शब्दों में", actionsTitle: "क्या करना है", riskTitle: "सावधान", factsTitle: "मुख्य तथ्य",
+    contactsTitle: "किससे संपर्क करें", askTitle: "उनसे पूछें", improveTitle: "कैसे बेहतर करें", latestTitle: "ताज़ा जाँच",
+    checked: "सभी {n} बातें आपके दस्तावेज़ से जाँची गईं", docsHeading: "आपके दस्तावेज़ ({n})",
+    remind: "याद दिलाएँ", reminded: "रिमाइंडर लगा", markDone: "पूरा हुआ", map: "नक्शा", call: "कॉल करें",
+    listen: "सुनें", nowReading: "पढ़कर सुना रहे हैं", stop: "बंद करें", pause: "रोकें", resume: "जारी रखें",
+    urgent: "ज़रूरी: फ़ोन वाइब्रेट होगा और चमकेगा", fromDoc: "आपके दस्तावेज़ से", line: "पंक्ति",
+    disclaimer: "सर्वम आपका दस्तावेज़ समझाता है। यह डॉक्टर, बीमा कंपनी या सरकारी दफ़्तर की जगह नहीं लेता।",
+    shareTitle: "साझा करें या सहेजें", attach: "मूल दस्तावेज़ जोड़ें ({n})", email: "ईमेल", copyAll: "पूरा टेक्स्ट कॉपी करें", pdf: "PDF सहेजें",
+    copyHint: "पूरे टेक्स्ट में हर तथ्य और उद्धरण है, ताकि आप इसे किसी भी AI टूल में पेस्ट करके और पूछ सकें।",
+    uploadTitle: "दस्तावेज़ जोड़ें", fromCamera: "फ़ोटो लें", fromGallery: "फ़ोटो चुनें", fromFiles: "फ़ाइलें चुनें",
+    a11yTitle: "सुलभता",
+    toastCopied: "कॉपी हो गया। किसी भी AI टूल में पेस्ट करें।", toastRemind: "कैलेंडर में रिमाइंडर जुड़ गया", toastPdf: "PDF फ़ोन में सहेजा गया",
+    toastWA: "व्हाट्सऐप खुल रहा है…", toastMail: "ईमेल ऐप खुल रहा है…",
+    msgFoot: "सर्वम द्वारा समझाया गया। मूल दस्तावेज़ से जाँच लें।", remove: "हटाएँ"
+  }
+};
+
+var A11Y = {
+  en: [
+    ["big", "Large text", "Bigger letters on every screen"],
+    ["contrast", "High contrast", "Black on white with strong borders"],
+    ["autoRead", "Read results aloud", "Starts speaking as soon as the answer is ready"],
+    ["slow", "Slower voice", "Reads at three-quarter speed"],
+    ["vibrate", "Vibrate and flash for urgent warnings", "For users who cannot hear alerts"],
+    ["easy", "Easy mode", "Shows only the summary, to-dos and warnings"]
+  ],
+  ta: [
+    ["big", "பெரிய எழுத்து", "எல்லாத் திரைகளிலும் பெரிய எழுத்துகள்"],
+    ["contrast", "அதிக மாறுபாடு", "வெள்ளையில் கருப்பு, தெளிவான கோடுகள்"],
+    ["autoRead", "முடிவுகளை வாசிக்கவும்", "பதில் தயாரானதும் தானாகப் பேசும்"],
+    ["slow", "மெதுவான குரல்", "முக்கால் வேகத்தில் வாசிக்கும்"],
+    ["vibrate", "அவசர எச்சரிக்கைக்கு அதிர்வு, ஒளி", "ஒலி கேட்க இயலாதவர்களுக்கு"],
+    ["easy", "எளிய முறை", "சுருக்கம், செய்ய வேண்டியவை, எச்சரிக்கை மட்டும்"]
+  ],
+  hi: [
+    ["big", "बड़े अक्षर", "हर स्क्रीन पर बड़े अक्षर"],
+    ["contrast", "हाई कॉन्ट्रास्ट", "सफ़ेद पर काला, साफ़ किनारे"],
+    ["autoRead", "नतीजे पढ़कर सुनाएँ", "जवाब तैयार होते ही बोलना शुरू"],
+    ["slow", "धीमी आवाज़", "तीन-चौथाई गति से पढ़े"],
+    ["vibrate", "ज़रूरी चेतावनी पर कंपन और फ़्लैश", "जो आवाज़ नहीं सुन सकते, उनके लिए"],
+    ["easy", "आसान मोड", "सिर्फ़ सारांश, काम और चेतावनी"]
+  ]
+};
+
+var DOCS = {
+  lab: {
+    file: "blood-test-report.pdf", source: "City Diagnostics · PDF",
+    kind: { en: "Lab report", ta: "ஆய்வக அறிக்கை", hi: "लैब रिपोर्ट" },
+    due: [{ en: "By 12 Oct", ta: "12 அக். க்குள்", hi: "12 अक्टू. तक" }, null, { en: "Mid-November", ta: "நவம்பர் நடுவில்", hi: "नवंबर के बीच" }],
+    facts: [
+      { status: "bad", line: 14, quote: "Haemoglobin (Hb)      9.2  g/dL   12.0 - 15.0   L" },
+      { status: "bad", line: 22, quote: "Serum Ferritin        8.0  ng/mL  15 - 150      L" },
+      { status: "good", line: 27, quote: "Glucose, Fasting      96   mg/dL  70 - 100" }
+    ],
+    contacts: [
+      { name: "Dr. A. Meena", phone: "+91 80 4000 1234", place: "Meena Clinic, Indiranagar, Bengaluru",
+        role: { en: "Your family doctor. Show this report.", ta: "உங்கள் குடும்ப மருத்துவர். இந்த அறிக்கையைக் காட்டுங்கள்.", hi: "आपकी फ़ैमिली डॉक्टर। यह रिपोर्ट दिखाएँ।" } },
+      { name: "City Diagnostics", phone: "+91 80 4000 5678", place: "City Diagnostics, Indiranagar, Bengaluru",
+        role: { en: "Lab for the repeat test", ta: "மறு பரிசோதனைக்கான ஆய்வகம்", hi: "दोबारा जाँच के लिए लैब" } }
+    ],
+    en: {
+      title: "Blood test report",
+      summary: ["Your blood is low in haemoglobin and iron.", "This is common and usually treatable.", "Your sugar level is normal."],
+      actions: ["Show this report to your doctor within 7 days", "Ask whether you need iron tablets", "Repeat the blood test after 6 weeks"],
+      risk: "Go to a hospital today if you have chest pain, faint, or feel very short of breath.",
+      facts: ["Haemoglobin 9.2: low (normal 12 to 15)", "Iron store (ferritin) 8: low (normal 15 to 150)", "Fasting sugar 96: normal"],
+      ask: ["Do I need iron tablets, and for how long?", "Should we check why my iron is low?"],
+      improve: ["Eat iron-rich food: greens, ragi, dates, lentils, jaggery", "Have lemon or amla with meals, and skip tea or coffee for an hour after", "Take supplements only on your doctor's advice"],
+      latest: "The normal ranges on this report match current lab guidance."
+    },
+    ta: {
+      title: "இரத்தப் பரிசோதனை அறிக்கை",
+      summary: ["உங்கள் இரத்தத்தில் ஹீமோகுளோபின் மற்றும் இரும்புச்சத்து குறைவாக உள்ளது.", "இது பொதுவானது, பெரும்பாலும் சரிசெய்யக்கூடியது.", "உங்கள் சர்க்கரை அளவு சரியாக உள்ளது."],
+      actions: ["7 நாட்களுக்குள் இந்த அறிக்கையை மருத்துவரிடம் காட்டுங்கள்", "இரும்புச்சத்து மாத்திரை தேவையா என்று கேளுங்கள்", "6 வாரங்கள் கழித்து மீண்டும் இரத்தப் பரிசோதனை செய்யுங்கள்"],
+      risk: "நெஞ்சு வலி, மயக்கம் அல்லது அதிக மூச்சுத் திணறல் இருந்தால் இன்றே மருத்துவமனைக்குச் செல்லுங்கள்.",
+      facts: ["ஹீமோகுளோபின் 9.2: குறைவு (சாதாரணம் 12 முதல் 15)", "இரும்புச்சத்து (ஃபெரிட்டின்) 8: குறைவு (சாதாரணம் 15 முதல் 150)", "வெறும் வயிற்று சர்க்கரை 96: சரியான அளவு"],
+      ask: ["இரும்புச்சத்து மாத்திரை வேண்டுமா, எத்தனை நாள்?", "இரும்புச்சத்து ஏன் குறைந்தது என்று பார்க்க வேண்டுமா?"],
+      improve: ["இரும்புச்சத்து உணவு: கீரை, கேழ்வரகு, பேரீச்சை, பருப்பு, வெல்லம்", "உணவுடன் எலுமிச்சை அல்லது நெல்லிக்காய்; சாப்பிட்ட பின் ஒரு மணி நேரம் டீ, காபி வேண்டாம்", "எந்த மாத்திரையும் மருத்துவர் ஆலோசனைப்படி மட்டும்"],
+      latest: "இந்த அறிக்கையின் சாதாரண அளவுகள் தற்போதைய வழிகாட்டுதலுடன் பொருந்துகின்றன."
+    },
+    hi: {
+      title: "खून जाँच रिपोर्ट",
+      summary: ["आपके खून में हीमोग्लोबिन और आयरन कम है।", "यह आम है और अक्सर ठीक हो जाता है।", "आपकी शुगर सामान्य है।"],
+      actions: ["7 दिनों के अंदर यह रिपोर्ट डॉक्टर को दिखाएँ", "पूछें कि क्या आयरन की गोलियाँ चाहिए", "6 हफ़्ते बाद खून की जाँच दोबारा कराएँ"],
+      risk: "सीने में दर्द, बेहोशी या साँस बहुत फूलने पर आज ही अस्पताल जाएँ।",
+      facts: ["हीमोग्लोबिन 9.2: कम (सामान्य 12 से 15)", "आयरन भंडार (फ़ेरिटिन) 8: कम (सामान्य 15 से 150)", "खाली पेट शुगर 96: सामान्य"],
+      ask: ["क्या आयरन की गोलियाँ चाहिए, कितने समय तक?", "क्या आयरन कम होने की वजह जाँचनी चाहिए?"],
+      improve: ["आयरन वाला खाना: हरी सब्ज़ियाँ, रागी, खजूर, दालें, गुड़", "खाने के साथ नींबू या आँवला; खाने के एक घंटे बाद तक चाय-कॉफ़ी नहीं", "कोई भी सप्लीमेंट डॉक्टर की सलाह से ही लें"],
+      latest: "इस रिपोर्ट की सामान्य सीमाएँ मौजूदा लैब दिशानिर्देशों से मेल खाती हैं।"
+    }
+  },
+  ins: {
+    file: "claim-letter.pdf", source: "Health insurer · PDF",
+    kind: { en: "Insurance letter", ta: "காப்பீட்டு கடிதம்", hi: "बीमा पत्र" },
+    due: [{ en: "By 31 Oct", ta: "31 அக். க்குள்", hi: "31 अक्टू. तक" }, null, null],
+    facts: [
+      { status: "info", line: 6, quote: "Total amount claimed: Rs. 48,500" },
+      { status: "good", line: 9, quote: "Amount approved for payment: Rs. 31,200" },
+      { status: "bad", line: 11, quote: "Deduction: Room rent exceeds eligible limit (1% of Sum Insured): Rs. 17,300" }
+    ],
+    contacts: [
+      { name: "Insurer helpline", phone: "1800 000 0000", place: "",
+        role: { en: "Ask for a claim review", ta: "கிளைம் மறுபரிசீலனை கேட்க", hi: "क्लेम की दोबारा जाँच के लिए" } },
+      { name: "Hospital billing desk", phone: "+91 80 4000 2468", place: "Sunrise Hospital, Jayanagar, Bengaluru",
+        role: { en: "Get the room tariff and discharge summary", ta: "அறை கட்டண விவரம், டிஸ்சார்ஜ் சுருக்கம் பெற", hi: "कमरे का किराया और डिस्चार्ज समरी लेने के लिए" } }
+    ],
+    en: {
+      title: "Insurance claim letter",
+      summary: ["Your claim was only partly paid.", "₹31,200 was approved.", "₹17,300 was cut because your hospital room cost more than your policy allows.", "You can ask for a review."],
+      actions: ["Ask the insurer for a review", "Attach the hospital room tariff and discharge summary", "Keep your claim number CLM-2026-0884 safe"],
+      risk: "After 31 October you can no longer ask for a review.",
+      facts: ["Amount you claimed: ₹48,500", "Approved: ₹31,200", "Cut: ₹17,300, because room rent was above your policy limit"],
+      ask: ["Which documents do you need for the review?", "Can the room-rent cut be reduced?"],
+      improve: ["Before admission, ask for a room within your policy limit", "Get pre-approval (cashless) from the insurer when you can"],
+      latest: "The review window is still open: 26 days left as of 5 October."
+    },
+    ta: {
+      title: "காப்பீட்டு கிளைம் கடிதம்",
+      summary: ["உங்கள் கிளைம் பகுதியாக மட்டுமே வழங்கப்பட்டது.", "₹31,200 அனுமதிக்கப்பட்டது.", "அறை வாடகை பாலிசி வரம்பை மீறியதால் ₹17,300 குறைக்கப்பட்டது.", "மறுபரிசீலனை கேட்கலாம்."],
+      actions: ["காப்பீட்டு நிறுவனத்திடம் மறுபரிசீலனை கேளுங்கள்", "மருத்துவமனை அறை கட்டண விவரம், டிஸ்சார்ஜ் சுருக்கம் இணையுங்கள்", "கிளைம் எண் CLM-2026-0884-ஐ பத்திரமாக வையுங்கள்"],
+      risk: "31 அக்டோபருக்குப் பிறகு மறுபரிசீலனை கேட்க முடியாது.",
+      facts: ["நீங்கள் கேட்ட தொகை: ₹48,500", "அனுமதிக்கப்பட்டது: ₹31,200", "குறைக்கப்பட்டது: ₹17,300, அறை வாடகை வரம்பை மீறியதால்"],
+      ask: ["மறுபரிசீலனைக்கு என்ன ஆவணங்கள் தேவை?", "அறை வாடகைக் குறைப்பைக் குறைக்க முடியுமா?"],
+      improve: ["அனுமதிக்கும் முன், பாலிசி வரம்புக்குள் உள்ள அறையைக் கேளுங்கள்", "முடிந்தால் காப்பீட்டு நிறுவனத்திடம் முன் அனுமதி (கேஷ்லெஸ்) பெறுங்கள்"],
+      latest: "மறுபரிசீலனை காலம் இன்னும் திறந்துள்ளது: 5 அக்டோபர் நிலவரப்படி 26 நாட்கள் உள்ளன."
+    },
+    hi: {
+      title: "बीमा क्लेम पत्र",
+      summary: ["आपका क्लेम आंशिक रूप से ही मंज़ूर हुआ।", "₹31,200 मंज़ूर हुए।", "कमरे का किराया पॉलिसी सीमा से ज़्यादा होने पर ₹17,300 काटे गए।", "आप दोबारा जाँच की माँग कर सकते हैं।"],
+      actions: ["बीमा कंपनी से दोबारा जाँच की माँग करें", "अस्पताल के कमरे का किराया और डिस्चार्ज समरी जोड़ें", "क्लेम नंबर CLM-2026-0884 संभालकर रखें"],
+      risk: "31 अक्टूबर के बाद दोबारा जाँच की माँग नहीं कर सकेंगे।",
+      facts: ["आपका क्लेम: ₹48,500", "मंज़ूर: ₹31,200", "कटौती: ₹17,300, क्योंकि कमरे का किराया पॉलिसी सीमा से ज़्यादा था"],
+      ask: ["दोबारा जाँच के लिए कौन-से कागज़ चाहिए?", "क्या कमरे के किराए की कटौती कम हो सकती है?"],
+      improve: ["भर्ती से पहले पॉलिसी सीमा के अंदर वाला कमरा माँगें", "हो सके तो बीमा कंपनी से पहले मंज़ूरी (कैशलेस) लें"],
+      latest: "दोबारा जाँच की समय-सीमा अभी खुली है: 5 अक्टूबर तक 26 दिन बाक़ी।"
+    }
+  },
+  pen: {
+    file: "pension-notice.jpg", source: "Social Welfare Dept. · Photo",
+    kind: { en: "Government notice", ta: "அரசு அறிவிப்பு", hi: "सरकारी सूचना" },
+    due: [{ en: "By 30 Nov", ta: "30 நவ. க்குள்", hi: "30 नवं. तक" }, null, null],
+    facts: [
+      { status: "info", line: 4, quote: "Monthly pension amount: Rs. 1,200" },
+      { status: "bad", line: 7, quote: "Pensioners must submit Life Certificate on or before 30.11.2026" },
+      { status: "bad", line: 8, quote: "Payment will be withheld from December 2026 if not submitted." }
+    ],
+    contacts: [
+      { name: "Your bank branch", phone: "+91 80 4000 1357", place: "bank branch near me",
+        role: { en: "Give your life certificate here", ta: "உயிர்வாழ் சான்றிதழை இங்கே கொடுக்கலாம்", hi: "जीवन प्रमाण पत्र यहाँ दें" } },
+      { name: "Common Service Centre", phone: "", place: "Common Service Centre near me",
+        role: { en: "The nearest centre can also do it", ta: "அருகிலுள்ள இ-சேவை மையத்திலும் செய்யலாம்", hi: "नज़दीकी CSC केंद्र भी यह कर सकता है" } }
+    ],
+    en: {
+      title: "Pension notice",
+      summary: ["To keep getting your ₹1,200 monthly pension, you must give a life certificate by 30 November.", "You can do this at your bank or a Common Service Centre."],
+      actions: ["Visit your bank or a Common Service Centre", "Carry your Aadhaar card and pension book", "Collect the receipt and keep it safe"],
+      risk: "If you miss 30 November, your pension stops from December.",
+      facts: ["Monthly pension: ₹1,200", "Life certificate due by 30 Nov 2026", "If not given, payment stops from December"],
+      ask: ["Can I give the life certificate from home?", "Will my December payment be on time?"],
+      improve: ["Set a yearly reminder every November", "Keep Aadhaar linked to your pension account"],
+      latest: "Deadline checked on 5 October 2026: still 30 November."
+    },
+    ta: {
+      title: "ஓய்வூதிய அறிவிப்பு",
+      summary: ["மாதம் ₹1,200 ஓய்வூதியம் தொடர்ந்து கிடைக்க, 30 நவம்பருக்குள் உயிர்வாழ் சான்றிதழ் கொடுக்க வேண்டும்.", "உங்கள் வங்கி அல்லது இ-சேவை மையத்தில் செய்யலாம்."],
+      actions: ["வங்கி அல்லது இ-சேவை மையத்திற்குச் செல்லுங்கள்", "ஆதார் அட்டை, ஓய்வூதிய புத்தகம் எடுத்துச் செல்லுங்கள்", "ரசீதை வாங்கி பத்திரமாக வையுங்கள்"],
+      risk: "30 நவம்பர் தவறினால் டிசம்பர் முதல் ஓய்வூதியம் நின்றுவிடும்.",
+      facts: ["மாத ஓய்வூதியம்: ₹1,200", "உயிர்வாழ் சான்றிதழ் கடைசி நாள்: 30 நவம்பர் 2026", "கொடுக்காவிட்டால் டிசம்பர் முதல் பணம் நிறுத்தப்படும்"],
+      ask: ["வீட்டிலிருந்தே உயிர்வாழ் சான்றிதழ் கொடுக்க முடியுமா?", "டிசம்பர் ஓய்வூதியம் சரியான நேரத்தில் வருமா?"],
+      improve: ["ஒவ்வொரு நவம்பரிலும் நினைவூட்டல் வையுங்கள்", "ஆதாரை ஓய்வூதியக் கணக்குடன் இணைத்து வையுங்கள்"],
+      latest: "5 அக்டோபர் 2026 அன்று சரிபார்த்தது: கடைசி நாள் இன்னும் 30 நவம்பர்."
+    },
+    hi: {
+      title: "पेंशन सूचना",
+      summary: ["₹1,200 मासिक पेंशन मिलती रहे, इसके लिए 30 नवंबर तक जीवन प्रमाण पत्र देना होगा।", "यह आप अपने बैंक या CSC केंद्र पर कर सकते हैं।"],
+      actions: ["अपने बैंक या CSC केंद्र जाएँ", "आधार कार्ड और पेंशन बुक साथ ले जाएँ", "रसीद लेकर संभालकर रखें"],
+      risk: "30 नवंबर चूकने पर दिसंबर से पेंशन बंद हो जाएगी।",
+      facts: ["मासिक पेंशन: ₹1,200", "जीवन प्रमाण पत्र की आख़िरी तारीख़: 30 नवंबर 2026", "न देने पर दिसंबर से भुगतान बंद"],
+      ask: ["क्या जीवन प्रमाण पत्र घर से दे सकते हैं?", "क्या दिसंबर की पेंशन समय पर आएगी?"],
+      improve: ["हर साल नवंबर में रिमाइंडर लगाएँ", "आधार को पेंशन खाते से जोड़े रखें"],
+      latest: "5 अक्टूबर 2026 को जाँचा: आख़िरी तारीख़ अब भी 30 नवंबर।"
+    }
+  }
+};
+
+function extOf(name) {
+  var e = (name.split(".").pop() || "").toLowerCase();
+  if (e === "pdf") return "PDF";
+  if (e === "doc" || e === "docx") return "DOC";
+  return "IMG";
+}
+function langLabel(id) {
+  var all = TOP.concat(MORE);
+  for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i].label;
+  return id;
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: "home", lang: "ta", doc: "lab", step: 0, files: [], pages: 0,
+      vi: -1, playing: false, sheet: "", toast: "", attach: true, openFact: -1, done: {}, reminders: {},
+      big: false, contrast: false, autoRead: false, slow: false, vibrate: false, easy: false
+    };
+    this.timers = []; this.vt = null; this.tt = null;
+  }
+
+  componentWillUnmount() { this.clearTimers(); this.stopTick(); if (this.tt) clearTimeout(this.tt); }
+  clearTimers() { this.timers.forEach(function (t) { clearTimeout(t); }); this.timers = []; }
+  stopTick() { if (this.vt) { clearTimeout(this.vt); this.vt = null; } }
+
+  showToast(msg) {
+    var self = this;
+    if (this.tt) clearTimeout(this.tt);
+    this.setState({ toast: msg });
+    this.tt = setTimeout(function () { self.setState({ toast: "" }); }, 2200);
+  }
+
+  contentLang() { var l = this.state.lang; return (l === "en" || l === "ta" || l === "hi") ? l : "en"; }
+
+  startReading(docKey, files) {
+    var self = this;
+    this.clearTimers(); this.stopTick();
+    this.setState({ screen: "reading", doc: docKey, files: files, step: 0, openFact: -1, vi: -1, playing: false, sheet: "" });
+    this.timers = [
+      setTimeout(function () { self.setState({ step: 1 }); }, 900),
+      setTimeout(function () { self.setState({ step: 2 }); }, 1800),
+      setTimeout(function () { self.setState({ screen: "result" }); if (self.state.autoRead) self.startVoice(); }, 2700)
+    ];
+  }
+
+  tick() {
+    var self = this;
+    this.stopTick();
+    this.vt = setTimeout(function () {
+      var len = DOCS[self.state.doc][self.contentLang()].summary.length;
+      if (self.state.vi + 1 >= len) { self.setState({ playing: false, vi: -1 }); }
+      else { self.setState({ vi: self.state.vi + 1 }); self.tick(); }
+    }, this.state.slow ? 3600 : 2600);
+  }
+  startVoice() { this.setState({ playing: true, vi: 0 }); this.tick(); }
+
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var accent = this.props.accent ?? "#146B4E";
+    var accentSoft = ACCENT_SOFT[accent] || "#E3F1EA";
+    var cl = this.contentLang();
+    var t = L[cl];
+    var D = DOCS[s.doc];
+    var d = D[cl];
+    var hc = s.contrast;
+    var c = hc
+      ? { bg: "#FFFFFF", surface: "#FFFFFF", ink: "#000000", muted: "#1F2328", line: "#000000", soft: "#EDEDED", chip: "#000000", cardBorder: "2px solid #000000" }
+      : { bg: "#F6F6F3", surface: "#FFFFFF", ink: "#15171A", muted: "#5E636B", line: "#E6E6E1", soft: "#F0F0EB", chip: "#C9CAC3", cardBorder: "1px solid #ECECE7" };
+    var big = s.big;
+    var fs = { h1: big ? "34px" : "28px", title: big ? "22px" : "19px", sum: big ? "24px" : "20px", body: big ? "19px" : "16px", small: big ? "16px" : "14px" };
+
+    var topLangs = TOP.map(function (l) {
+      var on = s.lang === l.id;
+      return { label: l.label, on: on, bg: on ? c.ink : c.surface, fg: on ? c.surface : c.ink, border: on ? c.ink : c.line, pick: function () { self.setState({ lang: l.id }); } };
+    });
+    var inMore = MORE.some(function (m) { return m.id === s.lang; });
+    var nonContent = cl !== s.lang;
+
+    var fileList = s.files.length ? s.files : [D.file];
+    var docs = fileList.map(function (name, i) {
+      var ext = extOf(name);
+      return {
+        name: name, ext: ext,
+        tagBg: ext === "PDF" ? "#FDECEA" : (ext === "DOC" ? "#E6EEFB" : accentSoft),
+        tagFg: ext === "PDF" ? "#B42318" : (ext === "DOC" ? "#1D4ED8" : accent),
+        divider: i === fileList.length - 1 ? "transparent" : c.line,
+        removeLabel: t.remove + " " + name,
+        remove: function () { var n = s.files.slice(); n.splice(i, 1); self.setState(n.length ? { files: n } : { files: [], screen: "home" }); }
+      };
+    });
+
+    var samples = ["lab", "ins", "pen"].map(function (k, i) {
+      return { title: DOCS[k][cl].title, sub: DOCS[k].source, ext: extOf(DOCS[k].file), divider: i === 2 ? "transparent" : c.line, pick: function () { self.startReading(k, [DOCS[k].file]); } };
+    });
+
+    var n = fileList.length;
+    var stepLabels = [n > 1 ? t.readMany.replace("{n}", n) : t.readOne, t.steps2, t.steps3.replace("{lang}", "English")];
+    var steps = stepLabels.map(function (label, i) {
+      return { label: label, isDone: s.step > i, isActive: s.step === i, isPending: s.step < i, color: s.step < i ? c.muted : c.ink, divider: i === 2 ? "transparent" : c.line };
+    });
+
+    var actions = d.actions.map(function (a, i) {
+      var key = s.doc + "-" + i;
+      var done = !!s.done[key];
+      var rem = !!s.reminders[key];
+      var due = D.due[i];
+      return {
+        text: a, done: done, hasDue: !!due, due: due ? due[cl] : "", reminded: rem,
+        boxLabel: t.markDone + ": " + a,
+        deco: done ? "line-through" : "none", op: done ? "0.5" : "1",
+        boxBg: done ? accent : c.surface, boxBorder: done ? accent : c.chip,
+        remLabel: rem ? t.reminded : t.remind,
+        remBg: rem ? accent : "transparent", remFg: rem ? "#FFFFFF" : c.ink, remBorder: rem ? accent : c.line,
+        toggle: function () { var x = Object.assign({}, s.done); x[key] = !done; self.setState({ done: x }); },
+        remind: function () { var x = Object.assign({}, s.reminders); x[key] = !rem; self.setState({ reminders: x }); if (!rem) self.showToast(t.toastRemind); }
+      };
+    });
+
+    var facts = d.facts.map(function (f, i) {
+      var m = D.facts[i];
+      var open = s.openFact === i;
+      return {
+        text: f, quote: m.quote, line: t.line + " " + m.line, open: open,
+        dot: m.status === "bad" ? "#B42318" : (m.status === "good" ? accent : "#8A8F96"),
+        chev: open ? "rotate(180deg)" : "rotate(0deg)",
+        toggle: function () { self.setState({ openFact: open ? -1 : i }); }
+      };
+    });
+
+    var contacts = D.contacts.map(function (ct, i) {
+      return {
+        name: ct.name, role: ct.role[cl], phone: ct.phone, hasPhone: !!ct.phone, hasPlace: !!ct.place,
+        tel: "tel:" + ct.phone.replace(/\s/g, ""),
+        map: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(ct.place),
+        callLabel: t.call + " " + ct.name, mapLabel: t.map + ": " + ct.place,
+        divider: i === D.contacts.length - 1 ? "transparent" : c.line
+      };
+    });
+
+    var voiceOn = s.vi >= 0;
+    var sentences = d.summary.map(function (text, i) {
+      var cur = voiceOn && s.vi === i;
+      return { text: text, bg: cur ? "#E4DFFC" : "transparent", fg: (voiceOn && !cur) ? c.muted : c.ink };
+    });
+
+    var points = d.facts.length + d.actions.length + 1;
+    var actionLines = d.actions.map(function (a, i) { var due = D.due[i]; return (i + 1) + ". " + a + (due ? " (" + due[cl] + ")" : ""); }).join("\n");
+    var msg = d.title + "\n\n" + d.summary.join(" ") + "\n\n" + t.actionsTitle + ":\n" + actionLines + "\n\n" + t.riskTitle + ": " + d.risk + "\n\n" + t.msgFoot;
+    var full = msg + "\n\n" + t.factsTitle + ":\n" + d.facts.map(function (f, i) { return "- " + f + "  [" + t.line + " " + D.facts[i].line + ": \"" + D.facts[i].quote + "\"]"; }).join("\n") +
+      "\n\n" + t.contactsTitle + ":\n" + D.contacts.map(function (ct) { return "- " + ct.name + (ct.phone ? ", " + ct.phone : "") + ": " + ct.role[cl]; }).join("\n") +
+      "\n\n" + t.improveTitle + ":\n" + d.improve.map(function (x) { return "- " + x; }).join("\n") +
+      "\n\nFiles: " + fileList.join(", ");
+
+    var a11yItems = A11Y[cl].map(function (row) {
+      var key = row[0]; var on = !!s[key];
+      return { label: row[1], sub: row[2], on: on, track: on ? accent : c.chip, knob: on ? "flex-end" : "flex-start",
+        toggle: function () { var x = {}; x[key] = !on; self.setState(x); } };
+    });
+
+    return {
+      accent: accent, accentSoft: accentSoft, c: c, t: t, d: d, fs: fs, lang: s.lang,
+      topLangs: topLangs, moreLangs: MORE, allLangs: TOP.concat(MORE),
+      moreVal: inMore ? s.lang : "", moreLabel: inMore ? langLabel(s.lang).split(" · ")[0] : (cl === "ta" ? "மேலும்" : (cl === "hi" ? "और" : "More")),
+      moreBg: inMore ? c.ink : c.surface, moreFg: inMore ? c.surface : c.ink, moreBorder: inMore ? c.ink : c.line,
+      langName: langLabel(s.lang),
+      showPreviewNote: nonContent,
+      previewNote: "Prototype text is shown in English. The live app writes everything in " + langLabel(s.lang).split(" · ")[0] + " with Gemini.",
+      isHome: s.screen === "home", isCamera: s.screen === "camera", isTray: s.screen === "tray", isReading: s.screen === "reading", isResult: s.screen === "result",
+      samples: samples, savedTitle: DOCS.lab[cl].title,
+      pages: s.pages, hasPages: s.pages > 0, pageLabel: t.pageWord + " " + (s.pages + 1),
+      docs: docs, docsHeading: t.docsHeading.replace("{n}", n), docCountLabel: fileList.join(" · "),
+      explainLabel: n > 1 ? t.explainMany.replace("{n}", n) : t.explainOne,
+      steps: steps, actions: actions, facts: facts, contacts: contacts, sentences: sentences,
+      kind: D.kind[cl], checked: t.checked.replace("{n}", String(points)),
+      full: !s.easy, vibrate: s.vibrate,
+      riskClass: s.vibrate ? "sv-in3 sv-pulse" : "sv-in3",
+      riskBorder: s.vibrate ? "2px solid #B42318" : (hc ? "2px solid #000000" : "1px solid #F4DDB0"),
+      voiceOn: voiceOn, voiceIdle: !voiceOn, playing: voiceOn && s.playing, paused: voiceOn && !s.playing,
+      currentSentence: voiceOn ? d.summary[s.vi] : "",
+      progress: voiceOn ? Math.round(((s.vi + 1) / d.summary.length) * 100) + "%" : "0%",
+      voiceLabel: t.nowReading + " · " + langLabel(s.lang).split(" · ")[0],
+      pauseLabel: s.playing ? t.pause : t.resume,
+      speedLabel: s.slow ? "0.75×" : "1×",
+      uploadOpen: s.sheet === "upload", shareOpen: s.sheet === "share", a11yOpen: s.sheet === "a11y",
+      msg: msg, attach: s.attach,
+      attachLabel: t.attach.replace("{n}", n),
+      attachTrack: s.attach ? accent : c.chip, attachKnob: s.attach ? "flex-end" : "flex-start",
+      waHref: "https://wa.me/?text=" + encodeURIComponent(msg),
+      mailHref: "mailto:?subject=" + encodeURIComponent(d.title) + "&body=" + encodeURIComponent(full),
+      a11yItems: a11yItems,
+      hasToast: !!s.toast, toast: s.toast,
+
+      pickSelect: function (e) { var v = e && e.target ? e.target.value : ""; if (v) self.setState({ lang: v }); },
+      openA11y: function () { self.setState({ sheet: "a11y" }); },
+      openUpload: function () { self.setState({ sheet: "upload" }); },
+      closeSheets: function () { self.setState({ sheet: "" }); },
+      openCamera: function () { self.setState({ screen: "camera", sheet: "", pages: 0 }); },
+      shoot: function () { self.setState({ pages: s.pages + 1 }); },
+      cameraDone: function () {
+        var shots = []; for (var i = 1; i <= s.pages; i++) shots.push("Page " + i + ".jpg");
+        self.setState({ screen: "tray", files: s.files.concat(shots), pages: 0 });
+      },
+      addPhotos: function () {
+        var base = s.screen === "tray" ? s.files : [];
+        self.setState({ screen: "tray", sheet: "", files: base.concat(["IMG_2041.jpg", "IMG_2042.jpg"]) });
+      },
+      onFiles: function (e) {
+        var list = e && e.target && e.target.files ? Array.prototype.map.call(e.target.files, function (f) { return f.name; }) : [];
+        if (!list.length) return;
+        var base = s.screen === "tray" ? s.files : [];
+        self.setState({ screen: "tray", sheet: "", files: base.concat(list) });
+      },
+      explainAll: function () { self.startReading("lab", s.files); },
+      openSaved: function () { self.clearTimers(); self.stopTick(); self.setState({ doc: "lab", files: [DOCS.lab.file], screen: "result", openFact: -1, vi: -1, playing: false }); },
+      goHome: function () { self.clearTimers(); self.stopTick(); self.setState({ screen: "home", vi: -1, playing: false, sheet: "", files: [], pages: 0 }); },
+      startVoice: function () { self.startVoice(); },
+      toggleVoice: function () { if (s.playing) { self.stopTick(); self.setState({ playing: false }); } else { self.setState({ playing: true }); self.tick(); } },
+      stopVoice: function () { self.stopTick(); self.setState({ playing: false, vi: -1 }); },
+      toggleSpeed: function () { self.setState({ slow: !s.slow }); },
+      openShare: function () { self.setState({ sheet: "share" }); },
+      toggleAttach: function () { self.setState({ attach: !s.attach }); },
+      afterWA: function () { self.setState({ sheet: "" }); self.showToast(t.toastWA); },
+      afterMail: function () { self.setState({ sheet: "" }); self.showToast(t.toastMail); },
+      copyAll: function () {
+        try { if (navigator.clipboard) navigator.clipboard.writeText(full); } catch (err) {}
+        self.setState({ sheet: "" }); self.showToast(t.toastCopied);
+      },
+      savePdf: function () { self.setState({ sheet: "" }); self.showToast(t.toastPdf); }
+    };
+  }
+}
+</script>
+</body>
+</html>
