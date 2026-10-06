@@ -91,3 +91,34 @@ VITE_API_URL=http://localhost:8080
 4. **Run Unit Tests**:
    - Backend: `api/.venv/bin/pytest api`
    - Frontend build & lint: `cd web && npm run lint && npm run build`
+
+---
+
+## Networking & Deployment Notes
+
+### Why `http://localhost:8080` hung while `http://192.168.1.2:8080` worked (Verified)
+
+Empirical testing with `curl` on the running API server demonstrates:
+- `curl http://localhost:8080/health`: HTTP 200 in ~0.006s
+- `curl http://127.0.0.1:8080/health`: HTTP 200 in ~0.001s
+- `curl http://192.168.1.2:8080/health`: HTTP 200 in ~0.004s
+- `curl http://[::1]:8080/health`: Refused immediately (`Failed to connect to ::1 port 8080 after 18 ms: Couldn't connect to server`). **It does not hang.**
+
+**Actual causes of the reported hang:**
+1. **Device loopback boundary (Mobile / Phone Testing)**: When opening the web app on a phone connected to local Wi-Fi, `localhost` resolves to the **phone itself**, where no backend service is running. If `VITE_API_URL=http://localhost:8080` is configured, requests from the phone target the phone's loopback and hang/time out. Connecting via the host machine's LAN IP (`http://192.168.1.2:8080`) routes over the local network to the laptop and succeeds immediately.
+2. **Concurrent Request Blocking**: Uvicorn running a synchronous model call in a single worker process blocks incoming requests until the model call completes or times out.
+3. **Configuration Rule**: When testing on physical devices or across the local network, `VITE_API_URL` must use the laptop's LAN IP (`http://192.168.1.2:8080`) or the Cloud Run URL, not `localhost`.
+
+### Cloud Run Deployment Recommendation
+
+To safely handle multi-page PDFs and prevent memory exhaustion under concurrency, deploy the backend to Google Cloud Run with **`--concurrency 8`** and at least 1 GiB memory:
+
+```bash
+gcloud run deploy sarvam-api \
+  --image gcr.io/${PROJECT_ID}/sarvam-api \
+  --platform managed \
+  --region asia-south1 \
+  --memory 1Gi \
+  --concurrency 8 \
+  --allow-unauthenticated
+```

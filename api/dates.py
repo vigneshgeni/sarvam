@@ -67,38 +67,29 @@ def format_date_human(d: datetime.date) -> str:
     return f"{d.day} {month_names[d.month - 1]} {d.year}"
 
 
-def parse_deadline_rule(rule_text: Optional[str]) -> Optional[int]:
-    if not rule_text:
-        return None
-    m = re.search(r"within\s+(\d+)\s+(?:working\s+|calendar\s+)?days", rule_text, re.IGNORECASE)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"(\d+)\s+days", rule_text, re.IGNORECASE)
-    if m:
-        return int(m.group(1))
-    return None
-
-
 def compute_relative_deadline(
-    deadline_rule: Optional[str],
+    deadline_days: Optional[int],
     letter_date_str: Optional[str],
+    deadline_anchor: Optional[str] = "letter_date",
 ) -> Optional[datetime.date]:
-    if not deadline_rule or not letter_date_str:
+    if deadline_days is None or not letter_date_str:
         return None
-    days = parse_deadline_rule(deadline_rule)
-    if days is None:
+    if deadline_anchor and deadline_anchor != "letter_date":
         return None
     anchor = parse_date(letter_date_str)
     if not anchor:
         return None
-    return anchor + datetime.timedelta(days=days)
+    return anchor + datetime.timedelta(days=deadline_days)
 
 
 def evaluate_date_status(
     due_date_str: Optional[str],
     is_calculated: bool = False,
     today: Optional[datetime.date] = None,
+    is_recurring: bool = False,
 ) -> str:
+    if is_recurring:
+        return "recurring"
     if is_calculated:
         return "calculated"
     if not due_date_str:

@@ -52,6 +52,83 @@ def extract_critical_tokens(text: str) -> List[str]:
     return [t.strip() for t in tokens if t.strip()]
 
 
+DEVANAGARI_DIGITS = "०१२३४५६७८९"
+TAMIL_DIGITS = "௦௧௨௩௪௫௬௭௮௯"
+
+
+def normalize_digits(text: str) -> str:
+    if not text:
+        return ""
+    for i, d in enumerate(DEVANAGARI_DIGITS):
+        text = text.replace(d, str(i))
+    for i, d in enumerate(TAMIL_DIGITS):
+        text = text.replace(d, str(i))
+    return text
+
+
+def normalize_text_for_guard(text: str) -> str:
+    """
+    Normalizes text for translation guard comparison:
+    1. Normalizes Tamil (௦-௯) and Devanagari (०-९) digits to 0-9.
+    2. Strips thousands separators (including Indian grouping 1,23,456 and standard 12,345).
+    3. Treats Rs./Rs/INR/₹/ரூ/रु as equivalent (canonical symbol ₹).
+    """
+    if not text:
+        return ""
+    t = normalize_digits(text)
+    t = re.sub(r"(?:Rs\.?|INR|₹|ரூ\.?|रु\.?)", "₹", t, flags=re.IGNORECASE)
+    t = re.sub(r"(?<=\d),(?=\d)", "", t)
+    return t
+
+
+def extract_digit_sequences(text: str) -> List[str]:
+    """
+    Extracts digit sequences from normalized text (compares digit sequences, never month names).
+    """
+    norm = normalize_text_for_guard(text)
+    return re.findall(r"\d+", norm)
+
+
+def verify_translation_guard(orig_text: Optional[str], trans_text: Optional[str]) -> bool:
+    """
+    Guard: verifies every number, date, amount and phone number in orig_text appears in trans_text.
+    - Normalizes Tamil and Devanagari digits to 0-9
+    - Strips thousands separators (e.g. 1,23,456 -> 123456)
+    - Treats Rs./Rs/INR/₹ as equivalent
+    - Compares digit sequences, never month names
+    """
+    if not orig_text:
+        return True
+    orig_digits = extract_digit_sequences(orig_text)
+    if not orig_digits:
+        return True
+    if not trans_text:
+        return False
+
+    trans_digits = extract_digit_sequences(trans_text)
+    from collections import Counter
+    trans_counter = Counter(trans_digits)
+
+    for d in orig_digits:
+        stripped = d.lstrip("0") or "0"
+        if trans_counter[d] > 0:
+            trans_counter[d] -= 1
+        elif trans_counter[stripped] > 0:
+            trans_counter[stripped] -= 1
+        elif any(d in td for td in trans_digits):
+            pass
+        else:
+            return False
+
+    # Check currency preservation if original had currency
+    norm_orig = normalize_text_for_guard(orig_text)
+    norm_trans = normalize_text_for_guard(trans_text)
+    if "₹" in norm_orig and "₹" not in norm_trans:
+        return False
+
+    return True
+
+
 def verify_evidence(
     quote: str,
     item_text: str,

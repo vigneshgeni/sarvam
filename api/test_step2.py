@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
@@ -8,18 +9,41 @@ from dates import (
     evaluate_date_status,
     format_date_human,
     parse_date,
-    parse_deadline_rule,
 )
 from evidence import (
     collapse_whitespace,
     compute_evidence_summary,
     extract_critical_tokens,
+    extract_digit_sequences,
+    normalize_digits,
+    normalize_text_for_guard,
     verify_evidence,
+    verify_translation_guard,
 )
-from main import app, IP_REQUESTS
+from main import (
+    app,
+    get_client_ip,
+    IP_REQUESTS,
+    MAX_IMAGES,
+    MAX_PDF_MB,
+    MAX_TOTAL_MB,
+)
+from models import (
+    EvidenceSummary,
+    ExplainAction,
+    ExplainFact,
+    ExplainResponse,
+    ExplainWarning,
+    ReaderAction,
+    ReaderResponse,
+    TranslateActionText,
+    TranslateFactText,
+    TranslatePayload,
+    TranslateWarningText,
+)
 
 
-# --- Dates Tests ---
+# --- 1) Dates & Deadlines Tests ---
 
 def test_parse_date():
     assert parse_date("2026-10-01") == datetime.date(2026, 10, 1)
@@ -32,22 +56,16 @@ def test_parse_date():
     assert parse_date(None) is None
 
 
-def test_parse_deadline_rule():
-    assert parse_deadline_rule("within 30 days of this letter") == 30
-    assert parse_deadline_rule("within 7 working days") == 7
-    assert parse_deadline_rule("15 days") == 15
-    assert parse_deadline_rule("no deadline") is None
-    assert parse_deadline_rule(None) is None
-
-
 def test_compute_relative_deadline():
     # 01 Oct 2026 + 30 days = 31 Oct 2026
-    computed = compute_relative_deadline("within 30 days of this letter", "2026-10-01")
+    computed = compute_relative_deadline(30, "2026-10-01", deadline_anchor="letter_date")
     assert computed == datetime.date(2026, 10, 31)
 
-    # Missing anchor date or missing rule
+    # Missing anchor date or missing days
     assert compute_relative_deadline(None, "2026-10-01") is None
-    assert compute_relative_deadline("within 30 days", None) is None
+    assert compute_relative_deadline(30, None) is None
+    # Invalid anchor
+    assert compute_relative_deadline(30, "2026-10-01", deadline_anchor="other_anchor") is None
 
 
 def test_evaluate_date_status():
@@ -66,6 +84,47 @@ def test_evaluate_date_status():
     assert evaluate_date_status(None, is_calculated=False, today=today) == "none"
 
 
+# --- 2) Recurring Obligations Tests ---
+
+def test_evaluate_date_status_recurring():
+    today = datetime.date(2026, 10, 6)
+
+    # Recurring obligation should return "recurring" and NEVER "passed"
+    assert evaluate_date_status("2026-09-01", is_recurring=True, today=today) == "recurring"
+    assert evaluate_date_status(None, is_recurring=True, today=today) == "recurring"
+    assert evaluate_date_status("31st of every month", is_recurring=True, today=today) == "recurring"
+
+
+def test_recurring_action_explain_due_date_null(client):
+    IP_REQUESTS.clear()
+    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="insurance",
+            title="Premium Notice",
+            language="en",
+            summary=["Pay premium monthly."],
+            actions=[
+                ReaderAction(
+                    text="Pay monthly premium of Rs. 1,200",
+                    due_date="2026-09-30",  # Receipt past date in doc
+                    recurrence="31st of every month",  # Recurring schedule rule
+                    quote="Pay by 31st of every month.",
+                    page=1,
+                )
+            ],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200
+        action = res.json()["actions"][0]
+        # due_date must be null!
+        assert action["due_date"] is None
+        # recurrence carries display text
+        assert action["recurrence"] == "31st of every month"
+        # date_status is "recurring", never "passed"
+        assert action["date_status"] == "recurring"
+
+
 def test_detect_date_conflicts():
     text = (
         "Please pay the amount on or before 15.10.2026 to avoid disconnection. "
@@ -77,17 +136,71 @@ def test_detect_date_conflicts():
     assert "25 Oct" in conflicts[0]
 
 
-# --- Evidence Tests ---
+# --- Evidence & Translation Guard Tests ---
 
 def test_collapse_whitespace():
     assert collapse_whitespace("  hello   world \n test  ") == "hello world test"
 
 
-def test_extract_critical_tokens():
-    text = "Amount approved: Rs. 31,200. Review within 30 days. Contact Ph: +91 80 4000 5678."
-    tokens = extract_critical_tokens(text)
-    assert "Rs. 31,200" in tokens
-    assert "+91 80 4000 5678" in tokens
+def test_normalize_digits():
+    # Tamil: ௦-௯ -> 0-9
+    assert normalize_digits("௩௧,௨௦௦") == "31,200"
+    # Devanagari: ०-९ -> 0-9
+    assert normalize_digits("३१,२००") == "31,200"
+
+
+def test_normalize_text_for_guard():
+    # Currency equivalence: Rs. / INR / ₹ / ரூ / रु all become ₹
+    assert normalize_text_for_guard("Rs. 31,200") == "₹ 31200"
+    assert normalize_text_for_guard("INR 31,200") == "₹ 31200"
+    assert normalize_text_for_guard("₹ 31,200") == "₹ 31200"
+    assert normalize_text_for_guard("ரூ. ௩௧,௨௦௦") == "₹ 31200"
+    assert normalize_text_for_guard("रु. ३१,२००") == "₹ 31200"
+    # Indian grouping 1,23,456
+    assert normalize_text_for_guard("1,23,456") == "123456"
+
+
+def test_translation_guard_ta_digits_pass():
+    orig = "Amount approved: Rs. 31,200 on 30.11.2026."
+    # Tamil translation using Tamil digits
+    trans = "ஒப்புதல் அளிக்கப்பட்ட தொகை: ரூ. ௩௧,௨௦௦ தேதி ௩௦.௧௧.௨௦௨௬."
+    assert verify_translation_guard(orig, trans) is True
+
+
+def test_translation_guard_hi_digits_pass():
+    orig = "Amount approved: Rs. 31,200 on 30.11.2026."
+    # Hindi translation using Devanagari digits
+    trans = "स्वीकृत राशि: ₹ ३१,२०० दिनांक ३०.११.२०२६."
+    assert verify_translation_guard(orig, trans) is True
+
+
+def test_translation_guard_month_name_translation_passes():
+    orig = "Date of letter: 01 October 2026."
+    # English month name is translated to Tamil and Hindi; digit sequences match
+    trans_ta = "கடிதத்தின் தேதி: 01 அக்டோபர் 2026."
+    trans_hi = "पत्र की तारीख: 01 अक्टूबर 2026."
+    assert verify_translation_guard(orig, trans_ta) is True
+    assert verify_translation_guard(orig, trans_hi) is True
+
+
+def test_translation_guard_indian_number_grouping():
+    orig = "Claim amount is Rs. 1,23,456."
+    trans = "கோரிக்கை தொகை ரூ. 1,23,456."
+    assert verify_translation_guard(orig, trans) is True
+
+
+def test_verify_translation_guard_changed_amount_fails():
+    orig = "Amount approved: Rs. 31,200."
+    # Changed from 31,200 to 31,000
+    trans = "ஒப்புதல் அளிக்கப்பட்ட தொகை: ரூ. 31,000."
+    assert verify_translation_guard(orig, trans) is False
+
+
+def test_verify_translation_guard_missing_date_fails():
+    orig = "Amount approved: Rs. 31,200 on 30.11.2026."
+    # Missing date
+    trans = "ஒப்புதல் அளிக்கப்பட்ட தொகை: ரூ. 31,200."
+    assert verify_translation_guard(orig, trans) is False
 
 
 def test_verify_evidence_pdf():
@@ -95,7 +208,6 @@ def test_verify_evidence_pdf():
         "Shield Health Insurance. Amount approved for payment: Rs. 31,200. Date: 01 October 2026."
     ]
 
-    # Exact match with amount present
     ev1 = verify_evidence(
         quote="Amount approved for payment: Rs. 31,200.",
         item_text="Approved amount is Rs. 31,200",
@@ -104,7 +216,6 @@ def test_verify_evidence_pdf():
     )
     assert ev1 == "matched"
 
-    # Quote not found
     ev2 = verify_evidence(
         quote="Nonexistent clause in document",
         item_text="Some text",
@@ -113,7 +224,6 @@ def test_verify_evidence_pdf():
     )
     assert ev2 == "check_original"
 
-    # Amount mismatch (amount in item text does not appear in document)
     ev3 = verify_evidence(
         quote="Shield Health Insurance.",
         item_text="Different amount Rs. 99,999",
@@ -124,7 +234,6 @@ def test_verify_evidence_pdf():
 
 
 def test_verify_evidence_image_always_check_original():
-    # When pages_text is None (images / photos)
     ev = verify_evidence(
         quote="Pensioners must submit Life Certificate",
         item_text="Submit life certificate",
@@ -147,7 +256,7 @@ def test_compute_evidence_summary():
     }
 
 
-# --- API Endpoint & Middleware Tests ---
+# --- API Endpoint & Rate Limit Tests ---
 
 @pytest.fixture
 def client():
@@ -171,21 +280,317 @@ def test_cors_headers(client):
     assert res.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
 
-def test_rate_limit(client):
+# --- Rate Limit & X-Forwarded-For Tests ---
+
+def test_rate_limit_x_forwarded_for(client):
     IP_REQUESTS.clear()
-    # Perform 10 requests from client IP
-    for i in range(10):
+
+    # User 1 behind Cloud Run proxy: X-Forwarded-For has client IP as first entry
+    headers_user1 = {"X-Forwarded-For": "203.0.113.195, 70.41.3.18, 150.172.238.178"}
+    for i in range(20):
         res = client.post(
             "/api/explain",
             files=[("files", ("test.docx", b"dummy", "application/vnd.openxmlformats"))],
+            headers=headers_user1,
         )
-        assert res.status_code == 400
+        assert res.status_code == 400  # docx rejected
 
-    # 11th request should hit rate limit (429)
+    # User 1 hits 429
     res_limited = client.post(
         "/api/explain",
         files=[("files", ("test.docx", b"dummy", "application/vnd.openxmlformats"))],
+        headers=headers_user1,
     )
     assert res_limited.status_code == 429
-    assert "Too many requests" in res_limited.json()["message"]
+    assert "Retry-After" in res_limited.headers
+
+    # User 2 with a different client IP in X-Forwarded-For is NOT throttled!
+    headers_user2 = {"X-Forwarded-For": "198.51.100.42, 70.41.3.18"}
+    res_user2 = client.post(
+        "/api/explain",
+        files=[("files", ("test.docx", b"dummy", "application/vnd.openxmlformats"))],
+        headers=headers_user2,
+    )
+    assert res_user2.status_code == 400  # rejected docx, but NOT 429!
     IP_REQUESTS.clear()
+
+
+def test_translate_rate_limit(client):
+    IP_REQUESTS.clear()
+    sample_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Insurance Letter",
+        language="en",
+        summary=["Summary text."],
+        actions=[],
+        warnings=[],
+        facts=[],
+    )
+    payload = {"result": sample_explain.model_dump(), "lang": "ta"}
+    headers = {"X-Forwarded-For": "192.0.2.1"}
+
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="காப்பீட்டு கடிதம்",
+            summary=["சுருக்கம்."],
+        )
+        for i in range(30):
+            res = client.post("/api/translate", json=payload, headers=headers)
+            assert res.status_code == 200
+
+    # 31st request hits 429
+    res_limited = client.post("/api/translate", json=payload, headers=headers)
+    assert res_limited.status_code == 429
+    assert "Retry-After" in res_limited.headers
+    IP_REQUESTS.clear()
+
+
+# --- Multi-File Limits Tests ---
+
+def test_multi_file_10_images_ok(client):
+    IP_REQUESTS.clear()
+    files = [("files", (f"page{i}.jpg", b"fake-jpg-content", "image/jpeg")) for i in range(10)]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="pension",
+            title="Pension Notice",
+            language="en",
+            summary=["Please submit life certificate."],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200
+        assert res.json()["title"] == "Pension Notice"
+
+
+def test_multi_file_11_images_rejected(client):
+    IP_REQUESTS.clear()
+    files = [("files", (f"page{i}.jpg", b"fake-jpg-content", "image/jpeg")) for i in range(11)]
+    res = client.post("/api/explain", files=files, data={"lang": "en"})
+    assert res.status_code == 400
+    assert "10 images" in res.json()["message"]
+
+
+def test_multi_file_mixed_rejected(client):
+    IP_REQUESTS.clear()
+    files = [
+        ("files", ("doc.pdf", b"%PDF-1.4...", "application/pdf")),
+        ("files", ("page1.jpg", b"fake-jpg-content", "image/jpeg")),
+    ]
+    res = client.post("/api/explain", files=files, data={"lang": "en"})
+    assert res.status_code == 400
+    assert "Cannot mix" in res.json()["message"]
+
+
+def test_pdf_20mb_boundary(client):
+    IP_REQUESTS.clear()
+    # 20 MB + 1 byte
+    oversized_pdf = b"0" * (20 * 1024 * 1024 + 1)
+    files = [("files", ("doc.pdf", oversized_pdf, "application/pdf"))]
+    res = client.post("/api/explain", files=files, data={"lang": "en"})
+    assert res.status_code == 400
+    assert "20 MB" in res.json()["message"]
+
+
+def test_report_title_null_when_not_printed(client):
+    IP_REQUESTS.clear()
+    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="insurance",
+            title="Insurance Letter",
+            report_title=None,
+            report_date=None,
+            language="en",
+            summary=["Insurance claim status."],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["report_title"] is None
+        assert data["report_date"] is None
+
+
+# --- Translation Endpoint & Guard Integration Tests ---
+
+def test_translate_endpoint_success(client):
+    IP_REQUESTS.clear()
+    sample_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Claim Approval Notice",
+        report_title="Health Claim Settlement",
+        report_date="01 October 2026",
+        language="en",
+        letter_date="2026-10-01",
+        summary=["Your claim of Rs. 31,200 has been approved."],
+        actions=[
+            ExplainAction(
+                text="Submit your bank details for Rs. 31,200 within 30 days.",
+                due_date="2026-10-31",
+                deadline_rule="within 30 days of this letter",
+                deadline_days=30,
+                deadline_anchor="letter_date",
+                recurrence=None,
+                date_status="calculated",
+                quote="Submit bank details within 30 days for payment.",
+                page=1,
+                evidence="matched",
+            ),
+            ExplainAction(
+                text="Pay recurring maintenance charge",
+                due_date=None,
+                deadline_rule=None,
+                recurrence="31st of every month",
+                date_status="recurring",
+                quote="Pay maintenance by 31st of every month.",
+                page=1,
+                evidence="matched",
+            ),
+        ],
+        warnings=[
+            ExplainWarning(
+                text="Account details must match the policyholder name.",
+                quote="Name must match policyholder exactly.",
+                page=1,
+                evidence="matched",
+            )
+        ],
+        facts=[
+            ExplainFact(
+                text="Approved amount: Rs. 31,200.",
+                quote="Amount approved: Rs. 31,200.",
+                page=1,
+                evidence="matched",
+            )
+        ],
+        conflicts=[],
+        evidence_summary=EvidenceSummary(matched=4, check_original=0, calculated=0),
+    )
+
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="கோரிக்கை ஒப்புதல் அறிவிப்பு",
+            report_title="சுகாதார கோரிக்கை தீர்வு",
+            summary=["உங்கள் கோரிக்கை தொகை ரூ. 31,200 அங்கீகரிக்கப்பட்டுள்ளது."],
+            actions=[
+                TranslateActionText(
+                    text="30 நாட்களுக்குள் ரூ. 31,200 பெற உங்கள் வங்கி விவரங்களை சமர்ப்பிக்கவும்.",
+                    deadline_rule="இந்தக் கடிதம் வந்த 30 நாட்களுக்குள்",
+                ),
+                TranslateActionText(
+                    text="மாதாந்திர பராமரிப்பு கட்டணத்தை செலுத்தவும்",
+                    recurrence="ஒவ்வொரு மாதமும் 31ஆம் தேதி",
+                ),
+            ],
+            warnings=[
+                TranslateWarningText(text="வங்கி கணக்கு விவரங்கள் பாலிசிதாரர் பெயருடன் பொருந்த வேண்டும்.")
+            ],
+            facts=[
+                TranslateFactText(text="ஒப்புதல் அளிக்கப்பட்ட தொகை: ரூ. 31,200.")
+            ],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": sample_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+
+        # Translated text fields
+        assert data["title"] == "கோரிக்கை ஒப்புதல் அறிவிப்பு"
+        assert data["report_title"] == "சுகாதார கோரிக்கை தீர்வு"
+        assert "ரூ. 31,200" in data["summary"][0]
+        assert data["language"] == "ta"
+
+        # Quotes, page numbers, dates, evidence labels copied by CODE from original
+        action1 = data["actions"][0]
+        assert action1["quote"] == "Submit bank details within 30 days for payment."
+        assert action1["page"] == 1
+        assert action1["evidence"] == "matched"
+        assert action1["due_date"] == "2026-10-31"
+        assert action1["date_status"] == "calculated"
+        assert action1["deadline_days"] == 30
+
+        # Recurring action: due_date remains null, recurrence is display text, date_status is "recurring"
+        action2 = data["actions"][1]
+        assert action2["due_date"] is None
+        assert action2["recurrence"] == "ஒவ்வொரு மாதமும் 31ஆம் தேதி"
+        assert action2["date_status"] == "recurring"
+
+        warning = data["warnings"][0]
+        assert warning["quote"] == "Name must match policyholder exactly."
+        assert warning["page"] == 1
+        assert warning["evidence"] == "matched"
+
+        fact = data["facts"][0]
+        assert fact["quote"] == "Amount approved: Rs. 31,200."
+        assert fact["page"] == 1
+        assert fact["evidence"] == "matched"
+
+        assert data["report_date"] == "01 October 2026"
+        assert data["letter_date"] == "2026-10-01"
+
+
+def test_translate_endpoint_guard_failure_changed_amount(client):
+    IP_REQUESTS.clear()
+    sample_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Claim Notice",
+        language="en",
+        summary=["Your claim of Rs. 31,200 has been approved."],
+        actions=[
+            ExplainAction(
+                text="Submit bank details within 30 days.",
+                quote="Submit within 30 days.",
+                page=1,
+            )
+        ],
+        warnings=[],
+        facts=[],
+    )
+
+    # Model alters amount from 31,200 to 31,000!
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="கோரிக்கை அறிவிப்பு",
+            summary=["உங்கள் கோரிக்கை தொகை ரூ. 31,000 அங்கீகரிக்கப்பட்டுள்ளது."],
+            actions=[
+                TranslateActionText(
+                    text="30 நாட்களுக்குள் வங்கி விவரங்களை சமர்ப்பிக்கவும்."
+                )
+            ],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": sample_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 422
+        assert "Translation verification failed" in res.json()["message"]
+
+
+def test_translate_endpoint_guard_failure_missing_date(client):
+    IP_REQUESTS.clear()
+    sample_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Claim Notice",
+        language="en",
+        summary=["Your claim has been approved on 30.11.2026."],
+        actions=[],
+        warnings=[],
+        facts=[],
+    )
+
+    # Model drops the date 30.11.2026 from the translation!
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="கோரிக்கை அறிவிப்பு",
+            summary=["உங்கள் கோரிக்கை அங்கீகரிக்கப்பட்டுள்ளது."],  # Missing 30.11.2026!
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": sample_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 422
+        assert "Translation verification failed" in res.json()["message"]
