@@ -860,3 +860,130 @@ def test_thinking_constants_and_gemini_call_logging(caplog):
     assert "status=200" in log_msg
 
 
+# --- Per-Instance Semaphore & Retry Tests ---
+
+def test_gemini_semaphore_timeout_returns_503(client):
+    from main import GEMINI_SEMAPHORE, IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # Set semaphore to 0 to simulate 2 ongoing slow Gemini requests
+    original_value = GEMINI_SEMAPHORE._value
+    GEMINI_SEMAPHORE._value = 0
+
+    try:
+        # Patch SEMAPHORE_TIMEOUT to 0.1s for fast unit test
+        with patch("main.SEMAPHORE_TIMEOUT", 0.1):
+            files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+            res = client.post("/api/explain", files=files, data={"lang": "ta"})
+            assert res.status_code == 503
+            body = res.json()
+            assert "Service is busy" in body["message"]
+            assert body["message_local"] == "சேவை தற்போது பிஸியாக உள்ளது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+    finally:
+        # Restore semaphore value
+        GEMINI_SEMAPHORE._value = original_value
+
+
+def test_gemini_retry_jittered_backoff_and_success():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from reader import call_gemini_with_retry
+
+    mock_client = MagicMock()
+    mock_resp = MagicMock()
+    mock_resp.usage_metadata = None
+    # Fail on attempt 1 with 503, succeed on attempt 2
+    mock_client.models.generate_content.side_effect = [
+        errors.ServerError(503, {"error": {"message": "Service Unavailable"}}),
+        mock_resp,
+    ]
+
+    sleeps = []
+    with patch("time.sleep", side_effect=lambda s: sleeps.append(s)):
+        res = call_gemini_with_retry(
+            client=mock_client,
+            model="gemini-3.7-flash",
+            contents=["test"],
+            config=MagicMock(),
+            endpoint="explain",
+            max_retries=2,
+        )
+        assert res == mock_resp
+        assert len(sleeps) == 1
+        # Jittered backoff on 1st retry: ~2s (2.0 to 2.5)
+        assert 2.0 <= sleeps[0] <= 2.5
+        assert mock_client.models.generate_content.call_count == 2
+
+
+def test_gemini_retry_exhaustion_raises_service_error():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from reader import call_gemini_with_retry, GeminiServiceError
+
+    mock_client = MagicMock()
+    # Always fail with 429
+    mock_client.models.generate_content.side_effect = errors.ClientError(
+        429, {"error": {"message": "Resource Exhausted"}}
+    )
+
+    sleeps = []
+    with patch("time.sleep", side_effect=lambda s: sleeps.append(s)):
+        with pytest.raises(GeminiServiceError) as exc_info:
+            call_gemini_with_retry(
+                client=mock_client,
+                model="gemini-3.7-flash",
+                contents=["test"],
+                config=MagicMock(),
+                endpoint="explain",
+                max_retries=2,
+            )
+        assert exc_info.value.status_code == 503
+        # Total attempts = 3 (1 initial + 2 retries)
+        assert mock_client.models.generate_content.call_count == 3
+        # First retry sleeps ~2s, second sleeps ~5s
+        assert len(sleeps) == 2
+        assert 2.0 <= sleeps[0] <= 2.5
+        assert 5.0 <= sleeps[1] <= 5.5
+
+
+def test_gemini_retry_exhaustion_endpoint_returns_503_message_local(client):
+    from unittest.mock import patch
+    from reader import GeminiServiceError
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document", side_effect=GeminiServiceError("Upstream service unavailable", status_code=503)):
+        res = client.post("/api/explain", files=files, data={"lang": "hi"})
+        assert res.status_code == 503
+        body = res.json()
+        assert "Service is busy" in body["message"]
+        assert body["message_local"] == "सेवा व्यस्त है. कृपया थोड़ी देर बाद पुनः प्रयास करें."
+
+
+def test_gemini_retry_budget_exceeded():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from reader import call_gemini_with_retry, GeminiServiceError
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = errors.ServerError(
+        503, {"error": {"message": "Service Unavailable"}}
+    )
+
+    # Simulate start_time at 0 and time advancing beyond 100s budget on retry 1
+    times = [0.0, 1.0, 2.0, 105.0, 106.0]
+    with patch("time.time", side_effect=times):
+        with pytest.raises(GeminiServiceError) as exc_info:
+            call_gemini_with_retry(
+                client=mock_client,
+                model="gemini-3.7-flash",
+                contents=["test"],
+                config=MagicMock(),
+                endpoint="explain",
+                max_retries=2,
+            )
+        assert "budget" in str(exc_info.value).lower()
+        assert exc_info.value.status_code == 503
+
+

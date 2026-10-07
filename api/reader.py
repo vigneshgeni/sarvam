@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import random
 import time
 from typing import Any, List, Tuple
 
@@ -21,6 +22,39 @@ LOCATION = "global"
 # Translate stays off (0). Explain stays as is (0), but can be easily raised to a low level (e.g. 512 or 1024).
 EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
 TRANSLATE_THINKING: int = 0
+
+# Retry configuration
+TOTAL_RETRY_BUDGET: float = 100.0  # seconds
+BACKOFF_DELAYS: List[float] = [2.0, 5.0]
+
+
+class GeminiServiceError(Exception):
+    """Raised when Gemini call fails, retries are exhausted, or budget is exceeded."""
+
+    def __init__(self, message: str, status_code: int = 503):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def is_retryable_error(e: Exception) -> bool:
+    code = getattr(e, "code", None) or getattr(e, "status_code", None)
+    if code in (429, 503, 504):
+        return True
+    err_str = str(e).lower()
+    return any(
+        k in err_str
+        for k in (
+            "429",
+            "503",
+            "504",
+            "resource exhausted",
+            "unavailable",
+            "deadline",
+            "gateway timeout",
+            "timed out",
+            "timeout",
+        )
+    )
 
 LANGUAGE_MAP = {
     "en": "English",
@@ -107,10 +141,51 @@ def call_gemini_with_retry(
     contents: list,
     config: types.GenerateContentConfig,
     endpoint: str = "unknown",
-    max_retries: int = 1,
+    max_retries: int = 2,
 ) -> Any:
     start_time = time.time()
+
     for attempt in range(max_retries + 1):
+        if attempt > 0:
+            elapsed_before_sleep = time.time() - start_time
+            if elapsed_before_sleep >= TOTAL_RETRY_BUDGET:
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    endpoint,
+                    attempt,
+                    elapsed_before_sleep,
+                )
+                raise GeminiServiceError(
+                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded before retry {attempt}",
+                    status_code=503,
+                )
+
+            # Jittered backoff: ~2s on 1st retry, ~5s on 2nd retry
+            base_delay = BACKOFF_DELAYS[attempt - 1] if (attempt - 1) < len(BACKOFF_DELAYS) else 5.0
+            jitter = random.uniform(0.1, 0.4)
+            sleep_duration = base_delay + jitter
+
+            if elapsed_before_sleep + sleep_duration > TOTAL_RETRY_BUDGET:
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    endpoint,
+                    attempt,
+                    elapsed_before_sleep,
+                )
+                raise GeminiServiceError(
+                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded during backoff",
+                    status_code=503,
+                )
+
+            logger.warning(
+                "gemini_retry: endpoint=%s, attempt=%d, delay=%.2f, seconds=%.2f",
+                endpoint,
+                attempt,
+                sleep_duration,
+                elapsed_before_sleep,
+            )
+            time.sleep(sleep_duration)
+
         try:
             resp = client.models.generate_content(
                 model=model,
@@ -133,36 +208,44 @@ def call_gemini_with_retry(
                 elapsed,
             )
             return resp
-        except (errors.ClientError, errors.ServerError) as e:
-            code = getattr(e, "code", None) or 500
+        except Exception as e:
             elapsed = time.time() - start_time
-            if code in (429, 503) and attempt < max_retries:
+            code = getattr(e, "code", None) or getattr(e, "status_code", None) or 503
+
+            if is_retryable_error(e) and attempt < max_retries:
                 logger.warning(
-                    "gemini_retry: endpoint=%s, attempt=%d, status=%s, seconds=%.2f",
+                    "gemini_retryable_error: endpoint=%s, attempt=%d, status=%s, seconds=%.2f",
                     endpoint,
                     attempt + 1,
                     code,
                     elapsed,
                 )
-                time.sleep(2.0)
                 continue
+
+            # Non-retryable error or retries exhausted
             logger.info(
                 "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%d",
                 endpoint,
                 attempt + 1,
                 elapsed,
-                code,
+                code if isinstance(code, int) else 503,
             )
+            if is_retryable_error(e):
+                raise GeminiServiceError(
+                    f"Gemini call failed after {attempt + 1} attempts: {e}",
+                    status_code=503,
+                ) from e
             raise
-        except Exception as e:
-            elapsed = time.time() - start_time
-            logger.info(
-                "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=500",
-                endpoint,
-                attempt + 1,
-                elapsed,
-            )
-            raise
+
+    # Fallback if loop ends
+    elapsed = time.time() - start_time
+    logger.info(
+        "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+        endpoint,
+        max_retries + 1,
+        elapsed,
+    )
+    raise GeminiServiceError("Gemini call retries exhausted", status_code=503)
 
 
 def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderResponse:

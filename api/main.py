@@ -1,14 +1,17 @@
+import asyncio
 from collections import defaultdict
+import datetime
 import json
 import logging
 import os
 import time
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import httpx
+from starlette.concurrency import run_in_threadpool
 
 from dates import (
     compute_relative_deadline,
@@ -36,7 +39,11 @@ from models import (
     TranslateRequest,
     TranslateWarningText,
 )
-from reader import read_document, translate_result_text
+from reader import (
+    GeminiServiceError,
+    read_document,
+    translate_result_text,
+)
 
 # Multi-file limits as constants in one place
 MAX_IMAGES = 10
@@ -45,6 +52,10 @@ MAX_TOTAL_MB = 25
 
 MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024
 MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024
+
+# Per-instance concurrency semaphore (max 2 concurrent Gemini calls)
+GEMINI_SEMAPHORE = asyncio.Semaphore(2)
+SEMAPHORE_TIMEOUT = 30.0  # seconds waiting for semaphore before 503
 
 # Rate limits (per IP)
 EXPLAIN_RATE_LIMIT = 20
@@ -225,10 +236,12 @@ async def health():
 )
 async def explain(
     request: Request,
+    response: Response,
     files: List[UploadFile] = File(...),
     lang: str = Form("en"),
 ):
     start_time = time.time()
+    start_dt = datetime.datetime.now(datetime.timezone.utc)
     client_ip = get_client_ip(request)
 
     # Rate limit check per IP (20 requests / minute)
@@ -291,48 +304,67 @@ async def explain(
     if pdf_bytes:
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
 
-    # Call Gemini Reader
+    # Acquire per-instance semaphore (max 2 concurrent Gemini calls)
+    queue_start = time.time()
     try:
-        reader_result = read_document(file_data_list, lang)
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=SEMAPHORE_TIMEOUT)
+    except asyncio.TimeoutError:
+        queue_wait = time.time() - queue_start
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
+        elapsed = time.time() - start_time
+        logger.info(
+            "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            queue_wait,
+            elapsed,
+        )
+        return make_error_response(503, "service_busy", lang)
+
+    queue_wait = time.time() - queue_start
+
+    # Run blocking Gemini Reader in AnyIO thread pool so event loop remains completely unblocked
+    try:
+        reader_result = await run_in_threadpool(read_document, file_data_list, lang)
     except Exception as e:
         elapsed = time.time() - start_time
-        file_types = [m for _, m in file_data_list]
-        err_type = type(e).__name__
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
 
         if isinstance(e, (httpx.TimeoutException, TimeoutError)) or "timeout" in err_str:
             status_code = 504
             logger.info(
-                "explain_error: endpoint=/api/explain, file_count=%d, types=%s, bytes=%d, seconds=%.2f, status=%d",
-                len(file_data_list),
-                file_types,
-                total_bytes,
+                "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
                 elapsed,
-                status_code,
             )
             return make_error_response(504, "timeout", lang)
 
         status_code = 503
         logger.info(
-            "explain_error: endpoint=/api/explain, file_count=%d, types=%s, bytes=%d, seconds=%.2f, status=%d",
-            len(file_data_list),
-            file_types,
-            total_bytes,
+            "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            queue_wait,
             elapsed,
-            status_code,
         )
-        return make_error_response(503, "upstream_error", lang)
+        return make_error_response(503, "service_busy", lang)
+    finally:
+        GEMINI_SEMAPHORE.release()
 
-    # Log ONLY non-content metrics: endpoint, file count, types, bytes, seconds, status
+    # Log ONLY non-content metrics: endpoint, start, finish, queue_wait, seconds, status
     elapsed = time.time() - start_time
-    file_types = [m for _, m in file_data_list]
+    finish_dt = datetime.datetime.now(datetime.timezone.utc)
+    status_code = 200 if not reader_result.unreadable else 422
     logger.info(
-        "explain_complete: endpoint=/api/explain, file_count=%d, types=%s, bytes=%d, seconds=%.2f, status=%d",
-        len(file_data_list),
-        file_types,
-        total_bytes,
+        "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=%d",
+        start_dt.strftime("%H:%M:%S.%f")[:-3],
+        finish_dt.strftime("%H:%M:%S.%f")[:-3],
+        queue_wait,
         elapsed,
-        200 if not reader_result.unreadable else 422,
+        status_code,
     )
 
     # Check unreadable
@@ -468,6 +500,10 @@ async def explain(
     summary_data = compute_evidence_summary(dict_actions, dict_warnings, dict_facts)
     evidence_summary = EvidenceSummary(**summary_data)
 
+    response.headers["X-Start"] = start_dt.strftime("%H:%M:%S.%f")[:-3]
+    response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
+    response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
+
     return ExplainResponse(
         doc_type=reader_result.doc_type,
         title=reader_result.title,
@@ -499,9 +535,11 @@ async def explain(
 )
 async def translate(
     request: Request,
+    response: Response,
     body: TranslateRequest,
 ):
     start_time = time.time()
+    start_dt = datetime.datetime.now(datetime.timezone.utc)
     client_ip = get_client_ip(request)
 
     # Rate limit check per IP (30 requests / minute)
@@ -541,47 +579,72 @@ async def translate(
         protected_terms=orig.protected_terms,
     )
 
+    # Acquire per-instance semaphore (max 2 concurrent Gemini calls)
+    queue_start = time.time()
     try:
-        translated_payload = translate_result_text(payload, body.lang)
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=SEMAPHORE_TIMEOUT)
+    except asyncio.TimeoutError:
+        queue_wait = time.time() - queue_start
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
+        elapsed = time.time() - start_time
+        logger.info(
+            "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            queue_wait,
+            elapsed,
+        )
+        return make_error_response(503, "service_busy", body.lang)
+
+    queue_wait = time.time() - queue_start
+
+    # Run blocking Gemini Translate in AnyIO thread pool so event loop remains completely unblocked
+    try:
+        translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang)
     except Exception as e:
         elapsed = time.time() - start_time
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
+
         if isinstance(e, (httpx.TimeoutException, TimeoutError)) or "timeout" in err_str:
             status_code = 504
             logger.info(
-                "translate_error: endpoint=/api/translate, bytes=%d, seconds=%.2f, status=%d",
-                input_bytes,
+                "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
                 elapsed,
-                status_code,
             )
             return make_error_response(504, "timeout", body.lang)
 
         status_code = 503
         logger.info(
-            "translate_error: endpoint=/api/translate, bytes=%d, seconds=%.2f, status=%d",
-            input_bytes,
+            "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            queue_wait,
             elapsed,
-            status_code,
         )
-        return make_error_response(503, "upstream_error", body.lang)
+        return make_error_response(503, "service_busy", body.lang)
+    finally:
+        GEMINI_SEMAPHORE.release()
 
     elapsed = time.time() - start_time
 
     # Guard: every number, date, amount and phone number in original text must appear in translated text
     guard_passed = check_translation_guard(orig, translated_payload)
-    if not guard_passed:
-        logger.info(
-            "translate_guard_failed: endpoint=/api/translate, bytes=%d, seconds=%.2f, status=422",
-            input_bytes,
-            elapsed,
-        )
-        return make_error_response(422, "translation_guard_failed", body.lang)
-
+    finish_dt = datetime.datetime.now(datetime.timezone.utc)
+    status_code = 200 if guard_passed else 422
     logger.info(
-        "translate_complete: endpoint=/api/translate, bytes=%d, seconds=%.2f, status=200",
-        input_bytes,
+        "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=%d",
+        start_dt.strftime("%H:%M:%S.%f")[:-3],
+        finish_dt.strftime("%H:%M:%S.%f")[:-3],
+        queue_wait,
         elapsed,
+        status_code,
     )
+    if not guard_passed:
+        return make_error_response(422, "translation_guard_failed", body.lang)
 
     # Reassemble result: quotes, page numbers, dates, evidence labels, amounts, numbers copied by CODE
     stitched_actions: List[ExplainAction] = []
@@ -639,6 +702,10 @@ async def translate(
                 evidence=orig_fact.evidence, # Copied by CODE
             )
         )
+
+    response.headers["X-Start"] = start_dt.strftime("%H:%M:%S.%f")[:-3]
+    response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
+    response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
 
     return ExplainResponse(
         doc_type=orig.doc_type,
