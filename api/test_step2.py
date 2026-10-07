@@ -763,3 +763,58 @@ def test_translate_endpoint_protected_terms_transliterated_fails_422(client):
         body = res.json()
         assert "Translation verification failed" in body["message"]
         assert body["message_local"] == "अनुवाद सत्यापन विफल रहा. कृपया पुनः प्रयास करें."
+
+
+def test_verify_protected_terms_guard_case_whitespace_nfc_normalization(client):
+    import unicodedata
+    protected = ["Devayalini M", "St. Jude Hospital"]
+    orig_text = "Patient Devayalini M admitted at St. Jude Hospital."
+
+    # 1. Lowercase in translation passes
+    trans_lower = "நோயாளி devayalini m st. jude hospital இல் அனுமதிக்கப்பட்டார்."
+    assert verify_protected_terms_guard(protected, orig_text, trans_lower) is True
+
+    # 2. Uppercase in translation passes
+    trans_upper = "நோயாளி DEVAYALINI M ST. JUDE HOSPITAL இல் அனுமதிக்கப்பட்டார்."
+    assert verify_protected_terms_guard(protected, orig_text, trans_upper) is True
+
+    # 3. Line break and multi-space in translation passes
+    trans_whitespace = "நோயாளி Devayalini\n   M   St.\nJude   Hospital இல் அனுமதிக்கப்பட்டார்."
+    assert verify_protected_terms_guard(protected, orig_text, trans_whitespace) is True
+
+    # 4. Unicode NFD decomposed form in translation matches NFC
+    # e.g. José decomposed into 'Jose' + combining acute accent
+    term_accent = "Dr. José Silva"
+    orig_accent = "Consultant Dr. José Silva."
+    nfd_trans = unicodedata.normalize("NFD", "மருத்துவர் Dr. José Silva ஆலோசனை வழங்கினார்.")
+    assert verify_protected_terms_guard([term_accent], orig_accent, nfd_trans) is True
+
+    # 5. Endpoint test: line break or casing difference does NOT trigger false 422
+    IP_REQUESTS.clear()
+    sample_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Discharge Summary",
+        language="en",
+        summary=["Patient Devayalini M admitted."],
+        actions=[],
+        warnings=[],
+        facts=[],
+        protected_terms=["Devayalini M"],
+    )
+
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="வெளியேற்ற சுருக்கம்",
+            summary=["நோயாளி devayalini\n  m அனுமதிக்கப்பட்டார்."],  # lowercase + line break
+            actions=[],
+            warnings=[],
+            facts=[],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": sample_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 200
+        assert res.json()["language"] == "ta"
+

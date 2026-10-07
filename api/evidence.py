@@ -1,6 +1,7 @@
 import io
 import re
 from typing import List, Optional
+import unicodedata
 
 import pypdf
 
@@ -129,6 +130,20 @@ def verify_translation_guard(orig_text: Optional[str], trans_text: Optional[str]
     return True
 
 
+def normalize_protected_term(text: str) -> str:
+    """
+    Normalizes text for protected terms comparison:
+    - Unicode NFC normalization
+    - Whitespace collapsed
+    - Lowercase (case-insensitive)
+    """
+    if not text:
+        return ""
+    nfc = unicodedata.normalize("NFC", text)
+    collapsed = collapse_whitespace(nfc)
+    return collapsed.lower()
+
+
 def verify_protected_terms_guard(
     protected_terms: Optional[List[str]],
     orig_text: Optional[str],
@@ -136,9 +151,8 @@ def verify_protected_terms_guard(
 ) -> bool:
     """
     Guard: verifies every protected term that appears in the original text
-    must appear verbatim in the translated text.
-    - Person names, patient/doctor names, hospital/lab/company names,
-      addresses, place names, and ID/policy/account/reference numbers.
+    must appear in the translated text.
+    - Case-insensitive, whitespace-collapsed, and Unicode NFC-normalised.
     - Original script must be preserved (Latin stays Latin, Tamil stays Tamil, etc.).
     """
     if not protected_terms or not orig_text:
@@ -146,14 +160,16 @@ def verify_protected_terms_guard(
     if not trans_text:
         return False
 
-    norm_orig = collapse_whitespace(orig_text)
-    norm_trans = collapse_whitespace(trans_text)
+    norm_orig = normalize_protected_term(orig_text)
+    norm_trans = normalize_protected_term(trans_text)
 
     for term in protected_terms:
         clean_term = term.strip()
         if not clean_term:
             continue
-        norm_term = collapse_whitespace(clean_term)
+        norm_term = normalize_protected_term(clean_term)
+        if not norm_term:
+            continue
         if norm_term in norm_orig:
             if norm_term not in norm_trans:
                 return False
