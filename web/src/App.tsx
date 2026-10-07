@@ -1,19 +1,39 @@
 import { useState, useRef, useEffect } from 'react'
-import { LANGUAGES, getDictionary } from './i18n'
-import type { AppScreen, ExplainResponse, StagedFile } from './types'
+import {
+  LANGUAGES,
+  getDictionary,
+  getStoredLanguage,
+  setStoredLanguage,
+  getLocalFallbackError,
+} from './i18n'
+import type { AppScreen, ExplainResponse, StagedFile, AppErrorInfo } from './types'
 import { shrinkImage, shrinkFiles } from './utils/image'
-import { explainDocument, ExplainApiError } from './api'
+import { explainDocument, translateDocument, ExplainApiError } from './api'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
 import TrayScreen from './components/TrayScreen'
 
 export default function App() {
-  const [selectedLang, setSelectedLang] = useState<string>('ta')
+  // Shared language state persisted in localStorage sarvam.lang (first run: ta/hi from navigator or en, never default to Tamil)
+  const [selectedLang, setSelectedLang] = useState<string>(getStoredLanguage)
   const [screen, setScreen] = useState<AppScreen>('home')
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
   const [resultData, setResultData] = useState<ExplainResponse | null>(null)
-  const [readingError, setReadingError] = useState<string | null>(null)
+
+  // Error state for Reading screen (never go Home silently)
+  const [currentError, setCurrentError] = useState<AppErrorInfo | null>(null)
+
+  // Translation inline state for Result screen
+  const [isTranslating, setIsTranslating] = useState<boolean>(false)
+  const [translateError, setTranslateError] = useState<AppErrorInfo | null>(null)
+
+  // Session refs (files kept in memory only, never stored in localStorage/logs)
+  const activeFilesRef = useRef<File[]>([])
+  const currentResultIdRef = useRef<string | null>(null)
+  const originalResultRef = useRef<ExplainResponse | null>(null)
+  const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
+  const activeTranslateControllerRef = useRef<AbortController | null>(null)
 
   const langRowRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
@@ -25,6 +45,7 @@ export default function App() {
 
   const handleSelectLang = (langId: string) => {
     setSelectedLang(langId)
+    setStoredLanguage(langId)
     const chip = chipRefs.current[langId]
     if (chip) {
       chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
@@ -39,26 +60,52 @@ export default function App() {
     }
   }, [selectedLang])
 
-  // Core API execution function
+  // Core API execution function: /api/explain
   const runExplain = async (filesToExplain: File[], lang: string) => {
     if (!filesToExplain || filesToExplain.length === 0) return
 
+    // In-memory files only
+    activeFilesRef.current = filesToExplain
     setActiveFiles(filesToExplain)
-    setReadingError(null)
+    setCurrentError(null)
+    setTranslateError(null)
     setScreen('reading')
 
     try {
       const result = await explainDocument(filesToExplain, lang)
+
+      // Generate session result ID for translation caching
+      const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      currentResultIdRef.current = resultId
+      originalResultRef.current = result
+      translationCacheRef.current.clear()
+      translationCacheRef.current.set(`${resultId}:${result.language || lang}`, result)
+
       setResultData(result)
       setScreen('result')
     } catch (err: unknown) {
-      console.error('Explain error:', err)
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return
+      }
       if (err instanceof ExplainApiError) {
-        setReadingError(err.messageLocal)
+        setCurrentError({
+          message: err.message,
+          messageLocal: err.messageLocal,
+          statusCode: err.statusCode,
+          retryAfter: err.retryAfter,
+        })
       } else if (err instanceof Error) {
-        setReadingError(err.message)
+        setCurrentError({
+          message: err.message,
+          messageLocal: getLocalFallbackError(lang, 'generic'),
+          statusCode: 0,
+        })
       } else {
-        setReadingError(t.errorTitle || 'Could not read notice')
+        setCurrentError({
+          message: 'Unknown error',
+          messageLocal: getLocalFallbackError(lang, 'generic'),
+          statusCode: 0,
+        })
       }
     }
   }
@@ -179,7 +226,7 @@ export default function App() {
   // Handle "Try a sample" items
   const handleSampleClick = async (sampleFilename: string) => {
     try {
-      setReadingError(null)
+      setCurrentError(null)
       const res = await fetch(`/samples/${sampleFilename}`)
       if (!res.ok) {
         throw new Error(`Failed to load sample: ${res.statusText}`)
@@ -195,30 +242,134 @@ export default function App() {
 
       await runExplain([processedFile], selectedLang)
     } catch (err: unknown) {
-      console.error('Error loading sample:', err)
+      if (err instanceof DOMException && err.name === 'AbortError') return
       const msg = err instanceof Error ? err.message : 'Failed to load sample'
-      setReadingError(msg)
+      setCurrentError({
+        message: msg,
+        messageLocal: getLocalFallbackError(selectedLang, 'generic'),
+        statusCode: 0,
+      })
       setScreen('reading')
     }
   }
 
-  // Handle changing language while on Result screen: asks the API again
-  const handleChangeResultLang = (newLang: string) => {
+  // Handle changing language while on Result screen:
+  // cache keyed (resultId, lang) -> POST /api/translate {result, lang} with ORIGINAL result -> on 422 or failure fall back to /api/explain with original files kept in memory only
+  // Cancel in-flight requests when the user switches again. Inline loading, never a blank screen.
+  const handleChangeResultLang = async (newLang: string) => {
+    if (newLang === selectedLang && resultData) return
+
     setSelectedLang(newLang)
-    if (activeFiles.length > 0) {
-      runExplain(activeFiles, newLang)
+    setStoredLanguage(newLang)
+
+    const resultId = currentResultIdRef.current
+    const originalResult = originalResultRef.current
+
+    if (!resultId || !originalResult) {
+      if (activeFilesRef.current.length > 0) {
+        runExplain(activeFilesRef.current, newLang)
+      }
+      return
+    }
+
+    // 1. Check cache keyed (resultId, lang)
+    const cacheKey = `${resultId}:${newLang}`
+    const cached = translationCacheRef.current.get(cacheKey)
+    if (cached) {
+      setResultData(cached)
+      setTranslateError(null)
+      setIsTranslating(false)
+      return
+    }
+
+    // 2. Cancel previous in-flight requests when user switches again
+    if (activeTranslateControllerRef.current) {
+      activeTranslateControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    activeTranslateControllerRef.current = controller
+
+    setIsTranslating(true)
+    setTranslateError(null)
+
+    try {
+      // POST /api/translate {result, lang} with ORIGINAL result as returned
+      const translated = await translateDocument(originalResult, newLang, controller.signal)
+      if (controller.signal.aborted) return
+
+      translationCacheRef.current.set(cacheKey, translated)
+      setResultData(translated)
+      setIsTranslating(false)
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return
+
+      // On 422 or failure fall back to /api/explain with original files kept in memory only
+      try {
+        if (activeFilesRef.current.length === 0) {
+          throw err
+        }
+
+        const fallbackResult = await explainDocument(
+          activeFilesRef.current,
+          newLang,
+          controller.signal
+        )
+        if (controller.signal.aborted) return
+
+        translationCacheRef.current.set(cacheKey, fallbackResult)
+        setResultData(fallbackResult)
+        setIsTranslating(false)
+      } catch (fallbackErr: unknown) {
+        if (controller.signal.aborted) return
+
+        setIsTranslating(false)
+        // Show error screen/card with message_local and Retry button (never go Home silently)
+        if (fallbackErr instanceof ExplainApiError) {
+          setTranslateError({
+            message: fallbackErr.message,
+            messageLocal: fallbackErr.messageLocal,
+            statusCode: fallbackErr.statusCode,
+            retryAfter: fallbackErr.retryAfter,
+          })
+        } else if (fallbackErr instanceof Error) {
+          setTranslateError({
+            message: fallbackErr.message,
+            messageLocal: getLocalFallbackError(newLang, 'generic'),
+            statusCode: 0,
+          })
+        } else {
+          setTranslateError({
+            message: 'Unknown error',
+            messageLocal: getLocalFallbackError(newLang, 'generic'),
+            statusCode: 0,
+          })
+        }
+      }
     }
   }
 
   const handleGoHome = () => {
+    // Cancel in-flight translate if any
+    if (activeTranslateControllerRef.current) {
+      activeTranslateControllerRef.current.abort()
+      activeTranslateControllerRef.current = null
+    }
+
     // Revoke any staged preview URLs
     stagedFiles.forEach((sf) => {
       if (sf.previewUrl) URL.revokeObjectURL(sf.previewUrl)
     })
     setStagedFiles([])
     setActiveFiles([])
+    activeFilesRef.current = []
+    currentResultIdRef.current = null
+    originalResultRef.current = null
+    translationCacheRef.current.clear()
+
     setResultData(null)
-    setReadingError(null)
+    setCurrentError(null)
+    setTranslateError(null)
+    setIsTranslating(false)
     setScreen('home')
   }
 
@@ -506,6 +657,7 @@ export default function App() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className="shrink-0 text-muted"
                   >
                     <path d="M9 6l6 6-6 6" />
                   </svg>
@@ -586,28 +738,32 @@ export default function App() {
         )}
 
         {/* ========================================================
-            SCREEN 3: READING (WAITING / SCANNING ANIMATION)
+            SCREEN 3: READING (WAITING / SCANNING ANIMATION OR ERROR)
            ======================================================== */}
         {screen === 'reading' && (
           <ReadingScreen
             files={activeFiles}
             lang={selectedLang}
-            langName={currentLangObj.name}
-            error={readingError}
+            langName={currentLangObj.label}
+            error={currentError}
             onRetry={() => runExplain(activeFiles, selectedLang)}
             onCancel={handleGoHome}
           />
         )}
 
         {/* ========================================================
-            SCREEN 4: RESULT (NEW ORDER FROM SECTION 4)
+            SCREEN 4: RESULT SCREEN
            ======================================================== */}
         {screen === 'result' && resultData && (
           <ResultScreen
             result={resultData}
             files={activeFiles}
             lang={selectedLang}
+            isTranslating={isTranslating}
+            translateError={translateError}
             onChangeLanguage={handleChangeResultLang}
+            onRetryTranslate={() => handleChangeResultLang(selectedLang)}
+            onDismissTranslateError={() => setTranslateError(null)}
             onGoHome={handleGoHome}
             onA11yClick={handleA11yClick}
           />

@@ -1,21 +1,120 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LANGUAGES, getDictionary } from '../i18n'
-import type { ExplainResponse } from '../types'
+import type { ExplainResponse, AppErrorInfo } from '../types'
 
 interface ResultScreenProps {
   result: ExplainResponse
   files: File[]
   lang: string
+  isTranslating?: boolean
+  translateError?: AppErrorInfo | null
   onChangeLanguage: (newLang: string) => void
+  onRetryTranslate?: () => void
+  onDismissTranslateError?: () => void
   onGoHome: () => void
   onA11yClick: () => void
+}
+
+function TranslateErrorCard({
+  error,
+  t,
+  onRetry,
+  onDismiss,
+}: {
+  error: AppErrorInfo
+  t: Record<string, string>
+  onRetry?: () => void
+  onDismiss?: () => void
+}) {
+  const [secondsLeft, setSecondsLeft] = useState<number>(error.retryAfter || 0)
+
+  useEffect(() => {
+    if (!error.retryAfter || error.retryAfter <= 0) return
+
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [error.retryAfter])
+
+  return (
+    <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-card p-4 flex flex-col gap-3 text-[#5A3500] animate-card-in shadow-sm">
+      <div className="flex items-start gap-2.5">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 mt-0.5 text-[#B42318]"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <span className="text-[14px] font-bold">
+            {t.errorTitle || 'Could not read notice'}
+          </span>
+          <p className="text-[13px] leading-relaxed m-0">
+            {error.messageLocal}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={secondsLeft > 0}
+            className={`h-9 px-4 rounded-full font-bold text-[13px] flex items-center justify-center transition-all ${
+              secondsLeft > 0
+                ? 'bg-soft text-muted cursor-not-allowed border border-line'
+                : 'bg-brand text-white hover:opacity-95'
+            }`}
+          >
+            {secondsLeft > 0
+              ? (t.retryIn || 'Try again in {seconds}s').replace(
+                  '{seconds}',
+                  String(secondsLeft)
+                )
+              : t.retry || 'Try again'}
+          </button>
+        )}
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="h-9 px-3 rounded-full border border-line bg-surface text-ink text-[13px] font-semibold hover:bg-soft transition-colors"
+          >
+            {t.dismiss || 'Dismiss'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function ResultScreen({
   result,
   files,
   lang,
+  isTranslating = false,
+  translateError = null,
   onChangeLanguage,
+  onRetryTranslate,
+  onDismissTranslateError,
   onGoHome,
   onA11yClick,
 }: ResultScreenProps) {
@@ -28,6 +127,7 @@ export default function ResultScreen({
   const [openActionQuotes, setOpenActionQuotes] = useState<Record<number, boolean>>({})
   const [openWarningQuotes, setOpenWarningQuotes] = useState<Record<number, boolean>>({})
   const [openFactQuotes, setOpenFactQuotes] = useState<Record<number, boolean>>({})
+
 
   const toggleActionDone = (index: number) => {
     setDoneActions((prev) => ({ ...prev, [index]: !prev[index] }))
@@ -136,21 +236,25 @@ export default function ResultScreen({
 
           {/* Language Selector Dropdown */}
           <label className="flex-1 relative h-11 rounded-full border border-line bg-surface flex items-center gap-2 px-3.5 pr-8 text-[15px] font-semibold text-ink min-w-0 cursor-pointer hover:border-muted/40 transition-colors">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 text-brand"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
+            {isTranslating ? (
+              <span className="sv-spin w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand shrink-0" />
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 text-brand"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+            )}
             <span className="truncate">{currentLangObj.label}</span>
             <svg
               width="16"
@@ -202,18 +306,66 @@ export default function ResultScreen({
           </button>
         </div>
 
+        {/* Inline Translation Loading Indicator (never a blank screen) */}
+        {isTranslating && (
+          <div className="bg-brand-soft border border-brand/20 text-brand px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 text-[13.5px] font-semibold animate-card-in">
+            <span className="sv-spin w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand shrink-0" />
+            <span>{t.translating || 'Translating notice...'}</span>
+          </div>
+        )}
+
+        {/* Translation Error Card with 429 countdown and Retry button (never go Home silently) */}
+        {translateError && (
+          <TranslateErrorCard
+            key={`${translateError.statusCode}-${translateError.retryAfter || 0}-${translateError.messageLocal}`}
+            error={translateError}
+            t={t}
+            onRetry={onRetryTranslate}
+            onDismiss={onDismissTranslateError}
+          />
+        )}
+
+
         {/* Document Header & Evidence Summary */}
         <div className="flex flex-col gap-2 pt-1">
-          <span className="text-[12px] font-bold tracking-[0.08em] uppercase text-brand">
-            {docTypeBadge}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[12px] font-bold tracking-[0.08em] uppercase text-brand">
+              {docTypeBadge}
+            </span>
+            {result.report_date && (
+              <span className="text-[12px] font-medium text-muted bg-soft px-2.5 py-0.5 rounded-full border border-line/60">
+                {result.report_date}
+              </span>
+            )}
+          </div>
+
           <h1 className="font-heading font-bold text-[25px] sm:text-[27px] text-ink leading-[1.2] tracking-tight">
             {result.title}
           </h1>
 
+          {result.report_title && result.report_title !== result.title && (
+            <p className="text-[14px] text-muted font-medium m-0">
+              {result.report_title}
+            </p>
+          )}
+
+          {/* Protected terms: render names, IDs, and reference numbers verbatim as returned */}
+          {result.protected_terms && result.protected_terms.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {result.protected_terms.map((term, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-mono bg-soft text-ink border border-line"
+                >
+                  {term}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Evidence summary line */}
           {totalPoints > 0 && (
-            <div className="flex items-center gap-2 text-[13.5px] font-semibold text-brand">
+            <div className="flex items-center gap-2 text-[13.5px] font-semibold text-brand pt-1">
               <svg
                 width="18"
                 height="18"
@@ -262,7 +414,7 @@ export default function ResultScreen({
         </div>
 
         {/* ========================================================
-            NEW ORDER FROM SECTION 4:
+            ORDER:
             1. What you need to do
             2. In simple words
             3. Watch out
@@ -283,6 +435,14 @@ export default function ResultScreen({
               {result.actions.map((act, i) => {
                 const isDone = !!doneActions[i]
                 const isQuoteOpen = !!openActionQuotes[i]
+
+                const isRecurring =
+                  act.date_status === 'recurring' || !!act.recurrence
+                const isPassed = !isRecurring && act.date_status === 'passed'
+                const isCalculated =
+                  !isRecurring && act.date_status === 'calculated'
+                const isUpcoming =
+                  !isRecurring && act.date_status === 'upcoming' && !!act.due_date
 
                 return (
                   <div key={i} className="flex flex-col gap-2.5 py-3 first:pt-1 last:pb-1">
@@ -327,8 +487,27 @@ export default function ResultScreen({
 
                         {/* Chips Row: Date chip + Evidence chip */}
                         <div className="flex flex-wrap items-center gap-2">
-                          {/* Date Chip */}
-                          {act.date_status === 'passed' && (
+                          {/* Recurring actions: due_date is null, recurrence holds display text. Show recurrence text, never "passed" */}
+                          {isRecurring && (
+                            <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[12.5px] font-semibold">
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                              </svg>
+                              <span>{act.recurrence || t.recurring || 'Recurring schedule'}</span>
+                            </span>
+                          )}
+
+                          {/* Passed date: only if not recurring and status is passed */}
+                          {isPassed && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#FDECEA] text-[#B42318] text-[12.5px] font-bold">
                               <svg
                                 width="14"
@@ -348,7 +527,8 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {act.date_status === 'calculated' && (
+                          {/* Calculated deadline */}
+                          {isCalculated && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#E6EEFB] text-[#1D4ED8] text-[12.5px] font-bold">
                               <svg
                                 width="14"
@@ -372,7 +552,8 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {act.date_status === 'upcoming' && act.due_date && (
+                          {/* Upcoming deadline */}
+                          {isUpcoming && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-soft text-ink text-[12.5px] font-semibold">
                               <svg
                                 width="14"

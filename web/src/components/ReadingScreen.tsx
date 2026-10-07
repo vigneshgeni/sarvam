@@ -1,13 +1,104 @@
 import { useState, useEffect } from 'react'
-import { getDictionary } from '../i18n'
+import { getDictionary, LANGUAGES } from '../i18n'
+import type { AppErrorInfo } from '../types'
 
 interface ReadingScreenProps {
   files: File[]
   lang: string
   langName: string
-  error: string | null
+  error: AppErrorInfo | null
   onRetry: () => void
   onCancel: () => void
+}
+
+function ErrorView({
+  error,
+  t,
+  onRetry,
+  onCancel,
+}: {
+  error: AppErrorInfo
+  t: Record<string, string>
+  onRetry: () => void
+  onCancel: () => void
+}) {
+  const [secondsLeft, setSecondsLeft] = useState<number>(error.retryAfter || 0)
+
+  useEffect(() => {
+    if (!error.retryAfter || error.retryAfter <= 0) return
+
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [error.retryAfter])
+
+  return (
+    <div className="w-full flex flex-col items-center gap-5 animate-card-in">
+      {/* Error Icon */}
+      <div className="w-16 h-16 rounded-full bg-[#FFF4DE] border border-[#F4DDB0] flex items-center justify-center text-[#B42318]">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+
+      <div className="text-center flex flex-col gap-1.5 max-w-[340px]">
+        <h2 className="font-heading font-bold text-[22px] text-ink leading-tight">
+          {t.errorTitle || 'Could not read notice'}
+        </h2>
+        <p className="text-[14.5px] leading-relaxed text-[#5A3500] bg-[#FFF4DE] border border-[#F4DDB0] p-4 rounded-xl text-left">
+          {error.messageLocal}
+        </p>
+      </div>
+
+      {/* Action buttons with 429 countdown */}
+      <div className="w-full flex flex-col gap-2.5 pt-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={secondsLeft > 0}
+          className={`w-full h-12 rounded-full font-bold text-[15px] flex items-center justify-center transition-all ${
+            secondsLeft > 0
+              ? 'bg-soft text-muted cursor-not-allowed border border-line'
+              : 'bg-brand text-white hover:opacity-95 active:scale-[0.99] shadow-sm'
+          }`}
+        >
+          {secondsLeft > 0
+            ? (t.retryIn || 'Try again in {seconds}s').replace(
+                '{seconds}',
+                String(secondsLeft)
+              )
+            : t.retry || 'Try again'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full h-12 rounded-full border border-line bg-surface text-ink font-semibold text-[15px] flex items-center justify-center hover:bg-soft transition-colors active:scale-[0.99]"
+        >
+          {t.goBack || 'Go back'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function ReadingScreen({
@@ -20,7 +111,13 @@ export default function ReadingScreen({
 }: ReadingScreenProps) {
   const t = getDictionary(lang)
   const [step, setStep] = useState<number>(0)
+  const [takingLonger, setTakingLonger] = useState<boolean>(false)
 
+  // Find native language label
+  const currentLangObj = LANGUAGES.find((l) => l.id === lang) || LANGUAGES[0]
+  const nativeLangName = currentLangObj.label || langName
+
+  // Stepper progress simulation while waiting
   useEffect(() => {
     if (error) return
 
@@ -38,6 +135,17 @@ export default function ReadingScreen({
     }
   }, [error, files, lang])
 
+  // 15-second delay notice
+  useEffect(() => {
+    if (error) return
+
+    const tLonger = setTimeout(() => {
+      setTakingLonger(true)
+    }, 15000)
+
+    return () => clearTimeout(tLonger)
+  }, [error, files, lang])
+
   const fileCount = files.length
   const fileLabel =
     fileCount > 1
@@ -51,40 +159,47 @@ export default function ReadingScreen({
       ? files[0].name
       : t.readingTitle || 'Reading the notice'
 
+  // Step labels use native language names
   const steps = [
     { label: t.stepReading || 'Reading the notice' },
     { label: t.stepChecking || 'Checking against the document' },
     {
       label:
-        t.stepWriting?.replace('{lang}', langName) ||
-        `Writing in ${langName}`,
+        t.stepWriting?.replace('{lang}', nativeLangName) ||
+        `Writing in ${nativeLangName}`,
     },
   ]
 
+  const showTakingLonger = !error && takingLonger
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 gap-7 animate-card-in">
-      {/* Animated Document Scanner Mockup */}
-      <div className="relative w-44 h-52">
-        <div className="absolute left-5 top-3 w-36 h-44 bg-soft rounded-xl transform rotate-6" />
-        <div className="absolute left-2 top-1.5 w-36 h-48 bg-surface border border-line rounded-xl p-5 flex flex-col gap-2.5 overflow-hidden shadow-sm">
-          <div className="h-2.5 w-3/5 bg-ink rounded" />
-          <div className="h-1.5 bg-line rounded mt-2.5" />
-          <div className="h-1.5 w-4/5 bg-line rounded" />
-          <div className="h-1.5 bg-brand-soft rounded" />
-          <div className="h-1.5 w-3/4 bg-line rounded" />
-          <div className="h-1.5 bg-line rounded" />
-          <div className="h-1.5 w-3/5 bg-brand-soft rounded" />
-          <div className="sv-scan bg-brand" />
+      {/* Animated Document Scanner Mockup (only when active, not in error state) */}
+      {!error && (
+        <div className="relative w-44 h-52">
+          <div className="absolute left-5 top-3 w-36 h-44 bg-soft rounded-xl transform rotate-6" />
+          <div className="absolute left-2 top-1.5 w-36 h-48 bg-surface border border-line rounded-xl p-5 flex flex-col gap-2.5 overflow-hidden shadow-sm">
+            <div className="h-2.5 w-3/5 bg-ink rounded" />
+            <div className="h-1.5 bg-line rounded mt-2.5" />
+            <div className="h-1.5 w-4/5 bg-line rounded" />
+            <div className="h-1.5 bg-brand-soft rounded" />
+            <div className="h-1.5 w-3/4 bg-line rounded" />
+            <div className="h-1.5 bg-line rounded" />
+            <div className="h-1.5 w-3/5 bg-brand-soft rounded" />
+            <div className="sv-scan bg-brand" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Title & Document Count */}
-      <div className="text-center flex flex-col gap-1.5 max-w-[340px]">
-        <h2 className="font-heading font-bold text-[22px] sm:text-[24px] text-ink leading-tight truncate">
-          {docTitle}
-        </h2>
-        <p className="text-[14px] text-muted">{fileLabel}</p>
-      </div>
+      {!error && (
+        <div className="text-center flex flex-col gap-1.5 max-w-[340px]">
+          <h2 className="font-heading font-bold text-[22px] sm:text-[24px] text-ink leading-tight truncate">
+            {docTitle}
+          </h2>
+          <p className="text-[14px] text-muted">{fileLabel}</p>
+        </div>
+      )}
 
       {/* Stepper Card */}
       {!error && (
@@ -136,52 +251,39 @@ export default function ReadingScreen({
         </div>
       )}
 
-      {/* Error state card if API fails */}
-      {error && (
-        <div className="w-full bg-[#FFF4DE] border border-[#F4DDB0] rounded-card p-5 flex flex-col gap-3.5 text-[#5A3500] animate-card-in">
-          <div className="flex items-start gap-3">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 mt-0.5 text-[#B42318]"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div className="flex-1 flex flex-col gap-1">
-              <span className="text-[15px] font-bold">
-                {t.errorTitle || 'Could not read notice'}
-              </span>
-              <p className="text-[14px] leading-relaxed text-[#5A3500]">
-                {error}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={onRetry}
-              className="flex-1 h-11 rounded-full bg-brand text-white font-bold text-[14px] flex items-center justify-center hover:opacity-95 transition-opacity"
-            >
-              {t.retry || 'Try again'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 h-11 rounded-full border border-line bg-surface text-ink font-bold text-[14px] flex items-center justify-center hover:bg-soft transition-colors"
-            >
-              {t.goBack || 'Go back'}
-            </button>
-          </div>
+      {/* 15s Taking Longer Notice */}
+      {showTakingLonger && (
+        <div className="w-full bg-soft border border-line rounded-card p-4 flex items-start gap-3 text-ink/80 animate-card-in">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 mt-0.5 text-muted"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span className="text-[13.5px] leading-relaxed">
+            {t.takingLonger ||
+              'Taking longer than usual. Long documents can take up to a minute.'}
+          </span>
         </div>
+      )}
+
+      {/* Dedicated Error View if API fails */}
+      {error && (
+        <ErrorView
+          key={`${error.statusCode}-${error.retryAfter || 0}-${error.messageLocal}`}
+          error={error}
+          t={t}
+          onRetry={onRetry}
+          onCancel={onCancel}
+        />
       )}
     </div>
   )

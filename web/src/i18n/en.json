@@ -53,5 +53,11 @@
   "errorTitle": "Could not read notice",
   "retry": "Try again",
   "goBack": "Go back",
-  "markDone": "Mark as done"
+  "markDone": "Mark as done",
+  "takingLonger": "Taking longer than usual. Long documents can take up to a minute.",
+  "recurring": "Recurring schedule",
+  "translating": "Translating notice...",
+  "retryIn": "Try again in {seconds}s",
+  "dismiss": "Dismiss"
 }
+
