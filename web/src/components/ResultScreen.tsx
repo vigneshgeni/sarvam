@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LANGUAGES, getDictionary } from '../i18n'
 import type { ExplainResponse, AppErrorInfo } from '../types'
+import { formatDate, buildCalculatedChipText } from '../utils/date'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -106,6 +107,163 @@ function TranslateErrorCard({
   )
 }
 
+function EvidenceChip({
+  evidence,
+  hasQuote = false,
+  isOpen,
+  onToggle,
+  t,
+}: {
+  evidence: string
+  hasQuote?: boolean
+  isOpen: boolean
+  onToggle: () => void
+  t: Record<string, string>
+}) {
+  const isMatched = evidence === 'matched'
+  const isCalculated = evidence === 'calculated'
+  const label = isMatched
+    ? t.found || 'Found in your document'
+    : isCalculated
+    ? t.calculated || 'Calculated'
+    : t.checkOriginal || 'Check against original'
+
+  const content = (
+    <>
+      {isMatched && (
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      )}
+      {!isMatched && !isCalculated && (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+      {isCalculated && (
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 14 14" />
+        </svg>
+      )}
+      <span className="truncate">{label}</span>
+      {hasQuote && (
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      )}
+    </>
+  )
+
+  const chipClassName = `inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12.5px] font-semibold border transition-colors shrink-0 max-w-full ${
+    isMatched
+      ? 'bg-brand-soft text-brand border-brand/20'
+      : isCalculated
+      ? 'bg-[#E6EEFB] text-[#1D4ED8] border-[#1D4ED8]/20'
+      : 'bg-soft text-muted border-line hover:text-ink'
+  }`
+
+  if (!hasQuote) {
+    return <span className={chipClassName}>{content}</span>
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className={chipClassName}
+    >
+      {content}
+    </button>
+  )
+}
+
+function QuoteAccordion({
+  page,
+  quote,
+  evidence,
+  t,
+}: {
+  page?: number
+  quote: string
+  evidence: string
+  t: Record<string, string>
+}) {
+  const isCheckOriginal = evidence === 'check_original'
+  const pageText = page
+    ? t.pageLabel?.replace('{page}', String(page)) ||
+      `${t.pageWord || 'Page'} ${page}`
+    : t.pageWord || 'Page'
+
+  return (
+    <div className="w-full mt-2 bg-soft border border-line rounded-xl p-3 flex flex-col gap-2 text-[13px] animate-card-in">
+      {/* Line 1: Localised Page label */}
+      <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
+        {pageText}
+      </div>
+
+      {/* Line 2: Red "compare with your paper" note on separate line */}
+      {isCheckOriginal && (
+        <div className="text-[11.5px] font-semibold text-[#B42318] leading-tight">
+          {t.comparePaper || 'Please compare with your paper'}
+        </div>
+      )}
+
+      {/* Line 3: Original quote box labelled in UI language, verbatim quote in original language */}
+      <div className="flex flex-col gap-1 pt-0.5">
+        <span className="text-[11px] font-semibold text-muted">
+          {t.originalText || 'Original text from your document'}:
+        </span>
+        <blockquote className="m-0 italic font-mono text-[12.5px] leading-relaxed text-ink/90 bg-surface/80 p-2.5 rounded-lg border border-line/50 break-words">
+          "{quote}"
+        </blockquote>
+      </div>
+    </div>
+  )
+}
+
 export default function ResultScreen({
   result,
   files,
@@ -118,7 +276,10 @@ export default function ResultScreen({
   onGoHome,
   onA11yClick,
 }: ResultScreenProps) {
-  const t = getDictionary(lang)
+  // During language switch, keep the previous language's labels together with previous content
+  // until new content arrives (show translating banner), so screen never mixes two languages
+  const contentLang = result.language || lang
+  const t = getDictionary(contentLang)
   const currentLangObj = LANGUAGES.find((l) => l.id === lang) || LANGUAGES[0]
 
   // Track checked / completed actions
@@ -127,7 +288,6 @@ export default function ResultScreen({
   const [openActionQuotes, setOpenActionQuotes] = useState<Record<number, boolean>>({})
   const [openWarningQuotes, setOpenWarningQuotes] = useState<Record<number, boolean>>({})
   const [openFactQuotes, setOpenFactQuotes] = useState<Record<number, boolean>>({})
-
 
   const toggleActionDone = (index: number) => {
     setDoneActions((prev) => ({ ...prev, [index]: !prev[index] }))
@@ -149,7 +309,7 @@ export default function ResultScreen({
   const docTypeBadge =
     result.doc_type?.replace(/_/g, ' ').toUpperCase() || 'DOCUMENT'
 
-  // Format evidence summary line per Section 5
+  // Format evidence summary line per Section 5 & requirement B
   const summary = result.evidence_summary || {
     matched: 0,
     check_original: 0,
@@ -165,18 +325,18 @@ export default function ResultScreen({
 
     // If all items are check_original (e.g. photo input)
     if (summary.matched === 0 && summary.check_original > 0) {
-      if (lang === 'ta') {
+      if (contentLang === 'ta') {
         return `${summary.check_original} தகவல்களும் அசல் ஆவணத்துடன் சரிபார்க்கப்பட வேண்டும் (புகைப்படம்)`
       }
-      if (lang === 'hi') {
+      if (contentLang === 'hi') {
         return `सभी ${summary.check_original} बातें मूल दस्तावेज़ से जाँची जानी हैं (फ़ोटो)`
       }
       return `All ${summary.check_original} points to check against original (photo)`
     }
 
-    // PDF or mixed: show exact count
-    if (lang === 'ta') {
-      const parts = [`${totalPoints} தகவல்களில் ${summary.matched} ஆவணத்துடன் சரிபார்க்கப்பட்டன`]
+    // PDF or mixed: show exact count (renamed to "found in your document")
+    if (contentLang === 'ta') {
+      const parts = [`${totalPoints} தகவல்களில் ${summary.matched} உங்கள் ஆவணத்தில் உள்ளது`]
       if (summary.check_original > 0) {
         parts.push(`${summary.check_original} அசல் ஆவணத்துடன் சரிபார்க்கப்பட வேண்டும்`)
       }
@@ -186,8 +346,8 @@ export default function ResultScreen({
       return parts.join(' · ')
     }
 
-    if (lang === 'hi') {
-      const parts = [`${totalPoints} में से ${summary.matched} बातें दस्तावेज़ से जाँची गईं`]
+    if (contentLang === 'hi') {
+      const parts = [`${totalPoints} में से ${summary.matched} बातें आपके दस्तावेज़ में मिलीं`]
       if (summary.check_original > 0) {
         parts.push(`${summary.check_original} मूल दस्तावेज़ से जाँचें`)
       }
@@ -198,7 +358,7 @@ export default function ResultScreen({
     }
 
     // Default English
-    const parts = [`${summary.matched} of ${totalPoints} points matched to your document`]
+    const parts = [`${summary.matched} of ${totalPoints} points found in your document`]
     if (summary.check_original > 0) {
       parts.push(`${summary.check_original} to check against original`)
     }
@@ -306,7 +466,7 @@ export default function ResultScreen({
           </button>
         </div>
 
-        {/* Inline Translation Loading Indicator (never a blank screen) */}
+        {/* Inline Translation Loading Indicator (stays with previous language labels until new content arrives) */}
         {isTranslating && (
           <div className="bg-brand-soft border border-brand/20 text-brand px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 text-[13.5px] font-semibold animate-card-in">
             <span className="sv-spin w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand shrink-0" />
@@ -314,7 +474,7 @@ export default function ResultScreen({
           </div>
         )}
 
-        {/* Translation Error Card with 429 countdown and Retry button (never go Home silently) */}
+        {/* Translation Error Card with 429 countdown and Retry button */}
         {translateError && (
           <TranslateErrorCard
             key={`${translateError.statusCode}-${translateError.retryAfter || 0}-${translateError.messageLocal}`}
@@ -325,7 +485,6 @@ export default function ResultScreen({
           />
         )}
 
-
         {/* Document Header & Evidence Summary */}
         <div className="flex flex-col gap-2 pt-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -334,7 +493,7 @@ export default function ResultScreen({
             </span>
             {result.report_date && (
               <span className="text-[12px] font-medium text-muted bg-soft px-2.5 py-0.5 rounded-full border border-line/60">
-                {result.report_date}
+                {formatDate(result.report_date, contentLang)}
               </span>
             )}
           </div>
@@ -347,20 +506,6 @@ export default function ResultScreen({
             <p className="text-[14px] text-muted font-medium m-0">
               {result.report_title}
             </p>
-          )}
-
-          {/* Protected terms: render names, IDs, and reference numbers verbatim as returned */}
-          {result.protected_terms && result.protected_terms.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              {result.protected_terms.map((term, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-mono bg-soft text-ink border border-line"
-                >
-                  {term}
-                </span>
-              ))}
-            </div>
           )}
 
           {/* Evidence summary line */}
@@ -388,7 +533,8 @@ export default function ResultScreen({
           {files.length > 0 && (
             <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1">
               {files.map((file, i) => {
-                const isPdf = file.name.endsWith('.pdf') || file.type === 'application/pdf'
+                const isPdf =
+                  file.name.endsWith('.pdf') || file.type === 'application/pdf'
                 return (
                   <span
                     key={i}
@@ -475,7 +621,7 @@ export default function ResultScreen({
                         )}
                       </button>
 
-                      {/* Action text */}
+                      {/* Action text & chips */}
                       <div className="flex-1 min-w-0 flex flex-col gap-2">
                         <span
                           className={`text-[16px] leading-[1.45] text-ink font-medium ${
@@ -485,9 +631,9 @@ export default function ResultScreen({
                           {act.text}
                         </span>
 
-                        {/* Chips Row: Date chip + Evidence chip */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          {/* Recurring actions: due_date is null, recurrence holds display text. Show recurrence text, never "passed" */}
+                        {/* Chips Row: on its own line below text, wrapping cleanly at 360px without overlapping */}
+                        <div className="w-full flex flex-wrap items-center gap-2 pt-0.5">
+                          {/* Recurring actions */}
                           {isRecurring && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[12.5px] font-semibold">
                               <svg
@@ -499,6 +645,7 @@ export default function ResultScreen({
                                 strokeWidth="2.2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                className="shrink-0"
                               >
                                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
                               </svg>
@@ -506,7 +653,7 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {/* Passed date: only if not recurring and status is passed */}
+                          {/* Passed date: uses localised date */}
                           {isPassed && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#FDECEA] text-[#B42318] text-[12.5px] font-bold">
                               <svg
@@ -518,18 +665,21 @@ export default function ResultScreen({
                                 strokeWidth="2.2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                className="shrink-0"
                               >
                                 <circle cx="12" cy="12" r="10" />
                                 <polyline points="12 6 12 12 16 14" />
                               </svg>
-                              <span>{t.datePassed || 'Date has passed'}</span>
-                              {act.due_date && <span>· {act.due_date}</span>}
+                              <span>
+                                {t.datePassed || 'Date has passed'}
+                                {act.due_date ? ` · ${formatDate(act.due_date, contentLang)}` : ''}
+                              </span>
                             </span>
                           )}
 
-                          {/* Calculated deadline */}
+                          {/* Calculated deadline: built in UI language from deadline_days, wrapping on its own line without overlap */}
                           {isCalculated && (
-                            <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#E6EEFB] text-[#1D4ED8] text-[12.5px] font-bold">
+                            <span className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg bg-[#E6EEFB] text-[#1D4ED8] text-[12.5px] font-bold max-w-full break-words">
                               <svg
                                 width="14"
                                 height="14"
@@ -539,20 +689,25 @@ export default function ResultScreen({
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                className="shrink-0"
                               >
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                                 <line x1="16" y1="2" x2="16" y2="6" />
                                 <line x1="8" y1="2" x2="8" y2="6" />
                                 <line x1="3" y1="10" x2="21" y2="10" />
                               </svg>
-                              <span>
-                                {t.calculated || 'Calculated'}: {act.due_date}
-                                {act.deadline_rule ? ` (${act.deadline_rule})` : ''}
+                              <span className="break-words">
+                                {buildCalculatedChipText(
+                                  act.due_date,
+                                  act.deadline_days,
+                                  t,
+                                  contentLang
+                                )}
                               </span>
                             </span>
                           )}
 
-                          {/* Upcoming deadline */}
+                          {/* Upcoming deadline: localised */}
                           {isUpcoming && (
                             <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-soft text-ink text-[12.5px] font-semibold">
                               <svg
@@ -564,113 +719,35 @@ export default function ResultScreen({
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                className="shrink-0"
                               >
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                                 <line x1="16" y1="2" x2="16" y2="6" />
                                 <line x1="8" y1="2" x2="8" y2="6" />
                                 <line x1="3" y1="10" x2="21" y2="10" />
                               </svg>
-                              <span>{act.due_date}</span>
+                              <span>{formatDate(act.due_date, contentLang)}</span>
                             </span>
                           )}
 
-                          {/* Evidence Chip per Section 5 */}
-                          <button
-                            type="button"
-                            onClick={() => toggleActionQuote(i)}
-                            aria-expanded={isQuoteOpen}
-                            className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12.5px] font-semibold border transition-colors ${
-                              act.evidence === 'matched'
-                                ? 'bg-brand-soft text-brand border-brand/20'
-                                : act.evidence === 'calculated'
-                                ? 'bg-[#E6EEFB] text-[#1D4ED8] border-[#1D4ED8]/20'
-                                : 'bg-soft text-muted border-line hover:text-ink'
-                            }`}
-                          >
-                            {act.evidence === 'matched' && (
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                            {act.evidence === 'check_original' && (
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                            )}
-                            {act.evidence === 'calculated' && (
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 14 14" />
-                              </svg>
-                            )}
-                            <span>
-                              {act.evidence === 'matched'
-                                ? t.matched || 'Matched to document'
-                                : act.evidence === 'calculated'
-                                ? t.calculated || 'Calculated'
-                                : t.checkOriginal || 'Check against original'}
-                            </span>
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className={`transition-transform ${
-                                isQuoteOpen ? 'rotate-180' : ''
-                              }`}
-                            >
-                              <path d="M6 9l6 6 6-6" />
-                            </svg>
-                          </button>
+                          {/* Evidence Chip */}
+                          <EvidenceChip
+                            evidence={act.evidence || 'check_original'}
+                            hasQuote={Boolean(act.quote)}
+                            isOpen={isQuoteOpen}
+                            onToggle={() => act.quote && toggleActionQuote(i)}
+                            t={t}
+                          />
                         </div>
 
                         {/* Source Passage Accordion (revealed on tap) */}
-                        {isQuoteOpen && (
-                          <div className="bg-soft border border-line rounded-xl p-3 flex flex-col gap-1.5 text-[13px] animate-card-in">
-                            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted">
-                              <span>Page {act.page}</span>
-                              {act.evidence === 'check_original' && (
-                                <span className="text-[#B42318] lowercase font-semibold">
-                                  {t.comparePaper || 'Please compare with your paper'}
-                                </span>
-                              )}
-                            </div>
-                            <blockquote className="m-0 italic font-mono text-[12.5px] leading-relaxed text-ink/90 bg-surface/70 p-2 rounded-lg border border-line/40">
-                              "{act.quote}"
-                            </blockquote>
-                          </div>
+                        {isQuoteOpen && act.quote && (
+                          <QuoteAccordion
+                            page={act.page}
+                            quote={act.quote}
+                            evidence={act.evidence || 'check_original'}
+                            t={t}
+                          />
                         )}
                       </div>
                     </div>
@@ -719,71 +796,32 @@ export default function ResultScreen({
               <h2 className="text-[12px] font-bold tracking-[0.08em] uppercase text-[#5A3500] m-0">
                 {t.riskTitle || 'Watch out'}
               </h2>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {result.warnings.map((warn, i) => {
                   const isQuoteOpen = !!openWarningQuotes[i]
                   return (
-                    <div key={i} className="flex flex-col gap-1.5">
+                    <div key={i} className="flex flex-col gap-2">
                       <p className="text-[15px] sm:text-[16px] leading-[1.45] font-medium m-0">
                         {warn.text}
                       </p>
 
-                      {/* Source Passage button for warning */}
-                      {warn.quote && (
+                      {/* Evidence chip (found / check against original / calculated) */}
+                      {(warn.evidence || warn.quote) && (
                         <div>
-                          <button
-                            type="button"
-                            onClick={() => toggleWarningQuote(i)}
-                            aria-expanded={isQuoteOpen}
-                            className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#5A3500]/80 hover:text-[#5A3500] transition-colors"
-                          >
-                            <svg
-                              width="13"
-                              height="13"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                            </svg>
-                            <span>{t.fromDoc || 'From your document'}</span>
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className={`transition-transform ${
-                                isQuoteOpen ? 'rotate-180' : ''
-                              }`}
-                            >
-                              <path d="M6 9l6 6 6-6" />
-                            </svg>
-                          </button>
-
-                          {isQuoteOpen && (
-                            <div className="mt-1.5 bg-white/70 border border-[#F4DDB0] rounded-xl p-2.5 text-[12.5px] flex flex-col gap-1">
-                              <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#5A3500]/70">
-                                Page {warn.page}
-                              </span>
-                              <blockquote className="m-0 italic font-mono text-[12px] text-[#5A3500]">
-                                "{warn.quote}"
-                              </blockquote>
-                              {warn.evidence === 'check_original' && (
-                                <span className="text-[11px] text-[#B42318] font-semibold">
-                                  {t.comparePaper || 'Please compare with your paper'}
-                                </span>
-                              )}
-                            </div>
+                          <EvidenceChip
+                            evidence={warn.evidence || 'check_original'}
+                            hasQuote={Boolean(warn.quote)}
+                            isOpen={isQuoteOpen}
+                            onToggle={() => warn.quote && toggleWarningQuote(i)}
+                            t={t}
+                          />
+                          {isQuoteOpen && warn.quote && (
+                            <QuoteAccordion
+                              page={warn.page}
+                              quote={warn.quote}
+                              evidence={warn.evidence || 'check_original'}
+                              t={t}
+                            />
                           )}
                         </div>
                       )}
@@ -809,63 +847,29 @@ export default function ResultScreen({
                   <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
                     <div className="flex items-start gap-3">
                       <span className="w-2 h-2 rounded-full bg-brand mt-2 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      <div className="flex-1 min-w-0 flex flex-col gap-2">
                         <span className="text-[15.5px] leading-[1.45] text-ink font-medium">
                           {fact.text}
                         </span>
 
-                        {/* From your document button */}
-                        <button
-                          type="button"
-                          onClick={() => toggleFactQuote(i)}
-                          aria-expanded={isQuoteOpen}
-                          className="self-start inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-line bg-soft/50 text-[12px] font-semibold text-muted hover:text-ink hover:border-muted/40 transition-colors"
-                        >
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                          </svg>
-                          <span>{t.fromDoc || 'From your document'}</span>
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className={`transition-transform ${
-                              isQuoteOpen ? 'rotate-180' : ''
-                            }`}
-                          >
-                            <path d="M6 9l6 6 6-6" />
-                          </svg>
-                        </button>
-
-                        {/* Source passage quote accordion */}
-                        {isQuoteOpen && (
-                          <div className="mt-1 bg-soft border border-line rounded-xl p-3 flex flex-col gap-1 text-[13px] animate-card-in">
-                            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted">
-                              <span>Page {fact.page}</span>
-                              {fact.evidence === 'check_original' && (
-                                <span className="text-[#B42318] lowercase font-semibold">
-                                  {t.comparePaper || 'Please compare with your paper'}
-                                </span>
-                              )}
-                            </div>
-                            <blockquote className="m-0 italic font-mono text-[12.5px] leading-relaxed text-ink/90 bg-surface/70 p-2 rounded-lg border border-line/40">
-                              "{fact.quote}"
-                            </blockquote>
+                        {/* Evidence chip (found / check against original / calculated) */}
+                        {(fact.evidence || fact.quote) && (
+                          <div>
+                            <EvidenceChip
+                              evidence={fact.evidence || 'check_original'}
+                              hasQuote={Boolean(fact.quote)}
+                              isOpen={isQuoteOpen}
+                              onToggle={() => fact.quote && toggleFactQuote(i)}
+                              t={t}
+                            />
+                            {isQuoteOpen && fact.quote && (
+                              <QuoteAccordion
+                                page={fact.page}
+                                quote={fact.quote}
+                                evidence={fact.evidence || 'check_original'}
+                                t={t}
+                              />
+                            )}
                           </div>
                         )}
                       </div>

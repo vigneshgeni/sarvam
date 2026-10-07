@@ -95,4 +95,14 @@ export interface StagedFile {
   previewUrl?: string
 }
 
+export interface RecentResult {
+  id: string
+  timestamp: number
+  title: string
+  fileCount: number
+  fileNames: string[]
+  lang: string
+  result: ExplainResponse
+}
+
 export type AppScreen = 'home' | 'tray' | 'reading' | 'result'

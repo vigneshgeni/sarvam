@@ -159,15 +159,20 @@ export default function ReadingScreen({
       ? files[0].name
       : t.readingTitle || 'Reading the notice'
 
-  // Step labels use native language names
+  // Step labels use natural native language phrasing
+  let stepWritingLabel =
+    t.stepWriting?.replace('{lang}', nativeLangName) ||
+    `Writing in ${nativeLangName}`
+  if (lang === 'ta') {
+    stepWritingLabel = 'தமிழில் எழுதுகிறோம்'
+  } else if (lang === 'hi') {
+    stepWritingLabel = 'हिंदी में लिख रहे हैं'
+  }
+
   const steps = [
     { label: t.stepReading || 'Reading the notice' },
     { label: t.stepChecking || 'Checking against the document' },
-    {
-      label:
-        t.stepWriting?.replace('{lang}', nativeLangName) ||
-        `Writing in ${nativeLangName}`,
-    },
+    { label: stepWritingLabel },
   ]
 
   const showTakingLonger = !error && takingLonger

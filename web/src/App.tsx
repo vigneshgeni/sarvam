@@ -6,9 +6,23 @@ import {
   setStoredLanguage,
   getLocalFallbackError,
 } from './i18n'
-import type { AppScreen, ExplainResponse, StagedFile, AppErrorInfo } from './types'
+import type {
+  AppScreen,
+  ExplainResponse,
+  StagedFile,
+  AppErrorInfo,
+  RecentResult,
+} from './types'
 import { shrinkImage, shrinkFiles } from './utils/image'
 import { explainDocument, translateDocument, ExplainApiError } from './api'
+import {
+  getRecentResults,
+  saveRecentResult,
+  deleteRecentResult,
+  clearAllRecentResults,
+  isSaveRecentEnabled,
+  setSaveRecentEnabled as setDbSaveRecentEnabled,
+} from './utils/db'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
 import TrayScreen from './components/TrayScreen'
@@ -20,6 +34,10 @@ export default function App() {
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
   const [resultData, setResultData] = useState<ExplainResponse | null>(null)
+
+  // Recent on this phone state (IndexedDB, result JSON only, max 20 entries)
+  const [recentResults, setRecentResults] = useState<RecentResult[]>([])
+  const [saveRecentEnabled, setSaveRecentEnabled] = useState<boolean>(isSaveRecentEnabled)
 
   // Error state for Reading screen (never go Home silently)
   const [currentError, setCurrentError] = useState<AppErrorInfo | null>(null)
@@ -60,6 +78,60 @@ export default function App() {
     }
   }, [selectedLang])
 
+  // Load recent results on initial mount
+  useEffect(() => {
+    loadRecents()
+  }, [])
+
+  const loadRecents = async () => {
+    const items = await getRecentResults()
+    setRecentResults(items)
+  }
+
+  const handleOpenRecent = (item: RecentResult) => {
+    // Reopen instantly with NO API call
+    currentResultIdRef.current = item.id
+    originalResultRef.current = item.result
+    translationCacheRef.current.clear()
+    translationCacheRef.current.set(
+      `${item.id}:${item.result.language || item.lang}`,
+      item.result
+    )
+
+    // In-memory dummy files for badge titles (never stores files on disk/IndexedDB)
+    const dummyFiles = (item.fileNames || []).map((name) => new File([], name))
+    activeFilesRef.current = dummyFiles
+    setActiveFiles(dummyFiles)
+
+    // Synchronize language with stored result language
+    if (item.result.language) {
+      setSelectedLang(item.result.language)
+      setStoredLanguage(item.result.language)
+    }
+
+    setResultData(item.result)
+    setCurrentError(null)
+    setTranslateError(null)
+    setIsTranslating(false)
+    setScreen('result')
+  }
+
+  const handleDeleteRecentItem = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    await deleteRecentResult(id)
+    await loadRecents()
+  }
+
+  const handleDeleteAllRecent = async () => {
+    await clearAllRecentResults()
+    await loadRecents()
+  }
+
+  const handleToggleSaveRecent = (enabled: boolean) => {
+    setSaveRecentEnabled(enabled)
+    setDbSaveRecentEnabled(enabled)
+  }
+
   // Core API execution function: /api/explain
   const runExplain = async (filesToExplain: File[], lang: string) => {
     if (!filesToExplain || filesToExplain.length === 0) return
@@ -83,6 +155,25 @@ export default function App() {
 
       setResultData(result)
       setScreen('result')
+
+      // Save result JSON to IndexedDB if enabled (never files or audio)
+      if (isSaveRecentEnabled()) {
+        const fileCount = filesToExplain.length
+        const displayTitle =
+          fileCount > 1
+            ? t.reportsCount?.replace('{count}', String(fileCount)) ||
+              `${fileCount} reports`
+            : result.title || filesToExplain[0]?.name || 'Document'
+
+        await saveRecentResult({
+          title: displayTitle,
+          fileCount,
+          fileNames: filesToExplain.map((f) => f.name),
+          lang: result.language || lang,
+          result,
+        })
+        await loadRecents()
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return
@@ -694,6 +785,173 @@ export default function App() {
                     <path d="M9 6l6 6-6 6" />
                   </svg>
                 </button>
+              </div>
+            </section>
+
+            {/* Recent on this phone section (IndexedDB, result JSON only, max 20 entries) */}
+            <section
+              className="flex flex-col gap-2.5 animate-card-in-3"
+              aria-labelledby="recent-heading"
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  id="recent-heading"
+                  className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted"
+                >
+                  {t.recent || 'Recent on this phone'}
+                </div>
+
+                {recentResults.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllRecent}
+                    className="text-[12px] font-semibold text-muted hover:text-[#B42318] transition-colors"
+                  >
+                    {t.deleteAll || 'Delete all'}
+                  </button>
+                )}
+              </div>
+
+              {/* Setting toggle: Save results on this phone (default ON) */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface border border-line text-[13px]">
+                <span className="font-medium text-ink">
+                  {t.saveRecentSetting || 'Save results on this phone'}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={saveRecentEnabled}
+                  aria-label={t.saveRecentSetting || 'Save results on this phone'}
+                  onClick={() => handleToggleSaveRecent(!saveRecentEnabled)}
+                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                    saveRecentEnabled ? 'bg-brand' : 'bg-line'
+                  }`}
+                >
+                  <span
+                    className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                      saveRecentEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {recentResults.length > 0 && (
+                <div className="bg-surface border border-line rounded-card overflow-hidden divide-y divide-line">
+                  {recentResults.map((item) => {
+                    const dateFormatted = new Intl.DateTimeFormat(selectedLang, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    }).format(new Date(item.timestamp))
+
+                    const subInfo =
+                      item.fileCount > 1
+                        ? `${dateFormatted} · ${
+                            t.reportsCount?.replace(
+                              '{count}',
+                              String(item.fileCount)
+                            ) || `${item.fileCount} reports`
+                          }`
+                        : `${dateFormatted} · ${item.fileNames[0] || '1 file'}`
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleOpenRecent(item)}
+                        className="w-full flex items-center justify-between gap-3 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[64px] cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                          <span className="w-10 h-10 rounded-[12px] bg-brand-soft text-brand flex items-center justify-center shrink-0">
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                          </span>
+                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span className="text-[15px] font-semibold text-ink leading-snug truncate">
+                              {item.fileCount > 1
+                                ? t.reportsCount?.replace(
+                                    '{count}',
+                                    String(item.fileCount)
+                                  ) || `${item.fileCount} reports`
+                                : item.title}
+                            </span>
+                            <span className="text-[13px] text-muted leading-tight truncate">
+                              {subInfo}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteRecentItem(e, item.id)}
+                            aria-label={`${t.deleteItem || 'Delete'}: ${item.title}`}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-[#B42318] hover:bg-soft transition-colors"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted"
+                          >
+                            <path d="M9 6l6 6-6 6" />
+                          </svg>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Localised footer note for Recent on this phone */}
+              <div className="text-[12px] text-muted flex items-center gap-1.5 px-1">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0"
+                >
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                  <line x1="12" y1="18" x2="12.01" y2="18" />
+                </svg>
+                <span>
+                  {t.recentFooter ||
+                    'Saved only on this phone. Not stored by Sarvam.'}
+                </span>
               </div>
             </section>
 
