@@ -818,3 +818,45 @@ def test_verify_protected_terms_guard_case_whitespace_nfc_normalization(client):
         assert res.status_code == 200
         assert res.json()["language"] == "ta"
 
+
+def test_thinking_constants_and_gemini_call_logging(caplog):
+    import logging
+    from reader import EXPLAIN_THINKING, TRANSLATE_THINKING, call_gemini_with_retry
+    from unittest.mock import MagicMock
+
+    # Named constants check
+    assert EXPLAIN_THINKING == 0
+    assert TRANSLATE_THINKING == 0
+
+    # Test call_gemini_with_retry non-content logging
+    mock_client = MagicMock()
+    mock_resp = MagicMock()
+    mock_usage = MagicMock()
+    mock_usage.prompt_token_count = 120
+    mock_usage.candidates_token_count = 45
+    mock_usage.thoughts_token_count = 0
+    mock_resp.usage_metadata = mock_usage
+    mock_client.models.generate_content.return_value = mock_resp
+
+    with caplog.at_level(logging.INFO, logger="sarvam-reader"):
+        res = call_gemini_with_retry(
+            client=mock_client,
+            model="gemini-3.7-flash",
+            contents=["test"],
+            config=MagicMock(),
+            endpoint="translate",
+        )
+        assert res == mock_resp
+
+    # Verify log format
+    log_records = [r for r in caplog.records if "gemini_call:" in r.message]
+    assert len(log_records) == 1
+    log_msg = log_records[0].message
+    assert "endpoint=translate" in log_msg
+    assert "input_tokens=120" in log_msg
+    assert "output_tokens=45" in log_msg
+    assert "thinking_tokens=0" in log_msg
+    assert "attempts=1" in log_msg
+    assert "status=200" in log_msg
+
+

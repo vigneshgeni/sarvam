@@ -17,6 +17,11 @@ PROJECT_ID = os.environ.get("PROJECT", "sarvam-510715")
 MODEL_ID = os.environ.get("MODEL", "gemini-3.7-flash")
 LOCATION = "global"
 
+# Thinking budget per call type (0 = disabled).
+# Translate stays off (0). Explain stays as is (0), but can be easily raised to a low level (e.g. 512 or 1024).
+EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
+TRANSLATE_THINKING: int = 0
+
 LANGUAGE_MAP = {
     "en": "English",
     "ta": "Tamil",
@@ -101,21 +106,62 @@ def call_gemini_with_retry(
     model: str,
     contents: list,
     config: types.GenerateContentConfig,
+    endpoint: str = "unknown",
     max_retries: int = 1,
 ) -> Any:
+    start_time = time.time()
     for attempt in range(max_retries + 1):
         try:
-            return client.models.generate_content(
+            resp = client.models.generate_content(
                 model=model,
                 contents=contents,
                 config=config,
             )
+            elapsed = time.time() - start_time
+            usage = getattr(resp, "usage_metadata", None)
+            input_tokens = (getattr(usage, "prompt_token_count", 0) or 0) if usage else 0
+            output_tokens = (getattr(usage, "candidates_token_count", 0) or 0) if usage else 0
+            thinking_tokens = (getattr(usage, "thoughts_token_count", 0) or 0) if usage else 0
+
+            logger.info(
+                "gemini_call: endpoint=%s, input_tokens=%d, output_tokens=%d, thinking_tokens=%d, attempts=%d, seconds=%.2f, status=200",
+                endpoint,
+                input_tokens,
+                output_tokens,
+                thinking_tokens,
+                attempt + 1,
+                elapsed,
+            )
+            return resp
         except (errors.ClientError, errors.ServerError) as e:
-            code = getattr(e, "code", None)
+            code = getattr(e, "code", None) or 500
+            elapsed = time.time() - start_time
             if code in (429, 503) and attempt < max_retries:
-                logger.warning("Gemini returned %s, retrying once...", code)
+                logger.warning(
+                    "gemini_retry: endpoint=%s, attempt=%d, status=%s, seconds=%.2f",
+                    endpoint,
+                    attempt + 1,
+                    code,
+                    elapsed,
+                )
                 time.sleep(2.0)
                 continue
+            logger.info(
+                "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%d",
+                endpoint,
+                attempt + 1,
+                elapsed,
+                code,
+            )
+            raise
+        except Exception as e:
+            elapsed = time.time() - start_time
+            logger.info(
+                "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=500",
+                endpoint,
+                attempt + 1,
+                elapsed,
+            )
             raise
 
 
@@ -137,7 +183,7 @@ def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderRespo
         response_mime_type="application/json",
         response_schema=ReaderResponse,
         http_options=types.HttpOptions(timeout=100_000),
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+        thinking_config=types.ThinkingConfig(thinking_budget=EXPLAIN_THINKING),
     )
 
     response = call_gemini_with_retry(
@@ -145,6 +191,7 @@ def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderRespo
         model=MODEL_ID,
         contents=contents,
         config=config,
+        endpoint="explain",
     )
 
     if response.parsed and isinstance(response.parsed, ReaderResponse):
@@ -167,11 +214,11 @@ def translate_result_text(payload: TranslatePayload, lang: str) -> TranslatePayl
     client = get_client()
 
     config = types.GenerateContentConfig(
-        temperature=0.1,
+        temperature=0.0,
         response_mime_type="application/json",
         response_schema=TranslatePayload,
-        http_options=types.HttpOptions(timeout=100_000),
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+        http_options=types.HttpOptions(timeout=60_000),
+        thinking_config=types.ThinkingConfig(thinking_budget=TRANSLATE_THINKING),
     )
 
     response = call_gemini_with_retry(
@@ -179,6 +226,7 @@ def translate_result_text(payload: TranslatePayload, lang: str) -> TranslatePayl
         model=MODEL_ID,
         contents=[prompt],
         config=config,
+        endpoint="translate",
     )
 
     if response.parsed and isinstance(response.parsed, TranslatePayload):
