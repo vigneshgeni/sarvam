@@ -129,6 +129,37 @@ def verify_translation_guard(orig_text: Optional[str], trans_text: Optional[str]
     return True
 
 
+def verify_protected_terms_guard(
+    protected_terms: Optional[List[str]],
+    orig_text: Optional[str],
+    trans_text: Optional[str],
+) -> bool:
+    """
+    Guard: verifies every protected term that appears in the original text
+    must appear verbatim in the translated text.
+    - Person names, patient/doctor names, hospital/lab/company names,
+      addresses, place names, and ID/policy/account/reference numbers.
+    - Original script must be preserved (Latin stays Latin, Tamil stays Tamil, etc.).
+    """
+    if not protected_terms or not orig_text:
+        return True
+    if not trans_text:
+        return False
+
+    norm_orig = collapse_whitespace(orig_text)
+    norm_trans = collapse_whitespace(trans_text)
+
+    for term in protected_terms:
+        clean_term = term.strip()
+        if not clean_term:
+            continue
+        norm_term = collapse_whitespace(clean_term)
+        if norm_term in norm_orig:
+            if norm_term not in norm_trans:
+                return False
+    return True
+
+
 def verify_evidence(
     quote: str,
     item_text: str,

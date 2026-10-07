@@ -101,6 +101,10 @@ class ReaderResponse(BaseModel):
         default=None,
         description="Reason why the document is unreadable, else null",
     )
+    protected_terms: List[str] = Field(
+        default_factory=list,
+        description="Person/doctor/patient names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers copied exactly as printed in original script",
+    )
 
 
 # Final API Response Models (Section 6 contract with evidence, date_status, and evidence_summary)
@@ -152,6 +156,10 @@ class ExplainResponse(BaseModel):
     evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
     unreadable: bool = False
     unreadable_reason: Optional[str] = None
+    protected_terms: List[str] = Field(
+        default_factory=list,
+        description="Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers copied exactly as printed in original script",
+    )
 
 
 class ErrorResponse(BaseModel):
@@ -208,6 +216,10 @@ class TranslatePayload(BaseModel):
     unreadable_reason: Optional[str] = Field(
         default=None,
         description="Translated unreadable reason if present, else null",
+    )
+    protected_terms: List[str] = Field(
+        default_factory=list,
+        description="Protected terms copied verbatim in original script without translation or transliteration",
     )
 
 

@@ -42,6 +42,7 @@ Rules:
    - Month names, units, and labels must be strictly in {LANG} (no English words mixed in).
    - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
    - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed.
+   - PROTECTED TERMS & NAMES: Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers must be copied EXACTLY as printed, in the original script. Latin stays Latin (e.g. 'Devayalini M' stays 'Devayalini M', never transliterate into Tamil, Hindi, or other scripts). A name already in Tamil script stays in Tamil script. Never transliterate or guess spelling. Populate `protected_terms` with these items exactly as printed.
 3. Every action, warning and fact must include "quote": text copied EXACTLY
    from the document in its original language, plus the page number.
 4. Do not invent anything. If something is not in the document, leave it out.
@@ -73,7 +74,8 @@ Rules:
 3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
 4. Include an English term in brackets ONLY for official names (scheme names, form names).
 5. CRITICAL NUMBER GUARD: Always keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text (e.g. use 31,200 not ௩௧,௨௦௦ or ३१,२००; use 2026 not ௨௦௨௬). Do not drop, modify, convert, or translate any number, date, amount, or phone number.
-6. Translate title, report_title, summary, action text, deadline_rule, recurrence, warning text, fact text, conflicts, and unreadable_reason.
+6. CRITICAL PROTECTED TERMS GUARD: Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers (including any terms listed in protected_terms) must NEVER be translated or transliterated. They must be copied EXACTLY as printed in the original script. Latin stays Latin (e.g. 'Devayalini M' must remain 'Devayalini M', never transliterated into Tamil or Hindi script). A name already in Tamil script stays in Tamil script. Never guess transliterations. Every protected term present in the original text must appear verbatim in your translation.
+7. Translate title, report_title, summary, action text, deadline_rule, recurrence, warning text, fact text, conflicts, and unreadable_reason.
 
 User-facing text to translate:
 {PAYLOAD_JSON}

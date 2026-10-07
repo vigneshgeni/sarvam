@@ -18,6 +18,7 @@ from evidence import (
     normalize_digits,
     normalize_text_for_guard,
     verify_evidence,
+    verify_protected_terms_guard,
     verify_translation_guard,
 )
 from main import (
@@ -594,3 +595,171 @@ def test_translate_endpoint_guard_failure_missing_date(client):
         )
         assert res.status_code == 422
         assert "Translation verification failed" in res.json()["message"]
+
+
+# --- Protected Terms Tests ---
+
+def test_verify_protected_terms_guard_latin_preserved():
+    protected = ["Devayalini M", "St. Jude Hospital", "POL-98765"]
+    orig_text = "Patient Devayalini M was treated at St. Jude Hospital under policy POL-98765."
+
+    # In Tamil: Latin letters preserved verbatim
+    ta_trans = "நோயாளி Devayalini M St. Jude Hospital இல் பாலிசி POL-98765 கீழ் சிகிச்சை பெற்றார்."
+    assert verify_protected_terms_guard(protected, orig_text, ta_trans) is True
+
+    # In Hindi: Latin letters preserved verbatim
+    hi_trans = "मरीज Devayalini M का इलाज St. Jude Hospital में पॉलिसी POL-98765 के तहत किया गया था।"
+    assert verify_protected_terms_guard(protected, orig_text, hi_trans) is True
+
+
+def test_verify_protected_terms_guard_transliteration_fails():
+    protected = ["Devayalini M"]
+    orig_text = "Patient Devayalini M admitted for treatment."
+
+    # Transliteration into Tamil letters fails
+    ta_transliterated = "நோயாளி தேவயாலினி எம் சிகிச்சைக்காக அனுமதிக்கப்பட்டார்."
+    assert verify_protected_terms_guard(protected, orig_text, ta_transliterated) is False
+
+    # Transliteration into Devanagari/Hindi letters fails
+    hi_transliterated = "मरीज देवयालिनी एम को इलाज के लिए भर्ती कराया गया।"
+    assert verify_protected_terms_guard(protected, orig_text, hi_transliterated) is False
+
+    # Complete omission of the name fails
+    omitted = "நோயாளி சிகிச்சைக்காக அனுமதிக்கப்பட்டார்."
+    assert verify_protected_terms_guard(protected, orig_text, omitted) is False
+
+
+def test_translate_endpoint_protected_terms_preserved_ta_and_hi(client):
+    IP_REQUESTS.clear()
+    fictional_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Discharge Summary",
+        language="en",
+        summary=["Patient Devayalini M was treated at Apollo Speciality Hospital."],
+        actions=[
+            ExplainAction(
+                text="Devayalini M must submit claim form.",
+                quote="Devayalini M must submit claim form.",
+                page=1,
+            )
+        ],
+        warnings=[],
+        facts=[
+            ExplainFact(
+                text="Patient Name: Devayalini M",
+                quote="Patient Name: Devayalini M",
+                page=1,
+            )
+        ],
+        protected_terms=["Devayalini M", "Apollo Speciality Hospital"],
+    )
+
+    # 1. Translate to Tamil: Latin name preserved
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="வெளியேற்ற சுருக்கம்",
+            summary=["நோயாளி Devayalini M Apollo Speciality Hospital இல் சிகிச்சை பெற்றார்."],
+            actions=[
+                TranslateActionText(
+                    text="Devayalini M கோரிக்கை படிவத்தை சமர்ப்பிக்க வேண்டும்."
+                )
+            ],
+            warnings=[],
+            facts=[
+                TranslateFactText(text="நோயாளி பெயர்: Devayalini M")
+            ],
+            protected_terms=["Devayalini M", "Apollo Speciality Hospital"],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": fictional_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["language"] == "ta"
+        assert "Devayalini M" in data["summary"][0]
+        assert "Apollo Speciality Hospital" in data["summary"][0]
+        assert data["protected_terms"] == ["Devayalini M", "Apollo Speciality Hospital"]
+
+    # 2. Translate to Hindi: Latin name preserved
+    IP_REQUESTS.clear()
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="डिस्चार्ज सारांश",
+            summary=["मरीज Devayalini M का इलाज Apollo Speciality Hospital में हुआ।"],
+            actions=[
+                TranslateActionText(
+                    text="Devayalini M को दावा प्रपत्र जमा करना होगा।"
+                )
+            ],
+            warnings=[],
+            facts=[
+                TranslateFactText(text="मरीज का नाम: Devayalini M")
+            ],
+            protected_terms=["Devayalini M", "Apollo Speciality Hospital"],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": fictional_explain.model_dump(), "lang": "hi"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["language"] == "hi"
+        assert "Devayalini M" in data["summary"][0]
+        assert "Apollo Speciality Hospital" in data["summary"][0]
+        assert data["protected_terms"] == ["Devayalini M", "Apollo Speciality Hospital"]
+
+
+def test_translate_endpoint_protected_terms_transliterated_fails_422(client):
+    IP_REQUESTS.clear()
+    fictional_explain = ExplainResponse(
+        doc_type="insurance",
+        title="Discharge Summary",
+        language="en",
+        summary=["Patient Devayalini M was treated at Apollo Speciality Hospital."],
+        actions=[],
+        warnings=[],
+        facts=[],
+        protected_terms=["Devayalini M", "Apollo Speciality Hospital"],
+    )
+
+    # 1. Tamil translation transliterates Devayalini M -> 422
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="வெளியேற்ற சுருக்கம்",
+            summary=["நோயாளி தேவயாலினி எம் Apollo Speciality Hospital இல் சிகிச்சை பெற்றார்."],  # Transliterated!
+            actions=[],
+            warnings=[],
+            facts=[],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": fictional_explain.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 422
+        body = res.json()
+        assert "Translation verification failed" in body["message"]
+        assert body["message_local"] == "மொழிபெயர்ப்பு சரிபார்ப்பு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்."
+
+    # 2. Hindi translation transliterates Devayalini M -> 422
+    IP_REQUESTS.clear()
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="डिस्चार्ज सारांश",
+            summary=["मरीज देवयालिनी एम Apollo Speciality Hospital में इलाज कराया।"],  # Transliterated!
+            actions=[],
+            warnings=[],
+            facts=[],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": fictional_explain.model_dump(), "lang": "hi"},
+        )
+        assert res.status_code == 422
+        body = res.json()
+        assert "Translation verification failed" in body["message"]
+        assert body["message_local"] == "अनुवाद सत्यापन विफल रहा. कृपया पुनः प्रयास करें."

@@ -21,6 +21,7 @@ from evidence import (
     compute_evidence_summary,
     extract_pdf_pages,
     verify_evidence,
+    verify_protected_terms_guard,
     verify_translation_guard,
 )
 from models import (
@@ -162,6 +163,45 @@ def check_translation_guard(orig: ExplainResponse, trans: TranslatePayload) -> b
 
     if orig.unreadable_reason:
         if not verify_translation_guard(orig.unreadable_reason, trans.unreadable_reason):
+            return False
+
+    # 2. Protected terms guard (names, institutions, places, IDs must remain verbatim in original script)
+    if orig.protected_terms:
+        orig_user_text_parts = [orig.title, orig.report_title or ""]
+        orig_user_text_parts.extend(orig.summary)
+        for a in orig.actions:
+            orig_user_text_parts.append(a.text)
+            if a.deadline_rule:
+                orig_user_text_parts.append(a.deadline_rule)
+            if a.recurrence:
+                orig_user_text_parts.append(a.recurrence)
+        for w in orig.warnings:
+            orig_user_text_parts.append(w.text)
+        for f in orig.facts:
+            orig_user_text_parts.append(f.text)
+        orig_user_text_parts.extend(orig.conflicts)
+        if orig.unreadable_reason:
+            orig_user_text_parts.append(orig.unreadable_reason)
+        full_orig = " ".join(orig_user_text_parts)
+
+        trans_user_text_parts = [trans.title, trans.report_title or ""]
+        trans_user_text_parts.extend(trans.summary)
+        for a in trans.actions:
+            trans_user_text_parts.append(a.text)
+            if a.deadline_rule:
+                trans_user_text_parts.append(a.deadline_rule)
+            if a.recurrence:
+                trans_user_text_parts.append(a.recurrence)
+        for w in trans.warnings:
+            trans_user_text_parts.append(w.text)
+        for f in trans.facts:
+            trans_user_text_parts.append(f.text)
+        trans_user_text_parts.extend(trans.conflicts)
+        if trans.unreadable_reason:
+            trans_user_text_parts.append(trans.unreadable_reason)
+        full_trans = " ".join(trans_user_text_parts)
+
+        if not verify_protected_terms_guard(orig.protected_terms, full_orig, full_trans):
             return False
 
     return True
@@ -443,6 +483,7 @@ async def explain(
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
+        protected_terms=reader_result.protected_terms,
     )
 
 
@@ -497,6 +538,7 @@ async def translate(
         facts=facts_payload,
         conflicts=orig.conflicts,
         unreadable_reason=orig.unreadable_reason,
+        protected_terms=orig.protected_terms,
     )
 
     try:
@@ -613,4 +655,5 @@ async def translate(
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=translated_payload.unreadable_reason if orig.unreadable_reason else None,
+        protected_terms=orig.protected_terms,    # Copied by CODE
     )
