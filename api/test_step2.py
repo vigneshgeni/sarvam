@@ -982,8 +982,54 @@ def test_gemini_retry_budget_exceeded():
                 config=MagicMock(),
                 endpoint="explain",
                 max_retries=2,
+                deadline=1000.0,  # Ensure overall deadline is far out so retry budget is tested
             )
         assert "budget" in str(exc_info.value).lower()
         assert exc_info.value.status_code == 503
+
+
+# --- Step 5b-2D: Overall Request Deadline (110s) Tests ---
+
+def test_deadline_hit_while_waiting_for_semaphore(client):
+    from main import GEMINI_SEMAPHORE, IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # Saturate semaphore slots
+    orig_val = GEMINI_SEMAPHORE._value
+    GEMINI_SEMAPHORE._value = 0
+
+    try:
+        # Patch REQUEST_DEADLINE to 0.1s so deadline expires while waiting for semaphore
+        with patch("main.REQUEST_DEADLINE", 0.1):
+            files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+            res = client.post("/api/explain", files=files, data={"lang": "ta"})
+            assert res.status_code == 504
+            body = res.json()
+            assert "Request timed out" in body["message"]
+            assert body["message_local"] == "கோரிக்கைக்கான நேரம் முடிந்துவிட்டது. மீண்டும் முயற்சிக்கவும்."
+    finally:
+        GEMINI_SEMAPHORE._value = orig_val
+
+
+def test_deadline_hit_during_retry(client):
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # Initial Gemini call fails with retryable 503, but deadline is 1.5s
+    # Retry backoff sleeps ~2.2s, so deadline is reached during/before retry
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = errors.ServerError(
+        503, {"error": {"message": "Service Unavailable"}}
+    )
+
+    with patch("reader.get_client", return_value=mock_client), patch("main.REQUEST_DEADLINE", 1.5):
+        files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+        res = client.post("/api/explain", files=files, data={"lang": "hi"})
+        assert res.status_code == 504
+        body = res.json()
+        assert "Request timed out" in body["message"]
+        assert body["message_local"] == "अनुरोध का समय समाप्त हो गया. कृपया पुन: प्रयास करें."
 
 

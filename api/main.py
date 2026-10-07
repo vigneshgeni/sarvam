@@ -41,6 +41,8 @@ from models import (
 )
 from reader import (
     GeminiServiceError,
+    GeminiTimeoutError,
+    REQUEST_DEADLINE,
     read_document,
     translate_result_text,
 )
@@ -242,6 +244,7 @@ async def explain(
 ):
     start_time = time.time()
     start_dt = datetime.datetime.now(datetime.timezone.utc)
+    deadline = start_time + REQUEST_DEADLINE
     client_ip = get_client_ip(request)
 
     # Rate limit check per IP (20 requests / minute)
@@ -304,14 +307,37 @@ async def explain(
     if pdf_bytes:
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
 
-    # Acquire per-instance semaphore (max 2 concurrent Gemini calls)
+    # Check remaining deadline before semaphore wait
+    remaining = deadline - time.time()
+    if remaining <= 1.0:
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
+        elapsed = time.time() - start_time
+        logger.info(
+            "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=0.000, seconds=%.2f, status=504",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            elapsed,
+        )
+        return make_error_response(504, "timeout", lang)
+
+    # Acquire per-instance semaphore (capped by SEMAPHORE_TIMEOUT and remaining deadline)
+    sem_wait_timeout = min(SEMAPHORE_TIMEOUT, remaining)
     queue_start = time.time()
     try:
-        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=SEMAPHORE_TIMEOUT)
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=sem_wait_timeout)
     except asyncio.TimeoutError:
         queue_wait = time.time() - queue_start
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         elapsed = time.time() - start_time
+        if time.time() >= deadline - 1.0 or sem_wait_timeout == remaining:
+            logger.info(
+                "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
+                elapsed,
+            )
+            return make_error_response(504, "timeout", lang)
         logger.info(
             "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
             start_dt.strftime("%H:%M:%S.%f")[:-3],
@@ -325,13 +351,17 @@ async def explain(
 
     # Run blocking Gemini Reader in AnyIO thread pool so event loop remains completely unblocked
     try:
-        reader_result = await run_in_threadpool(read_document, file_data_list, lang)
+        reader_result = await run_in_threadpool(read_document, file_data_list, lang, deadline)
     except Exception as e:
         elapsed = time.time() - start_time
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
 
-        if isinstance(e, (httpx.TimeoutException, TimeoutError)) or "timeout" in err_str:
+        if (
+            isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
+            or "timeout" in err_str
+            or time.time() >= deadline - 1.0
+        ):
             status_code = 504
             logger.info(
                 "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
@@ -540,6 +570,7 @@ async def translate(
 ):
     start_time = time.time()
     start_dt = datetime.datetime.now(datetime.timezone.utc)
+    deadline = start_time + REQUEST_DEADLINE
     client_ip = get_client_ip(request)
 
     # Rate limit check per IP (30 requests / minute)
@@ -579,14 +610,37 @@ async def translate(
         protected_terms=orig.protected_terms,
     )
 
-    # Acquire per-instance semaphore (max 2 concurrent Gemini calls)
+    # Check remaining deadline before semaphore wait
+    remaining = deadline - time.time()
+    if remaining <= 1.0:
+        finish_dt = datetime.datetime.now(datetime.timezone.utc)
+        elapsed = time.time() - start_time
+        logger.info(
+            "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=0.000, seconds=%.2f, status=504",
+            start_dt.strftime("%H:%M:%S.%f")[:-3],
+            finish_dt.strftime("%H:%M:%S.%f")[:-3],
+            elapsed,
+        )
+        return make_error_response(504, "timeout", body.lang)
+
+    # Acquire per-instance semaphore (capped by SEMAPHORE_TIMEOUT and remaining deadline)
+    sem_wait_timeout = min(SEMAPHORE_TIMEOUT, remaining)
     queue_start = time.time()
     try:
-        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=SEMAPHORE_TIMEOUT)
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=sem_wait_timeout)
     except asyncio.TimeoutError:
         queue_wait = time.time() - queue_start
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         elapsed = time.time() - start_time
+        if time.time() >= deadline - 1.0 or sem_wait_timeout == remaining:
+            logger.info(
+                "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
+                elapsed,
+            )
+            return make_error_response(504, "timeout", body.lang)
         logger.info(
             "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=503",
             start_dt.strftime("%H:%M:%S.%f")[:-3],
@@ -600,13 +654,17 @@ async def translate(
 
     # Run blocking Gemini Translate in AnyIO thread pool so event loop remains completely unblocked
     try:
-        translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang)
+        translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang, deadline)
     except Exception as e:
         elapsed = time.time() - start_time
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
 
-        if isinstance(e, (httpx.TimeoutException, TimeoutError)) or "timeout" in err_str:
+        if (
+            isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
+            or "timeout" in err_str
+            or time.time() >= deadline - 1.0
+        ):
             status_code = 504
             logger.info(
                 "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",

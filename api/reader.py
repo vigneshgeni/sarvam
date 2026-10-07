@@ -3,7 +3,7 @@ import logging
 import os
 import random
 import time
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from google import genai
 from google.genai import errors, types
@@ -23,9 +23,18 @@ LOCATION = "global"
 EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
 TRANSLATE_THINKING: int = 0
 
-# Retry configuration
+# Retry & Deadline configuration
+REQUEST_DEADLINE: float = 110.0  # seconds (ONE overall request deadline covering semaphore, attempts, backoff)
 TOTAL_RETRY_BUDGET: float = 100.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
+
+
+class GeminiTimeoutError(Exception):
+    """Raised when overall request deadline is reached."""
+
+    def __init__(self, message: str = "Request deadline reached", status_code: int = 504):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class GeminiServiceError(Exception):
@@ -142,12 +151,52 @@ def call_gemini_with_retry(
     config: types.GenerateContentConfig,
     endpoint: str = "unknown",
     max_retries: int = 2,
+    deadline: Optional[float] = None,
 ) -> Any:
     start_time = time.time()
+    if deadline is None:
+        deadline = start_time + REQUEST_DEADLINE
 
     for attempt in range(max_retries + 1):
+        if attempt == 0:
+            remaining_deadline = deadline - start_time
+            if remaining_deadline - 1.0 <= 0:
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    endpoint,
+                    attempt,
+                    0.0,
+                )
+                raise GeminiTimeoutError(
+                    f"Overall request deadline ({REQUEST_DEADLINE}s) reached before attempt {attempt + 1}",
+                    status_code=504,
+                )
+            attempt_timeout_sec = min(100.0, remaining_deadline - 1.0)
+            if config is not None:
+                if isinstance(config, types.GenerateContentConfig):
+                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                elif hasattr(config, "http_options"):
+                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                elif isinstance(config, dict):
+                    config["http_options"] = {"timeout": max(1, int(attempt_timeout_sec * 1000))}
+
         if attempt > 0:
             elapsed_before_sleep = time.time() - start_time
+            now = start_time + elapsed_before_sleep
+            remaining_deadline = deadline - now
+
+            if remaining_deadline - 1.0 <= 0:
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    endpoint,
+                    attempt,
+                    elapsed_before_sleep,
+                )
+                raise GeminiTimeoutError(
+                    f"Overall request deadline ({REQUEST_DEADLINE}s) reached before retry {attempt}",
+                    status_code=504,
+                )
+
             if elapsed_before_sleep >= TOTAL_RETRY_BUDGET:
                 logger.info(
                     "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
@@ -177,6 +226,18 @@ def call_gemini_with_retry(
                     status_code=503,
                 )
 
+            if (now + sleep_duration >= deadline) or (deadline - (now + sleep_duration) < 1.0):
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    endpoint,
+                    attempt,
+                    elapsed_before_sleep,
+                )
+                raise GeminiTimeoutError(
+                    "Overall request deadline reached during retry backoff",
+                    status_code=504,
+                )
+
             logger.warning(
                 "gemini_retry: endpoint=%s, attempt=%d, delay=%.2f, seconds=%.2f",
                 endpoint,
@@ -185,6 +246,29 @@ def call_gemini_with_retry(
                 elapsed_before_sleep,
             )
             time.sleep(sleep_duration)
+
+            now_after_sleep = now + sleep_duration
+            remaining_after_sleep = deadline - now_after_sleep
+            if remaining_after_sleep - 1.0 <= 0:
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    endpoint,
+                    attempt,
+                    elapsed_before_sleep + sleep_duration,
+                )
+                raise GeminiTimeoutError(
+                    "Overall request deadline reached after retry backoff",
+                    status_code=504,
+                )
+
+            attempt_timeout_sec = min(100.0, remaining_after_sleep - 1.0)
+            if config is not None:
+                if isinstance(config, types.GenerateContentConfig):
+                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                elif hasattr(config, "http_options"):
+                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                elif isinstance(config, dict):
+                    config["http_options"] = {"timeout": max(1, int(attempt_timeout_sec * 1000))}
 
         try:
             resp = client.models.generate_content(
@@ -210,7 +294,17 @@ def call_gemini_with_retry(
             return resp
         except Exception as e:
             elapsed = time.time() - start_time
+            now = start_time + elapsed
             code = getattr(e, "code", None) or getattr(e, "status_code", None) or 503
+
+            if isinstance(e, GeminiTimeoutError) or (now >= deadline - 1.0):
+                logger.info(
+                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    endpoint,
+                    attempt + 1,
+                    elapsed,
+                )
+                raise GeminiTimeoutError(f"Request deadline reached: {e}", status_code=504) from e
 
             if is_retryable_error(e) and attempt < max_retries:
                 logger.warning(
@@ -248,7 +342,11 @@ def call_gemini_with_retry(
     raise GeminiServiceError("Gemini call retries exhausted", status_code=503)
 
 
-def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderResponse:
+def read_document(
+    files_data: List[Tuple[bytes, str]],
+    lang: str,
+    deadline: Optional[float] = None,
+) -> ReaderResponse:
     lang_name = resolve_language_name(lang)
     today_str = datetime.date.today().isoformat()
     prompt = READER_PROMPT_TEMPLATE.format(LANG=lang_name, TODAY=today_str)
@@ -275,6 +373,7 @@ def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderRespo
         contents=contents,
         config=config,
         endpoint="explain",
+        deadline=deadline,
     )
 
     if response.parsed and isinstance(response.parsed, ReaderResponse):
@@ -289,7 +388,11 @@ def read_document(files_data: List[Tuple[bytes, str]], lang: str) -> ReaderRespo
     return result
 
 
-def translate_result_text(payload: TranslatePayload, lang: str) -> TranslatePayload:
+def translate_result_text(
+    payload: TranslatePayload,
+    lang: str,
+    deadline: Optional[float] = None,
+) -> TranslatePayload:
     lang_name = resolve_language_name(lang)
     payload_json = payload.model_dump_json(exclude_none=True)
     prompt = TRANSLATE_PROMPT_TEMPLATE.format(LANG=lang_name, PAYLOAD_JSON=payload_json)
@@ -310,6 +413,7 @@ def translate_result_text(payload: TranslatePayload, lang: str) -> TranslatePayl
         contents=[prompt],
         config=config,
         endpoint="translate",
+        deadline=deadline,
     )
 
     if response.parsed and isinstance(response.parsed, TranslatePayload):
