@@ -1,5 +1,37 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Literal, Optional
+from pydantic import BaseModel, Field, model_validator
+
+DOCUMENT_TYPES = (
+    "utility_bill",
+    "telecom_bill",
+    "tax_receipt",
+    "insurance",
+    "bank",
+    "government_notice",
+    "court_legal",
+    "challan",
+    "medical",
+    "receipt",
+    "agreement",
+    "corporate",
+    "other",
+)
+
+DocumentType = Literal[
+    "utility_bill",
+    "telecom_bill",
+    "tax_receipt",
+    "insurance",
+    "bank",
+    "government_notice",
+    "court_legal",
+    "challan",
+    "medical",
+    "receipt",
+    "agreement",
+    "corporate",
+    "other",
+]
 
 
 # Models used for Gemini Reader Prompt response schema (without evidence, date_status, evidence_summary)
@@ -56,9 +88,46 @@ class ReaderFact(BaseModel):
     )
 
 
+class ReaderGlanceKeyValue(BaseModel):
+    label: str = Field(description="Label for this key value, e.g. Due Date, Amount Due, Account No.")
+    value: str = Field(description="Value copied verbatim from document")
+    kind: str = Field(default="text", description="kind: amount | date | text")
+
+
+class ReaderGlance(BaseModel):
+    headline: str = Field(description="Short headline in 12 words or fewer")
+    key_values: List[ReaderGlanceKeyValue] = Field(
+        default_factory=list,
+        description="Max 3 key-value pairs (amounts, dates, reference numbers)",
+    )
+
+
+class ReaderPlace(BaseModel):
+    label: str = Field(description="Place / address label, e.g. Hospital Address, Court Location")
+    address: str = Field(description="Full address copied verbatim")
+    quote: str = Field(description="Verbatim quote containing this address")
+    page: int = Field(default=1, description="Page number")
+
+
+class ReaderContact(BaseModel):
+    label: str = Field(description="Contact label, e.g. Helpline, Grievance Officer, Customer Care")
+    value: str = Field(description="Phone number or email address copied verbatim")
+    quote: str = Field(description="Verbatim quote containing this contact")
+    page: int = Field(default=1, description="Page number")
+
+
 class ReaderResponse(BaseModel):
     doc_type: str = Field(
-        description="Document type: government_notice, utility_bill, insurance, lab_report, bank, school, other"
+        default="other",
+        description="Document type: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other",
+    )
+    document_type: str = Field(
+        default="other",
+        description="Document type: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other",
+    )
+    document_language: Optional[str] = Field(
+        default=None,
+        description="Primary language code of document (e.g. en, ta, hi, kn, te, ml, mr, bn, gu, pa, or, ur)",
     )
     title: str = Field(description="Document title in the requested language")
     report_title: Optional[str] = Field(
@@ -69,10 +138,14 @@ class ReaderResponse(BaseModel):
         default=None,
         description="Date printed on the report or notice in display text, or null if not clearly printed. Never invent.",
     )
-    language: str = Field(description="Language code, e.g. ta, hi, en")
+    language: str = Field(description="Language code actually written, e.g. ta, hi, en")
     letter_date: Optional[str] = Field(
         default=None,
         description="Date of the notice or letter in YYYY-MM-DD if printed, else null",
+    )
+    glance: Optional[ReaderGlance] = Field(
+        default=None,
+        description="Headline (<=12 words) and up to 3 key-value pairs",
     )
     summary: List[str] = Field(
         description="2-4 sentence explanation in the requested language"
@@ -88,6 +161,14 @@ class ReaderResponse(BaseModel):
     facts: List[ReaderFact] = Field(
         default_factory=list,
         description="Key facts (amounts, IDs, dates, names) from the document",
+    )
+    places: List[ReaderPlace] = Field(
+        default_factory=list,
+        description="Max 5 addresses or places printed in the document",
+    )
+    contacts: List[ReaderContact] = Field(
+        default_factory=list,
+        description="Max 6 contact phone numbers or email addresses printed in the document",
     )
     conflicts: List[str] = Field(
         default_factory=list,
@@ -105,6 +186,16 @@ class ReaderResponse(BaseModel):
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_reader_doc_types(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "document_type" in data and ("doc_type" not in data or not data.get("doc_type")):
+                data["doc_type"] = data["document_type"]
+            elif "doc_type" in data and ("document_type" not in data or not data.get("document_type")):
+                data["document_type"] = data["doc_type"]
+        return data
 
 
 # Final API Response Models (Section 6 contract with evidence, date_status, and evidence_summary)
@@ -141,17 +232,52 @@ class ExplainFact(BaseModel):
     evidence: str = "check_original"  # matched | check_original
 
 
+class GlanceKeyValue(BaseModel):
+    label: str
+    value: str
+    kind: str = "text"  # amount | date | text
+    evidence: str = "check_original"  # matched | check_original | calculated
+
+
+class GlanceSummary(BaseModel):
+    headline: str  # <= 12 words
+    key_values: List[GlanceKeyValue] = Field(default_factory=list)  # max 3
+
+
+class PlaceInfo(BaseModel):
+    label: str
+    address: str
+    quote: str
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original
+
+
+class ContactInfo(BaseModel):
+    label: str
+    value: str  # phone or email
+    quote: str
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original
+
+
 class ExplainResponse(BaseModel):
-    doc_type: str
+    doc_type: str = "other"
+    document_type: str = "other"
+    document_language: Optional[str] = None
     title: str
     report_title: Optional[str] = None
     report_date: Optional[str] = None
+    report_date_iso: Optional[str] = None
     language: str
     letter_date: Optional[str] = None
+    source_kind: str = "photo"  # text_pdf | scanned_pdf | photo
+    glance: Optional[GlanceSummary] = None
     summary: List[str]
     actions: List[ExplainAction] = Field(default_factory=list)
     warnings: List[ExplainWarning] = Field(default_factory=list)
     facts: List[ExplainFact] = Field(default_factory=list)
+    places: List[PlaceInfo] = Field(default_factory=list)
+    contacts: List[ContactInfo] = Field(default_factory=list)
     conflicts: List[str] = Field(default_factory=list)
     evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
     unreadable: bool = False
@@ -160,6 +286,16 @@ class ExplainResponse(BaseModel):
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_explain_doc_types(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "document_type" in data and ("doc_type" not in data or not data.get("doc_type")):
+                data["doc_type"] = data["document_type"]
+            elif "doc_type" in data and ("document_type" not in data or not data.get("document_type")):
+                data["document_type"] = data["doc_type"]
+        return data
 
 
 class ErrorResponse(BaseModel):
@@ -220,6 +356,14 @@ class TranslatePayload(BaseModel):
     protected_terms: List[str] = Field(
         default_factory=list,
         description="Protected terms copied verbatim in original script without translation or transliteration",
+    )
+
+
+# Keyed String Translation Model for Shrunk Translate Input (Item 2)
+class KeyedTranslateResponse(BaseModel):
+    strings: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Translated text strings keyed by their exact id",
     )
 
 

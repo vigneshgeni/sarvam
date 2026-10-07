@@ -1,15 +1,23 @@
+import asyncio
 import datetime
+import json
 import logging
 import os
 import random
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from google import genai
 from google.genai import errors, types
+from starlette.concurrency import run_in_threadpool
 
 from evidence import GENERIC_OFFICE_WORDS, filter_protected_terms
-from models import ReaderResponse, TranslatePayload
+from models import (
+    DOCUMENT_TYPES,
+    KeyedTranslateResponse,
+    ReaderResponse,
+    TranslatePayload,
+)
 
 # Suppress harmless AFC warning from google-genai
 logging.getLogger("google.genai").setLevel(logging.ERROR)
@@ -19,13 +27,20 @@ PROJECT_ID = os.environ.get("PROJECT", "sarvam-510715")
 MODEL_ID = os.environ.get("MODEL", "gemini-3.7-flash")
 LOCATION = "global"
 
-# Thinking budget per call type (0 = disabled).
-# Translate stays off (0). Explain stays as is (0), but can be easily raised to a low level (e.g. 512 or 1024).
+# Thinking budget per call type (0 = disabled)
 EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
 TRANSLATE_THINKING: int = 0
 
-# Retry & Deadline configuration
-REQUEST_DEADLINE: float = 110.0  # seconds (ONE overall request deadline covering semaphore, attempts, backoff)
+# Tail-Latency Hedge Configuration (env-overridable constants in one place)
+TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
+TRANSLATE_HEDGE_DELAY: float = float(os.environ.get("TRANSLATE_HEDGE_DELAY", 12.0))
+
+EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 60.0))
+EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 100.0))
+EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 25.0))
+
+HEDGE_SEMAPHORE_TIMEOUT: float = float(os.environ.get("HEDGE_SEMAPHORE_TIMEOUT", 2.0))
+REQUEST_DEADLINE: float = 110.0  # seconds
 TOTAL_RETRY_BUDGET: float = 100.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
 
@@ -66,6 +81,7 @@ def is_retryable_error(e: Exception) -> bool:
         )
     )
 
+
 LANGUAGE_MAP = {
     "en": "English",
     "ta": "Tamil",
@@ -80,70 +96,6 @@ LANGUAGE_MAP = {
     "or": "Odia",
     "ur": "Urdu",
 }
-
-READER_PROMPT_TEMPLATE = """You are Sarvam. You explain official notices, letters, and reports to people who may
-have little schooling or reading confidence.
-
-Rules:
-1. Output only JSON matching the schema.
-2. Write all user-facing text entirely in {LANG}, in simple everyday words a
-   12-year-old understands, in short sentences.
-   - Month names, units, and labels must be strictly in {LANG} (no English words mixed in).
-   - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
-   - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed.
-   - PROTECTED TERMS (populate `protected_terms` ONLY with these items, copied EXACTLY as printed in the original script; Latin stays Latin, never transliterate):
-     * Person names (with title like Mr./Mrs. attached, e.g. 'Mr. Ravi Kumar', 'Devayalini M')
-     * Organisation / hospital / lab / company names, street addresses and place names (e.g. 'Star Health Insurance', 'Sunrise Hospital, Jayanagar', 'No. 14, 3rd Cross, Bengaluru')
-     * ID / policy / claim / account / reference numbers, phone numbers, email and web addresses (e.g. 'CLM-2026-0884', 'SH/IND/22/559102', 'claims@example.com')
-   - NOT PROTECTED (translate into {LANG}; add English original in brackets on first mention only if it is an official term; NEVER put in `protected_terms`):
-     * Department or office names (e.g. 'Grievance Cell' -> translate to {LANG}, 'Claims Department' -> translate to {LANG})
-     * Job titles (e.g. 'Claims Manager' -> translate to {LANG})
-     * Clause / section / page labels and generic nouns (e.g. 'Clause 4.2' -> translate to {LANG}, 'Section B' -> translate to {LANG})
-3. Every action, warning and fact must include "quote": text copied EXACTLY
-   from the document in its original language, plus the page number.
-4. Do not invent anything. If something is not in the document, leave it out.
-   - report_title: Display title printed on the report/notice, or null if not clearly printed. Never invent.
-   - report_date: Display date printed on the report/notice, or null if not clearly printed. Never invent.
-5. If a page is blurry, cut off or unreadable, set "unreadable": true and say
-   which part in "unreadable_reason". Do not guess.
-6. Deadlines & Dates:
-   - If the deadline is a fixed printed calendar date: return due_date (YYYY-MM-DD), set deadline_days null, deadline_anchor null, deadline_rule null.
-   - If the deadline is relative (e.g. "within 30 days of this letter"): set deadline_days to the integer count of days (e.g. 30), set deadline_anchor to "letter_date", set deadline_rule to display text in {LANG}, and set due_date null.
-   - Recurring obligations: If the document has both a schedule rule (e.g. premium due on the 31st of every month) and a receipt "next due" date, use the schedule rule for the action. Set "recurrence" to the schedule rule display text in {LANG} (e.g. '31st of every month').
-   - letter_date: return YYYY-MM-DD if printed, else null.
-   Today is {TODAY}.
-7. If the document gives two different dates or amounts for the same thing,
-   describe it in "conflicts".
-8. Medical and lab reports: quote the report's own printed values, reference ranges and flags verbatim.
-   Never say in our own words whether a value is normal or abnormal, and never name a diagnosis.
-   Never suggest treatment or add warnings that the document does not state.
-   Add the action "Show this report to your doctor".
-9. Warnings: only those stated in the document itself.
-10. Put the most important action first.
-"""
-
-TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate user-facing text from an official document into {LANG}.
-
-Rules:
-1. Output only JSON matching the schema.
-2. Translate all user-facing text into {LANG}, in simple everyday words a 12-year-old understands, in short sentences.
-3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
-4. Include an English term in brackets ONLY for official names (scheme names, form names).
-5. CRITICAL NUMBER GUARD: Always keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text (e.g. use 31,200 not ௩௧,௨௦௦ or ३१,२००; use 2026 not ௨௦௨௬). Do not drop, modify, convert, or translate any number, date, amount, or phone number.
-6. CRITICAL PROTECTED TERMS & TRANSLATION RULES:
-   - PROTECTED TERMS (NEVER translate or transliterate; copy EXACTLY as printed in original script; Latin stays Latin; every protected term present in original text must appear verbatim in your translation):
-     * Person names (with title attached, e.g. 'Mr. Ravi Kumar', 'Devayalini M')
-     * Organisation, hospital, lab, company names, addresses, place names (e.g. 'Star Health Insurance', 'Sunrise Hospital, Jayanagar', 'No. 14, 3rd Cross, Bengaluru')
-     * ID, policy, claim, account, reference numbers, phone numbers, email, web addresses (e.g. 'CLM-2026-0884', 'SH/IND/22/559102', 'claims@example.com')
-   - NOT PROTECTED (MUST be translated into {LANG}; add English original in brackets on first mention only if official term):
-     * Department or office names (e.g. 'Grievance Cell', 'Claims Department' -> translate into {LANG})
-     * Job titles (e.g. 'Claims Manager' -> translate into {LANG})
-     * Clause, section, page labels and generic nouns (e.g. 'Clause 4.2', 'Section B' -> translate into {LANG})
-7. Translate title, report_title, summary, action text, deadline_rule, recurrence, warning text, fact text, conflicts, and unreadable_reason.
-
-User-facing text to translate:
-{PAYLOAD_JSON}
-"""
 
 
 def resolve_language_name(lang_code: str) -> str:
@@ -160,6 +112,99 @@ def get_client() -> genai.Client:
     )
 
 
+READER_PROMPT_TEMPLATE = """You are Sarvam. You explain official notices, letters, and reports to people who may
+have little schooling or reading confidence.
+
+Rules:
+1. Output only JSON matching the schema.
+2. Language mode:
+   - Identify the primary language of the document. Return its language code in `document_language` (e.g. en, ta, hi, kn, te, ml, mr, bn, gu, pa, or, ur).
+   - If target language is 'auto': write all user-facing text in the document's own language if it is one of: English (en), Tamil (ta), or Hindi (hi) (or other Indian languages); otherwise write in English (en). Set `language` to the language code actually written.
+   - If target language is explicit ({LANG}): write all user-facing text entirely in {LANG}, in simple everyday words a 12-year-old understands, in short sentences, and set `language` to the requested code.
+   - Month names, units, and labels must be strictly in the target language (no English words mixed in).
+   - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
+   - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed in Western digits (0-9).
+3. Document Type (`document_type`):
+   Must be one of: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other.
+   - Prefer specific types: property tax receipt -> tax_receipt; discharge summary / hospital bills -> medical; rental / sale / loan deeds -> agreement; board resolutions -> corporate.
+   - Capture key details per type if present:
+     * All types: parties and signatories/certifying persons, venue/addresses, dates, amounts, IDs, contact numbers.
+     * Agreements: term, rent/price, deposit, notice period, penalties.
+     * Court: case no., court name, next hearing date, directions.
+     * Challan: offence, amount, last date to pay, how to contest.
+4. Glance (`glance`):
+   - headline: <= 12 words summarizing the essence of the document.
+   - key_values: up to 3 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document.
+5. Places (`places`):
+   - Up to 5 places/addresses printed in the document with label, full address, quote, and page.
+6. Contacts (`contacts`):
+   - Up to 6 contact phone numbers or email addresses printed in the document with label, value, quote, and page. Never invent.
+7. Protected Terms (`protected_terms`):
+   - Populate `protected_terms` with ONLY:
+     * Person names (with title attached, e.g. 'Mr. Ravi Kumar', 'Devayalini M')
+     * Organisation, hospital, lab, company names, street addresses and place names (e.g. 'Sunrise Hospital, Jayanagar', 'Star Health Insurance')
+     * ID, policy, claim, account, reference numbers, phone numbers, email and web addresses (e.g. 'CLM-2026-0884', 'SH/IND/22/559102', 'claims@example.com')
+   - NOT PROTECTED (translate into target language; add English in brackets on first mention only if official term; NEVER put in `protected_terms`):
+     * Department or office names (e.g. 'Grievance Cell', 'Claims Department')
+     * Job titles (e.g. 'Claims Manager')
+     * Clause, section, page labels and generic nouns (e.g. 'Clause 4.2', 'Section B')
+8. Quotes: Every action, warning, fact, place, and contact must include "quote": text copied EXACTLY
+   from the document in its original language, plus the page number.
+9. Do not invent anything. If something is not in the document, leave it out.
+   - report_title: Display title printed on the report/notice, or null if not clearly printed. Never invent.
+   - report_date: Display date printed on the report/notice, or null if not clearly printed. Never invent.
+10. If a page is blurry, cut off or unreadable, set "unreadable": true and say which part in "unreadable_reason".
+11. Deadlines & Dates:
+    - Fixed printed calendar date: due_date (YYYY-MM-DD), deadline_days null, deadline_anchor null, deadline_rule null.
+    - Relative deadline (e.g. "within 30 days of this letter"): deadline_days (int), deadline_anchor ("letter_date"), deadline_rule (text), due_date null.
+    - Recurring obligations: schedule rule in recurrence, due_date null.
+    - letter_date: YYYY-MM-DD if printed, else null. Today is {TODAY}.
+12. Conflicts: If document gives contradictory dates or amounts for the same thing, describe in "conflicts".
+13. Medical/lab reports: Quote printed values, ranges, flags verbatim. Never diagnose or say normal/abnormal. Add action "Show this report to your doctor".
+14. Put the most important action first.
+"""
+
+KEYED_TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate the following user-facing text strings into {LANG}.
+
+Rules:
+1. Output JSON matching the schema: a single object "strings" mapping each key to its translated text in {LANG}.
+2. Translate all strings into {LANG}, in simple everyday words a 12-year-old understands, in short sentences.
+3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
+4. Include an English term in brackets ONLY for official names (scheme names, form names).
+5. CRITICAL NUMBER GUARD: Keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text (e.g. use 31,200 not ௩௧,௨௦௦ or ३१,२००).
+6. CRITICAL PROTECTED TERMS GUARD: Person names, organisation/hospital/lab/company names, addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses must NEVER be translated or transliterated. Latin stays Latin.
+   Protected terms to keep verbatim:
+{PROTECTED_TERMS_LIST}
+7. Non-protected terms (department names like Grievance Cell, Claims Department; job titles like Claims Manager; clause labels like Clause 4.2) MUST be translated into {LANG}.
+
+Strings to translate:
+{STRINGS_JSON}
+"""
+
+TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate user-facing text from an official document into {LANG}.
+
+Rules:
+1. Output only JSON matching the schema.
+2. Translate all user-facing text into {LANG}, in simple everyday words a 12-year-old understands, in short sentences.
+3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
+4. Include an English term in brackets ONLY for official names (scheme names, form names).
+5. CRITICAL NUMBER GUARD: Always keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text.
+6. CRITICAL PROTECTED TERMS & TRANSLATION RULES:
+   - PROTECTED TERMS (NEVER translate or transliterate; copy EXACTLY as printed in original script; Latin stays Latin):
+     * Person names (e.g. 'Mr. Ravi Kumar', 'Devayalini M')
+     * Organisation, hospital, lab, company names, addresses, place names
+     * ID, policy, claim, account, reference numbers, phone numbers, email, web addresses
+   - NOT PROTECTED (MUST be translated into {LANG}):
+     * Department or office names (e.g. 'Grievance Cell', 'Claims Department' -> translate into {LANG})
+     * Job titles (e.g. 'Claims Manager' -> translate into {LANG})
+     * Clause, section, page labels and generic nouns (e.g. 'Clause 4.2', 'Section B' -> translate into {LANG})
+7. Translate title, report_title, summary, action text, deadline_rule, recurrence, warning text, fact text, conflicts, and unreadable_reason.
+
+User-facing text to translate:
+{PAYLOAD_JSON}
+"""
+
+
 def call_gemini_with_retry(
     client: genai.Client,
     model: str,
@@ -168,6 +213,7 @@ def call_gemini_with_retry(
     endpoint: str = "unknown",
     max_retries: int = 2,
     deadline: Optional[float] = None,
+    attempt_timeout_sec: Optional[float] = None,
 ) -> Any:
     start_time = time.time()
     if deadline is None:
@@ -187,14 +233,15 @@ def call_gemini_with_retry(
                     f"Overall request deadline ({REQUEST_DEADLINE}s) reached before attempt {attempt + 1}",
                     status_code=504,
                 )
-            attempt_timeout_sec = min(100.0, remaining_deadline - 1.0)
+            base_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
+            cur_attempt_timeout = min(base_timeout, remaining_deadline - 1.0)
             if config is not None:
                 if isinstance(config, types.GenerateContentConfig):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
                 elif hasattr(config, "http_options"):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
                 elif isinstance(config, dict):
-                    config["http_options"] = {"timeout": max(1, int(attempt_timeout_sec * 1000))}
+                    config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
 
         if attempt > 0:
             elapsed_before_sleep = time.time() - start_time
@@ -221,16 +268,15 @@ def call_gemini_with_retry(
                     elapsed_before_sleep,
                 )
                 raise GeminiServiceError(
-                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded before retry {attempt}",
+                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded during backoff",
                     status_code=503,
                 )
 
-            # Jittered backoff: ~2s on 1st retry, ~5s on 2nd retry
-            base_delay = BACKOFF_DELAYS[attempt - 1] if (attempt - 1) < len(BACKOFF_DELAYS) else 5.0
-            jitter = random.uniform(0.1, 0.4)
+            base_delay = BACKOFF_DELAYS[attempt - 1] if attempt - 1 < len(BACKOFF_DELAYS) else 5.0
+            jitter = random.uniform(0.0, 0.5)
             sleep_duration = base_delay + jitter
 
-            if elapsed_before_sleep + sleep_duration > TOTAL_RETRY_BUDGET:
+            if elapsed_before_sleep + sleep_duration >= TOTAL_RETRY_BUDGET:
                 logger.info(
                     "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                     endpoint,
@@ -277,14 +323,15 @@ def call_gemini_with_retry(
                     status_code=504,
                 )
 
-            attempt_timeout_sec = min(100.0, remaining_after_sleep - 1.0)
+            base_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
+            cur_attempt_timeout = min(base_timeout, remaining_after_sleep - 1.0)
             if config is not None:
                 if isinstance(config, types.GenerateContentConfig):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
                 elif hasattr(config, "http_options"):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(attempt_timeout_sec * 1000)))
+                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
                 elif isinstance(config, dict):
-                    config["http_options"] = {"timeout": max(1, int(attempt_timeout_sec * 1000))}
+                    config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
 
         try:
             resp = client.models.generate_content(
@@ -358,14 +405,16 @@ def call_gemini_with_retry(
     raise GeminiServiceError("Gemini call retries exhausted", status_code=503)
 
 
-def read_document(
+def read_document_single_attempt(
     files_data: List[Tuple[bytes, str]],
     lang: str,
     deadline: Optional[float] = None,
+    timeout: Optional[float] = None,
+    attempt_idx: int = 1,
 ) -> ReaderResponse:
-    lang_name = resolve_language_name(lang)
+    target_lang = "auto" if lang == "auto" else resolve_language_name(lang)
     today_str = datetime.date.today().isoformat()
-    prompt = READER_PROMPT_TEMPLATE.format(LANG=lang_name, TODAY=today_str)
+    prompt = READER_PROMPT_TEMPLATE.format(LANG=target_lang, TODAY=today_str)
 
     client = get_client()
 
@@ -375,11 +424,15 @@ def read_document(
         contents.append(part)
     contents.append(prompt)
 
+    timeout_sec = timeout if timeout is not None else (
+        EXPLAIN_LARGE_TIMEOUT if len(files_data) > 3 else EXPLAIN_TIMEOUT
+    )
+
     config = types.GenerateContentConfig(
         temperature=0.2,
         response_mime_type="application/json",
         response_schema=ReaderResponse,
-        http_options=types.HttpOptions(timeout=100_000),
+        http_options=types.HttpOptions(timeout=max(1, int(timeout_sec * 1000))),
         thinking_config=types.ThinkingConfig(thinking_budget=EXPLAIN_THINKING),
     )
 
@@ -390,6 +443,7 @@ def read_document(
         config=config,
         endpoint="explain",
         deadline=deadline,
+        attempt_timeout_sec=timeout_sec,
     )
 
     if response.parsed and isinstance(response.parsed, ReaderResponse):
@@ -397,9 +451,15 @@ def read_document(
     else:
         result = ReaderResponse.model_validate_json(response.text)
 
+    # Sync document_type and doc_type
+    if not result.document_type or result.document_type == "other":
+        if result.doc_type and result.doc_type in DOCUMENT_TYPES:
+            result.document_type = result.doc_type
+    result.doc_type = result.document_type
+
     # Ensure returned language matches the requested code if not set
     if not result.language:
-        result.language = lang
+        result.language = lang if lang != "auto" else (result.document_language or "en")
 
     # Code safety net: filter out generic office terms from protected_terms
     if result.protected_terms:
@@ -408,12 +468,68 @@ def read_document(
     return result
 
 
+def read_document(
+    files_data: List[Tuple[bytes, str]],
+    lang: str,
+    deadline: Optional[float] = None,
+) -> ReaderResponse:
+    """Synchronous entrypoint for read_document."""
+    return read_document_single_attempt(files_data, lang, deadline=deadline)
+
+
+def translate_keyed_strings(
+    strings_dict: Dict[str, str],
+    lang: str,
+    protected_terms: Optional[List[str]] = None,
+    deadline: Optional[float] = None,
+    timeout: Optional[float] = None,
+    attempt_idx: int = 1,
+) -> Dict[str, str]:
+    """Shrunk translate: sends ONLY keyed text strings to translate."""
+    lang_name = resolve_language_name(lang)
+    valid_protected = filter_protected_terms(protected_terms or [])
+    prot_list = "\n".join(f"- {t}" for t in valid_protected) if valid_protected else "(None)"
+    strings_json = json.dumps(strings_dict, ensure_ascii=False, indent=2)
+    prompt = KEYED_TRANSLATE_PROMPT_TEMPLATE.format(
+        LANG=lang_name,
+        PROTECTED_TERMS_LIST=prot_list,
+        STRINGS_JSON=strings_json,
+    )
+
+    client = get_client()
+    timeout_sec = timeout if timeout is not None else TRANSLATE_TIMEOUT
+
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json",
+        response_schema=KeyedTranslateResponse,
+        max_output_tokens=1024,
+        http_options=types.HttpOptions(timeout=max(1, int(timeout_sec * 1000))),
+        thinking_config=types.ThinkingConfig(thinking_budget=TRANSLATE_THINKING),
+    )
+
+    response = call_gemini_with_retry(
+        client=client,
+        model=MODEL_ID,
+        contents=[prompt],
+        config=config,
+        endpoint="translate",
+        deadline=deadline,
+        attempt_timeout_sec=timeout_sec,
+    )
+
+    if response.parsed and isinstance(response.parsed, KeyedTranslateResponse):
+        return response.parsed.strings
+    parsed = KeyedTranslateResponse.model_validate_json(response.text)
+    return parsed.strings
+
+
 def translate_result_text(
     payload: TranslatePayload,
     lang: str,
     deadline: Optional[float] = None,
 ) -> TranslatePayload:
-    # Ensure payload protected_terms are filtered
+    """Legacy entrypoint preserved for tests/compatibility."""
     if payload.protected_terms:
         payload.protected_terms = filter_protected_terms(payload.protected_terms)
 
@@ -427,7 +543,8 @@ def translate_result_text(
         temperature=0.0,
         response_mime_type="application/json",
         response_schema=TranslatePayload,
-        http_options=types.HttpOptions(timeout=60_000),
+        max_output_tokens=1024,
+        http_options=types.HttpOptions(timeout=max(1, int(TRANSLATE_TIMEOUT * 1000))),
         thinking_config=types.ThinkingConfig(thinking_budget=TRANSLATE_THINKING),
     )
 
@@ -438,6 +555,7 @@ def translate_result_text(
         config=config,
         endpoint="translate",
         deadline=deadline,
+        attempt_timeout_sec=TRANSLATE_TIMEOUT,
     )
 
     if response.parsed and isinstance(response.parsed, TranslatePayload):
@@ -448,3 +566,109 @@ def translate_result_text(
     if res_payload.protected_terms:
         res_payload.protected_terms = filter_protected_terms(res_payload.protected_terms)
     return res_payload
+
+
+# --- Tail-Latency Hedge Orchestrator (Item 3) ---
+
+async def execute_with_hedge(
+    fn: Any,
+    args: tuple,
+    per_attempt_timeout: float,
+    hedge_delay: float,
+    can_hedge: bool,
+    deadline: float,
+    semaphore: asyncio.Semaphore,
+    endpoint: str,
+) -> Any:
+    """
+    Executes fn with tail-latency hedging.
+    - Launches attempt 1 with per_attempt_timeout.
+    - If attempt 1 does not complete within hedge_delay and can_hedge is True:
+      - Attempts to acquire a 2nd semaphore slot within HEDGE_SEMAPHORE_TIMEOUT (2s).
+      - If acquired, launches attempt 2 and races both attempts (first to succeed wins).
+      - Releases hedge semaphore slot as soon as race finishes.
+    - Logs hedged (True/False) and winning attempt without content.
+    - Enforces REQUEST_DEADLINE (504 when deadline exceeded).
+    """
+    start_time = time.time()
+    remaining = deadline - start_time
+    if remaining <= 1.0:
+        raise GeminiTimeoutError("Request deadline reached before start", status_code=504)
+
+    timeout_1 = min(per_attempt_timeout, max(1.0, remaining - 1.0))
+    task1 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_1, 1))
+
+    done, _ = await asyncio.wait({task1}, timeout=hedge_delay)
+    if task1 in done:
+        elapsed = time.time() - start_time
+        logger.info(
+            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
+            endpoint,
+            elapsed,
+        )
+        return task1.result()
+
+    # Attempt 1 still running after hedge_delay
+    if not can_hedge:
+        res = await task1
+        elapsed = time.time() - start_time
+        logger.info(
+            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
+            endpoint,
+            elapsed,
+        )
+        return res
+
+    # Try to acquire semaphore slot for attempt 2 within HEDGE_SEMAPHORE_TIMEOUT
+    hedge_acquired = False
+    try:
+        await asyncio.wait_for(semaphore.acquire(), timeout=HEDGE_SEMAPHORE_TIMEOUT)
+        hedge_acquired = True
+    except (asyncio.TimeoutError, TimeoutError):
+        logger.info(
+            "gemini_hedge: endpoint=%s, hedged=False, winner=1, hedge_skipped=semaphore_busy",
+            endpoint,
+        )
+
+    if not hedge_acquired:
+        res = await task1
+        elapsed = time.time() - start_time
+        logger.info(
+            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
+            endpoint,
+            elapsed,
+        )
+        return res
+
+    # Launch attempt 2
+    try:
+        remaining_now = deadline - time.time()
+        if remaining_now <= 1.0:
+            raise GeminiTimeoutError("Request deadline reached before hedge attempt", status_code=504)
+        timeout_2 = min(per_attempt_timeout, max(1.0, remaining_now - 1.0))
+        task2 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_2, 2))
+
+        # Race task1 and task2
+        done_set, _ = await asyncio.wait({task1, task2}, return_when=asyncio.FIRST_COMPLETED)
+        first_completed = next(iter(done_set))
+
+        try:
+            result = first_completed.result()
+            winner = 1 if first_completed is task1 else 2
+        except Exception as first_exc:
+            # If the first finished attempt raised an error, wait for the other attempt
+            other_task = task2 if first_completed is task1 else task1
+            result = await other_task
+            winner = 2 if first_completed is task1 else 1
+
+        elapsed = time.time() - start_time
+        logger.info(
+            "gemini_hedge: endpoint=%s, hedged=True, winner=%d, seconds=%.2f",
+            endpoint,
+            winner,
+            elapsed,
+        )
+        return result
+    finally:
+        if hedge_acquired:
+            semaphore.release()

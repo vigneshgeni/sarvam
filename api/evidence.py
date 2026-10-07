@@ -1,6 +1,6 @@
 import io
 import re
-from typing import List, Optional
+from typing import Any, List, Optional
 import unicodedata
 
 import pypdf
@@ -380,3 +380,167 @@ def compute_evidence_summary(
         "check_original": check_original,
         "calculated": calculated,
     }
+
+
+# --- Step 5b-4: Source Kind, Places, Contacts, and Glance Evidence ---
+
+EMAIL_REGEX = re.compile(r"^[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}$")
+
+
+def determine_source_kind(files_data: List[tuple], pdf_pages_text: Optional[List[str]]) -> str:
+    """
+    Determines source kind:
+    - 'photo' if files are images or no PDF is present
+    - 'scanned_pdf' when pypdf finds almost no text (<50 non-whitespace characters)
+    - 'text_pdf' when pypdf finds legible text
+    """
+    has_pdf = False
+    for _, mime in files_data:
+        if "pdf" in (mime or "").lower():
+            has_pdf = True
+            break
+    if not has_pdf:
+        return "photo"
+
+    total_text = "".join(pdf_pages_text or [])
+    non_ws_chars = len(re.sub(r"\s+", "", total_text))
+    if non_ws_chars < 50:
+        return "scanned_pdf"
+    return "text_pdf"
+
+
+def validate_and_normalize_phone(val: str) -> Optional[str]:
+    """
+    Validates phone: 7-13 digits after normalising.
+    """
+    if not val:
+        return None
+    d_norm = normalize_digits(val)
+    digits = re.sub(r"\D", "", d_norm)
+    if 7 <= len(digits) <= 13:
+        return val.strip()
+    return None
+
+
+def validate_email(val: str) -> bool:
+    if not val:
+        return False
+    return bool(EMAIL_REGEX.match(val.strip()))
+
+
+def is_valid_contact_value(val: str) -> bool:
+    if not val:
+        return False
+    clean = val.strip()
+    if validate_email(clean):
+        return True
+    if validate_and_normalize_phone(clean) is not None:
+        return True
+    return False
+
+
+def verify_contact_evidence(val: str, quote: str, pdf_pages_text: Optional[List[str]]) -> str:
+    if not pdf_pages_text or len(pdf_pages_text) == 0:
+        return "check_original"
+    full_text = " ".join(pdf_pages_text)
+    norm_full = collapse_whitespace(full_text)
+    norm_val = collapse_whitespace(val)
+    norm_quote = collapse_whitespace(quote)
+    if (norm_val and norm_val in norm_full) or (norm_quote and norm_quote in norm_full):
+        return "matched"
+    digits = re.sub(r"\D", "", normalize_digits(val))
+    if digits and len(digits) >= 7 and digits in re.sub(r"\D", "", normalize_digits(full_text)):
+        return "matched"
+    return "check_original"
+
+
+def verify_place_evidence(address: str, quote: str, pdf_pages_text: Optional[List[str]]) -> str:
+    if not pdf_pages_text or len(pdf_pages_text) == 0:
+        return "check_original"
+    full_text = " ".join(pdf_pages_text)
+    norm_full = collapse_whitespace(full_text)
+    norm_addr = collapse_whitespace(address)
+    norm_quote = collapse_whitespace(quote)
+    if (norm_addr and norm_addr in norm_full) or (norm_quote and norm_quote in norm_full):
+        return "matched"
+    return "check_original"
+
+
+def verify_glance_evidence(value: str, kind: str, pdf_pages_text: Optional[List[str]]) -> str:
+    if not pdf_pages_text or len(pdf_pages_text) == 0:
+        return "check_original"
+    full_text = " ".join(pdf_pages_text)
+    norm_full = collapse_whitespace(full_text)
+    norm_val = collapse_whitespace(value)
+    if norm_val and norm_val in norm_full:
+        return "matched"
+
+    if kind == "amount":
+        norm_digits_val = re.sub(r"\D", "", normalize_text_for_guard(value))
+        if norm_digits_val:
+            for tok in extract_critical_tokens(full_text):
+                if norm_digits_val == re.sub(r"\D", "", normalize_text_for_guard(tok)):
+                    return "matched"
+    elif kind == "date":
+        for tok in extract_critical_tokens(full_text):
+            if norm_val and norm_val in collapse_whitespace(tok):
+                return "matched"
+    return "check_original"
+
+
+def process_places(
+    raw_places: List[Any],
+    pdf_pages_text: Optional[List[str]],
+) -> List[dict]:
+    seen = set()
+    results = []
+    for p in (raw_places or []):
+        addr = getattr(p, "address", "") or (p.get("address", "") if isinstance(p, dict) else "")
+        lbl = getattr(p, "label", "") or (p.get("label", "") if isinstance(p, dict) else "")
+        q = getattr(p, "quote", "") or (p.get("quote", "") if isinstance(p, dict) else "")
+        pg = getattr(p, "page", 1) or (p.get("page", 1) if isinstance(p, dict) else 1)
+        norm_key = collapse_whitespace(addr).lower()
+        if not norm_key or norm_key in seen:
+            continue
+        seen.add(norm_key)
+        ev = verify_place_evidence(addr, q, pdf_pages_text)
+        results.append({
+            "label": lbl,
+            "address": addr,
+            "quote": q,
+            "page": pg,
+            "evidence": ev,
+        })
+        if len(results) >= 5:
+            break
+    return results
+
+
+def process_contacts(
+    raw_contacts: List[Any],
+    pdf_pages_text: Optional[List[str]],
+) -> List[dict]:
+    seen = set()
+    results = []
+    for c in (raw_contacts or []):
+        val = getattr(c, "value", "") or (c.get("value", "") if isinstance(c, dict) else "")
+        lbl = getattr(c, "label", "") or (c.get("label", "") if isinstance(c, dict) else "")
+        q = getattr(c, "quote", "") or (c.get("quote", "") if isinstance(c, dict) else "")
+        pg = getattr(c, "page", 1) or (c.get("page", 1) if isinstance(c, dict) else 1)
+        if not is_valid_contact_value(val):
+            continue
+        norm_key = re.sub(r"\D", "", normalize_digits(val)) if not validate_email(val) else val.strip().lower()
+        if not norm_key or norm_key in seen:
+            continue
+        seen.add(norm_key)
+        ev = verify_contact_evidence(val, q, pdf_pages_text)
+        results.append({
+            "label": lbl,
+            "value": val.strip(),
+            "quote": q,
+            "page": pg,
+            "evidence": ev,
+        })
+        if len(results) >= 6:
+            break
+    return results

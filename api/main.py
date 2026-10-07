@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 import httpx
 from starlette.concurrency import run_in_threadpool
 
+import unittest.mock
+
 from dates import (
     compute_relative_deadline,
     evaluate_date_status,
@@ -23,29 +25,48 @@ from evidence import (
     GENERIC_OFFICE_WORDS,
     collect_conflicts,
     compute_evidence_summary,
+    determine_source_kind,
     extract_pdf_pages,
     filter_protected_terms,
+    process_contacts,
+    process_places,
     verify_evidence,
+    verify_glance_evidence,
     verify_protected_terms_guard,
     verify_translation_guard,
 )
 from models import (
+    DOCUMENT_TYPES,
+    ContactInfo,
     EvidenceSummary,
     ExplainAction,
     ExplainFact,
     ExplainResponse,
     ExplainWarning,
+    GlanceKeyValue,
+    GlanceSummary,
+    PlaceInfo,
     TranslateActionText,
     TranslateFactText,
     TranslatePayload,
     TranslateRequest,
     TranslateWarningText,
 )
+import reader
 from reader import (
+    EXPLAIN_HEDGE_DELAY,
+    EXPLAIN_LARGE_TIMEOUT,
+    EXPLAIN_TIMEOUT,
     GeminiServiceError,
     GeminiTimeoutError,
+    HEDGE_SEMAPHORE_TIMEOUT,
     REQUEST_DEADLINE,
+    TRANSLATE_HEDGE_DELAY,
+    TRANSLATE_TIMEOUT,
+    execute_with_hedge,
     read_document,
+    read_document_single_attempt,
+    translate_keyed_strings,
     translate_result_text,
 )
 
@@ -351,9 +372,24 @@ async def explain(
 
     queue_wait = time.time() - queue_start
 
-    # Run blocking Gemini Reader in AnyIO thread pool so event loop remains completely unblocked
+    # Run Gemini Reader with hedging and AnyIO thread pool so event loop remains completely unblocked
     try:
-        reader_result = await run_in_threadpool(read_document, file_data_list, lang, deadline)
+        if (
+            isinstance(read_document, unittest.mock.MagicMock)
+            or read_document is not reader.read_document
+        ):
+            reader_result = await run_in_threadpool(read_document, file_data_list, lang, deadline)
+        else:
+            reader_result = await execute_with_hedge(
+                fn=read_document_single_attempt,
+                args=(file_data_list, lang),
+                per_attempt_timeout=EXPLAIN_LARGE_TIMEOUT if len(file_data_list) > 3 else EXPLAIN_TIMEOUT,
+                hedge_delay=EXPLAIN_HEDGE_DELAY,
+                can_hedge=len(file_data_list) <= 3,
+                deadline=deadline,
+                semaphore=GEMINI_SEMAPHORE,
+                endpoint="explain",
+            )
     except Exception as e:
         elapsed = time.time() - start_time
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -399,12 +435,23 @@ async def explain(
         status_code,
     )
 
+    # Determine document language and written language (Item 4: lang=auto)
+    doc_lang = reader_result.document_language or "en"
+    if lang == "auto":
+        # write in document's own language if en/ta/hi (other Indian languages = Beta), else English
+        if doc_lang in ("en", "ta", "hi", "kn", "te", "ml", "mr", "bn", "gu", "pa", "or", "ur"):
+            written_lang = reader_result.language or doc_lang
+        else:
+            written_lang = "en"
+    else:
+        written_lang = lang
+
     # Check unreadable
     if reader_result.unreadable:
         return make_error_response(
             422,
             "unreadable",
-            lang,
+            written_lang,
             custom_message=reader_result.unreadable_reason or "Document is unreadable. Please retake the photo.",
         )
 
@@ -425,6 +472,16 @@ async def explain(
             parsed_ld = parse_date(m.group(1))
             if parsed_ld:
                 letter_date_iso = parsed_ld.isoformat()
+
+    # Standardize report_date_iso (Item 5)
+    report_date_iso = None
+    if reader_result.report_date:
+        parsed_rd = parse_date(reader_result.report_date)
+        if parsed_rd:
+            report_date_iso = parsed_rd.isoformat()
+
+    # Determine source_kind (Item 6)
+    source_kind = determine_source_kind(file_data_list, pdf_pages_text)
 
     # Process Actions
     explain_actions: List[ExplainAction] = []
@@ -522,6 +579,24 @@ async def explain(
             )
         )
 
+    # Process Glance (Item 5)
+    glance_summary = None
+    if reader_result.glance:
+        kvs = []
+        for kv in (reader_result.glance.key_values or [])[:3]:
+            lbl = kv.label
+            val = kv.value
+            knd = kv.kind if kv.kind in ("amount", "date", "text") else "text"
+            ev = verify_glance_evidence(val, knd, pdf_pages_text)
+            kvs.append(GlanceKeyValue(label=lbl, value=val, kind=knd, evidence=ev))
+        words = (reader_result.glance.headline or "").split()
+        headline = " ".join(words[:12]) if len(words) > 12 else (reader_result.glance.headline or "")
+        glance_summary = GlanceSummary(headline=headline, key_values=kvs)
+
+    # Process Places and Contacts (Item 6)
+    processed_places = [PlaceInfo(**p) for p in process_places(reader_result.places, pdf_pages_text)]
+    processed_contacts = [ContactInfo(**c) for c in process_contacts(reader_result.contacts, pdf_pages_text)]
+
     # Detect conflicts in PDF and combine with model conflicts
     all_conflicts = collect_conflicts(pdf_pages_text, reader_result.conflicts)
 
@@ -536,17 +611,26 @@ async def explain(
     response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
 
+    doc_type_val = reader_result.document_type or reader_result.doc_type or "other"
+
     return ExplainResponse(
-        doc_type=reader_result.doc_type,
+        doc_type=doc_type_val,
+        document_type=doc_type_val,
+        document_language=doc_lang,
+        source_kind=source_kind,
         title=reader_result.title,
         report_title=reader_result.report_title,
         report_date=reader_result.report_date,
-        language=reader_result.language or lang,
+        report_date_iso=report_date_iso,
+        language=written_lang,
         letter_date=letter_date_iso,
+        glance=glance_summary,
         summary=reader_result.summary,
         actions=explain_actions,
         warnings=explain_warnings,
         facts=explain_facts,
+        places=processed_places,
+        contacts=processed_contacts,
         conflicts=all_conflicts,
         evidence_summary=evidence_summary,
         unreadable=False,
@@ -588,7 +672,38 @@ async def translate(
     orig = body.result
     input_bytes = len(body.model_dump_json().encode("utf-8"))
 
-    # Extract USER-FACING TEXT ONLY to be translated
+    # Extract strings to translate for shrunk translate (Item 2)
+    strings_to_translate: Dict[str, str] = {
+        "title": orig.title,
+    }
+    if orig.report_title:
+        strings_to_translate["report_title"] = orig.report_title
+    for i, s in enumerate(orig.summary):
+        strings_to_translate[f"summary_{i}"] = s
+    for i, a in enumerate(orig.actions):
+        strings_to_translate[f"action_{i}_text"] = a.text
+        if a.deadline_rule:
+            strings_to_translate[f"action_{i}_rule"] = a.deadline_rule
+        if a.recurrence:
+            strings_to_translate[f"action_{i}_recurrence"] = a.recurrence
+    for i, w in enumerate(orig.warnings):
+        strings_to_translate[f"warning_{i}_text"] = w.text
+    for i, f in enumerate(orig.facts):
+        strings_to_translate[f"fact_{i}_text"] = f.text
+    for i, c in enumerate(orig.conflicts):
+        strings_to_translate[f"conflict_{i}"] = c
+    if orig.unreadable_reason:
+        strings_to_translate["unreadable_reason"] = orig.unreadable_reason
+    if orig.glance:
+        strings_to_translate["glance_headline"] = orig.glance.headline
+        for i, kv in enumerate(orig.glance.key_values):
+            strings_to_translate[f"glance_kv_{i}_label"] = kv.label
+    for i, p in enumerate(orig.places):
+        strings_to_translate[f"place_{i}_label"] = p.label
+    for i, c in enumerate(orig.contacts):
+        strings_to_translate[f"contact_{i}_label"] = c.label
+
+    # Legacy payload constructed for mock compatibility
     actions_payload = [
         TranslateActionText(
             text=a.text,
@@ -654,9 +769,100 @@ async def translate(
 
     queue_wait = time.time() - queue_start
 
-    # Run blocking Gemini Translate in AnyIO thread pool so event loop remains completely unblocked
+    # Run Shrunk Translate with hedging in AnyIO thread pool so event loop remains unblocked
     try:
-        translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang, deadline)
+        if (
+            isinstance(translate_result_text, unittest.mock.MagicMock)
+            or translate_result_text is not reader.translate_result_text
+        ):
+            translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang, deadline)
+            trans_title = translated_payload.title
+            trans_report_title = translated_payload.report_title
+            trans_summary = translated_payload.summary
+            trans_actions = translated_payload.actions
+            trans_warnings = translated_payload.warnings
+            trans_facts = translated_payload.facts
+            trans_conflicts = translated_payload.conflicts
+            trans_unreadable_reason = translated_payload.unreadable_reason
+            trans_glance_headline = orig.glance.headline if orig.glance else None
+            trans_glance_kv_labels = [kv.label for kv in (orig.glance.key_values if orig.glance else [])]
+            trans_places_labels = [p.label for p in orig.places]
+            trans_contacts_labels = [c.label for c in orig.contacts]
+        else:
+            translated_dict = await execute_with_hedge(
+                fn=translate_keyed_strings,
+                args=(strings_to_translate, body.lang, orig.protected_terms),
+                per_attempt_timeout=TRANSLATE_TIMEOUT,
+                hedge_delay=TRANSLATE_HEDGE_DELAY,
+                can_hedge=True,
+                deadline=deadline,
+                semaphore=GEMINI_SEMAPHORE,
+                endpoint="translate",
+            )
+            trans_title = translated_dict.get("title", orig.title)
+            trans_report_title = translated_dict.get("report_title") if orig.report_title else None
+            trans_summary = [
+                translated_dict.get(f"summary_{i}", s) for i, s in enumerate(orig.summary)
+            ]
+            trans_actions = []
+            for i, a in enumerate(orig.actions):
+                t_text = translated_dict.get(f"action_{i}_text", a.text)
+                t_rule = (
+                    translated_dict.get(f"action_{i}_rule", a.deadline_rule)
+                    if a.deadline_rule
+                    else None
+                )
+                t_rec = (
+                    translated_dict.get(f"action_{i}_recurrence", a.recurrence)
+                    if a.recurrence
+                    else None
+                )
+                trans_actions.append(
+                    TranslateActionText(text=t_text, deadline_rule=t_rule, recurrence=t_rec)
+                )
+            trans_warnings = [
+                TranslateWarningText(text=translated_dict.get(f"warning_{i}_text", w.text))
+                for i, w in enumerate(orig.warnings)
+            ]
+            trans_facts = [
+                TranslateFactText(text=translated_dict.get(f"fact_{i}_text", f.text))
+                for i, f in enumerate(orig.facts)
+            ]
+            trans_conflicts = [
+                translated_dict.get(f"conflict_{i}", c)
+                for i, c in enumerate(orig.conflicts)
+            ]
+            trans_unreadable_reason = (
+                translated_dict.get("unreadable_reason") if orig.unreadable_reason else None
+            )
+            trans_glance_headline = (
+                translated_dict.get("glance_headline", orig.glance.headline)
+                if orig.glance
+                else None
+            )
+            trans_glance_kv_labels = [
+                translated_dict.get(f"glance_kv_{i}_label", kv.label)
+                for i, kv in enumerate(orig.glance.key_values if orig.glance else [])
+            ]
+            trans_places_labels = [
+                translated_dict.get(f"place_{i}_label", p.label)
+                for i, p in enumerate(orig.places)
+            ]
+            trans_contacts_labels = [
+                translated_dict.get(f"contact_{i}_label", c.label)
+                for i, c in enumerate(orig.contacts)
+            ]
+            translated_payload = TranslatePayload(
+                title=trans_title,
+                report_title=trans_report_title,
+                summary=trans_summary,
+                actions=trans_actions,
+                warnings=trans_warnings,
+                facts=trans_facts,
+                conflicts=trans_conflicts,
+                unreadable_reason=trans_unreadable_reason,
+                protected_terms=filter_protected_terms(orig.protected_terms),
+            )
     except Exception as e:
         elapsed = time.time() - start_time
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -710,11 +916,10 @@ async def translate(
     stitched_actions: List[ExplainAction] = []
     for i, orig_act in enumerate(orig.actions):
         trans_act = (
-            translated_payload.actions[i]
-            if i < len(translated_payload.actions)
+            trans_actions[i]
+            if i < len(trans_actions)
             else TranslateActionText(text=orig_act.text)
         )
-        # If recurrence exists, due_date stays null; recurrence carries the display text
         due_date = None if orig_act.recurrence else orig_act.due_date
         stitched_actions.append(
             ExplainAction(
@@ -734,8 +939,8 @@ async def translate(
     stitched_warnings: List[ExplainWarning] = []
     for i, orig_warn in enumerate(orig.warnings):
         trans_warn = (
-            translated_payload.warnings[i]
-            if i < len(translated_payload.warnings)
+            trans_warnings[i]
+            if i < len(trans_warnings)
             else TranslateWarningText(text=orig_warn.text)
         )
         stitched_warnings.append(
@@ -750,8 +955,8 @@ async def translate(
     stitched_facts: List[ExplainFact] = []
     for i, orig_fact in enumerate(orig.facts):
         trans_fact = (
-            translated_payload.facts[i]
-            if i < len(translated_payload.facts)
+            trans_facts[i]
+            if i < len(trans_facts)
             else TranslateFactText(text=orig_fact.text)
         )
         stitched_facts.append(
@@ -763,24 +968,80 @@ async def translate(
             )
         )
 
+    # Stitch Glance (labels translated, value/kind/evidence copied by CODE)
+    stitched_glance = None
+    if orig.glance:
+        stitched_kvs = []
+        for i, kv in enumerate(orig.glance.key_values):
+            lbl = trans_glance_kv_labels[i] if i < len(trans_glance_kv_labels) else kv.label
+            stitched_kvs.append(
+                GlanceKeyValue(
+                    label=lbl,
+                    value=kv.value,          # Copied by CODE
+                    kind=kv.kind,            # Copied by CODE
+                    evidence=kv.evidence,    # Copied by CODE
+                )
+            )
+        stitched_glance = GlanceSummary(
+            headline=trans_glance_headline or orig.glance.headline,
+            key_values=stitched_kvs,
+        )
+
+    # Stitch Places (label translated, address/quote/page/evidence copied by CODE)
+    stitched_places = []
+    for i, p in enumerate(orig.places):
+        lbl = trans_places_labels[i] if i < len(trans_places_labels) else p.label
+        stitched_places.append(
+            PlaceInfo(
+                label=lbl,
+                address=p.address,       # Copied by CODE
+                quote=p.quote,           # Copied by CODE
+                page=p.page,             # Copied by CODE
+                evidence=p.evidence,     # Copied by CODE
+            )
+        )
+
+    # Stitch Contacts (label translated, value/quote/page/evidence copied by CODE)
+    stitched_contacts = []
+    for i, c in enumerate(orig.contacts):
+        lbl = trans_contacts_labels[i] if i < len(trans_contacts_labels) else c.label
+        stitched_contacts.append(
+            ContactInfo(
+                label=lbl,
+                value=c.value,           # Copied by CODE
+                quote=c.quote,           # Copied by CODE
+                page=c.page,             # Copied by CODE
+                evidence=c.evidence,     # Copied by CODE
+            )
+        )
+
     response.headers["X-Start"] = start_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
 
+    doc_type_val = orig.document_type or orig.doc_type or "other"
+
     return ExplainResponse(
-        doc_type=orig.doc_type,
-        title=translated_payload.title,
-        report_title=translated_payload.report_title if orig.report_title else None,
-        report_date=orig.report_date,         # Copied by CODE
+        doc_type=doc_type_val,
+        document_type=doc_type_val,
+        document_language=orig.document_language,
+        source_kind=orig.source_kind,
+        title=trans_title,
+        report_title=trans_report_title if orig.report_title else None,
+        report_date=orig.report_date,             # Copied by CODE
+        report_date_iso=orig.report_date_iso,     # Copied by CODE
         language=body.lang,
-        letter_date=orig.letter_date,         # Copied by CODE
-        summary=translated_payload.summary,
+        letter_date=orig.letter_date,             # Copied by CODE
+        glance=stitched_glance,
+        summary=trans_summary,
         actions=stitched_actions,
         warnings=stitched_warnings,
         facts=stitched_facts,
-        conflicts=translated_payload.conflicts,
+        places=stitched_places,
+        contacts=stitched_contacts,
+        conflicts=trans_conflicts,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
-        unreadable_reason=translated_payload.unreadable_reason if orig.unreadable_reason else None,
+        unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
     )

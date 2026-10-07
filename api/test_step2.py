@@ -1152,4 +1152,404 @@ def test_translate_endpoint_accepts_translated_grievance_cell_and_rejects_transl
         assert body["message_local"] == "மொழிபெயர்ப்பு சரிபார்ப்பு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்."
 
 
+# --- Step 5b-4 Tests (Items 3-6) ---
+
+# Item 3: Tail-Latency Hedge Orchestrator Tests with Fake Slow Client
+@pytest.mark.anyio
+async def test_execute_with_hedge_fast_no_hedge():
+    import asyncio
+    import time
+    from reader import execute_with_hedge
+
+    sem = asyncio.Semaphore(2)
+    call_counts = []
+
+    def fast_fn(deadline, timeout, attempt_idx):
+        call_counts.append(attempt_idx)
+        return f"result-{attempt_idx}"
+
+    res = await execute_with_hedge(
+        fn=fast_fn,
+        args=(),
+        per_attempt_timeout=1.0,
+        hedge_delay=0.2,
+        can_hedge=True,
+        deadline=time.time() + 10.0,
+        semaphore=sem,
+        endpoint="test_fast",
+    )
+    assert res == "result-1"
+    assert call_counts == [1]
+
+
+@pytest.mark.anyio
+async def test_execute_with_hedge_slow_first_hedge_wins():
+    import asyncio
+    import time
+    from reader import execute_with_hedge
+
+    sem = asyncio.Semaphore(2)
+
+    def slow_first_fn(deadline, timeout, attempt_idx):
+        if attempt_idx == 1:
+            time.sleep(0.5)
+            return "slow-1"
+        return "fast-hedge-2"
+
+    res = await execute_with_hedge(
+        fn=slow_first_fn,
+        args=(),
+        per_attempt_timeout=2.0,
+        hedge_delay=0.05,
+        can_hedge=True,
+        deadline=time.time() + 10.0,
+        semaphore=sem,
+        endpoint="test_hedge_wins",
+    )
+    assert res == "fast-hedge-2"
+
+
+@pytest.mark.anyio
+async def test_execute_with_hedge_semaphore_busy_skips_hedge():
+    import asyncio
+    import time
+    from reader import execute_with_hedge
+
+    # Semaphore has 0 available permits for the hedge attempt
+    sem = asyncio.Semaphore(0)
+
+    def slow_fn(deadline, timeout, attempt_idx):
+        time.sleep(0.15)
+        return f"result-{attempt_idx}"
+
+    with patch("reader.HEDGE_SEMAPHORE_TIMEOUT", 0.02):
+        res = await execute_with_hedge(
+            fn=slow_fn,
+            args=(),
+            per_attempt_timeout=2.0,
+            hedge_delay=0.03,
+            can_hedge=True,
+            deadline=time.time() + 10.0,
+            semaphore=sem,
+            endpoint="test_sem_busy",
+        )
+        assert res == "result-1"
+
+
+@pytest.mark.anyio
+async def test_execute_with_hedge_deadline_enforced():
+    import asyncio
+    import time
+    from reader import GeminiTimeoutError, execute_with_hedge
+
+    sem = asyncio.Semaphore(2)
+
+    def dummy_fn(deadline, timeout, attempt_idx):
+        return "ok"
+
+    # Deadline already in the past
+    with pytest.raises(GeminiTimeoutError) as exc_info:
+        await execute_with_hedge(
+            fn=dummy_fn,
+            args=(),
+            per_attempt_timeout=2.0,
+            hedge_delay=0.05,
+            can_hedge=True,
+            deadline=time.time() - 1.0,
+            semaphore=sem,
+            endpoint="test_deadline",
+        )
+    assert exc_info.value.status_code == 504
+
+
+# Item 4: lang=auto Tests on /api/explain
+def test_explain_lang_auto_hindi_doc(client):
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="government_notice",
+            document_language="hi",
+            language="hi",
+            title="पेंशन सूचना",
+            summary=["जीवन प्रमाण पत्र जमा करें।"],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "auto"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["document_language"] == "hi"
+        assert body["language"] == "hi"
+        assert body["title"] == "पेंशन सूचना"
+
+
+def test_explain_lang_auto_tamil_doc(client):
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="government_notice",
+            document_language="ta",
+            language="ta",
+            title="ஓய்வூதிய அறிவிப்பு",
+            summary=["வாழ்வுச் சான்றிதழை சமர்ப்பிக்கவும்."],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "auto"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["document_language"] == "ta"
+        assert body["language"] == "ta"
+        assert body["title"] == "ஓய்வூதிய அறிவிப்பு"
+
+
+def test_explain_lang_auto_foreign_doc_defaults_to_english(client):
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="other",
+            document_language="fr",
+            language="en",
+            title="Official Notice",
+            summary=["Please find the document summary."],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "auto"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["document_language"] == "fr"
+        assert body["language"] == "en"
+
+
+def test_explain_explicit_lang_preserved(client):
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="insurance",
+            document_language="en",
+            language="ta",
+            title="காப்பீட்டு கடிதம்",
+            summary=["விவரங்கள் உள்ளே."],
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "ta"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["document_language"] == "en"
+        assert body["language"] == "ta"
+
+
+# Item 5: Document Types + Key Details + Glance Tests
+def test_document_types_enum_all_supported():
+    from models import DOCUMENT_TYPES
+    expected_types = (
+        "utility_bill",
+        "telecom_bill",
+        "tax_receipt",
+        "insurance",
+        "bank",
+        "government_notice",
+        "court_legal",
+        "challan",
+        "medical",
+        "receipt",
+        "agreement",
+        "corporate",
+        "other",
+    )
+    for t in expected_types:
+        assert t in DOCUMENT_TYPES
+    assert len(DOCUMENT_TYPES) == 13
+
+
+def test_report_date_iso_and_glance_integration(client):
+    from main import IP_REQUESTS
+    from models import ReaderGlance, ReaderGlanceKeyValue
+    IP_REQUESTS.clear()
+
+    files = [("files", ("doc.pdf", b"%PDF-1.4...", "application/pdf"))]
+    with patch("main.read_document") as mock_read, patch("main.extract_pdf_pages") as mock_pages:
+        mock_pages.return_value = [
+            "Electricity Department. Bill Date: 01 October 2026. Total Due: Rs. 1,450. Due Date: 25.10.2026."
+        ]
+        mock_read.return_value = ReaderResponse(
+            document_type="utility_bill",
+            doc_type="utility_bill",
+            title="Electricity Bill",
+            report_title="Monthly Power Bill",
+            report_date="01 October 2026",
+            language="en",
+            summary=["Pay bill on time."],
+            glance=ReaderGlance(
+                headline="Electricity bill for October with due date on 25th",
+                key_values=[
+                    ReaderGlanceKeyValue(label="Total Amount", value="Rs. 1,450", kind="amount"),
+                    ReaderGlanceKeyValue(label="Due Date", value="25.10.2026", kind="date"),
+                ],
+            ),
+        )
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["document_type"] == "utility_bill"
+        assert body["report_date"] == "01 October 2026"
+        assert body["report_date_iso"] == "2026-10-01"
+        assert body["source_kind"] == "text_pdf"
+        assert body["glance"] is not None
+        assert body["glance"]["headline"] == "Electricity bill for October with due date on 25th"
+        kvs = body["glance"]["key_values"]
+        assert len(kvs) == 2
+        assert kvs[0]["label"] == "Total Amount"
+        assert kvs[0]["value"] == "Rs. 1,450"
+        assert kvs[0]["evidence"] == "matched"
+        assert kvs[1]["label"] == "Due Date"
+        assert kvs[1]["value"] == "25.10.2026"
+        assert kvs[1]["evidence"] == "matched"
+
+
+# Item 6: Places, Contacts, source_kind Tests
+def test_source_kind_determination_modes():
+    from evidence import determine_source_kind
+
+    # 1. Images only -> photo
+    assert determine_source_kind([(b"img", "image/jpeg")], None) == "photo"
+
+    # 2. PDF with legible text -> text_pdf
+    pdf_text = ["This is a legal document from the court with detailed directions and orders."]
+    assert determine_source_kind([(b"pdf", "application/pdf")], pdf_text) == "text_pdf"
+
+    # 3. PDF with almost no text (<50 chars) -> scanned_pdf
+    scanned_text = ["   \n  \t  1  "]
+    assert determine_source_kind([(b"pdf", "application/pdf")], scanned_text) == "scanned_pdf"
+
+
+def test_places_and_contacts_validation_and_deduplication():
+    from evidence import process_contacts, process_places
+    from models import ReaderContact, ReaderPlace
+
+    pdf_text = [
+        "Reach us at support@sarvam.ai or call 044-24356789. Office: 12 Anna Salai, Chennai."
+    ]
+
+    raw_places = [
+        ReaderPlace(label="Main Office", address="12 Anna Salai, Chennai", quote="Office: 12 Anna Salai, Chennai", page=1),
+        ReaderPlace(label="Main Office Duplicate", address="12 Anna Salai,   Chennai", quote="Office: 12 Anna Salai", page=1),
+        ReaderPlace(label="Branch", address="Nonexistent Street, Madurai", quote="Madurai branch", page=1),
+    ]
+    places = process_places(raw_places, pdf_text)
+    # Deduplication drops duplicate
+    assert len(places) == 2
+    assert places[0]["address"] == "12 Anna Salai, Chennai"
+    assert places[0]["evidence"] == "matched"
+    assert places[1]["evidence"] == "check_original"
+
+    raw_contacts = [
+        ReaderContact(label="Support Email", value="support@sarvam.ai", quote="support@sarvam.ai", page=1),
+        ReaderContact(label="Office Phone", value="044-24356789", quote="call 044-24356789", page=1),
+        ReaderContact(label="Invalid Phone", value="123", quote="123", page=1),  # < 7 digits -> dropped
+        ReaderContact(label="Invalid Email", value="not-an-email", quote="not-an-email", page=1),  # invalid -> dropped
+        ReaderContact(label="Duplicate Phone", value="044 2435 6789", quote="call", page=1),  # duplicate digits -> dropped
+    ]
+    contacts = process_contacts(raw_contacts, pdf_text)
+    assert len(contacts) == 2
+    assert contacts[0]["value"] == "support@sarvam.ai"
+    assert contacts[0]["evidence"] == "matched"
+    assert contacts[1]["value"] == "044-24356789"
+    assert contacts[1]["evidence"] == "matched"
+
+
+def test_translate_shrunk_input_and_copies_glance_places_contacts(client):
+    from main import IP_REQUESTS
+    from models import ContactInfo, GlanceKeyValue, GlanceSummary, PlaceInfo
+    IP_REQUESTS.clear()
+
+    orig = ExplainResponse(
+        doc_type="utility_bill",
+        document_type="utility_bill",
+        document_language="en",
+        source_kind="text_pdf",
+        title="Electricity Bill",
+        report_title="Consumer Power Bill",
+        report_date="01 October 2026",
+        report_date_iso="2026-10-01",
+        language="en",
+        letter_date="2026-10-01",
+        summary=["Please pay the total amount of Rs. 1,450."],
+        actions=[
+            ExplainAction(
+                text="Pay electricity bill Rs. 1,450",
+                due_date="2026-10-25",
+                quote="Pay total amount by 25.10.2026.",
+                page=1,
+                evidence="matched",
+            )
+        ],
+        warnings=[],
+        facts=[],
+        glance=GlanceSummary(
+            headline="Electricity bill for October with due date",
+            key_values=[
+                GlanceKeyValue(label="Total Due", value="Rs. 1,450", kind="amount", evidence="matched")
+            ],
+        ),
+        places=[
+            PlaceInfo(label="Bill Desk", address="12 Anna Salai, Chennai", quote="12 Anna Salai", page=1, evidence="matched")
+        ],
+        contacts=[
+            ContactInfo(label="Helpline", value="044-24356789", quote="call 044-24356789", page=1, evidence="matched")
+        ],
+        protected_terms=["12 Anna Salai, Chennai", "044-24356789"],
+    )
+
+    with patch("main.translate_keyed_strings") as mock_keyed:
+        mock_keyed.return_value = {
+            "title": "மின் கட்டண அறிக்கை",
+            "report_title": "நுகர்வோர் மின் கட்டணம்",
+            "summary_0": "தயவுசெய்து மொத்தத் தொகையான ரூ. 1,450 ஐ செலுத்தவும்.",
+            "action_0_text": "மின் கட்டணம் ரூ. 1,450 ஐ செலுத்தவும்",
+            "glance_headline": "அக்டோபர் மாத மின் கட்டண அறிக்கை",
+            "glance_kv_0_label": "செலுத்த வேண்டிய தொகை",
+            "place_0_label": "கட்டண மையம்",
+            "contact_0_label": "உதவி எண்",
+        }
+
+        res = client.post(
+            "/api/translate",
+            json={"result": orig.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["language"] == "ta"
+        assert body["title"] == "மின் கட்டண அறிக்கை"
+        assert body["report_title"] == "நுகர்வோர் மின் கட்டணம்"
+        assert body["report_date"] == "01 October 2026"
+        assert body["report_date_iso"] == "2026-10-01"
+        assert body["source_kind"] == "text_pdf"
+
+        # Glance: label translated, value and evidence preserved by code
+        assert body["glance"]["headline"] == "அக்டோபர் மாத மின் கட்டண அறிக்கை"
+        assert body["glance"]["key_values"][0]["label"] == "செலுத்த வேண்டிய தொகை"
+        assert body["glance"]["key_values"][0]["value"] == "Rs. 1,450"
+        assert body["glance"]["key_values"][0]["evidence"] == "matched"
+
+        # Places: label translated, address/quote/page/evidence copied by code
+        assert body["places"][0]["label"] == "கட்டண மையம்"
+        assert body["places"][0]["address"] == "12 Anna Salai, Chennai"
+        assert body["places"][0]["quote"] == "12 Anna Salai"
+        assert body["places"][0]["evidence"] == "matched"
+
+        # Contacts: label translated, value/quote/page/evidence copied by code
+        assert body["contacts"][0]["label"] == "உதவி எண்"
+        assert body["contacts"][0]["value"] == "044-24356789"
+        assert body["contacts"][0]["quote"] == "call 044-24356789"
+        assert body["contacts"][0]["evidence"] == "matched"
+
+
+
 
