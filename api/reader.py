@@ -8,6 +8,7 @@ from typing import Any, List, Optional, Tuple
 from google import genai
 from google.genai import errors, types
 
+from evidence import GENERIC_OFFICE_WORDS, filter_protected_terms
 from models import ReaderResponse, TranslatePayload
 
 # Suppress harmless AFC warning from google-genai
@@ -90,7 +91,14 @@ Rules:
    - Month names, units, and labels must be strictly in {LANG} (no English words mixed in).
    - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
    - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed.
-   - PROTECTED TERMS & NAMES: Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers must be copied EXACTLY as printed, in the original script. Latin stays Latin (e.g. 'Devayalini M' stays 'Devayalini M', never transliterate into Tamil, Hindi, or other scripts). A name already in Tamil script stays in Tamil script. Never transliterate or guess spelling. Populate `protected_terms` with these items exactly as printed.
+   - PROTECTED TERMS (populate `protected_terms` ONLY with these items, copied EXACTLY as printed in the original script; Latin stays Latin, never transliterate):
+     * Person names (with title like Mr./Mrs. attached, e.g. 'Mr. Ravi Kumar', 'Devayalini M')
+     * Organisation / hospital / lab / company names, street addresses and place names (e.g. 'Star Health Insurance', 'Sunrise Hospital, Jayanagar', 'No. 14, 3rd Cross, Bengaluru')
+     * ID / policy / claim / account / reference numbers, phone numbers, email and web addresses (e.g. 'CLM-2026-0884', 'SH/IND/22/559102', 'claims@example.com')
+   - NOT PROTECTED (translate into {LANG}; add English original in brackets on first mention only if it is an official term; NEVER put in `protected_terms`):
+     * Department or office names (e.g. 'Grievance Cell' -> translate to {LANG}, 'Claims Department' -> translate to {LANG})
+     * Job titles (e.g. 'Claims Manager' -> translate to {LANG})
+     * Clause / section / page labels and generic nouns (e.g. 'Clause 4.2' -> translate to {LANG}, 'Section B' -> translate to {LANG})
 3. Every action, warning and fact must include "quote": text copied EXACTLY
    from the document in its original language, plus the page number.
 4. Do not invent anything. If something is not in the document, leave it out.
@@ -122,7 +130,15 @@ Rules:
 3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
 4. Include an English term in brackets ONLY for official names (scheme names, form names).
 5. CRITICAL NUMBER GUARD: Always keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text (e.g. use 31,200 not ௩௧,௨௦௦ or ३१,२००; use 2026 not ௨௦௨௬). Do not drop, modify, convert, or translate any number, date, amount, or phone number.
-6. CRITICAL PROTECTED TERMS GUARD: Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers (including any terms listed in protected_terms) must NEVER be translated or transliterated. They must be copied EXACTLY as printed in the original script. Latin stays Latin (e.g. 'Devayalini M' must remain 'Devayalini M', never transliterated into Tamil or Hindi script). A name already in Tamil script stays in Tamil script. Never guess transliterations. Every protected term present in the original text must appear verbatim in your translation.
+6. CRITICAL PROTECTED TERMS & TRANSLATION RULES:
+   - PROTECTED TERMS (NEVER translate or transliterate; copy EXACTLY as printed in original script; Latin stays Latin; every protected term present in original text must appear verbatim in your translation):
+     * Person names (with title attached, e.g. 'Mr. Ravi Kumar', 'Devayalini M')
+     * Organisation, hospital, lab, company names, addresses, place names (e.g. 'Star Health Insurance', 'Sunrise Hospital, Jayanagar', 'No. 14, 3rd Cross, Bengaluru')
+     * ID, policy, claim, account, reference numbers, phone numbers, email, web addresses (e.g. 'CLM-2026-0884', 'SH/IND/22/559102', 'claims@example.com')
+   - NOT PROTECTED (MUST be translated into {LANG}; add English original in brackets on first mention only if official term):
+     * Department or office names (e.g. 'Grievance Cell', 'Claims Department' -> translate into {LANG})
+     * Job titles (e.g. 'Claims Manager' -> translate into {LANG})
+     * Clause, section, page labels and generic nouns (e.g. 'Clause 4.2', 'Section B' -> translate into {LANG})
 7. Translate title, report_title, summary, action text, deadline_rule, recurrence, warning text, fact text, conflicts, and unreadable_reason.
 
 User-facing text to translate:
@@ -385,6 +401,10 @@ def read_document(
     if not result.language:
         result.language = lang
 
+    # Code safety net: filter out generic office terms from protected_terms
+    if result.protected_terms:
+        result.protected_terms = filter_protected_terms(result.protected_terms)
+
     return result
 
 
@@ -393,6 +413,10 @@ def translate_result_text(
     lang: str,
     deadline: Optional[float] = None,
 ) -> TranslatePayload:
+    # Ensure payload protected_terms are filtered
+    if payload.protected_terms:
+        payload.protected_terms = filter_protected_terms(payload.protected_terms)
+
     lang_name = resolve_language_name(lang)
     payload_json = payload.model_dump_json(exclude_none=True)
     prompt = TRANSLATE_PROMPT_TEMPLATE.format(LANG=lang_name, PAYLOAD_JSON=payload_json)
@@ -417,5 +441,10 @@ def translate_result_text(
     )
 
     if response.parsed and isinstance(response.parsed, TranslatePayload):
-        return response.parsed
-    return TranslatePayload.model_validate_json(response.text)
+        res_payload = response.parsed
+    else:
+        res_payload = TranslatePayload.model_validate_json(response.text)
+
+    if res_payload.protected_terms:
+        res_payload.protected_terms = filter_protected_terms(res_payload.protected_terms)
+    return res_payload

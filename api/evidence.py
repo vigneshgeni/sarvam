@@ -130,6 +130,116 @@ def verify_translation_guard(orig_text: Optional[str], trans_text: Optional[str]
     return True
 
 
+# Named constant for generic office words safety net
+GENERIC_OFFICE_WORDS = frozenset({
+    # Words explicitly named in prompt
+    "department",
+    "cell",
+    "manager",
+    "officer",
+    "office",
+    "division",
+    "clause",
+    "section",
+    "desk",
+    "team",
+    # Specific problem terms and common organizational variants
+    "dept",
+    "claim",
+    "claims",
+    "grievance",
+    "grievances",
+    "redressal",
+    "complaint",
+    "complaints",
+    "service",
+    "services",
+    "support",
+    "care",
+    "customer",
+    "helpdesk",
+    "helpline",
+    "unit",
+    "branch",
+    "center",
+    "centre",
+    "committee",
+    "board",
+    "group",
+    "bureau",
+    "wing",
+    "agency",
+    "council",
+    "admin",
+    "administration",
+    "executive",
+    "supervisor",
+    "lead",
+    "head",
+    "director",
+    "assistant",
+    "associate",
+    "coordinator",
+    "representative",
+    "agent",
+    "specialist",
+    "advisor",
+    "clerk",
+    "staff",
+    "operations",
+    "audit",
+    "billing",
+    "legal",
+    "finance",
+    "accounts",
+    "underwriting",
+    "subclause",
+    "part",
+    "page",
+    # Common connectors
+    "and",
+    "of",
+    "the",
+    "for",
+    "in",
+    "at",
+    "to",
+})
+
+
+def is_generic_office_term(term: str) -> bool:
+    """
+    Checks if a protected_terms entry is made up entirely of generic office words
+    (department, cell, manager, officer, office, division, clause, section, desk, team, etc.)
+    with no digits.
+    """
+    if not term or not term.strip():
+        return False
+    # If it contains any digits (e.g. CLM-2026-0884, POL-1234), keep it
+    if any(c.isdigit() for c in term):
+        return False
+    words = re.findall(r"[A-Za-z]+", term.lower())
+    if not words:
+        return False
+    return all(w in GENERIC_OFFICE_WORDS for w in words)
+
+
+def filter_protected_terms(terms: Optional[List[str]]) -> List[str]:
+    """
+    Code safety net: drops any protected_terms entry made up entirely of
+    generic office words with no digits.
+    """
+    if not terms:
+        return []
+    filtered = []
+    for term in terms:
+        if not term or not term.strip():
+            continue
+        if not is_generic_office_term(term):
+            filtered.append(term.strip())
+    return filtered
+
+
 def normalize_protected_term(text: str) -> str:
     """
     Normalizes text for protected terms comparison:
@@ -152,6 +262,7 @@ def verify_protected_terms_guard(
     """
     Guard: verifies every protected term that appears in the original text
     must appear in the translated text.
+    - Filters out generic office terms (safety net).
     - Case-insensitive, whitespace-collapsed, and Unicode NFC-normalised.
     - Original script must be preserved (Latin stays Latin, Tamil stays Tamil, etc.).
     """
@@ -160,10 +271,14 @@ def verify_protected_terms_guard(
     if not trans_text:
         return False
 
+    active_terms = filter_protected_terms(protected_terms)
+    if not active_terms:
+        return True
+
     norm_orig = normalize_protected_term(orig_text)
     norm_trans = normalize_protected_term(trans_text)
 
-    for term in protected_terms:
+    for term in active_terms:
         clean_term = term.strip()
         if not clean_term:
             continue

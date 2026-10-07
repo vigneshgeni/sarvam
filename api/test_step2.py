@@ -11,10 +11,13 @@ from dates import (
     parse_date,
 )
 from evidence import (
+    GENERIC_OFFICE_WORDS,
     collapse_whitespace,
     compute_evidence_summary,
     extract_critical_tokens,
     extract_digit_sequences,
+    filter_protected_terms,
+    is_generic_office_term,
     normalize_digits,
     normalize_text_for_guard,
     verify_evidence,
@@ -1031,5 +1034,122 @@ def test_deadline_hit_during_retry(client):
         body = res.json()
         assert "Request timed out" in body["message"]
         assert body["message_local"] == "अनुरोध का समय समाप्त हो गया. कृपया पुन: प्रयास करें."
+
+
+# --- Step 5b-3: Protected Terms Safety Net & Generic Office Words Tests ---
+
+def test_generic_office_words_safety_net():
+    # 1. Names and IDs stay protected
+    assert not is_generic_office_term("Mr. Ravi Kumar")
+    assert not is_generic_office_term("CLM-2026-0884")
+    assert not is_generic_office_term("SH/IND/22/559102")
+    assert not is_generic_office_term("Devayalini M")
+    assert not is_generic_office_term("Sunrise Hospital, Jayanagar")
+
+    # 2. Generic office words with no digits are filtered
+    assert is_generic_office_term("Grievance Cell")
+    assert is_generic_office_term("Claims Manager")
+    assert is_generic_office_term("Claims Department")
+    assert is_generic_office_term("Grievance Redressal Cell")
+    assert is_generic_office_term("Customer Support Desk")
+    assert is_generic_office_term("Head Office")
+
+    # 3. Filter function drops only generic office terms
+    raw_terms = [
+        "Mr. Ravi Kumar",
+        "CLM-2026-0884",
+        "Grievance Cell",
+        "Claims Manager",
+        "Claims Department",
+        "Sunrise Hospital",
+    ]
+    filtered = filter_protected_terms(raw_terms)
+    assert filtered == ["Mr. Ravi Kumar", "CLM-2026-0884", "Sunrise Hospital"]
+
+
+def test_guard_accepts_translated_grievance_cell_and_rejects_transliterated_name():
+    orig_text = (
+        "Dear Mr. Ravi Kumar, regarding claim CLM-2026-0884. "
+        "If you disagree, write to the Grievance Cell."
+    )
+    terms = ["Mr. Ravi Kumar", "CLM-2026-0884", "Grievance Cell", "Claims Manager"]
+
+    # 1. Tamil translation translates 'Grievance Cell' to Tamil and keeps Mr. Ravi Kumar & CLM-2026-0884
+    trans_translated_cell = (
+        "அன்புள்ள Mr. Ravi Kumar அவர்களே, கோரிக்கை CLM-2026-0884 தொடர்பாக. "
+        "நீங்கள் உடன்படவில்லை என்றால், குறைதீர்க்கும் பிரிவுக்கு எழுதவும்."
+    )
+    assert verify_protected_terms_guard(terms, orig_text, trans_translated_cell) is True
+
+    # 2. Tamil translation transliterates 'Mr. Ravi Kumar' to Tamil script -> rejected
+    trans_transliterated_name = (
+        "அன்புள்ள திரு ரவி குமார் அவர்களே, கோரிக்கை CLM-2026-0884 தொடர்பாக. "
+        "நீங்கள் உடன்படவில்லை என்றால், குறைதீர்க்கும் பிரிவுக்கு எழுதவும்."
+    )
+    assert verify_protected_terms_guard(terms, orig_text, trans_transliterated_name) is False
+
+
+def test_translate_endpoint_accepts_translated_grievance_cell_and_rejects_transliterated_name(client):
+    from unittest.mock import patch
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    orig = ExplainResponse(
+        doc_type="insurance",
+        title="Insurance Claim Settlement",
+        language="en",
+        summary=[
+            "Dear Mr. Ravi Kumar, your claim CLM-2026-0884 was processed. Write to Grievance Cell if you disagree."
+        ],
+        actions=[],
+        warnings=[],
+        facts=[],
+        protected_terms=["Mr. Ravi Kumar", "CLM-2026-0884", "Grievance Cell", "Claims Manager"],
+    )
+
+    # 1. Grievance Cell is translated to Tamil: passes guard (200), response protected_terms filtered
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="காப்பீட்டு கோரிக்கை தீர்வு",
+            summary=[
+                "அன்புள்ள Mr. Ravi Kumar, உங்கள் கோரிக்கை CLM-2026-0884 பரிசீலிக்கப்பட்டது. உடன்படவில்லை என்றால் குறைதீர்க்கும் பிரிவுக்கு எழுதவும்."
+            ],
+            actions=[],
+            warnings=[],
+            facts=[],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": orig.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["language"] == "ta"
+        # Grievance Cell and Claims Manager should be filtered from response protected_terms
+        assert body["protected_terms"] == ["Mr. Ravi Kumar", "CLM-2026-0884"]
+
+    # 2. Real name is transliterated to Tamil: rejected with 422
+    IP_REQUESTS.clear()
+    with patch("main.translate_result_text") as mock_trans:
+        mock_trans.return_value = TranslatePayload(
+            title="காப்பீட்டு கோரிக்கை தீர்வு",
+            summary=[
+                "அன்புள்ள திரு ரவி குமார், உங்கள் கோரிக்கை CLM-2026-0884 பரிசீலிக்கப்பட்டது. உடன்படவில்லை என்றால் குறைதீர்க்கும் பிரிவுக்கு எழுதவும்."
+            ],
+            actions=[],
+            warnings=[],
+            facts=[],
+        )
+
+        res = client.post(
+            "/api/translate",
+            json={"result": orig.model_dump(), "lang": "ta"},
+        )
+        assert res.status_code == 422
+        body = res.json()
+        assert "Translation verification failed" in body["message"]
+        assert body["message_local"] == "மொழிபெயர்ப்பு சரிபார்ப்பு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்."
+
 
 

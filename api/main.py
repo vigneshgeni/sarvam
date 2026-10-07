@@ -20,9 +20,11 @@ from dates import (
 )
 from errors import make_error_response
 from evidence import (
+    GENERIC_OFFICE_WORDS,
     collect_conflicts,
     compute_evidence_summary,
     extract_pdf_pages,
+    filter_protected_terms,
     verify_evidence,
     verify_protected_terms_guard,
     verify_translation_guard,
@@ -549,7 +551,7 @@ async def explain(
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
-        protected_terms=reader_result.protected_terms,
+        protected_terms=filter_protected_terms(reader_result.protected_terms),
     )
 
 
@@ -607,7 +609,7 @@ async def translate(
         facts=facts_payload,
         conflicts=orig.conflicts,
         unreadable_reason=orig.unreadable_reason,
-        protected_terms=orig.protected_terms,
+        protected_terms=filter_protected_terms(orig.protected_terms),
     )
 
     # Check remaining deadline before semaphore wait
@@ -780,5 +782,5 @@ async def translate(
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=translated_payload.unreadable_reason if orig.unreadable_reason else None,
-        protected_terms=orig.protected_terms,    # Copied by CODE
+        protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
     )

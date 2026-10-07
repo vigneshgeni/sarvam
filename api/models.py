@@ -103,7 +103,7 @@ class ReaderResponse(BaseModel):
     )
     protected_terms: List[str] = Field(
         default_factory=list,
-        description="Person/doctor/patient names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers copied exactly as printed in original script",
+        description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
 
 
@@ -158,7 +158,7 @@ class ExplainResponse(BaseModel):
     unreadable_reason: Optional[str] = None
     protected_terms: List[str] = Field(
         default_factory=list,
-        description="Person names, patient/doctor names, hospital/lab/company names, addresses, place names, and ID/policy/account/reference numbers copied exactly as printed in original script",
+        description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
 
 
