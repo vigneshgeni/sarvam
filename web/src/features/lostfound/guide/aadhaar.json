@@ -1,0 +1,13 @@
+{
+  "id": "aadhaar_card",
+  "title": "Aadhaar",
+  "verifiedOn": "2026-10-08",
+  "steps": [
+    "Sarvam never asks for or stores your Aadhaar number. Do not type it here.",
+    "Use the official myAadhaar portal to lock, unlock or order a reprint. Check every step on that site.",
+    "File a police lost-report if you need an acknowledgement for other offices."
+  ],
+  "links": [
+    { "label": "myAadhaar (UIDAI)", "href": "https://myaadhaar.uidai.gov.in/", "unverified": false }
+  ]
+}

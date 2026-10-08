@@ -1,0 +1,13 @@
+{
+  "id": "driving_licence",
+  "title": "Driving licence",
+  "verifiedOn": "2026-10-08",
+  "steps": [
+    "File a lost-report or e-complaint and keep the acknowledgement.",
+    "Apply for a duplicate licence on the official Parivahan portal. Check that site for forms and fees.",
+    "Do not post the licence number in public text."
+  ],
+  "links": [
+    { "label": "Parivahan", "href": "https://parivahan.gov.in/", "unverified": false }
+  ]
+}
