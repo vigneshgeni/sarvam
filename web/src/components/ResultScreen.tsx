@@ -381,7 +381,7 @@ export default function ResultScreen({
     <div className="flex-1 flex flex-col justify-between pb-28">
       {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
       <div
-        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md px-4 py-2.5 flex items-center justify-between gap-2 transition-shadow ${
+        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md -mx-5 -mt-5 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 transition-shadow ${
           isScrolled ? 'border-b border-[#E6E6E1] shadow-xs' : ''
         }`}
       >
@@ -423,7 +423,7 @@ export default function ResultScreen({
         </button>
       </div>
 
-      <div className="flex flex-col gap-5 px-4 pt-3 max-w-[430px] mx-auto w-full">
+      <div className="flex flex-col gap-5 pt-3 w-full">
         {/* Back to all reports button if viewing a report from multi-report set */}
         {multiReports && multiReports.length > 1 && (
           <button
