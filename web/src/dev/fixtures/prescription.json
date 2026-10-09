@@ -1,0 +1,145 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "title": "Physician Prescription",
+  "report_title": "Outpatient Prescription Record",
+  "report_date": "06 Oct 2026",
+  "report_date_iso": "2026-10-06",
+  "source_kind": "photo",
+  "language": "en",
+  "document_language": "en",
+  "letter_date": "2026-10-06",
+  "summary": [
+    "Three medications prescribed for acute upper respiratory infection and cough.",
+    "Complete the full antibiotic course and take allergy medication at bedtime."
+  ],
+  "glance": {
+    "headline": "3 Medications Prescribed for Respiratory Infection",
+    "key_values": [
+      {
+        "label": "Doctor",
+        "value": "Dr. K. Raghavan",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "Prescription Date",
+        "value": "06 Oct 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "Duration",
+        "value": "5 Days",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "places": [
+    {
+      "label": "City Health Clinic",
+      "address": "45 Cathedral Road, Gopalapuram, Chennai 600086",
+      "quote": "City Health Clinic, 45 Cathedral Road, Chennai 600086",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Clinic Reception",
+      "value": "+91 44 2811 9900",
+      "quote": "Tel: 044-28119900",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [
+    {
+      "name": "Amoxicillin & Potassium Clavulanate",
+      "strength_text": "625 mg",
+      "frequency_raw": "1-0-1",
+      "frequency_code": "BID",
+      "slots": ["morning", "night"],
+      "food_timing": "after_food",
+      "duration_days": 5,
+      "instruction_text": "Take after meals with water",
+      "decoded": true,
+      "quote": "Augmentin 625mg 1-0-1 after food x 5 days",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "name": "Montelukast & Levocetirizine",
+      "strength_text": "10 mg / 5 mg",
+      "frequency_raw": "0-0-1",
+      "frequency_code": "QHS",
+      "slots": ["bedtime"],
+      "food_timing": "after_food",
+      "duration_days": 7,
+      "instruction_text": "Take 1 tablet at night before sleep",
+      "decoded": true,
+      "quote": "Montair-LC 0-0-1 at bedtime x 7 days",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "name": "Paracetamol",
+      "strength_text": "650 mg",
+      "frequency_raw": "SOS",
+      "frequency_code": "PRN",
+      "slots": ["as_needed"],
+      "food_timing": "after_food",
+      "duration_days": null,
+      "instruction_text": "Take only if body temperature exceeds 100°F",
+      "decoded": true,
+      "quote": "Dolo 650 SOS fever",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "actions": [
+    {
+      "text": "Complete full 5-day antibiotic course even if feeling better",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "Complete antibiotic course strictly",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "Do not skip doses of antibiotics to prevent bacterial resistance",
+      "quote": "Strict compliance required",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Patient: Ananya Rao, Age 29",
+      "quote": "Ananya Rao, 29F",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "conflicts": [],
+  "evidence_summary": {
+    "matched": 6,
+    "check_original": 0,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "protected_terms": [
+    "Ananya Rao",
+    "+91 44 2811 9900",
+    "45 Cathedral Road, Gopalapuram, Chennai 600086"
+  ],
+  "spoken_summary": "You have been prescribed three medicines. Take the antibiotic Augmentin twice a day after meals for five days, the allergy tablet at bedtime for seven days, and paracetamol only if you develop a fever."
+}

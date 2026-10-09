@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getDictionary, LANGUAGES } from '../i18n'
+import { getDictionary, SUPPORTED_LANGS } from '../i18n'
 import type { AppErrorInfo } from '../types'
 
 interface ReadingScreenProps {
@@ -9,6 +9,7 @@ interface ReadingScreenProps {
   error: AppErrorInfo | null
   onRetry: () => void
   onCancel: () => void
+  multiReportProgress?: { ready: number; total: number } | null
 }
 
 function ErrorView({
@@ -61,38 +62,62 @@ function ErrorView({
       </div>
 
       <div className="text-center flex flex-col gap-1.5 max-w-[340px]">
-        <h2 className="font-heading font-bold text-[22px] text-ink leading-tight">
-          {t.errorTitle || 'Could not read notice'}
-        </h2>
-        <p className="text-[14.5px] leading-relaxed text-[#5A3500] bg-[#FFF4DE] border border-[#F4DDB0] p-4 rounded-xl text-left">
-          {error.messageLocal}
+        <h3 className="font-heading font-bold text-[20px] text-ink leading-tight">
+          {error.statusCode === 429
+            ? t.tooManyRequests || 'Too many requests'
+            : t.errorTitle || 'Could not read document'}
+        </h3>
+        <p className="text-[14.5px] text-muted leading-relaxed">
+          {error.messageLocal || error.message}
         </p>
       </div>
 
-      {/* Action buttons with 429 countdown */}
+      {/* Countdown pill if 429 Retry-After */}
+      {secondsLeft > 0 && (
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF4DE] border border-[#F4DDB0] text-warn-ink text-[13px] font-semibold">
+          <svg
+            className="sv-spin w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+            <path d="M12 2a10 10 0 0 1 10 10" />
+          </svg>
+          <span>
+            {(t.retryIn || 'Try again in {seconds}s').replace('{seconds}', String(secondsLeft))}
+          </span>
+        </div>
+      )}
+
+      {/* Buttons */}
       <div className="w-full flex flex-col gap-2.5 pt-2">
         <button
           type="button"
           onClick={onRetry}
           disabled={secondsLeft > 0}
-          className={`w-full h-12 rounded-full font-bold text-[15px] flex items-center justify-center transition-all ${
-            secondsLeft > 0
-              ? 'bg-soft text-muted cursor-not-allowed border border-line'
-              : 'bg-brand text-white hover:opacity-95 active:scale-[0.99] shadow-sm'
-          }`}
+          className="btn-press w-full py-3.5 rounded-full bg-brand text-white font-semibold text-[15px] hover:bg-[#0E5B37] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center gap-2"
         >
-          {secondsLeft > 0
-            ? (t.retryIn || 'Try again in {seconds}s').replace(
-                '{seconds}',
-                String(secondsLeft)
-              )
-            : t.retry || 'Try again'}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+          <span>{t.retry || 'Try again'}</span>
         </button>
 
         <button
           type="button"
           onClick={onCancel}
-          className="w-full h-12 rounded-full border border-line bg-surface text-ink font-semibold text-[15px] flex items-center justify-center hover:bg-soft transition-colors active:scale-[0.99]"
+          className="btn-press w-full py-3 rounded-full text-muted hover:text-ink font-semibold text-[14px] transition-colors"
         >
           {t.goBack || 'Go back'}
         </button>
@@ -108,13 +133,13 @@ export default function ReadingScreen({
   error,
   onRetry,
   onCancel,
+  multiReportProgress,
 }: ReadingScreenProps) {
-  const t = getDictionary(lang)
   const [step, setStep] = useState<number>(0)
   const [takingLonger, setTakingLonger] = useState<boolean>(false)
 
-  // Find native language label
-  const currentLangObj = LANGUAGES.find((l) => l.id === lang) || LANGUAGES[0]
+  const t = getDictionary(lang)
+  const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[0]
   const nativeLangName = currentLangObj.label || langName
 
   // Stepper progress simulation while waiting
@@ -135,13 +160,13 @@ export default function ReadingScreen({
     }
   }, [error, files, lang])
 
-  // 15-second delay notice
+  // 20-second delay notice per WEB-5
   useEffect(() => {
     if (error) return
 
     const tLonger = setTimeout(() => {
       setTakingLonger(true)
-    }, 15000)
+    }, 20000)
 
     return () => clearTimeout(tLonger)
   }, [error, files, lang])
@@ -157,7 +182,7 @@ export default function ReadingScreen({
   const docTitle =
     files.length === 1 && files[0].name
       ? files[0].name
-      : t.readingTitle || 'Reading the notice'
+      : t.readingTitle || 'Reading your document'
 
   // Step labels use natural native language phrasing
   let stepWritingLabel =
@@ -170,7 +195,7 @@ export default function ReadingScreen({
   }
 
   const steps = [
-    { label: t.stepReading || 'Reading the notice' },
+    { label: t.stepReading || 'Reading your document' },
     { label: t.stepChecking || 'Checking against the document' },
     { label: stepWritingLabel },
   ]
@@ -203,6 +228,15 @@ export default function ReadingScreen({
             {docTitle}
           </h2>
           <p className="text-[14px] text-muted">{fileLabel}</p>
+          {multiReportProgress && (
+            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-brand-soft text-brand font-semibold text-[13px] rounded-full mx-auto mt-1">
+              <span>
+                {(t.reportsProgress || 'Report {ready} of {total} ready')
+                  .replace('{ready}', String(multiReportProgress.ready))
+                  .replace('{total}', String(multiReportProgress.total))}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -256,9 +290,9 @@ export default function ReadingScreen({
         </div>
       )}
 
-      {/* 15s Taking Longer Notice */}
+      {/* 20s Reassurance Notice (WEB-5) */}
       {showTakingLonger && (
-        <div className="w-full bg-soft border border-line rounded-card p-4 flex items-start gap-3 text-ink/80 animate-card-in">
+        <div className="w-full bg-[#FBF7EF] border border-[#F1EBDD] rounded-card p-4 flex items-start gap-3 text-ink/80 animate-card-in">
           <svg
             width="20"
             height="20"
@@ -274,8 +308,8 @@ export default function ReadingScreen({
             <polyline points="12 6 12 12 16 14" />
           </svg>
           <span className="text-[13.5px] leading-relaxed">
-            {t.takingLonger ||
-              'Taking longer than usual. Long documents can take up to a minute.'}
+            {t.reassuranceText ||
+              'Still reading... Documents with complex tables or multiple pages take a little longer'}
           </span>
         </div>
       )}

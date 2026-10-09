@@ -1,11 +1,19 @@
 export type DocType =
-  | 'government_notice'
   | 'utility_bill'
+  | 'telecom_bill'
+  | 'tax_receipt'
   | 'insurance'
-  | 'lab_report'
   | 'bank'
-  | 'school'
+  | 'government_notice'
+  | 'court_legal'
+  | 'challan'
+  | 'medical'
+  | 'receipt'
+  | 'agreement'
+  | 'corporate'
   | 'other'
+  | 'lab_report'
+  | 'school'
 
 export type DateStatus =
   | 'upcoming'
@@ -14,7 +22,7 @@ export type DateStatus =
   | 'recurring'
   | 'none'
 
-export type EvidenceType = 'matched' | 'check_original' | 'calculated'
+export type EvidenceType = 'matched' | 'check_original' | 'calculated' | 'none'
 
 export interface ExplainAction {
   text: string
@@ -49,12 +57,62 @@ export interface EvidenceSummary {
   calculated: number
 }
 
+export interface GlanceKeyValue {
+  label: string
+  value: string
+  kind: 'amount' | 'date' | 'text'
+  evidence: 'matched' | 'check_original' | 'calculated'
+}
+
+export interface GlanceSection {
+  headline: string
+  key_values: GlanceKeyValue[]
+}
+
+export interface PlaceItem {
+  label: string
+  address: string
+  quote?: string
+  page?: number
+  evidence: 'matched' | 'check_original' | 'calculated'
+}
+
+export interface ContactItem {
+  label: string
+  value: string
+  quote?: string
+  page?: number
+  evidence: 'matched' | 'check_original' | 'calculated'
+}
+
+export type MedicineSlot = 'morning' | 'afternoon' | 'evening' | 'night' | 'bedtime' | 'as_needed'
+export type FoodTiming = 'before_food' | 'after_food' | null
+
+export interface MedicineItem {
+  name: string
+  strength_text: string | null
+  frequency_raw: string
+  frequency_code: string
+  slots: MedicineSlot[]
+  food_timing: FoodTiming
+  duration_days: number | null
+  instruction_text: string
+  decoded: boolean
+  quote?: string
+  page?: number
+  evidence: 'matched' | 'check_original' | 'calculated'
+}
+
 export interface ExplainResponse {
   doc_type: DocType | string
+  document_type?: DocType | string
   title: string
   report_title: string | null
   report_date: string | null
+  report_date_iso?: string | null
+  source_kind?: 'text_pdf' | 'scanned_pdf' | 'photo' | string | null
   language: string
+  document_language?: string
   letter_date: string | null
   summary: string[]
   actions: ExplainAction[]
@@ -65,6 +123,30 @@ export interface ExplainResponse {
   unreadable: boolean
   unreadable_reason: string | null
   protected_terms: string[]
+  glance?: GlanceSection
+  places?: PlaceItem[]
+  contacts?: ContactItem[]
+  medicines?: MedicineItem[]
+  spoken_summary?: string
+}
+
+export interface AskResponse {
+  answer: string
+  quote: string | null
+  page: number | null
+  evidence: 'matched' | 'check_original' | 'none'
+  answered_from: 'document' | 'summary'
+  not_found: boolean
+  language: string
+}
+
+export interface A11ySettings {
+  textSize: 100 | 115 | 130 | 150
+  lineSpacing: 'normal' | 'relaxed'
+  easyRead: boolean
+  highContrast: boolean
+  reduceMotion: boolean
+  largerTapTargets: boolean
 }
 
 export interface ErrorResponse {
@@ -95,6 +177,17 @@ export interface StagedFile {
   previewUrl?: string
 }
 
+export interface MultiReportCard {
+  id: string
+  fileName: string
+  title: string
+  date?: string | null
+  evidence_summary?: EvidenceSummary
+  result?: ExplainResponse
+  error?: AppErrorInfo | null
+  status: 'pending' | 'ready' | 'error'
+}
+
 export interface RecentResult {
   id: string
   timestamp: number
@@ -103,6 +196,8 @@ export interface RecentResult {
   fileNames: string[]
   lang: string
   result: ExplainResponse
+  translations?: Record<string, ExplainResponse>
+  multiReports?: MultiReportCard[]
 }
 
 export type AppScreen = 'home' | 'tray' | 'reading' | 'result'

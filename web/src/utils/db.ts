@@ -1,4 +1,4 @@
-import type { RecentResult } from '../types'
+import type { RecentResult, ExplainResponse } from '../types'
 
 const DB_NAME = 'sarvam_db'
 const DB_VERSION = 1
@@ -90,6 +90,8 @@ export async function saveRecentResult(
       fileNames: entry.fileNames || [],
       lang: entry.lang,
       result: entry.result, // Result JSON only
+      translations: entry.translations || {},
+      multiReports: entry.multiReports,
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -115,6 +117,40 @@ export async function saveRecentResult(
     })
   } catch {
     // Non-fatal if IndexedDB write fails
+  }
+}
+
+// Save a translated result into that Recent entry (keyed by language)
+export async function saveRecentTranslation(
+  id: string,
+  lang: string,
+  translatedResult: ExplainResponse
+): Promise<void> {
+  if (!isSaveRecentEnabled()) return
+
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+
+      getReq.onsuccess = () => {
+        const item = getReq.result as RecentResult | undefined
+        if (item) {
+          if (!item.translations) {
+            item.translations = {}
+          }
+          item.translations[lang] = translatedResult
+          store.put(item)
+        }
+      }
+
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal
   }
 }
 

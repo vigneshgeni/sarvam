@@ -1,0 +1,115 @@
+{
+  "doc_type": "insurance",
+  "document_type": "insurance",
+  "title": "Health Insurance Renewal Notice",
+  "report_title": "Health Insurance Policy Renewal",
+  "report_date": "15 Nov 2026",
+  "report_date_iso": "2026-11-15",
+  "source_kind": "text_pdf",
+  "language": "en",
+  "document_language": "en",
+  "letter_date": "2026-10-15",
+  "summary": [
+    "Your health insurance policy is due for annual renewal.",
+    "Pay the renewal premium of ₹14,500 by 15 November 2026 to ensure uninterrupted hospitalization cover."
+  ],
+  "glance": {
+    "headline": "Policy Renewal Due Soon",
+    "key_values": [
+      {
+        "label": "Renewal Premium",
+        "value": "₹14,500",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "Due Date",
+        "value": "15 Nov 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "Sum Insured",
+        "value": "₹5,00,000",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "places": [
+    {
+      "label": "Branch Office",
+      "address": "72 Anna Salai, Thousand Lights, Chennai 600006",
+      "quote": "Branch Office: 72 Anna Salai, Chennai 600006",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Toll Free Helpdesk",
+      "value": "+91 1800 220 011",
+      "quote": "Toll Free: 1800-220-011",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "Grievance Email",
+      "value": "support@careinsurance-demo.in",
+      "quote": "support@careinsurance-demo.in",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "actions": [
+    {
+      "text": "Pay renewal premium before grace period ends",
+      "due_date": "2026-11-15",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Payment must be received by 15 November 2026",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "Grace period of 30 days applies but hospital cashless lapses if unpaid",
+      "quote": "Coverage will lapse after 30 days grace period",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Policy Number: POL-99281-2026",
+      "quote": "Policy Number: POL-99281-2026",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "text": "Insured Person: Ramesh Kumar",
+      "quote": "Primary Insured: Ramesh Kumar",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "conflicts": [],
+  "evidence_summary": {
+    "matched": 6,
+    "check_original": 0,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "protected_terms": [
+    "Ramesh Kumar",
+    "POL-99281-2026",
+    "+91 1800 220 011",
+    "72 Anna Salai, Chennai 600006"
+  ],
+  "spoken_summary": "Your health insurance renewal premium of 14,500 rupees is due by 15 November 2026. Please pay before the grace period ends to maintain continuous coverage."
+}

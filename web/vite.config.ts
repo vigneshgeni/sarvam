@@ -4,10 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globIgnores: ['**/samples/**'],
+        navigateFallbackDenylist: [/^\/api\/.*/],
+      },
       manifest: {
         name: 'Sarvam',
         short_name: 'Sarvam',
@@ -15,6 +20,7 @@ export default defineConfig({
         theme_color: '#146B4E',
         background_color: '#F6F6F3',
         display: 'standalone',
+        start_url: '/',
         icons: [
           {
             src: '/favicon.svg',

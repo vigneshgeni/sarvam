@@ -1,4 +1,4 @@
-import type { ExplainResponse, ApiError, TranslateRequest } from './types'
+import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from './types'
 import { explainQueue } from './utils/queue'
 import { getLocalFallbackError } from './i18n'
 
@@ -8,25 +8,34 @@ export class ExplainApiError extends Error {
   messageLocal: string
   statusCode: number
   retryAfter?: number
+  errorCode?: string
 
-  constructor(message: string, messageLocal: string, statusCode: number, retryAfter?: number) {
+  constructor(
+    message: string,
+    messageLocal: string,
+    statusCode: number,
+    retryAfter?: number,
+    errorCode?: string
+  ) {
     super(messageLocal || message)
     this.name = 'ExplainApiError'
     this.messageLocal = messageLocal || message
     this.statusCode = statusCode
     this.retryAfter = retryAfter
+    this.errorCode = errorCode
   }
 }
 
 /**
- * Sends files and lang to /api/explain as multipart/form-data.
+ * Sends files, lang, and optional password to /api/explain as multipart/form-data.
  * Concurrency limited to at most 2 in-flight calls via explainQueue.
  * Uses AbortController with a 120 s timeout.
  */
 export async function explainDocument(
   files: File[],
   lang: string,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
+  password?: string
 ): Promise<ExplainResponse> {
   return explainQueue.run(async () => {
     const formData = new FormData()
@@ -34,6 +43,9 @@ export async function explainDocument(
       formData.append('files', file)
     }
     formData.append('lang', lang)
+    if (password) {
+      formData.append('password', password)
+    }
 
     const controller = new AbortController()
     let timedOut = false
@@ -94,7 +106,7 @@ export async function explainDocument(
         }
       }
 
-      let errorJson: Partial<ApiError> | null = null
+      let errorJson: (Partial<ApiError> & { error?: string }) | null = null
       try {
         errorJson = await response.json()
       } catch {
@@ -114,7 +126,7 @@ export async function explainDocument(
         errorJson?.message ||
         `Request failed with status ${response.status}`
 
-      throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter)
+      throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter, errorJson?.error)
     }
 
     const data: ExplainResponse = await response.json()
@@ -198,7 +210,7 @@ export async function translateDocument(
       }
     }
 
-    let errorJson: Partial<ApiError> | null = null
+    let errorJson: (Partial<ApiError> & { error?: string }) | null = null
     try {
       errorJson = await response.json()
     } catch {
@@ -218,9 +230,121 @@ export async function translateDocument(
       errorJson?.message ||
       `Request failed with status ${response.status}`
 
-    throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter)
+    throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter, errorJson?.error)
   }
 
   const data: ExplainResponse = await response.json()
   return data
+}
+
+/**
+ * Ask question about document to POST /api/ask (WEB-12)
+ * Sends question, lang, result JSON string, optional files, and optional password.
+ */
+export async function askDocument(params: {
+  question: string
+  lang: string
+  result: ExplainResponse
+  files?: File[]
+  password?: string
+  signal?: AbortSignal
+}): Promise<AskResponse> {
+  const formData = new FormData()
+  formData.append('question', params.question)
+  formData.append('lang', params.lang)
+  formData.append('result', JSON.stringify(params.result))
+
+  if (params.files && params.files.length > 0) {
+    for (const f of params.files) {
+      formData.append('files', f)
+    }
+  }
+  if (params.password) {
+    formData.append('password', params.password)
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort('timeout'), 45_000)
+
+  const onAbort = () => controller.abort(params.signal?.reason)
+  if (params.signal) {
+    params.signal.addEventListener('abort', onAbort, { once: true })
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/ask`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      let errJson: any = null
+      try {
+        errJson = await res.json()
+      } catch {}
+      throw new ExplainApiError(
+        errJson?.message || `Ask failed with status ${res.status}`,
+        errJson?.message_local || getLocalFallbackError(params.lang, 'generic'),
+        res.status,
+        undefined,
+        errJson?.error
+      )
+    }
+
+    return await res.json()
+  } finally {
+    clearTimeout(timeoutId)
+    if (params.signal) {
+      params.signal.removeEventListener('abort', onAbort)
+    }
+  }
+}
+
+/**
+ * Server TTS: POST /api/speak (WEB-9)
+ * Returns audio/mpeg Blob.
+ * 8 s timeout before falling back to device voice.
+ */
+export async function speakText(params: {
+  text: string
+  lang: string
+  voice: 'female' | 'male'
+  rate?: number
+  signal?: AbortSignal
+}): Promise<Blob> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort('timeout'), 8000)
+
+  const onAbort = () => controller.abort(params.signal?.reason)
+  if (params.signal) {
+    params.signal.addEventListener('abort', onAbort, { once: true })
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/speak`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: params.text,
+        lang: params.lang,
+        voice: params.voice,
+        rate: params.rate || 1.0,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      throw new Error(`Speak error ${res.status}`)
+    }
+
+    return await res.blob()
+  } finally {
+    clearTimeout(timeoutId)
+    if (params.signal) {
+      params.signal.removeEventListener('abort', onAbort)
+    }
+  }
 }

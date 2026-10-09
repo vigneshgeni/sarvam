@@ -1,7 +1,30 @@
 import { useState, useEffect } from 'react'
-import { LANGUAGES, getDictionary } from '../i18n'
-import type { ExplainResponse, AppErrorInfo } from '../types'
-import { formatDate, buildCalculatedChipText } from '../utils/date'
+import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType } from '../i18n'
+import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
+import { formatDate } from '../utils/date'
+import {
+  CalendarIcon,
+  SparklesIcon,
+  EyeIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+  ShareIcon,
+  PlayIcon,
+  MessageSquareIcon,
+  A11ySlidersIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  CopyIcon,
+} from './icons'
+import Sheet from './Sheet'
+import GlanceCard from './GlanceCard'
+import PlacesContactsCard from './PlacesContactsCard'
+import MedicineCard from './MedicineCard'
+import ListenSheet from './ListenSheet'
+import AskSheet from './AskSheet'
+import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
+import { buildSharedText, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -9,285 +32,74 @@ interface ResultScreenProps {
   lang: string
   isTranslating?: boolean
   translateError?: AppErrorInfo | null
+  reReadInLang?: string | null
+  translateFailedLang?: string | null
   onChangeLanguage: (newLang: string) => void
   onRetryTranslate?: () => void
   onDismissTranslateError?: () => void
   onGoHome: () => void
   onA11yClick: () => void
-}
-
-function TranslateErrorCard({
-  error,
-  t,
-  onRetry,
-  onDismiss,
-}: {
-  error: AppErrorInfo
-  t: Record<string, string>
-  onRetry?: () => void
-  onDismiss?: () => void
-}) {
-  const [secondsLeft, setSecondsLeft] = useState<number>(error.retryAfter || 0)
-
-  useEffect(() => {
-    if (!error.retryAfter || error.retryAfter <= 0) return
-
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [error.retryAfter])
-
-  return (
-    <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-card p-4 flex flex-col gap-3 text-[#5A3500] animate-card-in shadow-sm">
-      <div className="flex items-start gap-2.5">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 mt-0.5 text-[#B42318]"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="text-[14px] font-bold">
-            {t.errorTitle || 'Could not read notice'}
-          </span>
-          <p className="text-[13px] leading-relaxed m-0">
-            {error.messageLocal}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 pt-1">
-        {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            disabled={secondsLeft > 0}
-            className={`h-9 px-4 rounded-full font-bold text-[13px] flex items-center justify-center transition-all ${
-              secondsLeft > 0
-                ? 'bg-soft text-muted cursor-not-allowed border border-line'
-                : 'bg-brand text-white hover:opacity-95'
-            }`}
-          >
-            {secondsLeft > 0
-              ? (t.retryIn || 'Try again in {seconds}s').replace(
-                  '{seconds}',
-                  String(secondsLeft)
-                )
-              : t.retry || 'Try again'}
-          </button>
-        )}
-        {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="h-9 px-3 rounded-full border border-line bg-surface text-ink text-[13px] font-semibold hover:bg-soft transition-colors"
-          >
-            {t.dismiss || 'Dismiss'}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function EvidenceChip({
-  evidence,
-  hasQuote = false,
-  isOpen,
-  onToggle,
-  t,
-}: {
-  evidence: string
-  hasQuote?: boolean
-  isOpen: boolean
-  onToggle: () => void
-  t: Record<string, string>
-}) {
-  const isMatched = evidence === 'matched'
-  const isCalculated = evidence === 'calculated'
-  const label = isMatched
-    ? t.found || 'Found in your document'
-    : isCalculated
-    ? t.calculated || 'Calculated'
-    : t.checkOriginal || 'Check against original'
-
-  const content = (
-    <>
-      {isMatched && (
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      )}
-      {!isMatched && !isCalculated && (
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      )}
-      {isCalculated && (
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 14 14" />
-        </svg>
-      )}
-      <span className="truncate">{label}</span>
-      {hasQuote && (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      )}
-    </>
-  )
-
-  const chipClassName = `inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12.5px] font-semibold border transition-colors shrink-0 max-w-full ${
-    isMatched
-      ? 'bg-brand-soft text-brand border-brand/20'
-      : isCalculated
-      ? 'bg-[#E6EEFB] text-[#1D4ED8] border-[#1D4ED8]/20'
-      : 'bg-soft text-muted border-line hover:text-ink'
-  }`
-
-  if (!hasQuote) {
-    return <span className={chipClassName}>{content}</span>
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={isOpen}
-      className={chipClassName}
-    >
-      {content}
-    </button>
-  )
-}
-
-function QuoteAccordion({
-  page,
-  quote,
-  evidence,
-  t,
-}: {
-  page?: number
-  quote: string
-  evidence: string
-  t: Record<string, string>
-}) {
-  const isCheckOriginal = evidence === 'check_original'
-  const pageText = page
-    ? t.pageLabel?.replace('{page}', String(page)) ||
-      `${t.pageWord || 'Page'} ${page}`
-    : t.pageWord || 'Page'
-
-  return (
-    <div className="w-full mt-2 bg-soft border border-line rounded-xl p-3 flex flex-col gap-2 text-[13px] animate-card-in">
-      {/* Line 1: Localised Page label */}
-      <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
-        {pageText}
-      </div>
-
-      {/* Line 2: Red "compare with your paper" note on separate line */}
-      {isCheckOriginal && (
-        <div className="text-[11.5px] font-semibold text-[#B42318] leading-tight">
-          {t.comparePaper || 'Please compare with your paper'}
-        </div>
-      )}
-
-      {/* Line 3: Original quote box labelled in UI language, verbatim quote in original language */}
-      <div className="flex flex-col gap-1 pt-0.5">
-        <span className="text-[11px] font-semibold text-muted">
-          {t.originalText || 'Original text from your document'}:
-        </span>
-        <blockquote className="m-0 italic font-mono text-[12.5px] leading-relaxed text-ink/90 bg-surface/80 p-2.5 rounded-lg border border-line/50 break-words">
-          "{quote}"
-        </blockquote>
-      </div>
-    </div>
-  )
+  multiReports?: MultiReportCard[]
+  onRetrySingleReport?: (index: number) => void
 }
 
 export default function ResultScreen({
-  result,
+  result: initialResult,
   files,
   lang,
   isTranslating = false,
   translateError = null,
+  reReadInLang = null,
+  translateFailedLang = null,
   onChangeLanguage,
   onRetryTranslate,
   onDismissTranslateError,
   onGoHome,
   onA11yClick,
+  multiReports,
+  onRetrySingleReport,
 }: ResultScreenProps) {
-  // During language switch, keep the previous language's labels together with previous content
-  // until new content arrives (show translating banner), so screen never mixes two languages
-  const contentLang = result.language || lang
-  const t = getDictionary(contentLang)
-  const currentLangObj = LANGUAGES.find((l) => l.id === lang) || LANGUAGES[0]
+  const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(null)
 
-  // Track checked / completed actions
+  const result =
+    multiReports &&
+    selectedReportIndex !== null &&
+    multiReports[selectedReportIndex]?.result
+      ? multiReports[selectedReportIndex].result!
+      : initialResult
+
+  const contentLang = result.language || (lang === 'auto' ? 'en' : lang)
+  const t = getDictionary(contentLang)
+  const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[1]
+
+  // Action done state
   const [doneActions, setDoneActions] = useState<Record<number, boolean>>({})
-  // Track open quote/passage accordions for actions, warnings, and facts
+  // Open quote accordions
   const [openActionQuotes, setOpenActionQuotes] = useState<Record<number, boolean>>({})
   const [openWarningQuotes, setOpenWarningQuotes] = useState<Record<number, boolean>>({})
   const [openFactQuotes, setOpenFactQuotes] = useState<Record<number, boolean>>({})
+
+  // Key facts disclosure (show first 5, then "Show all")
+  const [showAllFacts, setShowAllFacts] = useState<boolean>(false)
+
+  // Sheets state
+  const [isListenOpen, setIsListenOpen] = useState(false)
+  const [isAskOpen, setIsAskOpen] = useState(false)
+  const [isShareOpen, setIsShareOpen] = useState(false)
+
+  // Share state
+  const [hidePersonal, setHidePersonal] = useState(true)
+  const [copySuccess, setCopySuccess] = useState(false)
+
+  // Top bar scroll hairline
+  const [isScrolled, setIsScrolled] = useState(false)
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 12)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const toggleActionDone = (index: number) => {
     setDoneActions((prev) => ({ ...prev, [index]: !prev[index] }))
@@ -305,305 +117,364 @@ export default function ResultScreen({
     setOpenFactQuotes((prev) => ({ ...prev, [index]: !prev[index] }))
   }
 
-  // Format document type badge
-  const docTypeBadge =
-    result.doc_type?.replace(/_/g, ' ').toUpperCase() || 'DOCUMENT'
-
-  // Format evidence summary line per Section 5 & requirement B
-  const summary = result.evidence_summary || {
-    matched: 0,
-    check_original: 0,
-    calculated: 0,
+  // Quote checker drawer (scrolls into view or displays original text)
+  const handleCheckOriginal = (quote?: string, page?: number) => {
+    if (!quote) return
+    alert(`Page ${page || 1}: "${quote}"`)
   }
-  const totalPoints =
-    (summary.matched || 0) +
-    (summary.check_original || 0) +
-    (summary.calculated || 0)
 
-  const renderEvidenceSummary = () => {
-    if (totalPoints === 0) return null
+  // Actions done calculation
+  const totalActions = result.actions?.length || 0
+  const completedActionsCount = Object.values(doneActions).filter(Boolean).length
 
-    // If all items are check_original (e.g. photo input)
-    if (summary.matched === 0 && summary.check_original > 0) {
-      if (contentLang === 'ta') {
-        return `${summary.check_original} தகவல்களும் அசல் ஆவணத்துடன் சரிபார்க்கப்பட வேண்டும் (புகைப்படம்)`
-      }
-      if (contentLang === 'hi') {
-        return `सभी ${summary.check_original} बातें मूल दस्तावेज़ से जाँची जानी हैं (फ़ोटो)`
-      }
-      return `All ${summary.check_original} points to check against original (photo)`
-    }
+  // Calendar export handlers
+  const handleAddActionToCalendar = (act: any, idx: number) => {
+    if (!act.due_date && !act.recurrence) return
+    const isRecurring = !!act.recurrence
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const startDate = act.due_date || todayStr
 
-    // PDF or mixed: show exact count (renamed to "found in your document")
-    if (contentLang === 'ta') {
-      const parts = [`${totalPoints} தகவல்களில் ${summary.matched} உங்கள் ஆவணத்தில் உள்ளது`]
-      if (summary.check_original > 0) {
-        parts.push(`${summary.check_original} அசல் ஆவணத்துடன் சரிபார்க்கப்பட வேண்டும்`)
-      }
-      if (summary.calculated > 0) {
-        parts.push(`${summary.calculated} கணக்கிடப்பட்டது`)
-      }
-      return parts.join(' · ')
-    }
+    const descParts: string[] = []
+    if (act.date_status === 'calculated') descParts.push('Calculated date.')
+    if (act.quote) descParts.push(`Quote: "${act.quote}"`)
+    descParts.push('Sarvam Document Reader.')
 
-    if (contentLang === 'hi') {
-      const parts = [`${totalPoints} में से ${summary.matched} बातें आपके दस्तावेज़ में मिलीं`]
-      if (summary.check_original > 0) {
-        parts.push(`${summary.check_original} मूल दस्तावेज़ से जाँचें`)
-      }
-      if (summary.calculated > 0) {
-        parts.push(`${summary.calculated} गणना की गई`)
-      }
-      return parts.join(' · ')
-    }
+    const events: CalendarEventInput[] = [
+      {
+        uid: hashString(`${result.title}-act-${idx}`),
+        title: act.text,
+        description: descParts.join(' '),
+        startDate: startDate,
+        isAllDay: true,
+        rrule: isRecurring ? 'FREQ=MONTHLY' : undefined,
+        alarmTrigger: 'PT9H',
+      },
+    ]
 
-    // Default English
-    const parts = [`${summary.matched} of ${totalPoints} points found in your document`]
-    if (summary.check_original > 0) {
-      parts.push(`${summary.check_original} to check against original`)
+    const ics = generateIcs(events)
+    downloadIcs(`action-${idx + 1}.ics`, ics)
+  }
+
+  const handleAddAllDates = () => {
+    if (!result.actions) return
+    const validActions = result.actions.filter(
+      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+    )
+    if (validActions.length === 0) return
+
+    const events: CalendarEventInput[] = validActions.map((act, idx) => {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const startDate = act.due_date || todayStr
+      return {
+        uid: hashString(`${result.title}-act-all-${idx}`),
+        title: act.text,
+        description: act.date_status === 'calculated' ? 'Calculated date.' : undefined,
+        startDate: startDate,
+        isAllDay: true,
+        alarmTrigger: 'PT9H',
+      }
+    })
+
+    const ics = generateIcs(events)
+    downloadIcs('all-actions.ics', ics)
+  }
+
+  const sharedText = buildSharedText(result, contentLang, hidePersonal)
+
+  const handleCopyShared = async () => {
+    const ok = await copyToClipboard(sharedText)
+    if (ok) {
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
     }
-    if (summary.calculated > 0) {
-      parts.push(`${summary.calculated} calculated`)
-    }
-    return parts.join(' · ')
+  }
+
+  const factsToDisplay = showAllFacts
+    ? result.facts || []
+    : (result.facts || []).slice(0, 5)
+
+  // Multi-Reports Overview Card List
+  if (multiReports && multiReports.length > 1 && selectedReportIndex === null) {
+    return (
+      <div className="flex-1 flex flex-col justify-between animate-card-in pb-16">
+        <div className="flex flex-col gap-4">
+          {/* Top Bar */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onGoHome}
+              aria-label="Back to home"
+              className="btn-press w-11 h-11 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+            <h1 className="font-heading font-bold text-xl text-[#15171A]">
+              {(t.reportsCount || '{count} reports').replace(
+                '{count}',
+                String(multiReports.length)
+              )}
+            </h1>
+          </div>
+
+          {/* Cards List */}
+          <div className="flex flex-col gap-3">
+            {multiReports.map((card, i) => (
+              <div
+                key={card.id || i}
+                onClick={() => {
+                  if (card.status === 'ready' && card.result) {
+                    setSelectedReportIndex(i)
+                  }
+                }}
+                className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                  card.status === 'ready'
+                    ? 'bg-white border-[#E6E6E1] cursor-pointer hover:border-[#5B52D6] shadow-sm'
+                    : 'bg-[#FFF4DE] border-[#F4DDB0]'
+                }`}
+              >
+                <div>
+                  <h3 className="font-bold text-sm text-[#15171A]">
+                    {card.title || card.fileName}
+                  </h3>
+                  <p className="text-xs text-[#5E636B]">{card.fileName}</p>
+                </div>
+                {card.status === 'ready' ? (
+                  <ChevronRightIcon className="w-5 h-5 text-[#5E636B]" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRetrySingleReport?.(i)
+                    }}
+                    className="px-3 py-1 bg-[#146B4E] text-white text-xs font-semibold rounded-lg"
+                  >
+                    {t.retry || 'Retry'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between animate-card-in">
-      <div className="flex flex-col gap-4">
-        {/* Top Header Bar */}
-        <div className="flex items-center gap-2.5">
-          {/* Back to Home Button */}
+    <div className="flex-1 flex flex-col justify-between pb-28">
+      {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
+      <div
+        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md px-4 py-2.5 flex items-center justify-between gap-2 transition-shadow ${
+          isScrolled ? 'border-b border-[#E6E6E1] shadow-xs' : ''
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onGoHome}
+          aria-label="Back"
+          className="btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+        >
+          <ChevronRightIcon className="w-5 h-5 rotate-180" />
+        </button>
+
+        {/* Language selector dropdown */}
+        <label className="flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
+          <span className="truncate">{currentLangObj.label}</span>
+          <ChevronDownIcon className="absolute right-2.5 w-4 h-4 text-[#5E636B]" />
+          <select
+            aria-label="Change language"
+            value={lang}
+            onChange={(e) => onChangeLanguage(e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          >
+            {SUPPORTED_LANGS.map((l) => (
+              <option key={l.id} value={l.id} disabled={l.disabled}>
+                {l.label} {l.badge ? `(${l.badge})` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Accessibility Button (WEB-10) */}
+        <button
+          type="button"
+          onClick={onA11yClick}
+          aria-label={t.makeEasierToRead || 'Make it easier to read'}
+          className="btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+        >
+          <A11ySlidersIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-5 px-4 pt-3 max-w-[430px] mx-auto w-full">
+        {/* Back to all reports button if viewing a report from multi-report set */}
+        {multiReports && multiReports.length > 1 && (
           <button
             type="button"
-            onClick={onGoHome}
-            aria-label="Back to home"
-            className="w-11 h-11 rounded-full border border-line bg-surface text-ink flex items-center justify-center hover:bg-soft transition-colors active:scale-95 shrink-0"
+            onClick={() => setSelectedReportIndex(null)}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#146B4E] hover:underline"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
+            <ChevronRightIcon className="w-4 h-4 rotate-180" />
+            <span>{t.backToReports || 'Back to all reports'}</span>
           </button>
+        )}
 
-          {/* Language Selector Dropdown */}
-          <label className="flex-1 relative h-11 rounded-full border border-line bg-surface flex items-center gap-2 px-3.5 pr-8 text-[15px] font-semibold text-ink min-w-0 cursor-pointer hover:border-muted/40 transition-colors">
-            {isTranslating ? (
-              <span className="sv-spin w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand shrink-0" />
-            ) : (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="shrink-0 text-brand"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              </svg>
-            )}
-            <span className="truncate">{currentLangObj.label}</span>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="absolute right-3.5 shrink-0 text-muted"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-            <select
-              aria-label="Explanation language"
-              value={lang}
-              onChange={(e) => onChangeLanguage(e.target.value)}
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Accessibility settings button */}
-          <button
-            type="button"
-            onClick={onA11yClick}
-            aria-label={t.a11yTitle}
-            className="w-11 h-11 rounded-full border border-line bg-surface text-ink flex items-center justify-center hover:bg-soft transition-colors active:scale-95 shrink-0"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="4.5" r="1.8" />
-              <path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M9 21l3-6.5 3 6.5" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Inline Translation Loading Indicator (stays with previous language labels until new content arrives) */}
+        {/* Translating Shimmer Banner */}
         {isTranslating && (
-          <div className="bg-brand-soft border border-brand/20 text-brand px-3.5 py-2.5 rounded-xl flex items-center gap-2.5 text-[13.5px] font-semibold animate-card-in">
-            <span className="sv-spin w-4 h-4 rounded-full border-2 border-brand/30 border-t-brand shrink-0" />
-            <span>{t.translating || 'Translating notice...'}</span>
+          <div className="bg-[#FBF7EF] border border-[#F1EBDD] text-[#7A2E1B] px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold animate-card-in">
+            <span className="sv-spin w-4 h-4 rounded-full border-2 border-[#C2410C]/30 border-t-[#C2410C] shrink-0" />
+            <span>{t.translating || 'Translating...'}</span>
           </div>
         )}
 
-        {/* Translation Error Card with 429 countdown and Retry button */}
+        {/* Explain Fallback Note (WEB-2) */}
+        {reReadInLang && (
+          <div className="bg-[#FBF7EF] border border-[#F1EBDD] text-[#5A3500] px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+            <SparklesIcon className="w-4 h-4 text-[#9A6700] shrink-0" />
+            <span>
+              {(t.reReadInLang || 'Re-read in {lang} (details may differ slightly)').replace(
+                '{lang}',
+                reReadInLang.toUpperCase()
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Translate Error Banner */}
         {translateError && (
-          <TranslateErrorCard
-            key={`${translateError.statusCode}-${translateError.retryAfter || 0}-${translateError.messageLocal}`}
-            error={translateError}
+          <div className="bg-[#FFF4DE] border border-[#F4DDB0] text-[#5A3500] p-3 rounded-2xl flex items-center justify-between gap-2 text-xs">
+            <span>{translateError.messageLocal}</span>
+            {onDismissTranslateError && (
+              <button
+                type="button"
+                onClick={onDismissTranslateError}
+                className="btn-press px-2.5 py-1 bg-white border border-[#F4DDB0] font-bold rounded-lg text-xs"
+              >
+                {t.dismiss || 'Dismiss'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Translate Fail Banner (WEB-2) */}
+        {translateFailedLang && (
+          <div className="bg-[#FFF4DE] border border-[#F4DDB0] text-[#5A3500] p-3 rounded-2xl flex items-center justify-between gap-2 text-xs">
+            <span>
+              {(t.translateFailBanner || "Couldn't translate to {lang}. Showing English.").replace(
+                '{lang}',
+                translateFailedLang.toUpperCase()
+              )}
+            </span>
+            {onRetryTranslate && (
+              <button
+                type="button"
+                onClick={onRetryTranslate}
+                className="btn-press px-2.5 py-1 bg-white border border-[#F4DDB0] font-bold rounded-lg text-xs"
+              >
+                {t.retry || 'Try again'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Document Language Note if auto detected (WEB-3) */}
+        {lang === 'auto' && result.document_language && result.document_language !== 'en' && (
+          <div className="text-xs text-[#5E636B] bg-[#F0F0EB] px-3 py-1.5 rounded-xl w-fit">
+            {(t.docInLanguage || 'Document is in {lang}').replace(
+              '{lang}',
+              result.document_language.toUpperCase()
+            )}
+          </div>
+        )}
+
+        {/* WEB-6: AT A GLANCE CARD */}
+        {result.glance && (
+          <GlanceCard
+            glance={result.glance}
+            docType={result.doc_type || (result.document_type as string)}
+            reportDateIso={result.report_date_iso}
+            lang={contentLang}
             t={t}
-            onRetry={onRetryTranslate}
-            onDismiss={onDismissTranslateError}
+            onCheckOriginal={handleCheckOriginal}
           />
         )}
 
-        {/* Document Header & Evidence Summary */}
-        <div className="flex flex-col gap-2 pt-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[12px] font-bold tracking-[0.08em] uppercase text-brand">
-              {docTypeBadge}
+        {/* Document Title Header if no glance card */}
+        {!result.glance && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
+              {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
             </span>
-            {result.report_date && (
-              <span className="text-[12px] font-medium text-muted bg-soft px-2.5 py-0.5 rounded-full border border-line/60">
-                {formatDate(result.report_date, contentLang)}
-              </span>
-            )}
+            <h1 className="font-heading font-bold text-2xl text-[#15171A] leading-tight">
+              {result.title}
+            </h1>
           </div>
+        )}
 
-          <h1 className="font-heading font-bold text-[25px] sm:text-[27px] text-ink leading-[1.2] tracking-tight">
-            {result.title}
-          </h1>
+        {/* WEB-7: PLACES AND CONTACTS CARD */}
+        {(result.places || result.contacts) && (
+          <PlacesContactsCard
+            places={result.places}
+            contacts={result.contacts}
+            t={t}
+            onCheckOriginal={handleCheckOriginal}
+          />
+        )}
 
-          {result.report_title && result.report_title !== result.title && (
-            <p className="text-[14px] text-muted font-medium m-0">
-              {result.report_title}
-            </p>
-          )}
-
-          {/* Evidence summary line */}
-          {totalPoints > 0 && (
-            <div className="flex items-center gap-2 text-[13.5px] font-semibold text-brand pt-1">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="shrink-0"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-              <span>{renderEvidenceSummary()}</span>
-            </div>
-          )}
-
-          {/* Processed Files Badges */}
-          {files.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1">
-              {files.map((file, i) => {
-                const isPdf =
-                  file.name.endsWith('.pdf') || file.type === 'application/pdf'
-                return (
-                  <span
-                    key={i}
-                    className="shrink-0 flex items-center gap-2 h-9 px-2.5 rounded-xl border border-line bg-surface max-w-[240px]"
-                  >
-                    <span
-                      className={`h-6 px-1.5 rounded text-[10px] font-bold flex items-center justify-center ${
-                        isPdf
-                          ? 'bg-[#FDECEA] text-[#B42318]'
-                          : 'bg-brand-soft text-brand'
-                      }`}
-                    >
-                      {isPdf ? 'PDF' : 'IMG'}
-                    </span>
-                    <span className="text-[12.5px] font-semibold text-ink truncate">
-                      {file.name}
-                    </span>
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ========================================================
-            ORDER:
-            1. What you need to do
-            2. In simple words
-            3. Watch out
-            4. Key facts
-            5. Conflicts if any
-            6. Disclaimer
-            7. Bottom bar Listen + Share
-           ======================================================== */}
+        {/* WEB-8: MEDICINE REMINDERS CARD */}
+        {result.medicines && result.medicines.length > 0 && (
+          <MedicineCard
+            medicines={result.medicines}
+            resultId={result.title || 'med-doc'}
+            t={t}
+            onCheckOriginal={handleCheckOriginal}
+          />
+        )}
 
         {/* 1. WHAT YOU NEED TO DO */}
         {result.actions && result.actions.length > 0 && (
-          <section className="bg-surface border border-line rounded-card p-5 flex flex-col gap-3 shadow-sm animate-card-in">
-            <h2 className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted m-0">
-              {t.actionsTitle || 'What you need to do'}
-            </h2>
+          <section className="bg-white border border-[#E6E6E1] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-1">
+            {/* Header with 28px icon tile & Progress Ring (WEB-5) */}
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#ECEBFA] text-[#5B52D6] flex items-center justify-center shrink-0">
+                  <CheckIcon className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-[#15171A]">
+                  {t.actionsTitle || 'What you need to do'}
+                </h2>
+              </div>
 
-            <div className="flex flex-col divide-y divide-line/70">
+              {/* Progress Ring ("1 of 2 done") */}
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] bg-[#ECEBFA] px-2.5 py-1 rounded-full">
+                <span>
+                  {(t.actionsDoneCount || '{done} of {total} done')
+                    .replace('{done}', String(completedActionsCount))
+                    .replace('{total}', String(totalActions))}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions List */}
+            <div className="flex flex-col divide-y divide-[#F0F0EB]">
               {result.actions.map((act, i) => {
                 const isDone = !!doneActions[i]
                 const isQuoteOpen = !!openActionQuotes[i]
-
-                const isRecurring =
-                  act.date_status === 'recurring' || !!act.recurrence
-                const isPassed = !isRecurring && act.date_status === 'passed'
-                const isCalculated =
-                  !isRecurring && act.date_status === 'calculated'
-                const isUpcoming =
-                  !isRecurring && act.date_status === 'upcoming' && !!act.due_date
+                const isPassed = act.date_status === 'passed'
 
                 return (
-                  <div key={i} className="flex flex-col gap-2.5 py-3 first:pt-1 last:pb-1">
+                  <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
                     <div className="flex items-start gap-3">
-                      {/* Checkbox toggle */}
+                      {/* Checkbox with Animated Tick (WEB-4, WEB-5) */}
                       <button
                         type="button"
                         onClick={() => toggleActionDone(i)}
-                        aria-label={`${t.markDone || 'Mark as done'}: ${act.text}`}
-                        aria-pressed={isDone}
-                        className="w-6 h-6 rounded-lg border-2 mt-0.5 flex items-center justify-center shrink-0 transition-colors active:scale-90"
-                        style={{
-                          borderColor: isDone ? '#146B4E' : '#C9CAC3',
-                          backgroundColor: isDone ? '#146B4E' : '#FFFFFF',
-                        }}
+                        className={`w-6 h-6 rounded-lg border-2 mt-0.5 flex items-center justify-center shrink-0 transition-colors btn-press ${
+                          isDone
+                            ? 'bg-[#146B4E] border-[#146B4E]'
+                            : 'bg-white border-[#D8D8D2]'
+                        }`}
+                        aria-label={`Mark done: ${act.text}`}
                       >
                         {isDone && (
                           <svg
@@ -612,264 +483,79 @@ export default function ResultScreen({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="#FFFFFF"
-                            strokeWidth="3"
+                            strokeWidth="3.2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            className="animate-tick-draw"
                           >
-                            <path d="M5 12l4 4 10-10" />
+                            <polyline points="20 6 9 17 4 12" />
                           </svg>
                         )}
                       </button>
 
-                      {/* Action text & chips */}
-                      <div className="flex-1 min-w-0 flex flex-col gap-2">
+                      {/* Action Text */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                         <span
-                          className={`text-[16px] leading-[1.45] text-ink font-medium ${
+                          className={`text-base font-medium leading-relaxed text-[#15171A] transition-opacity ${
                             isDone ? 'line-through opacity-50' : ''
                           }`}
                         >
                           {act.text}
                         </span>
 
-                        {/* Chips Row: on its own line below text, wrapping cleanly at 360px without overlapping */}
-                        <div className="w-full flex flex-wrap items-center gap-2 pt-0.5">
-                          {/* Recurring actions */}
-                          {isRecurring && (
-                            <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[12.5px] font-semibold">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="shrink-0"
-                              >
-                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                              </svg>
-                              <span>{act.recurrence || t.recurring || 'Recurring schedule'}</span>
+                        {/* Chips row */}
+                        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                          {act.due_date && (
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
+                                isPassed
+                                  ? 'bg-[#FDECEA] text-[#B42318]'
+                                  : 'bg-[#E8F1FB] text-[#1D5FA8]'
+                              }`}
+                            >
+                              <CalendarIcon className="w-3.5 h-3.5" />
+                              {formatDate(act.due_date, contentLang)}
                             </span>
                           )}
 
-                          {/* Passed date: uses localised date */}
-                          {isPassed && (
-                            <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#FDECEA] text-[#B42318] text-[12.5px] font-bold">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="shrink-0"
-                              >
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                              </svg>
-                              <span>
-                                {t.datePassed || 'Date has passed'}
-                                {act.due_date ? ` · ${formatDate(act.due_date, contentLang)}` : ''}
-                              </span>
+                          {act.date_status === 'calculated' && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F1ECFB] text-[#6D45C9]">
+                              {t.calculatedChip || 'Calculated'}
                             </span>
                           )}
 
-                          {/* Calculated deadline: built in UI language from deadline_days, wrapping on its own line without overlap */}
-                          {isCalculated && (
-                            <span className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg bg-[#E6EEFB] text-[#1D4ED8] text-[12.5px] font-bold max-w-full break-words">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="shrink-0"
-                              >
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                                <line x1="16" y1="2" x2="16" y2="6" />
-                                <line x1="8" y1="2" x2="8" y2="6" />
-                                <line x1="3" y1="10" x2="21" y2="10" />
-                              </svg>
-                              <span className="break-words">
-                                {buildCalculatedChipText(
-                                  act.due_date,
-                                  act.deadline_days,
-                                  t,
-                                  contentLang
-                                )}
-                              </span>
-                            </span>
+                          {/* Add to Calendar button (.ics) (WEB-8) */}
+                          {!isPassed && (act.due_date || act.recurrence) && (
+                            <button
+                              type="button"
+                              onClick={() => handleAddActionToCalendar(act, i)}
+                              className="btn-press text-[11px] font-semibold text-[#5B52D6] bg-[#ECEBFA] hover:bg-[#D8D4EF] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                            >
+                              <CalendarIcon className="w-3 h-3" />
+                              {t.addToCalendar || 'Add to calendar'}
+                            </button>
                           )}
 
-                          {/* Upcoming deadline: localised */}
-                          {isUpcoming && (
-                            <span className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-soft text-ink text-[12.5px] font-semibold">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="shrink-0"
-                              >
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                                <line x1="16" y1="2" x2="16" y2="6" />
-                                <line x1="8" y1="2" x2="8" y2="6" />
-                                <line x1="3" y1="10" x2="21" y2="10" />
-                              </svg>
-                              <span>{formatDate(act.due_date, contentLang)}</span>
-                            </span>
+                          {/* Evidence check original */}
+                          {act.quote && (
+                            <button
+                              type="button"
+                              onClick={() => toggleActionQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
+                            >
+                              <EyeIcon className="w-3 h-3" />
+                              {t.checkAgainstOriginal || 'Check original'}
+                            </button>
                           )}
-
-                          {/* Evidence Chip */}
-                          <EvidenceChip
-                            evidence={act.evidence || 'check_original'}
-                            hasQuote={Boolean(act.quote)}
-                            isOpen={isQuoteOpen}
-                            onToggle={() => act.quote && toggleActionQuote(i)}
-                            t={t}
-                          />
                         </div>
 
-                        {/* Source Passage Accordion (revealed on tap) */}
+                        {/* Accordion Quote Box */}
                         {isQuoteOpen && act.quote && (
-                          <QuoteAccordion
-                            page={act.page}
-                            quote={act.quote}
-                            evidence={act.evidence || 'check_original'}
-                            t={t}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 2. IN SIMPLE WORDS */}
-        {result.summary && result.summary.length > 0 && (
-          <section className="bg-surface border border-line rounded-card p-5 flex flex-col gap-2.5 shadow-sm animate-card-in">
-            <h2 className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted m-0">
-              {t.summaryTitle || 'In simple words'}
-            </h2>
-            <div className="text-[16px] sm:text-[17px] leading-[1.55] font-medium text-ink flex flex-col gap-2">
-              {result.summary.map((para, i) => (
-                <p key={i} className="m-0">
-                  {para}
-                </p>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 3. WATCH OUT (Steady amber card, NO animation) */}
-        {result.warnings && result.warnings.length > 0 && (
-          <section className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-card p-5 flex gap-3.5 text-[#5A3500] shadow-sm animate-card-in">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 mt-0.5"
-            >
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            <div className="flex-1 flex flex-col gap-2">
-              <h2 className="text-[12px] font-bold tracking-[0.08em] uppercase text-[#5A3500] m-0">
-                {t.riskTitle || 'Watch out'}
-              </h2>
-              <div className="flex flex-col gap-3">
-                {result.warnings.map((warn, i) => {
-                  const isQuoteOpen = !!openWarningQuotes[i]
-                  return (
-                    <div key={i} className="flex flex-col gap-2">
-                      <p className="text-[15px] sm:text-[16px] leading-[1.45] font-medium m-0">
-                        {warn.text}
-                      </p>
-
-                      {/* Evidence chip (found / check against original / calculated) */}
-                      {(warn.evidence || warn.quote) && (
-                        <div>
-                          <EvidenceChip
-                            evidence={warn.evidence || 'check_original'}
-                            hasQuote={Boolean(warn.quote)}
-                            isOpen={isQuoteOpen}
-                            onToggle={() => warn.quote && toggleWarningQuote(i)}
-                            t={t}
-                          />
-                          {isQuoteOpen && warn.quote && (
-                            <QuoteAccordion
-                              page={warn.page}
-                              quote={warn.quote}
-                              evidence={warn.evidence || 'check_original'}
-                              t={t}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* 4. KEY FACTS */}
-        {result.facts && result.facts.length > 0 && (
-          <section className="bg-surface border border-line rounded-card p-5 flex flex-col gap-3 shadow-sm animate-card-in">
-            <h2 className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted m-0">
-              {t.factsTitle || 'Key facts'}
-            </h2>
-
-            <div className="flex flex-col divide-y divide-line/70">
-              {result.facts.map((fact, i) => {
-                const isQuoteOpen = !!openFactQuotes[i]
-                return (
-                  <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
-                    <div className="flex items-start gap-3">
-                      <span className="w-2 h-2 rounded-full bg-brand mt-2 shrink-0" />
-                      <div className="flex-1 min-w-0 flex flex-col gap-2">
-                        <span className="text-[15.5px] leading-[1.45] text-ink font-medium">
-                          {fact.text}
-                        </span>
-
-                        {/* Evidence chip (found / check against original / calculated) */}
-                        {(fact.evidence || fact.quote) && (
-                          <div>
-                            <EvidenceChip
-                              evidence={fact.evidence || 'check_original'}
-                              hasQuote={Boolean(fact.quote)}
-                              isOpen={isQuoteOpen}
-                              onToggle={() => fact.quote && toggleFactQuote(i)}
-                              t={t}
-                            />
-                            {isQuoteOpen && fact.quote && (
-                              <QuoteAccordion
-                                page={fact.page}
-                                quote={fact.quote}
-                                evidence={fact.evidence || 'check_original'}
-                                t={t}
-                              />
-                            )}
+                          <div className="mt-2 p-2.5 bg-[#FBF7EF] border-l-2 border-[#5B52D6] rounded-r-xl text-xs text-[#15171A]">
+                            <span className="font-semibold text-[#5E636B]">
+                              Page {act.page}:
+                            </span>
+                            <p className="italic mt-0.5">“{act.quote}”</p>
                           </div>
                         )}
                       </div>
@@ -878,102 +564,312 @@ export default function ResultScreen({
                 )
               })}
             </div>
+
+            {/* Add all dates button (WEB-8) */}
+            <div className="pt-2 flex justify-between items-center border-t border-[#F0F0EB]">
+              <button
+                type="button"
+                onClick={handleAddAllDates}
+                className="btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
+              >
+                <CalendarIcon className="w-4 h-4" />
+                {t.addAllDates || 'Add all dates (.ics)'}
+              </button>
+            </div>
           </section>
         )}
 
-        {/* 5. CONFLICTS IF ANY */}
-        {result.conflicts && result.conflicts.length > 0 && (
-          <section className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-card p-5 flex flex-col gap-2.5 text-[#5A3500] shadow-sm animate-card-in">
-            <div className="flex items-center gap-2">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-[#B42318]"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <h2 className="text-[13px] font-bold text-[#B42318] m-0">
-                {t.conflictsTitle || 'Conflicting details in document'}
+        {/* 2. IN SIMPLE WORDS (Indigo Tint per WEB-5) */}
+        {result.summary && result.summary.length > 0 && (
+          <section className="bg-[#ECEBFA] border border-[#D8D4EF] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#5B52D6] text-white flex items-center justify-center shrink-0">
+                <SparklesIcon className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-bold text-[#1E1838]">
+                {t.summaryTitle || 'In simple words'}
               </h2>
             </div>
-            <p className="text-[13.5px] leading-relaxed text-[#5A3500] m-0">
-              {t.conflictsDesc ||
-                'This document gives conflicting dates or details — check with the office.'}
-            </p>
-            <ul className="m-0 pl-5 text-[14px] leading-relaxed flex flex-col gap-1">
-              {result.conflicts.map((conf, i) => (
-                <li key={i}>{conf}</li>
+
+            <div className="flex flex-col gap-2">
+              {result.summary.map((line, i) => (
+                <p key={i} className="text-base text-[#1E1838] leading-relaxed">
+                  {line}
+                </p>
               ))}
-            </ul>
+            </div>
           </section>
         )}
 
-        {/* 6. DISCLAIMER LINE */}
-        <p className="text-[12.5px] leading-relaxed text-muted px-1 m-0">
+        {/* 3. WATCH OUT (Left accent bar with light amber tint per WEB-5) */}
+        {result.warnings && result.warnings.length > 0 && (
+          <section className="bg-[#FFF4DE] border-l-4 border-[#C2410C] rounded-r-[22px] rounded-l-md p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center shrink-0">
+                <AlertTriangleIcon className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-bold text-[#5A3500]">
+                {t.riskTitle || 'Watch out'}
+              </h2>
+            </div>
+
+            <div className="flex flex-col divide-y divide-[#F4DDB0]/60">
+              {result.warnings.map((warn, i) => {
+                const isQuoteOpen = !!openWarningQuotes[i]
+                return (
+                  <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
+                    <p className="text-base font-medium text-[#5A3500] leading-relaxed">
+                      {warn.text}
+                    </p>
+
+                    {warn.quote && (
+                      <div className="pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleWarningQuote(i)}
+                          className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
+                        >
+                          <EyeIcon className="w-3 h-3" />
+                          {t.checkAgainstOriginal || 'Check original'}
+                        </button>
+                      </div>
+                    )}
+
+                    {isQuoteOpen && warn.quote && (
+                      <div className="mt-1.5 p-2 bg-white/80 rounded-xl text-xs text-[#5A3500]">
+                        <span className="font-semibold">Page {warn.page}:</span> “{warn.quote}”
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 4. KEY FACTS (First 5 + Show all disclosure per WEB-5) */}
+        {result.facts && result.facts.length > 0 && (
+          <section className="bg-white border border-[#E6E6E1] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#F0F0EB] text-[#15171A] flex items-center justify-center shrink-0">
+                <SparklesIcon className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-bold text-[#15171A]">
+                {t.factsTitle || 'Key facts'}
+              </h2>
+            </div>
+
+            <div className="flex flex-col divide-y divide-[#F0F0EB]">
+              {factsToDisplay.map((fact, i) => {
+                const isQuoteOpen = !!openFactQuotes[i]
+
+                return (
+                  <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-md bg-[#FBF7EF] border border-[#F1EBDD] text-[#9A6700] flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-[11px] font-mono font-bold">{i + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base text-[#15171A] leading-relaxed">
+                          {fact.text}
+                        </p>
+                        {fact.quote && (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleFactQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
+                            >
+                              <EyeIcon className="w-3 h-3" />
+                              {t.checkAgainstOriginal || 'Check original'}
+                            </button>
+                          </div>
+                        )}
+                        {isQuoteOpen && fact.quote && (
+                          <div className="mt-1.5 p-2 bg-[#FBF7EF] rounded-xl text-xs text-[#15171A]">
+                            <span className="font-semibold text-[#5E636B]">
+                              Page {fact.page}:
+                            </span>{' '}
+                            “{fact.quote}”
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Show all / Show less toggle */}
+            {result.facts.length > 5 && (
+              <div className="pt-1 text-center border-t border-[#F0F0EB]">
+                <button
+                  type="button"
+                  onClick={() => setShowAllFacts(!showAllFacts)}
+                  className="btn-press text-xs font-bold text-[#5B52D6] hover:underline py-1"
+                >
+                  {showAllFacts
+                    ? t.showLess || 'Show less'
+                    : (t.showAll || 'Show all ({count})').replace(
+                        '{count}',
+                        String(result.facts.length)
+                      )}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Disclaimer Note */}
+        <p className="text-xs text-[#5E636B] leading-relaxed text-center px-4 pt-1">
           {t.disclaimer ||
             'Sarvam explains your document. It does not replace your doctor, insurer or government office.'}
         </p>
       </div>
 
-      {/* 7. BOTTOM BAR: LISTEN + SHARE (no action yet) */}
-      <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-5 mt-6 border-t border-line bg-bg flex gap-2.5">
-        {/* Listen Button (violet outline) */}
-        <button
-          type="button"
-          onClick={() => {
-            console.log('Listen clicked (action coming in Step 6)')
-          }}
-          className="flex-1 h-14 rounded-full border-[1.5px] border-voice bg-voice-soft text-[#3B2E96] font-bold text-[16px] flex items-center justify-center gap-2 hover:bg-voice-soft/80 transition-colors active:scale-95"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      {/* Frosted Bottom Action Bar (WEB-5) */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] py-3 px-4 shadow-lg flex items-center justify-center">
+        <div className="w-full max-w-[430px] flex items-center gap-3">
+          {/* Listen Button (Primary Filled Indigo) */}
+          <button
+            type="button"
+            onClick={() => setIsListenOpen(true)}
+            className="btn-press flex-1 h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors"
           >
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-          </svg>
-          <span>{t.listen || 'Listen'}</span>
-        </button>
+            <PlayIcon className="w-4 h-4 ml-0.5" />
+            <span>{t.listenBtnLabel || 'Listen'}</span>
+          </button>
 
-        {/* Share Button (green) */}
-        <button
-          type="button"
-          onClick={() => {
-            console.log('Share clicked (action coming in Step 7)')
-          }}
-          className="flex-1 h-14 rounded-full bg-brand text-white font-bold text-[16px] flex items-center justify-center gap-2 hover:opacity-95 transition-transform active:scale-95 shadow-sm"
-        >
-          <svg
-            width="19"
-            height="19"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {/* Ask Button (Outlined) */}
+          <button
+            type="button"
+            onClick={() => setIsAskOpen(true)}
+            className="btn-press flex-1 h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors"
           >
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
-          <span>{t.share || 'Share'}</span>
-        </button>
+            <MessageSquareIcon className="w-4 h-4" />
+            <span>{t.askBtnLabel || 'Ask'}</span>
+          </button>
+
+          {/* Share Button (Icon button) */}
+          <button
+            type="button"
+            onClick={() => setIsShareOpen(true)}
+            aria-label={t.share || 'Share'}
+            className="btn-press w-12 h-12 bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+          >
+            <ShareIcon className="w-5 h-5" />
+          </button>
+        </div>
       </div>
+
+      {/* Listen Sheet (WEB-9) */}
+      <ListenSheet
+        isOpen={isListenOpen}
+        onClose={() => setIsListenOpen(false)}
+        result={result}
+        lang={contentLang}
+        t={t}
+      />
+
+      {/* Ask Sheet (WEB-12) */}
+      <AskSheet
+        isOpen={isAskOpen}
+        onClose={() => setIsAskOpen(false)}
+        result={result}
+        files={files}
+        lang={contentLang}
+        t={t}
+        onSpeakAnswer={(_text) => {
+          setIsAskOpen(false)
+          setIsListenOpen(true)
+        }}
+      />
+
+      {/* Share Sheet (WEB-4 Sheet) */}
+      <Sheet
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        title={t.shareTitle || 'Share or save'}
+        maxHeight="max-h-[90vh]"
+      >
+        <div className="flex flex-col gap-4 pt-1">
+          <div className="flex items-center justify-between pb-1">
+            <h2 className="text-base font-bold text-[#15171A]">
+              {t.shareTitle || 'Share or save'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIsShareOpen(false)}
+              className="p-1.5 text-[#5E636B] hover:text-[#15171A] rounded-full"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Hide personal details toggle */}
+          <label className="flex items-center justify-between p-3.5 bg-[#FBF7EF] border border-[#F1EBDD] rounded-2xl cursor-pointer">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-[#15171A]">
+                {t.hidePersonalDetails || 'Hide personal details'}
+              </span>
+              <span className="text-[11px] text-[#5E636B]">
+                {hidePersonal
+                  ? 'Names, numbers and IDs redacted'
+                  : 'Showing full details'}
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={hidePersonal}
+              onChange={(e) => setHidePersonal(e.target.checked)}
+              className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
+            />
+          </label>
+
+          {/* Live Preview */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-bold uppercase text-[#5E636B]">
+              {t.sharePreview || 'Preview of shared text'}
+            </span>
+            <pre className="max-h-36 overflow-y-auto p-3 bg-neutral-50 border border-[#E6E6E1] rounded-xl text-xs font-mono leading-relaxed text-[#15171A] whitespace-pre-wrap select-all">
+              {sharedText}
+            </pre>
+          </div>
+
+          {/* Share Action Buttons */}
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => shareToWhatsApp(sharedText)}
+                className="btn-press h-11 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#20ba5a]"
+              >
+                {t.shareViaWhatsApp || 'WhatsApp'}
+              </button>
+              <button
+                type="button"
+                onClick={() => shareToEmail(result.title, sharedText)}
+                className="btn-press h-11 rounded-xl border border-[#E6E6E1] bg-white text-[#15171A] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#F0F0EB]"
+              >
+                {t.shareViaEmail || 'Email'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopyShared}
+              className={`btn-press w-full h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
+                copySuccess
+                  ? 'bg-[#146B4E] text-white'
+                  : 'bg-white border border-[#E6E6E1] text-[#15171A] hover:bg-[#F0F0EB]'
+              }`}
+            >
+              <CopyIcon className="w-4 h-4" />
+              <span>{copySuccess ? t.copied || 'Copied!' : t.copyText || 'Copy text'}</span>
+            </button>
+          </div>
+        </div>
+      </Sheet>
     </div>
   )
 }

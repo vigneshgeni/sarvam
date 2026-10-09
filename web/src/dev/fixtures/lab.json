@@ -1,0 +1,108 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "title": "Diagnostic Blood Test Report",
+  "report_title": "Comprehensive Metabolic Panel",
+  "report_date": "04 Oct 2026",
+  "report_date_iso": "2026-10-04",
+  "source_kind": "scanned_pdf",
+  "language": "en",
+  "document_language": "en",
+  "letter_date": "2026-10-04",
+  "summary": [
+    "Blood examination shows fasting glucose levels moderately above standard range.",
+    "HbA1c level is 6.1%, indicating a prediabetic profile requiring lifestyle guidance."
+  ],
+  "glance": {
+    "headline": "Fasting Blood Sugar Slightly Elevated",
+    "key_values": [
+      {
+        "label": "Fasting Glucose",
+        "value": "118 mg/dL",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "HbA1c",
+        "value": "6.1%",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "Test Date",
+        "value": "04 Oct 2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "places": [
+    {
+      "label": "Apex Diagnostics Lab",
+      "address": "15 MG Road, Indiranagar, Bengaluru 560038",
+      "quote": "Apex Diagnostics, 15 MG Road, Bengaluru",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Lab Enquiry",
+      "value": "+91 80 2520 1199",
+      "quote": "Ph: 080-25201199",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "actions": [
+    {
+      "text": "Consult your physician regarding HbA1c prediabetes range",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "Clinical correlation recommended with prescribing doctor",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "Fasting blood sugar 118 mg/dL is above normal threshold (100 mg/dL)",
+      "quote": "Glucose Fasting: 118 mg/dL (Ref: 70-100)",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Patient Name: Priya Sundaram",
+      "quote": "Patient: Priya Sundaram, 42F",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "text": "Lab ID: BLR-LAB-44019",
+      "quote": "Sample ID: BLR-LAB-44019",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "conflicts": [],
+  "evidence_summary": {
+    "matched": 6,
+    "check_original": 0,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "protected_terms": [
+    "Priya Sundaram",
+    "BLR-LAB-44019",
+    "+91 80 2520 1199",
+    "15 MG Road, Indiranagar, Bengaluru 560038"
+  ],
+  "spoken_summary": "Your blood report shows a fasting sugar level of 118, which is slightly above the normal range. Please review this with your consulting physician."
+}

@@ -1,0 +1,108 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "title": "Annual Life Certificate Notice",
+  "report_title": "Pension Continuation Verification",
+  "report_date": "28 Sep 2026",
+  "report_date_iso": "2026-09-28",
+  "source_kind": "photo",
+  "language": "en",
+  "document_language": "en",
+  "letter_date": "2026-09-28",
+  "summary": [
+    "Annual submission of Digital Life Certificate (Jeevan Pramaan) is required to maintain pension payments.",
+    "Submit your biometric verification before 30 November 2026."
+  ],
+  "glance": {
+    "headline": "Submit Digital Life Certificate by 30 Nov",
+    "key_values": [
+      {
+        "label": "Monthly Pension",
+        "value": "₹28,450",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "Deadline",
+        "value": "30 Nov 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "PPO Number",
+        "value": "PPO-7718290",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "places": [
+    {
+      "label": "Pension Disbursing Office",
+      "address": "Treasury Complex, Station Road, Coimbatore 641018",
+      "quote": "District Treasury, Station Road, Coimbatore",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Pension Helpline",
+      "value": "+91 422 230 4567",
+      "quote": "Helpline: 0422-2304567",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "actions": [
+    {
+      "text": "Submit Jeevan Pramaan digital life certificate online or at branch",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Must submit Life Certificate before 30th November 2026",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "Pension disbursement for December will stop if life certificate is late",
+      "quote": "Disbursement halted if certificate not received by due date",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Pensioner: S. Murugesan",
+      "quote": "Pensioner Name: S. Murugesan",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "text": "Bank Branch: SBI Main Branch, Coimbatore",
+      "quote": "Disbursing Branch: SBI Coimbatore Main",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "conflicts": [],
+  "evidence_summary": {
+    "matched": 6,
+    "check_original": 0,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "protected_terms": [
+    "S. Murugesan",
+    "PPO-7718290",
+    "+91 422 230 4567",
+    "Treasury Complex, Station Road, Coimbatore 641018"
+  ],
+  "spoken_summary": "Your annual life certificate is due by 30 November 2026. Submit it online via Jeevan Pramaan or at your bank to keep receiving your monthly pension without interruption."
+}
