@@ -11,10 +11,35 @@ from collections import Counter
 from typing import Iterable, Mapping
 
 
+DOC_TYPES = (
+    "utility_bill",
+    "telecom_bill",
+    "tax_receipt",
+    "insurance",
+    "bank",
+    "government_notice",
+    "court_legal",
+    "challan",
+    "medical",
+    "receipt",
+    "agreement",
+    "corporate",
+    "other",
+    "unknown",
+)
+
+
+def stored_doc_type(value: object) -> str:
+    if isinstance(value, str) and value in DOC_TYPES:
+        return value
+    return "unknown"
+
+
 def summarize(documents: Iterable[Mapping[str, object]]) -> dict[str, object]:
     rating: Counter[str] = Counter()
     language: Counter[str] = Counter()
     reasons: Counter[str] = Counter()
+    doc_type: Counter[str] = Counter()
     included = 0
     excluded_sample = 0
 
@@ -25,6 +50,7 @@ def summarize(documents: Iterable[Mapping[str, object]]) -> dict[str, object]:
         included += 1
         rating[str(data.get("rating", "unknown"))] += 1
         language[str(data.get("lang", "unknown"))] += 1
+        doc_type[stored_doc_type(data.get("docType"))] += 1
         if data.get("rating") == "down":
             raw = data.get("reasons") or []
             if isinstance(raw, list):
@@ -36,6 +62,7 @@ def summarize(documents: Iterable[Mapping[str, object]]) -> dict[str, object]:
         "excluded_sample": excluded_sample,
         "rating": dict(rating),
         "language": dict(language),
+        "doc_type": dict(doc_type),
         "reasons": dict(reasons),
     }
 
@@ -56,6 +83,13 @@ def format_summary(summary: Mapping[str, object]) -> str:
     if isinstance(language, dict):
         for key in sorted(language):
             lines.append(f"  {key}: {language[key]}")
+    lines.append("doc_type:")
+    doc_type = summary["doc_type"]
+    if isinstance(doc_type, dict):
+        if not doc_type:
+            lines.append("  (none)")
+        for key in sorted(doc_type):
+            lines.append(f"  {key}: {doc_type[key]}")
     lines.append("reasons:")
     if isinstance(reasons, dict):
         if not reasons:

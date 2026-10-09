@@ -99,8 +99,25 @@ export function runPayloadTests(): void {
   if (unknownDoc.rating === 'down') {
     assertEqual(unknownDoc.reasons.length, 0, 'empty down reasons')
   }
+  assertEqual(buildFeedbackPayload({ ...base, docType: 'pension' }).docType, 'unknown', 'pension is not an API category')
+  assertEqual(buildFeedbackPayload({ ...base, docType: 'school' }).docType, 'unknown', 'school is not an API category')
 
-  for (const docType of ['pension', 'lab', 'insurance', 'other', 'unknown']) {
+  for (const docType of [
+    'utility_bill',
+    'telecom_bill',
+    'tax_receipt',
+    'insurance',
+    'bank',
+    'government_notice',
+    'court_legal',
+    'challan',
+    'medical',
+    'receipt',
+    'agreement',
+    'corporate',
+    'other',
+    'unknown',
+  ]) {
     assertEqual(buildFeedbackPayload({ ...base, docType }).docType, docType, docType)
   }
 

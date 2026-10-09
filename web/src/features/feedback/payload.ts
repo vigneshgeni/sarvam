@@ -2,7 +2,22 @@ import { FEEDBACK_LANGS, REASON_CODES, type FeedbackLang, type ReasonCode } from
 
 export const APP_VERSION = '0.0.0'
 
-export const DOC_TYPES = ['pension', 'lab', 'insurance', 'other', 'unknown'] as const
+export const DOC_TYPES = [
+  'utility_bill',
+  'telecom_bill',
+  'tax_receipt',
+  'insurance',
+  'bank',
+  'government_notice',
+  'court_legal',
+  'challan',
+  'medical',
+  'receipt',
+  'agreement',
+  'corporate',
+  'other',
+  'unknown',
+] as const
 
 export type FeedbackDocType = (typeof DOC_TYPES)[number]
 export type FeedbackRating = 'up' | 'down'
