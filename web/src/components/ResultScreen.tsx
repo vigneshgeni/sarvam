@@ -21,6 +21,7 @@ import Sheet from './Sheet'
 import GlanceCard from './GlanceCard'
 import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
+import FeedbackBlock from '../features/feedback/FeedbackBlock'
 import ListenSheet from './ListenSheet'
 import AskSheet from './AskSheet'
 import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
@@ -725,6 +726,7 @@ export default function ResultScreen({
           {t.disclaimer ||
             'Sarvam explains your document. It does not replace your doctor, insurer or government office.'}
         </p>
+        <FeedbackBlock result={result} lang={contentLang} files={files} />
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
