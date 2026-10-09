@@ -1,0 +1,13 @@
+{
+  "id": "voter_id",
+  "title": "Voter ID",
+  "verifiedOn": "2026-10-08",
+  "steps": [
+    "File a lost-report if you need an acknowledgement.",
+    "Apply for a replacement EPIC only on the official Election Commission voter portal.",
+    "Do not type the EPIC number in a public description."
+  ],
+  "links": [
+    { "label": "voters.eci.gov.in", "href": "https://voters.eci.gov.in/", "unverified": false }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "phone",
+  "title": "Phone",
+  "verifiedOn": "2026-10-08",
+  "steps": [
+    "Block the IMEI through Sanchar Saathi on the official site if the phone is lost.",
+    "Ask your mobile operator to block the SIM. Do not share OTPs with anyone who contacts you.",
+    "File a police lost-report. Sarvam never asks for money to return a phone."
+  ],
+  "links": [
+    { "label": "Sanchar Saathi", "href": "https://www.sancharsaathi.gov.in/", "unverified": false }
+  ]
+}

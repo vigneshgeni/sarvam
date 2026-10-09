@@ -1,0 +1,15 @@
+[
+  {
+    "id": "fixture-wallet",
+    "type": "found",
+    "category": "wallet",
+    "title": "Brown leather wallet",
+    "publicDescription": "Brown leather wallet with a few cards and a bus pass",
+    "city": "chennai",
+    "area": "T. Nagar",
+    "foundAt": "2026-10-06",
+    "heldAt": "shop_or_office",
+    "status": "open",
+    "demo": true
+  }
+]

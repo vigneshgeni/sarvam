@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:lf": "node --test src/features/lostfound/i18n/fallback.test.mjs"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
