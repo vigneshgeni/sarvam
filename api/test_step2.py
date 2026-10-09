@@ -1853,6 +1853,14 @@ def test_to_speech_15_patterns():
     assert "31,200 రూపాయలు" in res15
 
 
+def test_to_speech_expands_doctor_titles_without_changing_document_names():
+    from tts import to_speech
+
+    assert to_speech("Dr A Meena", "en") == "Doctor A Meena"
+    assert to_speech("Dr. K. Raghavan", "en") == "Doctor K Raghavan"
+    assert to_speech("Dr A Meena", "ta") == "டாக்டர் A Meena"
+
+
 def test_speak_endpoint(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
@@ -2118,5 +2126,4 @@ def test_spoken_summary_natural_date_rendering_hi_ta(client):
         ta_body = res_ta.json()
         assert "30 நவம்பர் 2026" in ta_body["spoken_summary"]
         assert "2026-11-30" not in ta_body["spoken_summary"]
-
 
