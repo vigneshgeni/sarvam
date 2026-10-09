@@ -119,6 +119,56 @@ html[data-reduce-motion="true"] *::after {
   outline-offset: 2px;
 }
 
+/* The audio timeline keeps a generous touch target around a fine track. */
+.voice-seek {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 36px;
+  background: transparent;
+  touch-action: pan-x;
+  cursor: pointer;
+}
+.voice-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+.voice-seek::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+.voice-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border: 3px solid var(--color-surface, #ffffff);
+  border-radius: 50%;
+  background: var(--color-violet-text, #6D45C9);
+  box-shadow: 0 0 0 1px var(--color-indigo-tint, #ecebfa);
+}
+.voice-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 3px solid var(--color-surface, #ffffff);
+  border-radius: 50%;
+  background: var(--color-violet-text, #6D45C9);
+  box-shadow: 0 0 0 1px var(--color-indigo-tint, #ecebfa);
+}
+.voice-seek:focus-visible {
+  outline: 2px solid var(--color-violet-text, #6D45C9);
+  outline-offset: 2px;
+}
+
+html[data-high-contrast="true"] .voice-seek::-webkit-slider-thumb {
+  border-color: #000000;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+html[data-high-contrast="true"] .voice-seek::-moz-range-thumb {
+  border-color: #000000;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
 /* Animated Tick Draw for checkboxes */
 @keyframes tickDraw {
   0% { stroke-dashoffset: 24; }
