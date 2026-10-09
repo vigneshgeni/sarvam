@@ -94,3 +94,39 @@ Expect `/health` to return `{"status":"ok"}`. Expect `Cache-Control: no-cache` o
 Then open `https://sarvam-510715.web.app` and run the three built-in samples (lab report, insurance letter, pension notice). Each should reach the result screen.
 
 Confirm a hashed file under `/assets/` returns `Cache-Control: public, max-age=31536000, immutable` (the filename changes every build; copy it from `index.html`).
+
+## 5. Firestore feedback (do these yourself)
+
+The app does not create the database or turn on sign-in. Do these in the Firebase console for project `sarvam-510715`, then deploy rules from the repo root:
+
+1. Create the Firestore database in **Native mode** in **asia-south1**.
+2. In Authentication, enable the **Anonymous** sign-in provider.
+3. In Authentication → Settings → Authorised domains, add `sarvam-510715.web.app` and `sarvam-510715.firebaseapp.com` if they are not already listed. `localhost` is there by default.
+4. Deploy rules only (this does not deploy Hosting):
+
+```bash
+npx firebase deploy --only firestore:rules --project sarvam-510715
+```
+
+Put the web config in `web/.env` (gitignored), using the names in `web/.env.example`:
+
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=sarvam-510715
+VITE_FIREBASE_APP_ID=
+```
+
+Rebuild the web app after those values change. They are public client keys and must not be hard-coded in source.
+
+## 6. Feedback counts
+
+From the repo root, with Application Default Credentials (`gcloud auth application-default login`) and permission to read Firestore:
+
+```bash
+python3 -m venv scripts/.venv
+scripts/.venv/bin/pip install -r scripts/requirements.txt
+GOOGLE_CLOUD_PROJECT=sarvam-510715 scripts/.venv/bin/python scripts/feedback_summary.py
+```
+
+The script counts `feedback` documents and skips `sample: true`. It does not read or store document text. Firestore is not added to the Explain API.
