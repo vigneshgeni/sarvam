@@ -25,6 +25,7 @@ import ListenSheet from './ListenSheet'
 import AskSheet from './AskSheet'
 import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
 import { buildSharedText, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { pushBrowserHistory } from '../utils/history'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -86,6 +87,53 @@ export default function ResultScreen({
   const [isListenOpen, setIsListenOpen] = useState(false)
   const [isAskOpen, setIsAskOpen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [sourceViewer, setSourceViewer] = useState<{
+    isOpen: boolean
+    quote?: string
+    page?: number
+  }>({ isOpen: false })
+
+  const openOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source') => {
+    pushBrowserHistory({ screen: 'result', overlay: overlayName })
+    if (overlayName === 'listen') setIsListenOpen(true)
+    if (overlayName === 'ask') setIsAskOpen(true)
+    if (overlayName === 'share') setIsShareOpen(true)
+  }
+
+  const closeOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source') => {
+    if (typeof window !== 'undefined' && window.history.state?.overlay === overlayName) {
+      window.history.back()
+    } else {
+      if (overlayName === 'listen') setIsListenOpen(false)
+      if (overlayName === 'ask') setIsAskOpen(false)
+      if (overlayName === 'share') setIsShareOpen(false)
+      if (overlayName === 'source') setSourceViewer({ isOpen: false })
+    }
+  }
+
+  // Synchronize overlay close with iOS Safari back-swipe (WEB-iOS Fix 1)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { screen?: string; overlay?: string | null } | null
+      const currentOverlay = state?.overlay
+
+      if (isListenOpen && currentOverlay !== 'listen') {
+        setIsListenOpen(false)
+      }
+      if (isAskOpen && currentOverlay !== 'ask') {
+        setIsAskOpen(false)
+      }
+      if (isShareOpen && currentOverlay !== 'share') {
+        setIsShareOpen(false)
+      }
+      if (sourceViewer.isOpen && currentOverlay !== 'source') {
+        setSourceViewer({ isOpen: false })
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [isListenOpen, isAskOpen, isShareOpen, sourceViewer.isOpen])
 
   // Share state
   const [hidePersonal, setHidePersonal] = useState(true)
@@ -120,7 +168,8 @@ export default function ResultScreen({
   // Quote checker drawer (scrolls into view or displays original text)
   const handleCheckOriginal = (quote?: string, page?: number) => {
     if (!quote) return
-    alert(`Page ${page || 1}: "${quote}"`)
+    openOverlay('source')
+    setSourceViewer({ isOpen: true, quote, page })
   }
 
   // Actions done calculation
@@ -733,7 +782,7 @@ export default function ResultScreen({
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
-            onClick={() => setIsListenOpen(true)}
+            onClick={() => openOverlay('listen')}
             className="btn-press flex-1 h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors"
           >
             <PlayIcon className="w-4 h-4 ml-0.5" />
@@ -743,7 +792,7 @@ export default function ResultScreen({
           {/* Ask Button (Outlined) */}
           <button
             type="button"
-            onClick={() => setIsAskOpen(true)}
+            onClick={() => openOverlay('ask')}
             className="btn-press flex-1 h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors"
           >
             <MessageSquareIcon className="w-4 h-4" />
@@ -753,7 +802,7 @@ export default function ResultScreen({
           {/* Share Button (Icon button) */}
           <button
             type="button"
-            onClick={() => setIsShareOpen(true)}
+            onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
             className="btn-press w-12 h-12 bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
           >
@@ -765,7 +814,7 @@ export default function ResultScreen({
       {/* Listen Sheet (WEB-9) */}
       <ListenSheet
         isOpen={isListenOpen}
-        onClose={() => setIsListenOpen(false)}
+        onClose={() => closeOverlay('listen')}
         result={result}
         lang={contentLang}
         t={t}
@@ -774,21 +823,21 @@ export default function ResultScreen({
       {/* Ask Sheet (WEB-12) */}
       <AskSheet
         isOpen={isAskOpen}
-        onClose={() => setIsAskOpen(false)}
+        onClose={() => closeOverlay('ask')}
         result={result}
         files={files}
         lang={contentLang}
         t={t}
         onSpeakAnswer={(_text) => {
-          setIsAskOpen(false)
-          setIsListenOpen(true)
+          closeOverlay('ask')
+          openOverlay('listen')
         }}
       />
 
       {/* Share Sheet (WEB-4 Sheet) */}
       <Sheet
         isOpen={isShareOpen}
-        onClose={() => setIsShareOpen(false)}
+        onClose={() => closeOverlay('share')}
         title={t.shareTitle || 'Share or save'}
         maxHeight="max-h-[90vh]"
       >
@@ -799,7 +848,7 @@ export default function ResultScreen({
             </h2>
             <button
               type="button"
-              onClick={() => setIsShareOpen(false)}
+              onClick={() => closeOverlay('share')}
               className="p-1.5 text-[#5E636B] hover:text-[#15171A] rounded-full"
             >
               <CloseIcon className="w-5 h-5" />
@@ -868,6 +917,28 @@ export default function ResultScreen({
               <span>{copySuccess ? t.copied || 'Copied!' : t.copyText || 'Copy text'}</span>
             </button>
           </div>
+        </div>
+      </Sheet>
+
+      {/* Source Viewer Sheet (WEB-iOS Fix 1) */}
+      <Sheet
+        isOpen={sourceViewer.isOpen}
+        onClose={() => closeOverlay('source')}
+        title={t.checkOriginal || 'Check in original document'}
+        maxHeight="max-h-[85vh]"
+      >
+        <div className="flex flex-col gap-4 py-2">
+          <div className="rounded-xl bg-[#F6F6F3] p-4 border border-[#ECECE8]">
+            <p className="text-xs font-semibold text-[#656077] uppercase tracking-wider mb-2">
+              Page {sourceViewer.page || 1}
+            </p>
+            <blockquote className="text-base text-[#15171A] leading-relaxed italic border-l-2 border-[#1E1838] pl-3 py-1">
+              "{sourceViewer.quote}"
+            </blockquote>
+          </div>
+          <p className="text-xs text-[#5E636B]">
+            This excerpt was matched directly from your original document text.
+          </p>
         </div>
       </Sheet>
     </div>
