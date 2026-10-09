@@ -105,7 +105,9 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
     )
   }
 
-  const showReasons = phase === 'reasons' || (phase === 'error' && pending?.rating === 'down')
+  const showReasons =
+    phase === 'reasons' ||
+    ((phase === 'sending' || phase === 'error') && pending?.rating === 'down')
   const busy = phase === 'sending'
 
   return (
