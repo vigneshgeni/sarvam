@@ -74,6 +74,21 @@ test('valid down with reasons is allowed', async () => {
   await assertSucceeds(setDoc(doc(db(), 'feedback/valid-down'), downBody()))
 })
 
+test('down with zero chips is allowed', async () => {
+  // Same shape buildFeedbackPayload returns for a down rating with no chips: reasons is [].
+  await assertSucceeds(
+    setDoc(doc(db(), 'feedback/down-empty-reasons'), {
+      rating: 'down',
+      lang: 'en',
+      docType: 'medical',
+      reasons: [],
+      sample: false,
+      appVersion: '0.0.0',
+      createdAt: serverTimestamp(),
+    }),
+  )
+})
+
 test('extra field is denied', async () => {
   await assertFails(setDoc(doc(db(), 'feedback/extra'), upBody({ extra: true })))
 })
