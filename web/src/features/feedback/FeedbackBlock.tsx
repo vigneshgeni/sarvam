@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ExplainResponse } from '../../types'
 import {
   buildFeedbackPayload,
-  isBuiltInSample,
   localResultId,
+  sampleFromFiles,
   type FeedbackPayload,
 } from './payload.js'
 import { REASON_CODES, feedbackCopy, type ReasonCode } from './strings.js'
@@ -76,7 +76,7 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
         rating,
         lang,
         docType,
-        sample: isBuiltInSample(files.map((file) => file.name)),
+        sample: sampleFromFiles(files),
         ...(rating === 'down' ? { reasons: reasons ?? [] } : {}),
       })
       void send(payload)

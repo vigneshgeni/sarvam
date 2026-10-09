@@ -3,6 +3,7 @@ import {
   buildFeedbackPayload,
   isBuiltInSample,
   localResultId,
+  sampleFromFiles,
 } from './payload.js'
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
@@ -112,6 +113,31 @@ export function runPayloadTests(): void {
   assertEqual(isBuiltInSample(['sample-lab-report.pdf']), true, 'sample file')
   assertEqual(isBuiltInSample(['sample-pension-notice.jpg', 'notes.pdf']), false, 'mixed files')
   assertEqual(isBuiltInSample([]), false, 'no files')
+
+  const fileName = 'sample-pension-notice.jpg'
+  const fileSize = 482113
+  const fileType = 'image/jpeg'
+  const fileContent = 'Pensioner S. Murugesan PPO-7718290 due 30 November'
+  const sample = sampleFromFiles([
+    { name: fileName, size: fileSize, type: fileType, content: fileContent },
+  ])
+  assertEqual(sample, true, 'sample flag from files')
+  assertEqual(typeof sample, 'boolean', 'sample flag type')
+  const fromFiles = buildFeedbackPayload({ ...base, sample })
+  const encoded = JSON.stringify(fromFiles)
+  assertEqual(encoded.includes(fileName), false, 'payload hides file name')
+  assertEqual(encoded.includes(String(fileSize)), false, 'payload hides file size')
+  assertEqual(encoded.includes(fileType), false, 'payload hides file type')
+  assertEqual(encoded.includes('Murugesan'), false, 'payload hides file content')
+  assertEqual(encoded.includes('7718290'), false, 'payload hides file content id')
+  assertEqual(fromFiles.sample, true, 'stored sample is the boolean')
+  for (const leaked of ['name', 'size', 'type', 'content', 'fileName'] as const) {
+    assertThrows(
+      () => buildFeedbackPayload({ ...base, [leaked]: fileContent }),
+      /Unexpected field/,
+      `reject ${leaked}`,
+    )
+  }
 
   const id = localResultId({
     title: 'Annual Life Certificate Notice',

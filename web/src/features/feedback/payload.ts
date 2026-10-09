@@ -65,6 +65,21 @@ export function isBuiltInSample(fileNames: readonly string[]): boolean {
   return fileNames.length > 0 && fileNames.every((name) => name.startsWith('sample-'))
 }
 
+/**
+ * True only when every file is a built-in sample. The return value is a boolean.
+ * Names, sizes, types and file bytes are not returned.
+ */
+export function sampleFromFiles(files: readonly object[]): boolean {
+  if (files.length === 0) return false
+  const names: string[] = []
+  for (const file of files) {
+    const name = (file as { name?: unknown }).name
+    if (typeof name !== 'string') return false
+    names.push(name)
+  }
+  return isBuiltInSample(names)
+}
+
 export function toFeedbackDocType(value: unknown): FeedbackDocType {
   if (typeof value !== 'string') return 'unknown'
   const normalized = value.trim().toLowerCase()
