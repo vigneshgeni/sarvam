@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   SUPPORTED_LANGS,
   getDictionary,
@@ -39,8 +39,6 @@ import {
   AlertTriangleIcon,
   ChevronRightIcon,
 } from './components/icons'
-
-const LostFoundHome = lazy(() => import('./features/lostfound'))
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -98,29 +96,6 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   )
-
-  const [homeTab, setHomeTab] = useState<'explain' | 'lf'>(() => {
-    try {
-      return localStorage.getItem('sarvam.tab') === 'lf' ? 'lf' : 'explain'
-    } catch {
-      return 'explain'
-    }
-  })
-  const selectHomeTab = (tab: 'explain' | 'lf') => {
-    setHomeTab(tab)
-    try {
-      localStorage.setItem('sarvam.tab', tab)
-    } catch {
-      /* ignore */
-    }
-  }
-  const tabLang = selectedLang === 'auto' ? 'en' : selectedLang
-  const tabLabels =
-    tabLang === 'ta'
-      ? { explain: 'விளக்குக', lf: 'தொலைந்தவை' }
-      : tabLang === 'hi'
-        ? { explain: 'समझाएँ', lf: 'खोया-पाया' }
-        : { explain: 'Explain', lf: 'Lost & Found' }
 
   // Session refs
   const activeFilesRef = useRef<File[]>([])
@@ -1032,51 +1007,6 @@ export default function App() {
               </div>
             </div>
 
-            <div
-              className="flex bg-soft rounded-full p-1 gap-0.5"
-              role="tablist"
-              aria-label="Home sections"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={homeTab === 'explain'}
-                onClick={() => selectHomeTab('explain')}
-                className={`flex-1 min-h-12 rounded-full text-[15px] font-bold transition-colors ${
-                  homeTab === 'explain' ? 'bg-surface text-ink shadow-sm' : 'text-muted'
-                }`}
-              >
-                {tabLabels.explain}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={homeTab === 'lf'}
-                onClick={() => selectHomeTab('lf')}
-                className={`flex-1 min-h-12 rounded-full text-[15px] font-bold transition-colors ${
-                  homeTab === 'lf' ? 'bg-surface text-ink shadow-sm' : 'text-muted'
-                }`}
-              >
-                {tabLabels.lf}
-              </button>
-            </div>
-
-            {homeTab === 'lf' && (
-              <Suspense
-                fallback={
-                  <div className="flex flex-col gap-3 pt-2" aria-busy="true" aria-label="Loading Lost & Found">
-                    <div className="h-4 w-2/3 rounded-lg bg-soft sv-shimmer" />
-                    <div className="h-24 rounded-[24px] bg-soft sv-shimmer" />
-                    <div className="h-24 rounded-[24px] bg-soft sv-shimmer" />
-                  </div>
-                }
-              >
-                <LostFoundHome lang={tabLang} />
-              </Suspense>
-            )}
-
-            {homeTab === 'explain' && (
-            <>
             {/* Greeting Heading */}
             <h1 className="text-[28px] sm:text-[30px] font-bold font-heading text-ink leading-[1.18] tracking-[-0.015em] m-0 animate-card-in-1">
               {t.hello}
@@ -1349,8 +1279,6 @@ export default function App() {
             <footer className="text-center text-[13px] text-muted leading-relaxed px-3 pt-2">
               {t.privacy}
             </footer>
-            </>
-            )}
           </>
         )}
 

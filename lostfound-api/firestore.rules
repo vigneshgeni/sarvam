@@ -1,9 +1,0 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Lost & Found: deny ALL direct client access. The API is the only door.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
