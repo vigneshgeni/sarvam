@@ -30,7 +30,6 @@ import {
   isIosDevice,
   canShareIcsFile,
   shareIcsFile,
-  openIcsInSameTab,
   buildDatesText,
   getGoogleCalendarUrl,
   type CalendarEventInput,
@@ -246,34 +245,28 @@ export default function ResultScreen({
     const ics = generateIcs(events)
     const filename = 'all-actions.ics'
 
-    // Strategy 1: Web Share with an .ics file (supported on iOS 15+ when canShare accepts files)
-    if (canShareIcsFile()) {
-      setCalendarStatus('Sharing calendar file (.ics)...')
-      const outcome = await shareIcsFile(filename, ics, result.title)
-      if (outcome === 'shared') {
-        setCalendarStatus('Calendar file shared successfully.')
-        return
-      } else if (outcome === 'cancelled') {
-        setCalendarStatus('Calendar share cancelled.')
-        return
+    // On iOS Safari:
+    if (isIosDevice()) {
+      // Step 1: Web Share with .ics file if supported
+      if (canShareIcsFile()) {
+        setCalendarStatus('Sharing calendar file (.ics)...')
+        const outcome = await shareIcsFile(filename, ics, result.title)
+        if (outcome === 'shared') {
+          setCalendarStatus('Calendar file shared successfully.')
+          return
+        }
+        // If cancelled or failed: skip step 2 and go straight to Reminders sheet
       }
-    }
-
-    // Strategy 2: .ics blob / download on non-iOS or same-tab data URL
-    if (!isIosDevice()) {
-      downloadIcs(filename, ics)
-      setCalendarStatus('Calendar file downloaded (.ics).')
+      // Step 3 (iOS fallback): Reminders sheet with Google Calendar links and Copy button
+      setCalendarStatus('Showing dates list. Add each to Google Calendar or copy all.')
+      openOverlay('reminders')
       return
     }
 
-    try {
-      openIcsInSameTab(ics)
-      setCalendarStatus('Opening calendar...')
-    } catch {}
-
-    // Strategy 3: Visible list with Google Calendar links per date plus Copy button
-    setCalendarStatus('Showing dates list. Add each to Google Calendar or copy all.')
-    openOverlay('reminders')
+    // On Desktop / non-iOS browsers:
+    // Step 2: Download .ics file directly
+    downloadIcs(filename, ics)
+    setCalendarStatus('Calendar file downloaded (.ics).')
   }
 
   const handleCopyAllDatesText = async () => {

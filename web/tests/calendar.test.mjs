@@ -23,17 +23,17 @@ function buildDatesSummary(events) {
     .join('\n')
 }
 
-function determineExportStrategy({ hasWebShare, canShareFiles, isIosSafari }) {
-  // Strategy 1: Web share with .ics file
-  if (hasWebShare && canShareFiles) {
-    return 'web-share-file'
+function determineCalendarAction({ isIos, canShare, shareOutcome }) {
+  if (isIos) {
+    if (canShare && shareOutcome === 'shared') {
+      return 'share'
+    }
+    // On iOS Safari, if Web Share is cancelled, failed, or unavailable:
+    // skip step 2 (same-tab data URL) and go straight to Reminders sheet with Google Calendar links
+    return 'reminders-sheet'
   }
-  // Strategy 2: .ics data URL opened in same tab (non-iOS or supported browsers)
-  if (!isIosSafari) {
-    return 'same-tab-data-url'
-  }
-  // Strategy 3: Visible list with Google Calendar links + Copy button
-  return 'visible-list-fallback'
+  // Desktop browsers: download .ics file directly
+  return 'download'
 }
 
 test('Calendar Fallback - Google Calendar URL generation', () => {
@@ -54,22 +54,34 @@ test('Calendar Fallback - Build dates summary text for copying', () => {
   assert(text.includes('• Submit Life Certificate: 2026-11-30'))
 })
 
-test('Calendar Fallback - In-order strategy selection', () => {
-  // 1. Web Share supported with files -> uses web-share
+test('Calendar Fallback - iOS Safari branch skips step 2 directly to Reminders sheet', () => {
+  // 1. iOS Safari with successful Web Share
   assert.equal(
-    determineExportStrategy({ hasWebShare: true, canShareFiles: true, isIosSafari: true }),
-    'web-share-file'
+    determineCalendarAction({ isIos: true, canShare: true, shareOutcome: 'shared' }),
+    'share'
   )
 
-  // 2. Desktop or Android without file share -> uses same tab data URL
+  // 2. iOS Safari where user cancels Web Share -> goes straight to Reminders sheet (skips step 2 data URL)
   assert.equal(
-    determineExportStrategy({ hasWebShare: false, canShareFiles: false, isIosSafari: false }),
-    'same-tab-data-url'
+    determineCalendarAction({ isIos: true, canShare: true, shareOutcome: 'cancelled' }),
+    'reminders-sheet'
   )
 
-  // 3. iOS Safari without file share support -> falls back to visible list with links + copy
+  // 3. iOS Safari where Web Share fails -> goes straight to Reminders sheet
   assert.equal(
-    determineExportStrategy({ hasWebShare: false, canShareFiles: false, isIosSafari: true }),
-    'visible-list-fallback'
+    determineCalendarAction({ isIos: true, canShare: true, shareOutcome: 'failed' }),
+    'reminders-sheet'
+  )
+
+  // 4. iOS Safari where canShare is false (no file share support) -> straight to Reminders sheet
+  assert.equal(
+    determineCalendarAction({ isIos: true, canShare: false }),
+    'reminders-sheet'
+  )
+
+  // 5. Desktop browser -> downloads file directly (Step 2)
+  assert.equal(
+    determineCalendarAction({ isIos: false, canShare: false }),
+    'download'
   )
 })

@@ -343,8 +343,13 @@ export default function App() {
     if (!deleteConfirm) return
     if (deleteConfirm.type === 'single' && deleteConfirm.id) {
       await deleteRecentResult(deleteConfirm.id)
+      const active = loadActiveSession()
+      if (active?.currentResultId === deleteConfirm.id) {
+        clearActiveSession()
+      }
     } else if (deleteConfirm.type === 'all') {
       await clearAllRecentResults()
+      clearActiveSession()
     }
     setDeleteConfirm(null)
     await loadRecents()

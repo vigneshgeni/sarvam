@@ -232,11 +232,33 @@ export async function shareIcsFile(
 }
 
 /**
- * Opens .ics data in same tab
+ * Opens .ics data in same tab (legacy / desktop fallback)
  */
 export function openIcsInSameTab(icsContent: string): void {
   const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`
   window.location.href = dataUrl
+}
+
+export type CalendarFlowAction = 'share' | 'reminders-sheet' | 'download'
+
+/**
+ * Resolves the calendar export flow action.
+ * On iOS: Web Share is used if available; if cancelled, failed, or unavailable,
+ * skips same-tab data URL and routes directly to the Reminders sheet with Google Calendar links.
+ * On desktop: downloads the .ics file.
+ */
+export function determineCalendarAction(
+  isIos: boolean,
+  canShare: boolean,
+  shareOutcome?: 'shared' | 'cancelled' | 'failed' | null
+): CalendarFlowAction {
+  if (isIos) {
+    if (canShare && shareOutcome === 'shared') {
+      return 'share'
+    }
+    return 'reminders-sheet'
+  }
+  return 'download'
 }
 
 /**
