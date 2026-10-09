@@ -3,7 +3,9 @@
 Project: `sarvam-510715`. Region: **asia-south1**. Service name: `sarvam-lf-api`.
 Explain stays on `sarvam-api` (port 8080 locally). Lost & Found is a **separate** Cloud Run service.
 
-Contest prototype: `LF_DEMO_MODE=true`, `--min-instances 0`, `--max-instances 1`.
+Contest prototype: `LF_DEMO_MODE=true`, `--min-instances 1`, `--max-instances 1`.
+Demo state is in memory: scale-to-zero or a second instance would wipe a judge's half-finished flow.
+After judging, set `--min-instances 0` again to avoid cost.
 
 ## 1. Secrets and IAM
 
@@ -64,7 +66,7 @@ gcloud run deploy sarvam-lf-api \
   --region asia-south1 \
   --project sarvam-510715 \
   --service-account sarvam-lf-api@sarvam-510715.iam.gserviceaccount.com \
-  --min-instances 0 \
+  --min-instances 1 \
   --max-instances 1 \
   --memory 512Mi \
   --cpu 1 \

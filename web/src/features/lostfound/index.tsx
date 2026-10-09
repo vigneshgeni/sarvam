@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './lf.css'
 import {
   continueAsGuest,
@@ -16,6 +16,7 @@ import {
   markReturned,
   putMe,
   confirmReturned,
+  reportPost,
   shareContact,
   unreadCount,
   type ClaimView,
@@ -26,7 +27,10 @@ import {
 import { clearDemoToken, getAppLanguage, getDemoToken } from './auth'
 import { Icon } from './components/Icon'
 import Sheet from './components/Sheet'
+import { SafetyTips } from './components/SafetyTips'
+import { ThankYouCard } from './components/ThankYouCard'
 import { getFirebaseAuth } from './firebase'
+import { pushLf, readLf, rewindLfHistoryOnLoad } from './utils/lfHistory'
 import { CATEGORIES, DEMO_QUESTIONS, TEST_IDS, TONE_CLASS, catOf, type CategoryId } from './utils/categories'
 import { CHENNAI_AREAS, CITIES } from './utils/cities'
 import { looksLikeCard } from './utils/mask'
@@ -47,7 +51,8 @@ import certGuide from './guide/certificate.json'
 const GUIDES = [passportGuide, aadhaarGuide, panGuide, licenceGuide, voterGuide, phoneGuide, walletGuide, rcGuide, certGuide]
 
 type Tab = 'home' | 'me' | 'guide'
-type Sheet = null | { kind: 'wiz' } | { kind: 'claim' } | { kind: 'thanks' } | { kind: 'pub'; post: PublicCard } | { kind: 'privacy' }
+type Sheet = null | { kind: 'wiz' } | { kind: 'thanks' } | { kind: 'pub'; post: PublicCard }
+type Layer = null | 'claim' | 'privacy' | 'report' | 'share' | 'safety'
 
 interface Wiz {
   kind: 'lost' | 'found'
@@ -96,6 +101,7 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
   const [error, setError] = useState<string | null>(null)
   const [offline, setOffline] = useState(!navigator.onLine)
   const [sheet, setSheet] = useState<Sheet>(null)
+  const [layer, setLayer] = useState<Layer>(null)
   const [wiz, setWiz] = useState<Wiz | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [city, setCity] = useState('chennai')
@@ -108,9 +114,17 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
   const [sharePhone, setSharePhone] = useState(false)
   const [amt, setAmt] = useState(100)
   const [upi, setUpi] = useState<string | null>(null)
+  const [thanksDemo, setThanksDemo] = useState(true)
   const [unread, setUnread] = useState(0)
   const [live, setLive] = useState('')
   const [apiUp, setApiUp] = useState(true)
+  const [demoMode, setDemoMode] = useState<boolean | null>(null)
+  const [reportPostId, setReportPostId] = useState<string | null>(null)
+  const [shareCaption, setShareCaption] = useState('')
+  const depthRef = useRef(0)
+  const applyingPop = useRef(false)
+  const ignorePops = useRef(0)
+  const feedPostRef = useRef<PublicCard | null>(null)
 
   const ping = (msg: string) => {
     setToast(msg)
@@ -118,10 +132,108 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     window.setTimeout(() => setToast(null), 2600)
   }
 
+  const closeOverlays = useCallback(() => {
+    setSheet(null)
+    setLayer(null)
+    setWiz(null)
+  }, [])
+
+  const pushScreen = useCallback((screenId: string) => {
+    if (applyingPop.current) return
+    const next = depthRef.current + 1
+    depthRef.current = next
+    pushLf({ depth: next, screenId })
+  }, [])
+
+  const closeToRootHistory = useCallback(() => {
+    const d = depthRef.current
+    if (d <= 0) {
+      closeOverlays()
+      return
+    }
+    applyingPop.current = true
+    ignorePops.current = 1
+    depthRef.current = 0
+    closeOverlays()
+    window.history.go(-d)
+    window.setTimeout(() => {
+      applyingPop.current = false
+    }, 0)
+  }, [closeOverlays])
+
+  const applyLf = useCallback(
+    (lf: { depth: number; screenId: string } | null) => {
+      if (!lf || lf.depth <= 0) {
+        closeOverlays()
+        return
+      }
+      const id = lf.screenId
+      const wizMatch = /^post-(lost|found)-(\d+)$/.exec(id)
+      if (wizMatch) {
+        const kind = wizMatch[1] as 'lost' | 'found'
+        const step = Math.max(1, Number(wizMatch[2]))
+        setLayer(null)
+        setWiz((w) => {
+          const base = w && w.kind === kind ? w : emptyWiz(kind)
+          return { ...base, step }
+        })
+        setSheet({ kind: 'wiz' })
+        return
+      }
+      if (id === 'feed') {
+        setLayer(null)
+        setWiz(null)
+        const p = feedPostRef.current
+        setSheet(p ? { kind: 'pub', post: p } : null)
+        return
+      }
+      if (id === 'thanks') {
+        setLayer(null)
+        setWiz(null)
+        setSheet({ kind: 'thanks' })
+        return
+      }
+      if (id === 'claim' || id === 'privacy' || id === 'report' || id === 'share' || id === 'safety') {
+        setLayer(id)
+        return
+      }
+      closeOverlays()
+    },
+    [closeOverlays],
+  )
+
+  useEffect(() => {
+    ignorePops.current = rewindLfHistoryOnLoad()
+    depthRef.current = 0
+    const onPop = (e: PopStateEvent) => {
+      if (ignorePops.current > 0) {
+        ignorePops.current -= 1
+        const landed = readLf(e.state)
+        depthRef.current = landed?.depth ?? 0
+        applyLf(landed)
+        applyingPop.current = false
+        return
+      }
+      const lf = readLf(e.state)
+      if (!lf) {
+        depthRef.current = 0
+        closeOverlays()
+        return
+      }
+      applyingPop.current = true
+      depthRef.current = lf.depth
+      applyLf(lf)
+      applyingPop.current = false
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [applyLf, closeOverlays])
+
   const refresh = useCallback(async () => {
     try {
       const h = await health()
       setApiUp(h.status === 'ok')
+      setDemoMode(h.demoMode)
       const feedRes = await getFeed({ city, category: category || undefined, days: 90 })
       setFeed(feedRes.posts)
       if (getDemoToken()) {
@@ -186,6 +298,7 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     const w = emptyWiz(kind)
     setWiz(w)
     setSheet({ kind: 'wiz' })
+    pushScreen(`post-${kind}-1`)
   }
 
   const fillDemoStory = () => {
@@ -205,6 +318,7 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     w.consent = true
     setWiz(w)
     setSheet({ kind: 'wiz' })
+    pushScreen('post-lost-4')
   }
 
   const wizGate = (w: Wiz) => {
@@ -249,10 +363,13 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
         const q = await getQuestions(res.matches[0].otherPost.id)
         setQuestions(q.questions)
         setAnswers(q.questions.map(() => ''))
-        setSheet({ kind: 'claim' })
+        setWiz(null)
+        setSheet(null)
+        setLayer('claim')
+        pushScreen('claim')
         ping(res.matches[0].kind === 'strong' ? t('strongMatch') : t('possibleMatch'))
       } else {
-        setSheet(null)
+        closeToRootHistory()
         ping(t('noMatch'))
       }
       await refresh()
@@ -286,8 +403,52 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     await confirmReturned(activeMatch.matchId)
     const th = await getThanks(activeMatch.matchId)
     setUpi(th.upiVpa)
+    setThanksDemo(Boolean(th.demo) || demoMode === true)
+    setLayer(null)
     setSheet({ kind: 'thanks' })
+    pushScreen('thanks')
     ping(t('thanksTitle'))
+  }
+
+  const openFeed = (post: PublicCard) => {
+    feedPostRef.current = post
+    setSheet({ kind: 'pub', post })
+    pushScreen('feed')
+  }
+
+  const openClaimForPost = async (post: PublicCard) => {
+    if (!token) {
+      ping(t('needGuest'))
+      return
+    }
+    try {
+      const existing = matches.find((m) => m.otherPost.id === post.id)
+      if (existing) setActiveMatch(existing)
+      else {
+        setActiveMatch({
+          matchId: '',
+          kind: 'possible',
+          scoreBand: 'medium',
+          score: 0,
+          reasons: [],
+          state: 'suggested',
+          otherPost: post,
+        })
+      }
+      const q = await getQuestions(post.id)
+      setQuestions(q.questions)
+      setAnswers(q.questions.map(() => ''))
+      setClaim(null)
+      setLayer('claim')
+      pushScreen('claim')
+    } catch (err) {
+      ping(err instanceof Error ? err.message : t('errorRetry'))
+    }
+  }
+
+  const openLayer = (next: Exclude<Layer, null>) => {
+    setLayer(next)
+    pushScreen(next)
   }
 
   const cityLabel = (key: string) => CITIES.find((c) => c.key === key)?.name || key
@@ -296,22 +457,25 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     <div className="lf-view">
       {offline ? <div className="lf-offline">{t('offline')}</div> : null}
       <div className="lf-stack" style={{ gap: 6 }}>
-        <h1 className="lf-h1">{t('title')}</h1>
+        <div className="lf-h1-row">
+          <h1 className="lf-h1">{t('title')}</h1>
+          {demoMode ? <span className="lf-badge lf-b-violet">{t('demoChip')}</span> : null}
+        </div>
         <p className="lf-sub">{t('sub')}</p>
       </div>
       {!token ? (
         <div className="lf-stack">
-          <button className="lf-btn primary block" onClick={() => void guest()}>
-            {t('guest')}
-          </button>
-          <button
-            className="lf-btn line block"
-            disabled={!getFirebaseAuth()}
-            title={getFirebaseAuth() ? t('google') : 'P5: set VITE_FIREBASE_* to enable Google sign-in'}
-          >
-            {t('google')}
-          </button>
-          <p className="lf-hint">{t('guestHint')}</p>
+          {demoMode === true ? (
+            <button className="lf-btn primary block" onClick={() => void guest()}>
+              {t('guest')}
+            </button>
+          ) : demoMode === false && getFirebaseAuth() ? (
+            <button className="lf-btn line block">{t('google')}</button>
+          ) : demoMode === false ? (
+            <p className="lf-hint">{t('signInUnavailable')}</p>
+          ) : (
+            <div className="lf-skel" style={{ height: 48, borderRadius: 999 }} />
+          )}
         </div>
       ) : (
         <button className="lf-chip on" onClick={fillDemoStory}>
@@ -414,7 +578,7 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
       ) : (
         <div className="lf-stack">
           {feed.map((p) => (
-            <button key={p.id} className="lf-post" onClick={() => setSheet({ kind: 'pub', post: p })}>
+            <button key={p.id} className="lf-post" onClick={() => openFeed(p)}>
               <span className={`lf-ico ${TONE_CLASS[catOf(p.category).tone]}`}>
                 <Icon name={catOf(p.category).ico} />
               </span>
@@ -460,7 +624,8 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
                   const q = await getQuestions(m.otherPost.id)
                   setQuestions(q.questions)
                   setAnswers(q.questions.map(() => ''))
-                  setSheet({ kind: 'claim' })
+                  setLayer('claim')
+                  pushScreen('claim')
                 }}
               >
                 <div className="lf-row">
@@ -501,7 +666,7 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
             <span>{t('notLegal')}</span>
           </div>
         </div>
-        <button className="lf-btn line block" style={{ marginTop: 12 }} onClick={() => setSheet({ kind: 'privacy' })}>
+        <button className="lf-btn line block" style={{ marginTop: 12 }} onClick={() => openLayer('privacy')}>
           Privacy notice
         </button>
         {token ? (
@@ -569,6 +734,8 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     </div>
   )
 
+  const popLayer = () => window.history.back()
+
   let overlay = null
   if (sheet?.kind === 'wiz' && wiz) {
     const c = wiz.cat ? catOf(wiz.cat) : null
@@ -578,32 +745,36 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
         wiz={wiz}
         setWiz={setWiz}
         onClose={() => {
-          setSheet(null)
-          setWiz(null)
+          const n = wiz.step
+          ignorePops.current = 1
+          applyingPop.current = true
+          depthRef.current = Math.max(0, depthRef.current - n)
+          window.history.go(-n)
         }}
+        onBack={() => window.history.back()}
         onNext={() => {
           if (!wizGate(wiz)) return
           if (wiz.step === 4) void submitWiz()
-          else setWiz({ ...wiz, step: wiz.step + 1 })
+          else {
+            const step = wiz.step + 1
+            setWiz({ ...wiz, step })
+            pushScreen(`post-${wiz.kind}-${step}`)
+          }
         }}
         gate={wizGate(wiz)}
         cat={c}
       />
     )
-  } else if (sheet?.kind === 'claim' && activeMatch) {
-    overlay = (
-      <div className="lf-scrim" onClick={() => setSheet(null)} />
-    )
   } else if (sheet?.kind === 'pub') {
     const p = sheet.post
     overlay = (
       <>
-        <div className="lf-scrim" onClick={() => setSheet(null)} />
+        <div className="lf-scrim" onClick={popLayer} />
         <section className="lf-sheet" role="dialog" aria-modal="true" aria-label={p.title}>
           <div className="lf-grab" />
           <div className="lf-sheet-head">
             <h2 className="lf-h2 lf-grow">Found: {catOf(p.category).label}</h2>
-            <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
+            <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
               <Icon name="x" />
             </button>
           </div>
@@ -628,15 +799,19 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
             <p className="lf-hint" style={{ marginTop: 12 }}>
               {t('safety')}
             </p>
-          </div>
-          <div className="lf-sheet-foot">
             <button
-              className="lf-btn primary grow"
+              className="lf-btn quiet block"
+              style={{ marginTop: 8 }}
               onClick={() => {
-                startWiz('lost')
-                setWiz((w) => (w ? { ...w, cat: p.category as CategoryId, city: p.city, area: p.area || '' } : w))
+                setReportPostId(p.id)
+                openLayer('report')
               }}
             >
+              {t('report')}
+            </button>
+          </div>
+          <div className="lf-sheet-foot">
+            <button className="lf-btn primary grow" onClick={() => void openClaimForPost(p)}>
               {t('thisMightBeMine')}
             </button>
           </div>
@@ -645,91 +820,45 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
     )
   } else if (sheet?.kind === 'thanks') {
     const caption = thanksCaption(null, todayIso())
-    const upiUrl = upi ? buildUpiLink({ vpa: upi, amount: amt }) : null
+    const upiUrl = upi ? buildUpiLink({ vpa: upi, amount: amt, name: t('demoFinder') }) : null
     overlay = (
       <>
-        <div className="lf-scrim" onClick={() => setSheet(null)} />
+        <div className="lf-scrim" onClick={popLayer} />
         <section className="lf-sheet full" role="dialog" aria-modal="true" aria-label={t('thanksTitle')}>
           <div className="lf-grab" />
           <div className="lf-sheet-head">
             <h2 className="lf-h2 lf-grow">{t('thanksTitle')}</h2>
-            <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
+            <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
               <Icon name="x" />
             </button>
           </div>
           <div className="lf-sheet-body">
-            <div className="lf-thanks">
-              <span className="lf-seal">
-                <Icon name="check" />
-              </span>
-              <h3 className="lf-h1" style={{ fontSize: '1.4em' }}>
-                {t('thanksTitle')}
-              </h3>
-              <p className="lf-sub">{t('thanksSub')}</p>
-              <div className="lf-choice" style={{ justifyContent: 'center' }}>
-                {[100, 200, 500].map((a) => (
-                  <button key={a} className={`lf-chip ${amt === a ? 'on' : ''}`} onClick={() => setAmt(a)}>
-                    ₹{a}
-                  </button>
-                ))}
-              </div>
-              {upiUrl ? (
-                <>
-                  <div className="lf-upi">{upiUrl}</div>
-                  <button
-                    className="lf-btn primary block"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(upiUrl)
-                      ping('Copied')
-                    }}
-                  >
-                    {t('copyUpi')}
-                  </button>
-                  <p className="lf-hint">{t('upiHint')}</p>
-                </>
-              ) : null}
-              <button
-                className="lf-btn line block"
-                onClick={async () => {
-                  const r = await shareOrDownload(caption)
-                  ping(r === 'failed' ? 'Could not share' : 'Ready')
-                }}
-              >
-                {t('shareThanks')}
-              </button>
-            </div>
+            <ThankYouCard
+              t={t}
+              upiUrl={upiUrl}
+              amount={amt}
+              onAmount={setAmt}
+              demoFinder={thanksDemo}
+              onShare={() => {
+                setShareCaption(caption)
+                openLayer('share')
+              }}
+            />
           </div>
         </section>
       </>
     )
-  } else if (sheet?.kind === 'privacy') {
-    overlay = (
-      <Sheet isOpen onClose={() => setSheet(null)} title={t('privacyNotice')} ariaLabel="Privacy">
-        <div className="lf-sheet-head">
-          <h2 className="lf-h2 lf-grow">{t('privacyNotice')}</h2>
-          <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
-            <Icon name="x" />
-          </button>
-        </div>
-        <div className="lf-sheet-body lf-stack">
-          <p>{t('privacyLong')}</p>
-          <p>{t('ageLine')}</p>
-          <p>Grievance: privacy@example.com (placeholder).</p>
-          <p>{t('notLegal')}</p>
-        </div>
-      </Sheet>
-    )
   }
 
   const claimSheet =
-    sheet?.kind === 'claim' && activeMatch ? (
+    layer === 'claim' && activeMatch ? (
       <>
-        <div className="lf-scrim" onClick={() => setSheet(null)} />
+        <div className="lf-scrim" onClick={popLayer} />
         <section className="lf-sheet full" role="dialog" aria-modal="true" aria-label={t('thisMightBeMine')}>
           <div className="lf-grab" />
           <div className="lf-sheet-head">
             <h2 className="lf-h2 lf-grow">{catOf(activeMatch.otherPost.category).label}</h2>
-            <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
+            <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
               <Icon name="x" />
             </button>
           </div>
@@ -780,10 +909,10 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
                   <Icon name="check" />
                   <span>{t('approved')}</span>
                 </div>
-                <div className="lf-callout warn">
+                <button type="button" className="lf-callout warn" onClick={() => openLayer('safety')} style={{ width: '100%', textAlign: 'left' }}>
                   <Icon name="info" />
                   <span>{t('safety')}</span>
-                </div>
+                </button>
                 <div className="lf-field">
                   <label htmlFor="lf-phone">{t('phone')} (demo)</label>
                   <input id="lf-phone" className="lf-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 00000 11111" />
@@ -844,6 +973,81 @@ export default function LostFoundHome({ lang: langFromApp }: { lang?: string } =
         </nav>
         {overlay}
         {claimSheet}
+        {layer === 'privacy' ? (
+          <Sheet isOpen onClose={popLayer} title={t('privacyNotice')} ariaLabel={t('privacyNotice')}>
+            <div className="lf-sheet-head">
+              <h2 className="lf-h2 lf-grow">{t('privacyNotice')}</h2>
+              <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="lf-sheet-body lf-stack">
+              <p>{t('privacyLong')}</p>
+              <p>{t('ageLine')}</p>
+              <p>Grievance: privacy@example.com (placeholder).</p>
+              <p>{t('notLegal')}</p>
+            </div>
+          </Sheet>
+        ) : null}
+        {layer === 'report' ? (
+          <Sheet isOpen onClose={popLayer} title={t('report')} ariaLabel={t('report')}>
+            <div className="lf-sheet-head">
+              <h2 className="lf-h2 lf-grow">{t('report')}</h2>
+              <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="lf-sheet-body lf-stack">
+              <p className="lf-sub">{t('notLegal')}</p>
+              <button
+                className="lf-btn primary block"
+                onClick={async () => {
+                  if (reportPostId) await reportPost(reportPostId, 'spam')
+                  ping(t('report'))
+                  popLayer()
+                }}
+              >
+                {t('report')}
+              </button>
+            </div>
+          </Sheet>
+        ) : null}
+        {layer === 'share' ? (
+          <Sheet isOpen onClose={popLayer} title={t('shareThanks')} ariaLabel={t('shareThanks')}>
+            <div className="lf-sheet-head">
+              <h2 className="lf-h2 lf-grow">{t('shareThanks')}</h2>
+              <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="lf-sheet-body lf-stack">
+              <p>{shareCaption}</p>
+              <button
+                className="lf-btn primary block"
+                onClick={async () => {
+                  const r = await shareOrDownload(shareCaption)
+                  ping(r === 'failed' ? t('copyFailed') : t('copied'))
+                  popLayer()
+                }}
+              >
+                {t('shareThanks')}
+              </button>
+            </div>
+          </Sheet>
+        ) : null}
+        {layer === 'safety' ? (
+          <Sheet isOpen onClose={popLayer} title={t('safetyTitle')} ariaLabel={t('safetyTitle')}>
+            <div className="lf-sheet-head">
+              <h2 className="lf-h2 lf-grow">{t('safetyTitle')}</h2>
+              <button className="lf-iconbtn" aria-label={t('close')} onClick={popLayer}>
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="lf-sheet-body">
+              <SafetyTips text={t('safety')} />
+            </div>
+          </Sheet>
+        ) : null}
         {toast ? (
           <div className="lf-toast" role="status">
             {toast}
@@ -863,6 +1067,7 @@ function WizSheet({
   wiz,
   setWiz,
   onClose,
+  onBack,
   onNext,
   gate,
   cat,
@@ -871,6 +1076,7 @@ function WizSheet({
   wiz: Wiz
   setWiz: (w: Wiz) => void
   onClose: () => void
+  onBack: () => void
   onNext: () => void
   gate: boolean
   cat: ReturnType<typeof catOf> | null
@@ -1041,7 +1247,7 @@ function WizSheet({
         <div className="lf-sheet-body">{body}</div>
         <div className="lf-sheet-foot">
           {wiz.step > 1 ? (
-            <button className="lf-btn line" onClick={() => setWiz({ ...wiz, step: wiz.step - 1 })}>
+            <button className="lf-btn line" onClick={onBack}>
               {t('back')}
             </button>
           ) : null}

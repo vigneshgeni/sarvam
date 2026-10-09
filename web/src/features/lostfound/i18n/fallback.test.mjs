@@ -44,3 +44,54 @@ test('missing key falls back to English then stays readable', () => {
   assert.equal(ghost, 'notARealKey')
   assert.equal(lfString('en', 'title'), en.title)
 })
+
+test('i18n parity en/ta/hi including polish strings', () => {
+  for (const loc of [ta, hi]) {
+    for (const k of Object.keys(en)) {
+      assert.ok(loc[k], `missing ${k}`)
+    }
+    for (const k of Object.keys(loc)) {
+      assert.ok(k in en, `extra ${k}`)
+    }
+  }
+  assert.equal(en.openUpi, 'Open UPI app')
+  assert.equal(en.copyLink, 'Copy link')
+  assert.equal(en.signInUnavailable, 'Sign-in is not available right now')
+  assert.ok(!en.guestHint.toLowerCase().includes('firebase'))
+  assert.ok(!en.signInUnavailable.toLowerCase().includes('wired'))
+})
+
+function buildUpiLink({ vpa, name, amount, note }) {
+  const params = new URLSearchParams({
+    pa: vpa,
+    pn: name || 'Demo finder',
+    am: String(amount),
+    cu: 'INR',
+    tn: note || 'Thanks from Sarvam',
+  })
+  return `upi://pay?${params.toString()}`
+}
+
+test('buildUpiLink encodes VPA @ and keeps cu=INR', () => {
+  const url = buildUpiLink({ vpa: 'demo.finder@upi', amount: 100 })
+  assert.ok(url.startsWith('upi://pay?'))
+  assert.ok(url.includes('pa=demo.finder%40upi'))
+  assert.ok(url.includes('cu=INR'))
+  assert.equal(url.includes('pa=demo.finder@upi'), false)
+})
+
+test('readLf only accepts the lf history key', () => {
+  function readLf(state) {
+    if (!state || typeof state !== 'object') return null
+    if (!Object.prototype.hasOwnProperty.call(state, 'lf')) return null
+    const raw = state.lf
+    if (!raw || typeof raw !== 'object') return null
+    if (typeof raw.depth !== 'number' || typeof raw.screenId !== 'string') return null
+    return { depth: raw.depth, screenId: raw.screenId }
+  }
+  assert.equal(readLf({ lostfound: { depth: 1, screenId: 'feed' } }), null)
+  assert.deepEqual(readLf({ lf: { depth: 1, screenId: 'post-lost' } }), {
+    depth: 1,
+    screenId: 'post-lost',
+  })
+})
