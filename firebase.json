@@ -26,5 +26,10 @@
         ]
       }
     ]
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8088
+    }
   }
 }
