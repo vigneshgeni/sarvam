@@ -20,23 +20,33 @@ from dates import (
     evaluate_date_status,
     parse_date,
 )
-from errors import make_error_response
+from errors import (
+    AskUnverifiedError,
+    PDFPasswordRequiredError,
+    PDFPasswordWrongError,
+    make_error_response,
+)
 from evidence import (
     GENERIC_OFFICE_WORDS,
     collect_conflicts,
     compute_evidence_summary,
     determine_source_kind,
+    extract_all_numbers,
     extract_pdf_pages,
     filter_protected_terms,
+    inspect_and_decrypt_pdf,
     process_contacts,
     process_places,
     verify_evidence,
     verify_glance_evidence,
     verify_protected_terms_guard,
+    verify_spoken_summary_digit_guard,
     verify_translation_guard,
 )
+from medicines import process_medicines
 from models import (
     DOCUMENT_TYPES,
+    AskResponse,
     ContactInfo,
     EvidenceSummary,
     ExplainAction,
@@ -45,7 +55,9 @@ from models import (
     ExplainWarning,
     GlanceKeyValue,
     GlanceSummary,
+    MedicineInfo,
     PlaceInfo,
+    SpeakRequest,
     TranslateActionText,
     TranslateFactText,
     TranslatePayload,
@@ -63,12 +75,15 @@ from reader import (
     REQUEST_DEADLINE,
     TRANSLATE_HEDGE_DELAY,
     TRANSLATE_TIMEOUT,
+    ask_document,
+    ask_document_single_attempt,
     execute_with_hedge,
     read_document,
     read_document_single_attempt,
     translate_keyed_strings,
     translate_result_text,
 )
+from tts import render_iso_dates_natural, synthesize_speech, to_speech
 
 # Multi-file limits as constants in one place
 MAX_IMAGES = 10
@@ -82,10 +97,18 @@ MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024
 GEMINI_SEMAPHORE = asyncio.Semaphore(2)
 SEMAPHORE_TIMEOUT = 30.0  # seconds waiting for semaphore before 503
 
+# TTS semaphore (max 4 concurrent TTS calls)
+TTS_SEMAPHORE = asyncio.Semaphore(4)
+
 # Rate limits (per IP)
 EXPLAIN_RATE_LIMIT = 20
 TRANSLATE_RATE_LIMIT = 30
+TTS_RATE_LIMIT = 60
+ASK_RATE_LIMIT = 20
 RATE_LIMIT_WINDOW = 60.0  # seconds
+
+# Auto language allowlist
+AUTO_LANGS_SET = set(os.environ.get("AUTO_LANGS", "en,ta,hi,te,ml,kn").split(","))
 
 # In-memory rate limiting per endpoint and client IP: (endpoint, ip) -> timestamps
 IP_REQUESTS: Dict[Tuple[str, str], List[float]] = defaultdict(list)
@@ -149,7 +172,12 @@ def check_rate_limit(endpoint: str, client_ip: str, limit: int) -> Tuple[bool, i
     return True, 0
 
 
-def check_translation_guard(orig: ExplainResponse, trans: TranslatePayload) -> bool:
+def check_translation_guard(
+    orig: ExplainResponse,
+    trans: TranslatePayload,
+    extra_orig: Optional[List[str]] = None,
+    extra_trans: Optional[List[str]] = None,
+) -> bool:
     """
     Verifies that every number, date, amount and phone number in the original text
     appears in the translated text.
@@ -201,6 +229,11 @@ def check_translation_guard(orig: ExplainResponse, trans: TranslatePayload) -> b
         if not verify_translation_guard(orig.unreadable_reason, trans.unreadable_reason):
             return False
 
+    if extra_orig and extra_trans:
+        for eo, et in zip(extra_orig, extra_trans):
+            if eo and not verify_translation_guard(eo, et):
+                return False
+
     # 2. Protected terms guard (names, institutions, places, IDs must remain verbatim in original script)
     if orig.protected_terms:
         orig_user_text_parts = [orig.title, orig.report_title or ""]
@@ -218,6 +251,8 @@ def check_translation_guard(orig: ExplainResponse, trans: TranslatePayload) -> b
         orig_user_text_parts.extend(orig.conflicts)
         if orig.unreadable_reason:
             orig_user_text_parts.append(orig.unreadable_reason)
+        if extra_orig:
+            orig_user_text_parts.extend(extra_orig)
         full_orig = " ".join(orig_user_text_parts)
 
         trans_user_text_parts = [trans.title, trans.report_title or ""]
@@ -235,6 +270,8 @@ def check_translation_guard(orig: ExplainResponse, trans: TranslatePayload) -> b
         trans_user_text_parts.extend(trans.conflicts)
         if trans.unreadable_reason:
             trans_user_text_parts.append(trans.unreadable_reason)
+        if extra_trans:
+            trans_user_text_parts.extend(extra_trans)
         full_trans = " ".join(trans_user_text_parts)
 
         if not verify_protected_terms_guard(orig.protected_terms, full_orig, full_trans):
@@ -264,6 +301,7 @@ async def explain(
     response: Response,
     files: List[UploadFile] = File(...),
     lang: str = Form("en"),
+    password: Optional[str] = Form(None),
 ):
     start_time = time.time()
     start_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -325,9 +363,19 @@ async def explain(
         if total_bytes > MAX_TOTAL_BYTES:
             return make_error_response(400, "file_too_large", lang)
 
-    # Extract text from PDF if available
+    # Extract text from PDF if available, decrypting if encrypted
     pdf_pages_text = None
     if pdf_bytes:
+        try:
+            pdf_bytes = inspect_and_decrypt_pdf(pdf_bytes, password)
+        except PDFPasswordRequiredError:
+            return make_error_response(422, "pdf_password_required", lang)
+        except PDFPasswordWrongError:
+            return make_error_response(422, "pdf_password_wrong", lang)
+        file_data_list = [
+            (pdf_bytes, mime) if "pdf" in mime.lower() else (c, mime)
+            for (c, mime) in file_data_list
+        ]
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
 
     # Check remaining deadline before semaphore wait
@@ -438,8 +486,8 @@ async def explain(
     # Determine document language and written language (Item 4: lang=auto)
     doc_lang = reader_result.document_language or "en"
     if lang == "auto":
-        # write in document's own language if en/ta/hi (other Indian languages = Beta), else English
-        if doc_lang in ("en", "ta", "hi", "kn", "te", "ml", "mr", "bn", "gu", "pa", "or", "ur"):
+        # write in document's own language if in allowlist, else English
+        if doc_lang in AUTO_LANGS_SET:
             written_lang = reader_result.language or doc_lang
         else:
             written_lang = "en"
@@ -600,6 +648,58 @@ async def explain(
     # Detect conflicts in PDF and combine with model conflicts
     all_conflicts = collect_conflicts(pdf_pages_text, reader_result.conflicts)
 
+    # Process Medicines (Item 9)
+    doc_type_val = reader_result.document_type or reader_result.doc_type or "other"
+    processed_medicines = process_medicines(
+        raw_medicines=reader_result.medicines,
+        pdf_pages_text=pdf_pages_text,
+        document_type=doc_type_val,
+        source_kind=source_kind,
+    )
+
+    # Process Spoken Summary (Item 10 + Digit Guard)
+    spoken_summary = reader_result.spoken_summary
+    if spoken_summary and spoken_summary.strip():
+        allowed_nums = set()
+        for act in explain_actions:
+            allowed_nums.update(extract_all_numbers(act.text))
+        for fact in explain_facts:
+            allowed_nums.update(extract_all_numbers(fact.text))
+        for warn in explain_warnings:
+            allowed_nums.update(extract_all_numbers(warn.text))
+        if reader_result.glance:
+            for kv in reader_result.glance.key_values:
+                allowed_nums.update(extract_all_numbers(kv.value))
+        for med in processed_medicines:
+            allowed_nums.update(extract_all_numbers(med.name))
+            if med.strength_text:
+                allowed_nums.update(extract_all_numbers(med.strength_text))
+            if med.frequency_raw:
+                allowed_nums.update(extract_all_numbers(med.frequency_raw))
+            if med.duration_days:
+                allowed_nums.add(str(med.duration_days))
+            if med.quote:
+                allowed_nums.update(extract_all_numbers(med.quote))
+
+        full_doc_text = " ".join(pdf_pages_text) if pdf_pages_text else ""
+        is_valid_digits, unverified = verify_spoken_summary_digit_guard(
+            spoken_summary,
+            full_doc_text,
+            allowed_numbers=allowed_nums,
+        )
+        if not is_valid_digits:
+            # Fall back to safe summary if digit guard failed
+            first_act = explain_actions[0].text if explain_actions else ""
+            due_part = f" by {explain_actions[0].due_date}" if (explain_actions and explain_actions[0].due_date) else ""
+            spoken_summary = f"This is an official document regarding {reader_result.title}. Please review the key details. {first_act}{due_part}."
+    else:
+        first_act = explain_actions[0].text if explain_actions else ""
+        due_part = f" by {explain_actions[0].due_date}" if (explain_actions and explain_actions[0].due_date) else ""
+        spoken_summary = f"This is an official document regarding {reader_result.title}. Please review the key details. {first_act}{due_part}."
+
+    if spoken_summary:
+        spoken_summary = render_iso_dates_natural(spoken_summary, written_lang)
+
     # Compute evidence summary
     dict_actions = [a.model_dump() for a in explain_actions]
     dict_warnings = [w.model_dump() for w in explain_warnings]
@@ -626,11 +726,13 @@ async def explain(
         letter_date=letter_date_iso,
         glance=glance_summary,
         summary=reader_result.summary,
+        spoken_summary=spoken_summary,
         actions=explain_actions,
         warnings=explain_warnings,
         facts=explain_facts,
         places=processed_places,
         contacts=processed_contacts,
+        medicines=processed_medicines,
         conflicts=all_conflicts,
         evidence_summary=evidence_summary,
         unreadable=False,
@@ -702,6 +804,11 @@ async def translate(
         strings_to_translate[f"place_{i}_label"] = p.label
     for i, c in enumerate(orig.contacts):
         strings_to_translate[f"contact_{i}_label"] = c.label
+    if orig.spoken_summary:
+        strings_to_translate["spoken_summary"] = orig.spoken_summary
+    for i, m in enumerate(orig.medicines):
+        if m.instruction_text:
+            strings_to_translate[f"med_{i}_instruction"] = m.instruction_text
 
     # Legacy payload constructed for mock compatibility
     actions_payload = [
@@ -897,8 +1004,34 @@ async def translate(
 
     elapsed = time.time() - start_time
 
+    extra_orig = []
+    extra_trans = []
+    if orig.glance:
+        if orig.glance.headline:
+            extra_orig.append(orig.glance.headline)
+            extra_trans.append(trans_glance_headline or orig.glance.headline)
+        for i, kv in enumerate(orig.glance.key_values):
+            extra_orig.append(kv.label)
+            extra_trans.append(
+                trans_glance_kv_labels[i] if i < len(trans_glance_kv_labels) else kv.label
+            )
+    for i, p in enumerate(orig.places):
+        extra_orig.append(p.label)
+        extra_trans.append(trans_places_labels[i] if i < len(trans_places_labels) else p.label)
+    for i, c in enumerate(orig.contacts):
+        extra_orig.append(c.label)
+        extra_trans.append(trans_contacts_labels[i] if i < len(trans_contacts_labels) else c.label)
+    for i, m in enumerate(orig.medicines):
+        if m.instruction_text:
+            extra_orig.append(m.instruction_text)
+            extra_trans.append(
+                translated_dict.get(f"med_{i}_instruction", m.instruction_text)
+                if "translated_dict" in locals()
+                else m.instruction_text
+            )
+
     # Guard: every number, date, amount and phone number in original text must appear in translated text
-    guard_passed = check_translation_guard(orig, translated_payload)
+    guard_passed = check_translation_guard(orig, translated_payload, extra_orig, extra_trans)
     finish_dt = datetime.datetime.now(datetime.timezone.utc)
     status_code = 200 if guard_passed else 422
     logger.info(
@@ -1015,6 +1148,49 @@ async def translate(
             )
         )
 
+    # Stitch Medicines (instructions translated, everything else copied by CODE)
+    stitched_medicines = []
+    for i, m in enumerate(orig.medicines):
+        inst = (
+            translated_dict.get(f"med_{i}_instruction", m.instruction_text)
+            if ("translated_dict" in locals() and m.instruction_text)
+            else m.instruction_text
+        )
+        stitched_medicines.append(
+            MedicineInfo(
+                name=m.name,
+                strength_text=m.strength_text,
+                frequency_raw=m.frequency_raw,
+                frequency_code=m.frequency_code,
+                slots=m.slots,
+                food_timing=m.food_timing,
+                duration_days=m.duration_days,
+                instruction_text=inst,
+                decoded=m.decoded,
+                quote=m.quote,
+                page=m.page,
+                evidence=m.evidence,
+            )
+        )
+
+    trans_spoken_summary = (
+        translated_dict.get("spoken_summary", orig.spoken_summary)
+        if ("translated_dict" in locals() and orig.spoken_summary)
+        else orig.spoken_summary
+    )
+    if trans_spoken_summary:
+        trans_spoken_summary = render_iso_dates_natural(trans_spoken_summary, body.lang)
+
+    if orig.spoken_summary and trans_spoken_summary:
+        orig_nums = set(extract_all_numbers(orig.spoken_summary))
+        is_valid_trans_digits, unverified = verify_spoken_summary_digit_guard(
+            trans_spoken_summary,
+            None,
+            allowed_numbers=orig_nums,
+        )
+        if not is_valid_trans_digits:
+            trans_spoken_summary = render_iso_dates_natural(orig.spoken_summary, body.lang)
+
     response.headers["X-Start"] = start_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
@@ -1034,14 +1210,196 @@ async def translate(
         letter_date=orig.letter_date,             # Copied by CODE
         glance=stitched_glance,
         summary=trans_summary,
+        spoken_summary=trans_spoken_summary,
         actions=stitched_actions,
         warnings=stitched_warnings,
         facts=stitched_facts,
         places=stitched_places,
         contacts=stitched_contacts,
+        medicines=stitched_medicines,
         conflicts=trans_conflicts,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
     )
+
+
+@app.post(
+    "/api/speak",
+    responses={
+        200: {"content": {"audio/mpeg": {}}, "description": "MP3 Audio stream"},
+        422: {"description": "Text too long"},
+        429: {"description": "Rate Limit Exceeded"},
+        503: {"description": "TTS Service Unavailable"},
+    },
+)
+async def speak(request: Request, body: SpeakRequest):
+    client_ip = get_client_ip(request)
+    allowed, retry_after = check_rate_limit("speak", client_ip, TTS_RATE_LIMIT)
+    if not allowed:
+        return make_error_response(
+            429,
+            "rate_limit",
+            body.lang,
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    if len(body.text) > 1200:
+        return make_error_response(422, "text_too_long", body.lang)
+
+    # Acquire TTS semaphore (max 4 concurrent TTS calls)
+    try:
+        await asyncio.wait_for(TTS_SEMAPHORE.acquire(), timeout=15.0)
+    except (asyncio.TimeoutError, TimeoutError):
+        return make_error_response(503, "tts_unavailable", body.lang)
+
+    try:
+        # 15s timeout with 1 retry
+        for attempt in range(2):
+            try:
+                audio_bytes = await asyncio.wait_for(
+                    run_in_threadpool(
+                        synthesize_speech,
+                        body.text,
+                        body.lang,
+                        body.voice,
+                        body.rate or 1.0,
+                    ),
+                    timeout=15.0,
+                )
+                return Response(
+                    content=audio_bytes,
+                    media_type="audio/mpeg",
+                    headers={
+                        "Cache-Control": "no-store",
+                        "Content-Disposition": "inline; filename=speech.mp3",
+                    },
+                )
+            except Exception as e:
+                logger.warning("speak attempt %d failed: %s", attempt + 1, e)
+                if attempt == 1:
+                    raise
+                await asyncio.sleep(0.5)
+    except Exception as e:
+        logger.error("TTS error: %s", e)
+        return make_error_response(503, "tts_unavailable", body.lang)
+    finally:
+        TTS_SEMAPHORE.release()
+
+
+@app.post(
+    "/api/ask",
+    response_model=AskResponse,
+    responses={
+        400: {"description": "Bad Request"},
+        422: {"description": "Ask Unverified or Password Error"},
+        429: {"description": "Rate Limit Exceeded"},
+        503: {"description": "Service Busy"},
+        504: {"description": "Gateway Timeout"},
+    },
+)
+async def ask(
+    request: Request,
+    question: str = Form(...),
+    lang: str = Form("en"),
+    result: str = Form(...),
+    files: Optional[List[UploadFile]] = File(None),
+    password: Optional[str] = Form(None),
+):
+    start_time = time.time()
+    deadline = start_time + 60.0  # 60s timeout for ask
+    client_ip = get_client_ip(request)
+
+    allowed, retry_after = check_rate_limit("ask", client_ip, ASK_RATE_LIMIT)
+    if not allowed:
+        return make_error_response(
+            429,
+            "rate_limit",
+            lang,
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    if not question or not question.strip() or len(question) > 500:
+        return make_error_response(
+            400,
+            "invalid_file_type",
+            lang,
+            custom_message="Question must be between 1 and 500 characters.",
+        )
+
+    if not result or len(result.encode("utf-8")) > 200 * 1024:
+        return make_error_response(
+            400,
+            "invalid_file_type",
+            lang,
+            custom_message="Result JSON must be <= 200 KB.",
+        )
+
+    file_data_list = []
+    pdf_pages_text = None
+    if files:
+        for file in files:
+            content = await file.read()
+            mime_type = file.content_type or ""
+            filename = (file.filename or "").lower()
+            if filename.endswith(".pdf") or mime_type == "application/pdf":
+                mime_type = "application/pdf"
+                try:
+                    content = inspect_and_decrypt_pdf(content, password)
+                except PDFPasswordRequiredError:
+                    return make_error_response(422, "pdf_password_required", lang)
+                except PDFPasswordWrongError:
+                    return make_error_response(422, "pdf_password_wrong", lang)
+                pdf_pages_text = extract_pdf_pages(content)
+            elif filename.endswith((".jpg", ".jpeg")) or mime_type in ("image/jpeg", "image/jpg"):
+                mime_type = "image/jpeg"
+            elif filename.endswith(".png") or mime_type == "image/png":
+                mime_type = "image/png"
+            file_data_list.append((content, mime_type))
+
+    # Semaphore wait
+    try:
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=min(30.0, deadline - time.time()))
+    except (asyncio.TimeoutError, TimeoutError):
+        return make_error_response(503, "service_busy", lang)
+
+    try:
+        if (
+            isinstance(ask_document, unittest.mock.MagicMock)
+            or ask_document is not reader.ask_document
+        ):
+            ask_res = await run_in_threadpool(
+                ask_document,
+                question,
+                lang,
+                result,
+                file_data_list or None,
+                pdf_pages_text,
+                deadline,
+            )
+        else:
+            ask_res = await execute_with_hedge(
+                fn=ask_document_single_attempt,
+                args=(question, lang, result, file_data_list or None, pdf_pages_text),
+                per_attempt_timeout=50.0,
+                hedge_delay=25.0,
+                can_hedge=True,
+                deadline=deadline,
+                semaphore=GEMINI_SEMAPHORE,
+                endpoint="ask",
+            )
+        return ask_res
+    except AskUnverifiedError:
+        return make_error_response(422, "ask_unverified", lang)
+    except Exception as e:
+        err_str = str(e).lower()
+        if (
+            isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
+            or "timeout" in err_str
+            or time.time() >= deadline - 1.0
+        ):
+            return make_error_response(504, "timeout", lang)
+        return make_error_response(503, "service_busy", lang)
+    finally:
+        GEMINI_SEMAPHORE.release()

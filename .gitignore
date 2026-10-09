@@ -8,3 +8,4 @@ dist/
 .firebase/
 api/.venv/
 *.log
+api/evals/out/

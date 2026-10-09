@@ -1,0 +1,12 @@
+{
+  "id": "pension_notice",
+  "name": "Pension Verification Photo Notice",
+    "file_path": "../../../../samples/sample-pension-notice.jpg",
+  "mime_type": "image/jpeg",
+  "explain_lang": "hi",
+  "translate_lang": "en",
+  "expected": {
+    "document_type": "government_notice",
+    "source_kind": "photo"
+  }
+}

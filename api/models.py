@@ -116,6 +116,17 @@ class ReaderContact(BaseModel):
     page: int = Field(default=1, description="Page number")
 
 
+class ReaderMedicine(BaseModel):
+    name: str = Field(description="Medicine name as printed in document")
+    strength_text: Optional[str] = Field(default=None, description="Dosage/strength as printed (e.g. 500mg, 5ml), else null")
+    frequency_raw: str = Field(description="Raw frequency exactly as written, e.g. 1-0-1, BD, TDS, twice daily, SOS")
+    food_timing: Optional[str] = Field(default=None, description="before_food | after_food | null")
+    duration_days: Optional[int] = Field(default=None, description="Duration in days if stated, else null")
+    instruction_text: str = Field(default="", description="Simple instruction in requested language")
+    quote: str = Field(default="", description="Exact quote from document")
+    page: int = Field(default=1, description="Page number where quote appears")
+
+
 class ReaderResponse(BaseModel):
     doc_type: str = Field(
         default="other",
@@ -150,6 +161,10 @@ class ReaderResponse(BaseModel):
     summary: List[str] = Field(
         description="2-4 sentence explanation in the requested language"
     )
+    spoken_summary: Optional[str] = Field(
+        default=None,
+        description="Spoken summary for listener in 4-7 short sentences, ~90 words max",
+    )
     actions: List[ReaderAction] = Field(
         default_factory=list,
         description="Actions required, most important first",
@@ -169,6 +184,10 @@ class ReaderResponse(BaseModel):
     contacts: List[ReaderContact] = Field(
         default_factory=list,
         description="Max 6 contact phone numbers or email addresses printed in the document",
+    )
+    medicines: List[ReaderMedicine] = Field(
+        default_factory=list,
+        description="Prescribed medicines if medical document, max 12",
     )
     conflicts: List[str] = Field(
         default_factory=list,
@@ -260,6 +279,21 @@ class ContactInfo(BaseModel):
     evidence: str = "check_original"  # matched | check_original
 
 
+class MedicineInfo(BaseModel):
+    name: str
+    strength_text: Optional[str] = None
+    frequency_raw: str
+    frequency_code: str
+    slots: List[str] = Field(default_factory=list)  # morning | afternoon | evening | night | bedtime | as_needed
+    food_timing: Optional[str] = None  # before_food | after_food | null
+    duration_days: Optional[int] = None
+    instruction_text: str
+    decoded: bool = True
+    quote: str = ""
+    page: int = 1
+    evidence: str = "check_original"  # matched | check_original | calculated
+
+
 class ExplainResponse(BaseModel):
     doc_type: str = "other"
     document_type: str = "other"
@@ -273,11 +307,13 @@ class ExplainResponse(BaseModel):
     source_kind: str = "photo"  # text_pdf | scanned_pdf | photo
     glance: Optional[GlanceSummary] = None
     summary: List[str]
+    spoken_summary: Optional[str] = None
     actions: List[ExplainAction] = Field(default_factory=list)
     warnings: List[ExplainWarning] = Field(default_factory=list)
     facts: List[ExplainFact] = Field(default_factory=list)
     places: List[PlaceInfo] = Field(default_factory=list)
     contacts: List[ContactInfo] = Field(default_factory=list)
+    medicines: List[MedicineInfo] = Field(default_factory=list)
     conflicts: List[str] = Field(default_factory=list)
     evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
     unreadable: bool = False
@@ -299,8 +335,26 @@ class ExplainResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
+    error: Optional[str] = None
     message: str
     message_local: str
+
+
+class AskResponse(BaseModel):
+    answer: str
+    quote: Optional[str] = None
+    page: Optional[int] = None
+    evidence: str = "none"  # matched | check_original | none
+    answered_from: str = "document"  # document | summary
+    not_found: bool = False
+    language: str
+
+
+class SpeakRequest(BaseModel):
+    text: str
+    lang: str
+    voice: Literal["female", "male"] = "female"
+    rate: Optional[float] = Field(default=1.0, ge=0.25, le=4.0)
 
 
 # Translation Models

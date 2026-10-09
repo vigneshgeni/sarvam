@@ -1,0 +1,14 @@
+{
+  "id": "insurance_letter",
+  "name": "Insurance Claim Rejection Letter",
+    "file_path": "../../../../samples/sample-insurance-letter.pdf",
+  "mime_type": "application/pdf",
+  "explain_lang": "en",
+  "translate_lang": "ta",
+  "expected": {
+    "document_type": "insurance",
+    "critical_numbers": ["31,200", "17,300", "CLM-2026-0884"],
+    "protected_terms": ["Mr. Ravi Kumar", "CLM-2026-0884", "Sunrise Hospital, Jayanagar"],
+    "excluded_protected_terms": ["Grievance Cell", "Claims Manager"]
+  }
+}

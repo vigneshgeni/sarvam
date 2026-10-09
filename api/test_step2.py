@@ -1551,5 +1551,572 @@ def test_translate_shrunk_input_and_copies_glance_places_contacts(client):
         assert body["contacts"][0]["evidence"] == "matched"
 
 
+# =========================================================================
+# SARVAM API MASTER PROMPT (v3) - Unit Tests for API-1 through API-12
+# =========================================================================
+
+def test_script_guard_thresholds():
+    from evidence import check_script_guard
+
+    # 1. Indic scripts passing (>= 40% Indic letters)
+    ta_text = ["இது ஒரு அதிகாரப்பூர்வ அறிவிப்பு. மின் கட்டணம் ரூ. 1,450 செலுத்தவும்."]
+    passed, ratio = check_script_guard(ta_text, "ta")
+    assert passed is True
+    assert ratio >= 0.40
+
+    hi_text = ["यह एक आधिकारिक नोटिस है. कृपया अपनी पेंशन राशि का सत्यापन करें."]
+    passed, ratio = check_script_guard(hi_text, "hi")
+    assert passed is True
+    assert ratio >= 0.40
+
+    te_text = ["ఇది అధికారిక నోటీసు. దయచేసి వివరాలను ధృవీకరించండి."]
+    passed, ratio = check_script_guard(te_text, "te")
+    assert passed is True
+    assert ratio >= 0.40
+
+    ml_text = ["ഇതൊരു ഔദ്യോഗിക അറിയിപ്പാണ്. ദയവായി വിവരങ്ങൾ പരിശോധിക്കുക."]
+    passed, ratio = check_script_guard(ml_text, "ml")
+    assert passed is True
+    assert ratio >= 0.40
+
+    kn_text = ["ಇದು ಅಧಿಕೃತ ಸೂಚನೆಯಾಗಿದೆ. ದಯವಿಟ್ಟು ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ."]
+    passed, ratio = check_script_guard(kn_text, "kn")
+    assert passed is True
+    assert ratio >= 0.40
+
+    # 2. English passthrough in Indic target fails script guard (< 40%)
+    en_text = ["This is an official electricity bill statement. Please pay on time."]
+    passed, ratio = check_script_guard(en_text, "ta")
+    assert passed is False
+    assert ratio < 0.40
+
+    passed, ratio = check_script_guard(en_text, "hi")
+    assert passed is False
+
+    # 3. Target language English always passes
+    passed, ratio = check_script_guard(en_text, "en")
+    assert passed is True
+
+
+def test_evidence_normalization_adversarial():
+    from evidence import normalize_text_for_evidence, verify_evidence
+
+    # 1. Ligatures and line break hyphenation
+    norm = normalize_text_for_evidence("con\ufb01rmation of the de-\npartment")
+    assert "confirmation" in norm
+    assert "department" in norm
+
+    # 2. Currency and Lac vs Lakh equivalence
+    page_text = "Sunrise Insurance Co. Policy CLM-101. Total Coverage: Rs. 5 Lacs. Premium Due: ₹ 1,00,000 on 30.11.2026."
+    pages = [page_text]
+
+    # Valid matches with variations
+    assert verify_evidence("Total Coverage: ₹ 5 Lakh", "", 1, pages) == "matched"
+    assert verify_evidence("Premium Due: INR 100000 on 30.11.2026", "", 1, pages) == "matched"
+    assert verify_evidence("Total Coverage: Rs. 5 Lacs", "", 1, pages) == "matched"
+
+    # ADVERSARIAL: Different numbers must NEVER match
+    # Rs 2,00,000 instead of 1,00,000
+    assert verify_evidence("Premium Due: ₹ 2,00,000 on 30.11.2026", "", 1, pages) == "check_original"
+    # Different date
+    assert verify_evidence("Premium Due: ₹ 1,00,000 on 29.11.2026", "", 1, pages) == "check_original"
+    # Non-existent policy number
+    assert verify_evidence("Policy CLM-999", "", 1, pages) == "check_original"
+
+
+def test_password_pdf_handling(client):
+    import io
+    import pypdf
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # Create an encrypted PDF in memory
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    writer.encrypt("correct_pass_123")
+    buf = io.BytesIO()
+    writer.write(buf)
+    encrypted_pdf_bytes = buf.getvalue()
+
+    # 1. Missing password -> 422 pdf_password_required
+    files = [("files", ("secure.pdf", encrypted_pdf_bytes, "application/pdf"))]
+    res = client.post("/api/explain", files=files, data={"lang": "en"})
+    assert res.status_code == 422
+    assert res.json().get("error") == "pdf_password_required"
+
+    # 2. Wrong password -> 422 pdf_password_wrong
+    files = [("files", ("secure.pdf", encrypted_pdf_bytes, "application/pdf"))]
+    res = client.post("/api/explain", files=files, data={"lang": "en", "password": "wrong_pass_999"})
+    assert res.status_code == 422
+    assert res.json().get("error") == "pdf_password_wrong"
+
+    # 3. Correct password -> decrypts and succeeds
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            document_type="other",
+            title="Decrypted Document",
+            language="en",
+            summary=["Decrypted successfully."],
+        )
+        files = [("files", ("secure.pdf", encrypted_pdf_bytes, "application/pdf"))]
+        res = client.post("/api/explain", files=files, data={"lang": "en", "password": "correct_pass_123"})
+        assert res.status_code == 200
+        assert res.json()["title"] == "Decrypted Document"
+
+
+def test_telugu_malayalam_kannada_digit_normalization():
+    from evidence import normalize_digits, verify_translation_guard
+
+    # Telugu digits
+    te_str = "మొత్తం: ౧,౨౦౦ రూపాయలు"  # 1,200
+    assert "1,200" in normalize_digits(te_str)
+
+    # Kannada digits
+    kn_str = "ಒಟ್ಟು: ೩೧,೨೦೦ ರೂಪಾಯಿ"  # 31,200
+    assert "31,200" in normalize_digits(kn_str)
+
+    # Malayalam digits
+    ml_str = "ആകെ: ൧,൦൦,൦൦൦ രൂപ"  # 1,00,000
+    assert "1,00,000" in normalize_digits(ml_str)
+
+    # Guard verification across scripts
+    orig = "Amount: Rs. 1,200 due on 30.11.2026"
+    trans_te = "మొత్తం: ₹ ౧,౨౦౦ తేదీ 30.11.2026"
+    assert verify_translation_guard(orig, trans_te) is True
+
+    trans_kn = "ಮೊತ್ತ: ₹ ೧,೨೦೦ ದಿನಾಂಕ 30.11.2026"
+    assert verify_translation_guard(orig, trans_kn) is True
+
+
+def test_medicine_frequency_decoding_15_patterns():
+    from medicines import decode_medicine_frequency
+
+    # 1. 1-0-1
+    code, slots, food, dur, dec = decode_medicine_frequency("1-0-1")
+    assert code == "1-0-1"
+    assert slots == ["morning", "night"]
+    assert dec is True
+
+    # 2. 1-1-1
+    code, slots, food, dur, dec = decode_medicine_frequency("1-1-1")
+    assert code == "1-1-1"
+    assert slots == ["morning", "afternoon", "night"]
+    assert dec is True
+
+    # 3. 0-0-1
+    code, slots, food, dur, dec = decode_medicine_frequency("0-0-1")
+    assert code == "0-0-1"
+    assert slots == ["night"]
+    assert dec is True
+
+    # 4. 1-1-1-1
+    code, slots, food, dur, dec = decode_medicine_frequency("1-1-1-1")
+    assert code == "1-1-1-1"
+    assert slots == ["morning", "afternoon", "evening", "night"]
+    assert dec is True
+
+    # 5. 0-1-0
+    code, slots, food, dur, dec = decode_medicine_frequency("0-1-0")
+    assert code == "0-1-0"
+    assert slots == ["afternoon"]
+    assert dec is True
+
+    # 6. 1-0-0
+    code, slots, food, dur, dec = decode_medicine_frequency("1-0-0")
+    assert code == "1-0-0"
+    assert slots == ["morning"]
+    assert dec is True
+
+    # 7. OD
+    code, slots, food, dur, dec = decode_medicine_frequency("OD")
+    assert code == "OD"
+    assert slots == ["morning"]
+    assert dec is True
+
+    # 8. BD
+    code, slots, food, dur, dec = decode_medicine_frequency("BD")
+    assert code == "BD"
+    assert slots == ["morning", "night"]
+    assert dec is True
+
+    # 9. TDS
+    code, slots, food, dur, dec = decode_medicine_frequency("TDS")
+    assert code == "TDS"
+    assert slots == ["morning", "afternoon", "night"]
+    assert dec is True
+
+    # 10. QID
+    code, slots, food, dur, dec = decode_medicine_frequency("QID")
+    assert code == "QID"
+    assert slots == ["morning", "afternoon", "evening", "night"]
+    assert dec is True
+
+    # 11. HS
+    code, slots, food, dur, dec = decode_medicine_frequency("HS")
+    assert code == "HS"
+    assert slots == ["bedtime"]
+    assert dec is True
+
+    # 12. SOS
+    code, slots, food, dur, dec = decode_medicine_frequency("SOS")
+    assert code == "SOS"
+    assert dec is True
+
+    # 13. PRN
+    code, slots, food, dur, dec = decode_medicine_frequency("PRN")
+    assert code == "SOS"
+    assert dec is True
+
+    # 14. 1 tab BD PC x 5 days
+    code, slots, food, dur, dec = decode_medicine_frequency("1 tab BD PC x 5 days")
+    assert code == "BD"
+    assert food == "after_food"
+    assert dur == 5
+    assert dec is True
+
+    # 15. 2 caps TDS AC for 2 weeks
+    code, slots, food, dur, dec = decode_medicine_frequency("2 caps TDS AC for 2 weeks")
+    assert code == "TDS"
+    assert food == "before_food"
+    assert dur == 14
+    assert dec is True
+
+    # 16. HS after food
+    code, slots, food, dur, dec = decode_medicine_frequency("HS after food")
+    assert code == "HS"
+    assert food == "after_food"
+    assert slots == ["bedtime"]
+    assert dec is True
+
+
+def test_to_speech_15_patterns():
+    from tts import to_speech
+
+    # 1. Rs. 1,200 in ta -> ரூபாய்
+    res1 = to_speech("Rs. 1,200", "ta")
+    assert "1,200 ரூபாய்" in res1
+
+    # 2. ₹500 in hi -> रुपये
+    res2 = to_speech("₹500", "hi")
+    assert "500 रुपये" in res2
+
+    # 3. INR 10,000 in en -> rupees
+    res3 = to_speech("INR 10,000", "en")
+    assert "10,000 rupees" in res3
+
+    # 4. Rs. 5 Lac in en -> 5 lakh rupees
+    res4 = to_speech("Rs. 5 Lac", "en")
+    assert "5 lakh rupees" in res4
+
+    # 5. 5 Lakh in ta -> 5 லட்சம் ரூபாய்
+    res5 = to_speech("5 Lakh", "ta")
+    assert "5 லட்சம் ரூபாய்" in res5
+
+    # 6. ₹ 10 Crore in hi -> 10 करोड़ रुपये
+    res6 = to_speech("₹ 10 Crore", "hi")
+    assert "10 करोड़ रुपये" in res6
+
+    # 7. 30.11.2026 in ta -> நவம்பர்
+    res7 = to_speech("30.11.2026", "ta")
+    assert "30 நவம்பர் 2026" in res7
+
+    # 8. 02-10-2026 in hi -> अक्टूबर
+    res8 = to_speech("02-10-2026", "hi")
+    assert "2 अक्टूबर 2026" in res8
+
+    # 9. 01/01/2026 in en -> January
+    res9 = to_speech("01/01/2026", "en")
+    assert "1 January 2026" in res9
+
+    # 10. 12-09-2026 in te -> digits preserved
+    res10 = to_speech("12-09-2026", "te")
+    assert "12-09-2026" in res10
+
+    # 11. 15-08-2026 in ml -> digits preserved
+    res11 = to_speech("15-08-2026", "ml")
+    assert "15-08-2026" in res11
+
+    # 12. 25-12-2026 in kn -> digits preserved
+    res12 = to_speech("25-12-2026", "kn")
+    assert "25-12-2026" in res12
+
+    # 13. 1,200 Rs in en
+    res13 = to_speech("1,200 Rs", "en")
+    assert "1,200 rupees" in res13
+
+    # 14. 5000 INR in hi
+    res14 = to_speech("5000 INR", "hi")
+    assert "5000 रुपये" in res14
+
+    # 15. ₹31,200 in te
+    res15 = to_speech("₹31,200", "te")
+    assert "31,200 రూపాయలు" in res15
+
+
+def test_speak_endpoint(client):
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # 1. Text > 1200 characters returns 422
+    long_text = "a" * 1201
+    res = client.post("/api/speak", json={"text": long_text, "lang": "en"})
+    assert res.status_code == 422
+    assert res.json().get("error") == "text_too_long"
+
+    # 2. Successful synthesis
+    with patch("main.synthesize_speech") as mock_synth:
+        mock_synth.return_value = b"\xff\xfb\x90\x44"  # Fake MP3 bytes
+        res = client.post("/api/speak", json={"text": "Please pay Rs. 500.", "lang": "en", "voice": "female"})
+        assert res.status_code == 200
+        assert res.headers["content-type"] == "audio/mpeg"
+        assert res.headers["cache-control"] == "no-store"
+        assert res.content == b"\xff\xfb\x90\x44"
+
+    # 3. TTS service failure returns 503
+    with patch("main.synthesize_speech", side_effect=RuntimeError("TTS failure")):
+        res = client.post("/api/speak", json={"text": "Hello", "lang": "en"})
+        assert res.status_code == 503
+        assert res.json().get("error") == "tts_unavailable"
+
+
+def test_ask_endpoint(client):
+    from main import IP_REQUESTS
+    from models import AskResponse
+    IP_REQUESTS.clear()
+
+    # 1. Question > 500 chars returns 400
+    long_q = "q" * 501
+    res = client.post("/api/ask", data={"question": long_q, "lang": "en", "result": "{}"})
+    assert res.status_code == 400
+
+    # 2. Result > 200 KB returns 400
+    huge_result = "{" + "a" * (205 * 1024) + "}"
+    res = client.post("/api/ask", data={"question": "What is the fee?", "lang": "en", "result": huge_result})
+    assert res.status_code == 400
+
+    # 3. Unverified answer numbers returns 422 ask_unverified
+    with patch("main.ask_document") as mock_ask:
+        from errors import AskUnverifiedError
+        mock_ask.side_effect = AskUnverifiedError("Unverified number")
+        res = client.post("/api/ask", data={"question": "What is the penalty?", "lang": "en", "result": '{"title": "Test"}'})
+        assert res.status_code == 422
+        assert res.json().get("error") == "ask_unverified"
+
+    # 4. Verified answer returns 200
+    with patch("main.ask_document") as mock_ask:
+        mock_ask.return_value = AskResponse(
+            answer="The due date is 30.11.2026.",
+            quote="Due date: 30.11.2026",
+            page=1,
+            evidence="matched",
+            answered_from="document",
+            not_found=False,
+            language="en",
+        )
+        res = client.post("/api/ask", data={"question": "When is the due date?", "lang": "en", "result": '{"title": "Test"}'})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["answer"] == "The due date is 30.11.2026."
+        assert body["evidence"] == "matched"
+        assert body["not_found"] is False
+
+def test_spoken_summary_digit_guard():
+    from evidence import verify_spoken_summary_digit_guard
+
+    doc_text = "Notice: Submit Life Certificate by 30.11.2026. Monthly pension amount is Rs. 1,200. Ref: OAP/2019/4417."
+    allowed_nums = {"1200", "30", "11", "2026", "2019", "4417"}
+
+    # 1. Valid spoken summary with matching numbers
+    valid_summary = "Please submit your life certificate by 30.11.2026 to continue receiving your monthly pension of Rs. 1200."
+    is_valid, unverified = verify_spoken_summary_digit_guard(valid_summary, doc_text, allowed_numbers=allowed_nums)
+    assert is_valid is True
+    assert len(unverified) == 0
+
+    # 2. Spoken summary with hallucinated amount (e.g. Rs. 5000 not in document)
+    invalid_summary = "Please submit your certificate to receive Rs. 5000 by 30.11.2026."
+    is_valid, unverified = verify_spoken_summary_digit_guard(invalid_summary, doc_text, allowed_numbers=allowed_nums)
+    assert is_valid is False
+    assert "5000" in unverified
+
+    # 3. Spoken summary with Indic digits that match
+    indic_summary = "कृपया अपनी ३०.११.२०२६ तक प्रक्रिया पूरी करें।"
+    is_valid, unverified = verify_spoken_summary_digit_guard(indic_summary, doc_text, allowed_numbers=allowed_nums)
+    assert is_valid is True
+    assert len(unverified) == 0
+
+
+def test_prescription_medicines_mapping_regression(client):
+    from models import ReaderMedicine, ReaderResponse, MedicineInfo
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # 1. Verify MedicineInfo schema attributes: has strength_text & frequency_raw, NOT dosage
+    med = MedicineInfo(
+        name="Paracetamol",
+        strength_text="500mg",
+        frequency_code="1-0-1",
+        frequency_raw="1-0-1",
+        slots=["morning", "night"],
+        food_timing="after_food",
+        duration_days=5,
+        instruction_text="Take 1 tablet morning and night after food",
+        decoded=True,
+        quote="Paracetamol 500mg 1-0-1",
+        page=1,
+        evidence="check_original",
+    )
+    assert hasattr(med, "strength_text")
+    assert hasattr(med, "frequency_raw")
+    assert not hasattr(med, "dosage")
+    with pytest.raises(AttributeError):
+        _ = getattr(med, "dosage")
+
+    # 2. Call /api/explain with mocked ReaderResponse returning medicines
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="medical",
+            document_type="medical",
+            document_language="en",
+            language="en",
+            source_kind="text_pdf",
+            title="Medical Prescription",
+            summary=["Prescription for viral fever with 2 medicines."],
+            spoken_summary="This is a medical prescription for fever. Take Paracetamol 500mg twice daily and Cetirizine 10mg at night.",
+            actions=[],
+            warnings=[],
+            facts=[],
+            medicines=[
+                ReaderMedicine(
+                    name="Paracetamol",
+                    strength_text="500mg",
+                    frequency_raw="1-0-1",
+                    food_timing="after_food",
+                    duration_days=5,
+                    instruction_text="Take 1 tablet in the morning and night after food",
+                    quote="Tab Paracetamol 500mg 1-0-1 x 5 days",
+                    page=1,
+                ),
+                ReaderMedicine(
+                    name="Cetirizine",
+                    strength_text="10mg",
+                    frequency_raw="0-0-1",
+                    food_timing="after_food",
+                    duration_days=3,
+                    instruction_text="Take 1 tablet at night",
+                    quote="Tab Cetirizine 10mg 0-0-1 x 3 days",
+                    page=1,
+                ),
+            ],
+            places=[],
+            contacts=[],
+            conflicts=[],
+            protected_terms=["Dr. Sharma", "Apollo Pharmacy"],
+        )
+
+        files = [("files", ("prescription.pdf", b"%PDF-1.4 test", "application/pdf"))]
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200, f"Expected 200 but got {res.status_code}: {res.text}"
+        body = res.json()
+        assert len(body["medicines"]) == 2
+        m0 = body["medicines"][0]
+        assert m0["name"] == "Paracetamol"
+        assert m0["strength_text"] == "500mg"
+        assert m0["frequency_code"] == "1-0-1"
+        assert m0["slots"] == ["morning", "night"]
+        assert m0["food_timing"] == "after_food"
+        assert m0["duration_days"] == 5
+        assert m0["decoded"] is True
+
+        # 3. Test /api/translate preserves medicines mapping and translates instructions
+        explain_resp = res.json()
+        with patch("main.translate_keyed_strings") as mock_trans:
+            mock_trans.return_value = {
+                "title": "மருத்துவ மருந்துச்சீட்டு",
+                "summary_0": "2 மருந்துகளுடன் காய்ச்சலுக்கான மருந்துச்சீட்டு.",
+                "spoken_summary": "இது காய்ச்சலுக்கான மருத்துவ மருந்துச்சீட்டு.",
+                "med_0_instruction": "காலை மற்றும் இரவு உணவுக்கு பின் 1 மாத்திரை எடுக்கவும்",
+                "med_1_instruction": "இரவு 1 மாத்திரை எடுக்கவும்",
+            }
+            trans_res = client.post(
+                "/api/translate",
+                json={"result": explain_resp, "lang": "ta"},
+            )
+            assert trans_res.status_code == 200, f"Expected 200 but got {trans_res.status_code}: {trans_res.text}"
+            trans_body = trans_res.json()
+            assert len(trans_body["medicines"]) == 2
+            assert trans_body["medicines"][0]["name"] == "Paracetamol"
+            assert trans_body["medicines"][0]["strength_text"] == "500mg"
+            assert trans_body["medicines"][0]["frequency_code"] == "1-0-1"
+            assert trans_body["medicines"][0]["instruction_text"] == "காலை மற்றும் இரவு உணவுக்கு பின் 1 மாத்திரை எடுக்கவும்"
+
+
+def test_spoken_summary_natural_date_rendering_hi_ta(client):
+    from tts import render_iso_dates_natural
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # 1. Direct function tests for hi and ta
+    hi_rendered = render_iso_dates_natural("Submit your life certificate by 2026-11-30.", "hi")
+    assert "30 नवंबर 2026" in hi_rendered
+    assert "2026-11-30" not in hi_rendered
+
+    ta_rendered = render_iso_dates_natural("Submit your life certificate by 2026-11-30.", "ta")
+    assert "30 நவம்பர் 2026" in ta_rendered
+    assert "2026-11-30" not in ta_rendered
+
+    # Also test month with single digit day e.g. 2026-05-04
+    assert "4 मई 2026" in render_iso_dates_natural("Event on 2026-05-04.", "hi")
+    assert "4 மே 2026" in render_iso_dates_natural("Event on 2026-05-04.", "ta")
+
+    # 2. Test in /api/translate endpoint for both hi and ta
+    sample_result = {
+        "title": "Pension Notice",
+        "language": "en",
+        "summary": ["Submit life certificate by 30 November 2026."],
+        "spoken_summary": "Please submit your life certificate by 2026-11-30 to receive your pension.",
+        "actions": [{
+            "text": "Submit certificate",
+            "due_date": "30.11.2026",
+            "quote": "Submit by 30.11.2026",
+            "page": 1,
+            "evidence": "check_original",
+        }],
+        "warnings": [],
+        "facts": [],
+        "places": [],
+        "contacts": [],
+        "medicines": [],
+        "conflicts": [],
+        "protected_terms": [],
+        "evidence_summary": {"total_items": 1, "matched": 0, "check_original": 1, "calculated": 0},
+    }
+
+    # Translate to hi: model returns translated text that may retain or contain ISO date
+    with patch("main.translate_keyed_strings") as mock_trans:
+        mock_trans.return_value = {
+            "title": "पेंशन सूचना",
+            "summary_0": "30 नवंबर 2026 तक जीवन प्रमाण पत्र जमा करें।",
+            "action_0_text": "प्रमाण पत्र जमा करें",
+            "spoken_summary": "कृपया अपनी पेंशन प्राप्त करने के लिए 2026-11-30 तक अपना जीवन प्रमाण पत्र जमा करें।",
+        }
+        res_hi = client.post("/api/translate", json={"result": sample_result, "lang": "hi"})
+        assert res_hi.status_code == 200, res_hi.text
+        hi_body = res_hi.json()
+        assert "30 नवंबर 2026" in hi_body["spoken_summary"]
+        assert "2026-11-30" not in hi_body["spoken_summary"]
+
+    # Translate to ta: model returns translated text that retains or contains ISO date
+    with patch("main.translate_keyed_strings") as mock_trans:
+        mock_trans.return_value = {
+            "title": "ஓய்வூதிய அறிவிப்பு",
+            "summary_0": "30 நவம்பர் 2026க்குள் வாழ்வுச் சான்றிதழை சமர்ப்பிக்கவும்.",
+            "action_0_text": "சான்றிதழை சமர்ப்பிக்கவும்",
+            "spoken_summary": "உங்கள் ஓய்வூதியத்தைப் பெற 2026-11-30க்குள் உங்கள் வாழ்வுச் சான்றிதழை சமர்ப்பிக்கவும்.",
+        }
+        res_ta = client.post("/api/translate", json={"result": sample_result, "lang": "ta"})
+        assert res_ta.status_code == 200, res_ta.text
+        ta_body = res_ta.json()
+        assert "30 நவம்பர் 2026" in ta_body["spoken_summary"]
+        assert "2026-11-30" not in ta_body["spoken_summary"]
 
 

@@ -1,0 +1,12 @@
+{
+  "id": "lab_report",
+  "name": "Clinical Diagnostic Lab Report",
+    "file_path": "../../../../samples/sample-lab-report.pdf",
+  "mime_type": "application/pdf",
+  "explain_lang": "en",
+  "translate_lang": "ta",
+  "expected": {
+    "document_type": "medical",
+    "source_kind": "text_pdf"
+  }
+}
