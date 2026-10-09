@@ -1,29 +1,30 @@
 .lf-root {
+  /* Aliases to shared tokens in index.css / tailwind. Leftovers stay local. */
   --lf-stage: #E8E7E1;
-  --lf-bg: #F6F6F2;
-  --lf-surface: #FFFFFF;
+  --lf-bg: #F6F6F3;
+  --lf-surface: var(--color-surface, #FFFFFF);
   --lf-ink: #15171A;
   --lf-muted: #5E636B;
   --lf-line: #E6E6E1;
-  --lf-sunk: #EEEEE8;
+  --lf-sunk: #F0F0EB;
   --lf-green: #146B4E;
   --lf-green-soft: #E3F1EA;
-  --lf-green-ink: #0C4A35;
-  --lf-btn: #3B34B8;
+  --lf-green-ink: var(--color-chip-found-text, #0E5B37);
+  --lf-btn: var(--color-indigo-mid, #5B52D6);
   --lf-btn-ink: #FFFFFF;
-  --lf-indigo: #5B52D6;
-  --lf-indigo-soft: #ECEBFA;
-  --lf-indigo-ink: #2A2585;
-  --lf-blue: #1D5FA8;
-  --lf-blue-soft: #E8F1FB;
-  --lf-gold: #9A6700;
-  --lf-gold-soft: #FFF4D6;
-  --lf-violet: #6D45C9;
-  --lf-violet-soft: #F1ECFB;
-  --lf-coral: #C2410C;
-  --lf-coral-soft: #FDECE6;
-  --lf-coral-line: #F3B8A6;
-  --lf-coral-ink: #7A2E1B;
+  --lf-indigo: var(--color-indigo-mid, #5B52D6);
+  --lf-indigo-soft: var(--color-indigo-tint, #ECEBFA);
+  --lf-indigo-ink: var(--color-indigo-base, #1E1838);
+  --lf-blue: var(--color-blue-text, #1D5FA8);
+  --lf-blue-soft: var(--color-blue-bg, #E8F1FB);
+  --lf-gold: var(--color-gold-text, #9A6700);
+  --lf-gold-soft: var(--color-gold-bg, #FFF4D6);
+  --lf-violet: var(--color-violet-text, #6D45C9);
+  --lf-violet-soft: var(--color-violet-bg, #F1ECFB);
+  --lf-coral: var(--color-coral-primary, #C2410C);
+  --lf-coral-soft: var(--color-coral-bg, #FDECE6);
+  --lf-coral-line: var(--color-coral-border, #F3B8A6);
+  --lf-coral-ink: var(--color-coral-text, #7A2E1B);
   --lf-amber-soft: #FFF4DE;
   --lf-amber-ink: #5A3500;
   --lf-red: #B42318;
@@ -33,11 +34,25 @@
   --lf-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   color: var(--lf-ink);
   background: var(--lf-bg);
-  font-family: Figtree, "Noto Sans Tamil", "Noto Sans Devanagari", system-ui, sans-serif;
+  font-family: Figtree, "Noto Sans Tamil", "Noto Sans Devanagari", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Telugu", system-ui, sans-serif;
   line-height: 1.45;
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  font-size: 1rem;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.lf-root.lf-embedded {
+  min-height: 0;
+  flex: 1;
+}
+.lf-root.lf-embedded .lf-phone {
+  min-height: min(70dvh, 640px);
+  max-width: none;
+}
+.lf-root.lf-embedded .lf-appbar {
+  display: none;
 }
 .lf-root * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .lf-root h1, .lf-root h2, .lf-root h3 {
@@ -90,8 +105,8 @@
 .lf-view { display: flex; flex-direction: column; gap: 16px; animation: lfFadeUp 0.32s var(--lf-ease) both; }
 @keyframes lfFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.lf-h1 { font-size: 1.65em; line-height: 1.15; }
-.lf-h2 { font-size: 1.12em; }
+.lf-h1 { font-size: 1.65rem; line-height: 1.15; }
+.lf-h2 { font-size: 1.12rem; }
 .lf-sub { color: var(--lf-muted); font-size: 0.92em; }
 .lf-eyebrow { font-size: 0.72em; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--lf-muted); }
 .lf-row { display: flex; align-items: center; gap: 10px; }
@@ -117,8 +132,15 @@
 .lf-btn.ghost { color: var(--lf-indigo-ink); }
 .lf-btn.danger { color: var(--lf-red); border: 1.5px solid var(--lf-red-soft); background: var(--lf-red-soft); }
 .lf-btn.block { width: 100%; }
-.lf-btn.sm { min-height: 38px; padding: 0 14px; font-size: 0.85em; }
+.lf-btn.sm { min-height: 38px; padding: 0 14px; font-size: 0.85rem; }
 .lf-btn:disabled { opacity: 0.45; pointer-events: none; }
+html[data-text-size="130"] .lf-btn,
+html[data-text-size="150"] .lf-btn {
+  white-space: normal;
+  height: auto;
+  padding: 10px 14px;
+  line-height: 1.25;
+}
 
 .lf-chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
@@ -149,7 +171,7 @@
 .lf-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .lf-herobtn {
   display: flex; flex-direction: column; gap: 12px; align-items: flex-start; text-align: left;
-  padding: 16px; border-radius: 24px; min-height: 128px; position: relative; overflow: hidden;
+  padding: 16px; border-radius: 24px; min-height: 128px; position: relative; overflow: visible;
 }
 .lf-herobtn:active { transform: scale(0.97); }
 .lf-herobtn b { font-family: "Bricolage Grotesque", sans-serif; font-size: 1.15em; line-height: 1.15; }
@@ -199,6 +221,7 @@
 .lf-cat[aria-pressed="true"] { border-color: var(--lf-indigo); background: var(--lf-indigo-soft); box-shadow: 0 0 0 3px var(--lf-indigo-soft); }
 .lf-cat small { color: var(--lf-muted); font-size: 0.76em; line-height: 1.25; }
 
+.lf-sheet-wrap { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: flex-end; }
 .lf-scrim { position: absolute; inset: 0; background: var(--lf-scrim); z-index: 20; animation: lfFade 0.2s both; }
 @keyframes lfFade { from { opacity: 0; } to { opacity: 1; } }
 .lf-sheet {

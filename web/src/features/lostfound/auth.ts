@@ -27,7 +27,7 @@ export function clearDemoToken(): void {
 export function getAppLanguage(): string {
   try {
     const saved = localStorage.getItem('sarvam.lang')
-    if (saved === 'ta' || saved === 'hi' || saved === 'en') return saved
+    if (saved) return saved
   } catch {
     /* ignore */
   }

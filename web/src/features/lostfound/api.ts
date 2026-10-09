@@ -1,6 +1,6 @@
 import { getDemoToken, setDemoToken } from './auth'
 
-const API_BASE = (import.meta.env.VITE_LF_API_URL || 'http://127.0.0.1:8100').replace(/\/+$/, '')
+const API_BASE = (import.meta.env.VITE_LF_API_URL || 'http://127.0.0.1:43123').replace(/\/+$/, '')
 
 export class LfApiError extends Error {
   code: string

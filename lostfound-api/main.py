@@ -113,8 +113,8 @@ async def no_store_headers(request: Request, call_next):
 
 @app.on_event("startup")
 def on_startup() -> None:
-    if settings.port != 8100:
-        log.info("listen_port=%s (override PORT; default 8100)", settings.port)
+    if settings.port != 43123:
+        log.info("listen_port=%s (override PORT; default 43123)", settings.port)
     if settings.demo_mode:
         seed_demo()
         log.info(

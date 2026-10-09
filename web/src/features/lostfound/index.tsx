@@ -25,6 +25,8 @@ import {
 } from './api'
 import { clearDemoToken, getAppLanguage, getDemoToken } from './auth'
 import { Icon } from './components/Icon'
+import Sheet from './components/Sheet'
+import { getFirebaseAuth } from './firebase'
 import { CATEGORIES, DEMO_QUESTIONS, TEST_IDS, TONE_CLASS, catOf, type CategoryId } from './utils/categories'
 import { CHENNAI_AREAS, CITIES } from './utils/cities'
 import { looksLikeCard } from './utils/mask'
@@ -79,8 +81,11 @@ const emptyWiz = (kind: 'lost' | 'found'): Wiz => ({
   consent: false,
 })
 
-export default function LostFoundHome() {
-  const [lang, setLang] = useState(getAppLanguage)
+export default function LostFoundHome({ lang: langFromApp }: { lang?: string } = {}) {
+  const [lang, setLang] = useState(() => langFromApp || getAppLanguage())
+  useEffect(() => {
+    if (langFromApp) setLang(langFromApp)
+  }, [langFromApp])
   const t = useCallback((k: LfKey) => lfString(lang, k), [lang])
   const [tab, setTab] = useState<Tab>('home')
   const [token, setToken] = useState<string | null>(() => getDemoToken())
@@ -299,7 +304,11 @@ export default function LostFoundHome() {
           <button className="lf-btn primary block" onClick={() => void guest()}>
             {t('guest')}
           </button>
-          <button className="lf-btn line block" disabled title="P5: Firebase Google sign-in">
+          <button
+            className="lf-btn line block"
+            disabled={!getFirebaseAuth()}
+            title={getFirebaseAuth() ? t('google') : 'P5: set VITE_FIREBASE_* to enable Google sign-in'}
+          >
             {t('google')}
           </button>
           <p className="lf-hint">{t('guestHint')}</p>
@@ -315,11 +324,7 @@ export default function LostFoundHome() {
             <Icon name="search" />
           </span>
           <span>
-            <b>
-              {t('lost').replace(' something', '')}
-              <br />
-              something
-            </b>
+            <b>{t('lost')}</b>
           </span>
           <small>{t('lostHint')}</small>
         </button>
@@ -328,11 +333,7 @@ export default function LostFoundHome() {
             <Icon name="heart" />
           </span>
           <span>
-            <b>
-              I found
-              <br />
-              something
-            </b>
+            <b>{t('found')}</b>
           </span>
           <small>{t('foundHint')}</small>
         </button>
@@ -703,24 +704,20 @@ export default function LostFoundHome() {
     )
   } else if (sheet?.kind === 'privacy') {
     overlay = (
-      <>
-        <div className="lf-scrim" onClick={() => setSheet(null)} />
-        <section className="lf-sheet" role="dialog" aria-modal="true" aria-label="Privacy">
-          <div className="lf-grab" />
-          <div className="lf-sheet-head">
-            <h2 className="lf-h2 lf-grow">{t('privacyNotice')}</h2>
-            <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
-              <Icon name="x" />
-            </button>
-          </div>
-          <div className="lf-sheet-body lf-stack">
-            <p>{t('privacyLong')}</p>
-            <p>{t('ageLine')}</p>
-            <p>Grievance: privacy@example.com (placeholder).</p>
-            <p>{t('notLegal')}</p>
-          </div>
-        </section>
-      </>
+      <Sheet isOpen onClose={() => setSheet(null)} title={t('privacyNotice')} ariaLabel="Privacy">
+        <div className="lf-sheet-head">
+          <h2 className="lf-h2 lf-grow">{t('privacyNotice')}</h2>
+          <button className="lf-iconbtn" aria-label={t('close')} onClick={() => setSheet(null)}>
+            <Icon name="x" />
+          </button>
+        </div>
+        <div className="lf-sheet-body lf-stack">
+          <p>{t('privacyLong')}</p>
+          <p>{t('ageLine')}</p>
+          <p>Grievance: privacy@example.com (placeholder).</p>
+          <p>{t('notLegal')}</p>
+        </div>
+      </Sheet>
     )
   }
 
@@ -814,7 +811,7 @@ export default function LostFoundHome() {
     ) : null
 
   return (
-    <div className="lf-root">
+    <div className={langFromApp ? 'lf-root lf-embedded' : 'lf-root'}>
       <div className="lf-phone">
         <header className="lf-appbar">
           <div className="lf-brand">

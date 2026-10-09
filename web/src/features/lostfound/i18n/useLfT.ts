@@ -7,13 +7,27 @@ export type LfKey = keyof typeof en
 
 const dicts: Record<string, Record<string, string>> = { en, ta, hi }
 
+const ENGLISH_FALLBACK_LANGS = new Set(['te', 'ml', 'kn', 'auto', 'en-IN'])
+
+export function resolveLfLang(lang?: string): string {
+  const raw = (lang || getAppLanguage() || 'en').trim()
+  if (raw === 'ta' || raw === 'hi' || raw === 'en') return raw
+  if (ENGLISH_FALLBACK_LANGS.has(raw) || raw.startsWith('te') || raw.startsWith('ml') || raw.startsWith('kn')) {
+    return 'en'
+  }
+  return dicts[raw] ? raw : 'en'
+}
+
 export function lfString(lang: string, key: LfKey): string {
-  const d = dicts[lang] || dicts.en
-  return d[key] || dicts.en[key] || key
+  const resolved = resolveLfLang(lang)
+  const d = dicts[resolved] || dicts.en
+  const fromLang = d[key]
+  if (fromLang) return fromLang
+  return dicts.en[key] || String(key)
 }
 
 export function useLfT(lang?: string): (key: LfKey) => string {
-  const resolved = lang || getAppLanguage()
+  const resolved = resolveLfLang(lang)
   return (key: LfKey) => lfString(resolved, key)
 }
 

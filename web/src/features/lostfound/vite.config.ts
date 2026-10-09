@@ -14,7 +14,7 @@ export default defineConfig({
     port: 43123,
     proxy: {
       // Trailing slash so `/lf.css` is not swallowed by the API proxy.
-      '/lf/': 'http://127.0.0.1:8100',
+      '/lf/': 'http://127.0.0.1:43123',
     },
   },
 })

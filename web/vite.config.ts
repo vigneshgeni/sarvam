@@ -10,8 +10,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globIgnores: ['**/samples/**'],
-        navigateFallbackDenylist: [/^\/api\/.*/],
+        globIgnores: ['**/samples/**', '**/lf/**'],
+        navigateFallbackDenylist: [/^\/api\/.*/, /^\/lf\/.*/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/lf/') ||
+              url.origin === 'http://127.0.0.1:43123' ||
+              url.origin === 'http://localhost:43123',
+            handler: 'NetworkOnly',
+          },
+        ],
       },
       manifest: {
         name: 'Sarvam',

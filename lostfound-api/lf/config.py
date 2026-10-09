@@ -50,8 +50,10 @@ def _origins() -> tuple[str, ...]:
     raw = os.environ.get(
         "LF_ALLOWED_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:41777,http://127.0.0.1:41777,"
         "http://localhost:43123,http://127.0.0.1:43123,"
-        "http://localhost:4173,http://127.0.0.1:4173",
+        "http://localhost:4173,http://127.0.0.1:4173,"
+        "http://localhost:8080,http://127.0.0.1:8080",
     )
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
@@ -90,7 +92,7 @@ def get_settings() -> Settings:
         public_lost_feed=_bool("LF_PUBLIC_LOST_FEED", False),
         match_threshold=_int("LF_MATCH_THRESHOLD", 45),
         post_ttl_days=_int("LF_POST_TTL_DAYS", 90),
-        port=_int("PORT", 8100),
+        port=_int("PORT", 43123),
         store=store,
         demo_pepper=demo_pepper,
         demo_field_key=demo_field_key,
