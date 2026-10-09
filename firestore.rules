@@ -4,7 +4,22 @@ service cloud.firestore {
     function isFeedbackCreate() {
       let data = request.resource.data;
       let langOk = data.lang in ['en', 'ta', 'hi', 'te', 'ml', 'kn'];
-      let docOk = data.docType in ['pension', 'lab', 'insurance', 'other', 'unknown'];
+      let docOk = data.docType in [
+        'utility_bill',
+        'telecom_bill',
+        'tax_receipt',
+        'insurance',
+        'bank',
+        'government_notice',
+        'court_legal',
+        'challan',
+        'medical',
+        'receipt',
+        'agreement',
+        'corporate',
+        'other',
+        'unknown'
+      ];
       let versionOk = data.appVersion is string
         && data.appVersion.size() > 0
         && data.appVersion.size() <= 32
