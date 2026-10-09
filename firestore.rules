@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isFeedbackCreate() {
+      let data = request.resource.data;
+      let langOk = data.lang in ['en', 'ta', 'hi', 'te', 'ml', 'kn'];
+      let docOk = data.docType in ['pension', 'lab', 'insurance', 'other', 'unknown'];
+      let versionOk = data.appVersion is string
+        && data.appVersion.size() > 0
+        && data.appVersion.size() <= 32
+        && data.appVersion.matches('^[0-9A-Za-z._+-]+$');
+      let common = request.auth != null
+        && langOk
+        && docOk
+        && data.sample is bool
+        && versionOk
+        && data.createdAt == request.time;
+      let up = data.rating == 'up'
+        && data.keys().hasOnly(['rating', 'lang', 'docType', 'sample', 'appVersion', 'createdAt']);
+      let down = data.rating == 'down'
+        && data.keys().hasOnly(['rating', 'lang', 'docType', 'reasons', 'sample', 'appVersion', 'createdAt'])
+        && data.reasons is list
+        && data.reasons.size() <= 5
+        && data.reasons.hasOnly(['wrong_date', 'wrong_amount', 'missed_action', 'hard_to_understand', 'other']);
+      return common && (up || down);
+    }
+
+    match /feedback/{id} {
+      allow create: if isFeedbackCreate();
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
