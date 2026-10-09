@@ -91,11 +91,12 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
   }
 
   function onNo() {
+    if (phase === 'sending' || phase === 'sent') return
+    if (phase === 'ask') setPhase('reasons')
+  }
+
+  function onSend() {
     if (phase === 'sending') return
-    if (phase === 'ask') {
-      setPhase('reasons')
-      return
-    }
     submit('down', selected)
   }
 
@@ -177,6 +178,14 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
                   )
                 })}
               </div>
+              <button
+                type="button"
+                className="focus-ring min-h-[44px] min-w-[44px] w-full rounded-full border-2 border-[#1E1838] bg-[#1E1838] px-4 text-base font-bold text-white disabled:opacity-60"
+                onClick={onSend}
+                disabled={busy}
+              >
+                {copy.send}
+              </button>
             </div>
           )}
 

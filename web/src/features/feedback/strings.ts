@@ -19,6 +19,7 @@ export interface FeedbackCopy {
   yes: string
   no: string
   whatWasWrong: string
+  send: string
   reasons: Record<ReasonCode, string>
   thanks: string
   sendFailed: string
@@ -30,6 +31,7 @@ const english: FeedbackCopy = {
   yes: 'Yes',
   no: 'No',
   whatWasWrong: 'What was wrong?',
+  send: 'Send',
   reasons: {
     wrong_date: 'Wrong date',
     wrong_amount: 'Wrong amount',
