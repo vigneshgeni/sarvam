@@ -12,7 +12,7 @@
   "sample2Sub": "Health insurer · PDF",
   "sample3Title": "Pension notice",
   "sample3Sub": "Social Welfare Dept. · Photo",
-  "privacy": "Google Cloud ನಲ್ಲಿ ಸುರಕ್ಷಿತವಾಗಿ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗಿದೆ. ಸರ್ವಂ ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ.",
+  "privacy": "ನಿಮ್ಮ ದಾಖಲೆಯನ್ನು Google Cloud ನಲ್ಲಿ ಓದಲಾಗುತ್ತದೆ, ಸಂಗ್ರಹಿಸಲಾಗುವುದಿಲ್ಲ. ನೀವು ಫಲಿತಾಂಶಕ್ಕೆ ರೇಟಿಂಗ್ ನೀಡಿದರೆ, ರೇಟಿಂಗ್ ಮಾತ್ರ ಉಳಿಸಲಾಗುತ್ತದೆ.",
   "a11yTitle": "Accessibility settings",
   "betaTag": "Beta",
   "previewNote": "Prototype text is shown in English. The live app writes everything in {lang} with Gemini.",

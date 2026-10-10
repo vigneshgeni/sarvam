@@ -12,7 +12,7 @@
   "sample2Sub": "Health insurer · PDF",
   "sample3Title": "Pension notice",
   "sample3Sub": "Social Welfare Dept. · Photo",
-  "privacy": "Processed securely on Google Cloud. Not stored by Sarvam.",
+  "privacy": "Your document is read on Google Cloud and not stored. If you rate a result, only the rating is saved.",
   "a11yTitle": "Accessibility settings",
   "betaTag": "Beta",
   "previewNote": "Prototype text is shown in English. The live app writes everything in {lang} with Gemini.",
