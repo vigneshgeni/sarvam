@@ -737,6 +737,7 @@ async def explain(
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
+        source_text=reader_result.source_text or ("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
         protected_terms=filter_protected_terms(reader_result.protected_terms),
     )
 
@@ -1221,6 +1222,7 @@ async def translate(
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
+        source_text=orig.source_text,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
     )
 
@@ -1357,6 +1359,15 @@ async def ask(
             elif filename.endswith(".png") or mime_type == "image/png":
                 mime_type = "image/png"
             file_data_list.append((content, mime_type))
+
+    # Ground Ask in preserved source_text if files are not provided
+    if not pdf_pages_text:
+        try:
+            parsed_res_data = json.loads(result)
+            if isinstance(parsed_res_data, dict) and parsed_res_data.get("source_text"):
+                pdf_pages_text = [parsed_res_data["source_text"]]
+        except Exception:
+            pass
 
     # Semaphore wait
     try:

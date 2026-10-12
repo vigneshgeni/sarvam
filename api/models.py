@@ -201,6 +201,10 @@ class ReaderResponse(BaseModel):
         default=None,
         description="Reason why the document is unreadable, else null",
     )
+    source_text: Optional[str] = Field(
+        default=None,
+        description="Verbatim extracted or recognized document text for grounding Ask questions",
+    )
     protected_terms: List[str] = Field(
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
@@ -318,6 +322,10 @@ class ExplainResponse(BaseModel):
     evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
     unreadable: bool = False
     unreadable_reason: Optional[str] = None
+    source_text: Optional[str] = Field(
+        default=None,
+        description="Verbatim extracted or recognized document text for grounding Ask questions",
+    )
     protected_terms: List[str] = Field(
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",

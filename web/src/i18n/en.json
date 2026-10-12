@@ -65,7 +65,7 @@
   "dismiss": "Dismiss",
   "daysFromLetterDate": "{days} days from the letter date",
   "recent": "Recent on this phone",
-  "recentFooter": "Saved only on this phone. Not stored by Sarvam.",
+  "recentFooter": "Saved only on this phone (including document text). Not stored by Sarvam.",
   "saveRecentSetting": "Save results on this phone",
   "deleteAll": "Delete all",
   "deleteItem": "Delete",

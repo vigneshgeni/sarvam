@@ -1976,6 +1976,30 @@ def test_ask_endpoint(client):
         assert body["evidence"] == "matched"
         assert body["not_found"] is False
 
+    # 5. Saved source_text in result passes to pdf_pages_text for digit validation
+    with patch("main.ask_document") as mock_ask:
+        mock_ask.return_value = AskResponse(
+            answer="The policy cover amount is Rs. 500000.",
+            quote="Sum Insured: Rs. 500000",
+            page=1,
+            evidence="matched",
+            answered_from="document",
+            not_found=False,
+            language="en",
+        )
+        res = client.post(
+            "/api/ask",
+            data={
+                "question": "What is my sum insured?",
+                "lang": "en",
+                "result": '{"title": "Test", "source_text": "Policy Details: Sum Insured Rs. 500000"}',
+            },
+        )
+        assert res.status_code == 200
+        args = mock_ask.call_args[0]
+        pdf_pages = args[4]
+        assert pdf_pages == ["Policy Details: Sum Insured Rs. 500000"]
+
 def test_spoken_summary_digit_guard():
     from evidence import verify_spoken_summary_digit_guard
 

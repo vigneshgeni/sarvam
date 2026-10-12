@@ -149,6 +149,7 @@ export default function AskSheet({
     stopVoiceRecognition()
     setIsLoading(true)
     setAskError(null)
+    setAnswerData(null)
 
     try {
       const resp = await askDocument({
@@ -159,6 +160,7 @@ export default function AskSheet({
       })
       setAnswerData(resp)
     } catch (err: any) {
+      setAnswerData(null)
       if (err.errorCode === 'ask_unverified') {
         setAskError(t.askUnverified || "I couldn't verify an answer. Check the original.")
       } else {
@@ -287,8 +289,8 @@ export default function AskSheet({
           )}
         </div>
 
-        {/* Answer Display Card */}
-        {answerData && (
+        {/* Answer Display Card (never displayed if error is present) */}
+        {!askError && answerData && (
           <div className="bg-[#FFFFFF] border border-[#E6E6E1] rounded-2xl p-4 flex flex-col gap-3 shadow-sm animate-card-in">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[#5B52D6] uppercase tracking-wider">
