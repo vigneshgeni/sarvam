@@ -86,11 +86,11 @@ export const SUPPORTED_LANGS: LanguageOption[] = [
   { id: 'en', label: 'English', name: 'English', isBeta: false, speechCode: 'en-IN' },
   { id: 'ta', label: 'தமிழ்', name: 'Tamil', isBeta: false, speechCode: 'ta-IN' },
   { id: 'hi', label: 'हिंदी', name: 'Hindi', isBeta: false, speechCode: 'hi-IN' },
-  { id: 'te', label: 'తెలుగు', name: 'Telugu', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'te-IN' },
-  { id: 'ml', label: 'മലയാളം', name: 'Malayalam', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'ml-IN' },
-  { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'kn-IN' },
-  { id: 'mr', label: 'मराठी', name: 'Marathi', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'mr-IN' },
-  { id: 'bn', label: 'বাংলা', name: 'Bengali', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'bn-IN' },
+  { id: 'te', label: 'తెలుగు', name: 'Telugu', isBeta: false, speechCode: 'te-IN' },
+  { id: 'ml', label: 'മലയാളം', name: 'Malayalam', isBeta: false, speechCode: 'ml-IN' },
+  { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', isBeta: false, speechCode: 'kn-IN' },
+  { id: 'mr', label: 'मराठी', name: 'Marathi', isBeta: false, speechCode: 'mr-IN' },
+  { id: 'bn', label: 'বাংলা', name: 'Bengali', isBeta: false, speechCode: 'bn-IN' },
   { id: 'or', label: 'ଓଡ଼ିଆ', name: 'Odia', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'or-IN' },
 ]
 

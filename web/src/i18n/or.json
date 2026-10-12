@@ -298,5 +298,6 @@
   "unreadableDocTitle": "ଦଲିଲ ପଢ଼ିହେଲା ନାହିଁ",
   "unreadableDocTips": "ପରାମର୍ଶ: ଭଲ ଆଲୋକ ନିଶ୍ଚିତ କରନ୍ତୁ, ପୃଷ୍ଠା ସିଧା ରଖନ୍ତୁ କିମ୍ବା ସ୍ପଷ୍ଟ PDF ଅପଲୋଡ୍ କରନ୍ତୁ।",
   "tooManyRequests": "ଅତ୍ୟଧିକ ଅନୁରୋଧ। ଦୟାକରି ଗୋଟିଏ ମିନିଟ୍ ଅପେକ୍ଷା କରନ୍ତୁ।",
-  "actionsDoneCount": "{total} ରୁ {done} ସମ୍ପୂର୍ଣ୍ଣ"
+  "actionsDoneCount": "{total} ରୁ {done} ସମ୍ପୂର୍ଣ୍ଣ",
+  "odiaAudioUnavailable": "ଓଡ଼ିଆ ଭାଷା ପାଇଁ ଅଡିଓ ଏପର୍ଯ୍ୟନ୍ତ ଉପଲବ୍ଧ ନାହିଁ।"
 }

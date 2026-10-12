@@ -977,14 +977,18 @@ export default function ResultScreen({
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-center">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg flex flex-col items-center justify-center">
         <div className="w-full max-w-[430px] flex items-center gap-3">
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
-            disabled={isTranslating}
-            onClick={() => openOverlay('listen')}
-            className={`btn-press flex-1 min-h-[48px] h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            disabled={isTranslating || contentLang === 'or'}
+            onClick={() => {
+              if (contentLang !== 'or') openOverlay('listen')
+            }}
+            title={contentLang === 'or' ? (t.odiaAudioUnavailable || 'Audio playback is not available for Odia yet') : undefined}
+            aria-disabled={contentLang === 'or'}
+            className={`btn-press flex-1 min-h-[48px] h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1022,6 +1026,11 @@ export default function ResultScreen({
             <ShareIcon className="w-5 h-5 shrink-0" />
           </button>
         </div>
+        {contentLang === 'or' && (
+          <p className="mt-1.5 text-[11px] font-medium text-[#71717A] text-center">
+            {t.odiaAudioUnavailable || 'ଓଡ଼ିଆ ଭାଷା ପାଇଁ ଅଡିଓ ଏପର୍ଯ୍ୟନ୍ତ ଉପଲବ୍ଧ ନାହିଁ।'}
+          </p>
+        )}
       </div>
 
       {/* Listen Sheet (WEB-9) */}

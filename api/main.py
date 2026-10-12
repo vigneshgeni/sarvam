@@ -1250,6 +1250,11 @@ async def speak(request: Request, body: SpeakRequest):
     if len(body.text) > 1200:
         return make_error_response(422, "text_too_long", body.lang)
 
+    from tts import SPEAK_VOICES
+    norm_lang = (body.lang or "en").lower().split("-")[0]
+    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_VOICES):
+        return make_error_response(400, "tts_unsupported_language", body.lang)
+
     # Acquire TTS semaphore (max 4 concurrent TTS calls)
     try:
         await asyncio.wait_for(TTS_SEMAPHORE.acquire(), timeout=15.0)

@@ -34,6 +34,7 @@ test('Languages - all 9 i18n dictionaries contain required critical keys', () =>
     'foundInDoc',
     'checkAgainstOriginal',
     'calculatedChip',
+    'odiaAudioUnavailable',
   ]
 
   for (const code of LANG_CODES) {
@@ -44,6 +45,27 @@ test('Languages - all 9 i18n dictionaries contain required critical keys', () =>
         `Language ${code} is missing critical key: ${key}`
       )
     }
+  }
+})
+
+test('Languages - Beta badge retained ONLY on Odia', () => {
+  const indexPath = fs.existsSync(path.resolve('src/i18n/index.ts'))
+    ? path.resolve('src/i18n/index.ts')
+    : path.resolve('web/src/i18n/index.ts')
+  const indexContent = fs.readFileSync(indexPath, 'utf-8')
+
+  // Verify Odia has isBeta: true and badge: 'Beta'
+  assert.ok(
+    indexContent.includes(`id: 'or', label: 'ଓଡ଼ିଆ', name: 'Odia', isBeta: true, badge: 'Beta'`),
+    'Odia must retain isBeta: true and badge: Beta'
+  )
+
+  // Verify te, ml, kn, mr, bn do NOT have isBeta: true or badge: 'Beta'
+  for (const lang of ['te', 'ml', 'kn', 'mr', 'bn']) {
+    const match = indexContent.match(new RegExp(`id:\\s*'${lang}'[^}]+`))
+    assert.ok(match, `${lang} must exist in index.ts`)
+    assert.ok(match[0].includes('isBeta: false'), `${lang} must have isBeta: false`)
+    assert.ok(!match[0].includes(`badge: 'Beta'`), `${lang} must not have badge: Beta`)
   }
 })
 

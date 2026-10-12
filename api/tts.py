@@ -407,7 +407,9 @@ def synthesize_speech(
         return b""
 
     norm_lang = (lang or "en").lower().split("-")[0]
-    if norm_lang == "auto" or norm_lang not in SPEAK_VOICES:
+    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_VOICES):
+        raise ValueError(f"Language not supported for speech synthesis: {norm_lang}")
+    if norm_lang == "auto":
         norm_lang = "en"
     voice_info = SPEAK_VOICES.get(norm_lang, SPEAK_VOICES["en"])
     selected_voice_name = voice_info.get(voice_gender, voice_info["female"])

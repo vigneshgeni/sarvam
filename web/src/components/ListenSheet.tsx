@@ -531,6 +531,7 @@ export default function ListenSheet({
   }
 
   const handlePlay = () => {
+    if (concreteLang === 'or') return
     if (engine === 'server' && audioElRef.current && currentBlobUrlRef.current) {
       audioElRef.current.playbackRate = selectedSpeedRef.current
       audioElRef.current.play().then(() => {
@@ -721,16 +722,25 @@ export default function ListenSheet({
         </div>
 
         {/* Device voice subtle note or warning banner */}
-        {usingDeviceNote && (
-          <div className="text-center text-xs text-[#5E636B] bg-[#FBF7EF] py-1 px-3 rounded-md border border-[#F1EBDD]">
-            {t.usingDeviceVoice || 'Using device voice'}
-          </div>
-        )}
-        {noVoiceWarning && (
+        {concreteLang === 'or' ? (
           <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-xl p-3 flex items-center gap-2 text-xs text-[#5A3500]">
             <AlertTriangleIcon className="w-4 h-4 text-[#C2410C] shrink-0" />
-            <span>{t.noVoiceError || 'No voice for this language on this device'}</span>
+            <span>{t.odiaAudioUnavailable || 'ଓଡ଼ିଆ ଭାଷା ପାଇଁ ଅଡିଓ ଏପର୍ଯ୍ୟନ୍ତ ଉପଲବ୍ଧ ନାହିଁ।'}</span>
           </div>
+        ) : (
+          <>
+            {usingDeviceNote && (
+              <div className="text-center text-xs text-[#5E636B] bg-[#FBF7EF] py-1 px-3 rounded-md border border-[#F1EBDD]">
+                {t.usingDeviceVoice || 'Using device voice'}
+              </div>
+            )}
+            {noVoiceWarning && (
+              <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-xl p-3 flex items-center gap-2 text-xs text-[#5A3500]">
+                <AlertTriangleIcon className="w-4 h-4 text-[#C2410C] shrink-0" />
+                <span>{t.noVoiceError || 'No voice for this language on this device'}</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* The bars show audio activity; the track below shows position. */}
@@ -829,8 +839,8 @@ export default function ListenSheet({
             <button
               type="button"
               onClick={handleTogglePlay}
-              disabled={isBuffering}
-              className="btn-press focus-ring flex h-16 w-16 items-center justify-center rounded-full bg-[#183E32] text-white shadow-[0_8px_20px_rgba(24,62,50,0.14)] transition-colors hover:bg-[#245A49] disabled:opacity-70"
+              disabled={isBuffering || concreteLang === 'or'}
+              className="btn-press focus-ring flex h-16 w-16 items-center justify-center rounded-full bg-[#183E32] text-white shadow-[0_8px_20px_rgba(24,62,50,0.14)] transition-colors hover:bg-[#245A49] disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={isPlaying ? t.pause || 'Pause' : t.play || 'Play'}
             >
               {isBuffering ? (

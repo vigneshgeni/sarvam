@@ -298,5 +298,6 @@
   "unreadableDocTitle": "दस्तऐवज वाचता आले नाही",
   "unreadableDocTips": "टीप: चांगला प्रकाश असल्याची खात्री करा, पान सपाट करा किंवा स्पष्ट PDF अपलोड करा.",
   "tooManyRequests": "खूप विनंत्या आल्या आहेत. कृपया एक मिनिट थांबा.",
-  "actionsDoneCount": "{total} पैकी {done} पूर्ण झाले"
+  "actionsDoneCount": "{total} पैकी {done} पूर्ण झाले",
+  "odiaAudioUnavailable": "ओडिया भाषेसाठी ऑडिओ अजून उपलब्ध नाही."
 }
