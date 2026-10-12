@@ -151,6 +151,19 @@ def to_speech(text: str, lang: str = "en") -> str:
 
     out = text
 
+    # Honorifics are speech-only expansions. In particular, a bare "Dr" can
+    # otherwise be pronounced as "driver" by the English voice.
+    doctor_words = {
+        "en": "Doctor", "ta": "டாக்டர்", "hi": "डॉक्टर",
+        "te": "డాక్టర్", "ml": "ഡോക്ടർ", "kn": "ಡಾಕ್ಟರ್",
+    }
+    out = re.sub(
+        r"\bDr\.?(?=\s+[^\W\d_])",
+        doctor_words.get(norm_lang, "Doctor"),
+        out,
+    )
+    out = re.sub(r"\b([A-Z])\.(?=\s+[A-Z][a-z])", r"\1", out)
+
     # 1. Expand Lac / Lakh / Crore amounts
     # e.g. "Rs. 5 Lac", "Rs.5 Lacs", "₹ 5 Lakh", "INR 10 Crore"
     def replace_lakh_crore(m):

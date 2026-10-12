@@ -23,8 +23,19 @@ import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
 import ListenSheet from './ListenSheet'
 import AskSheet from './AskSheet'
-import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
+import {
+  generateIcs,
+  downloadIcs,
+  hashString,
+  isIosDevice,
+  canShareIcsFile,
+  shareIcsFile,
+  buildDatesText,
+  getGoogleCalendarUrl,
+  type CalendarEventInput,
+} from '../utils/ics'
 import { buildSharedText, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { pushBrowserHistory } from '../utils/history'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -86,6 +97,61 @@ export default function ResultScreen({
   const [isListenOpen, setIsListenOpen] = useState(false)
   const [isAskOpen, setIsAskOpen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isRemindersOpen, setIsRemindersOpen] = useState(false)
+  const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
+  const [copyDatesSuccess, setCopyDatesSuccess] = useState(false)
+  const [sourceViewer, setSourceViewer] = useState<{
+    isOpen: boolean
+    quote?: string
+    page?: number
+  }>({ isOpen: false })
+
+  const openOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+    pushBrowserHistory({ screen: 'result', overlay: overlayName })
+    if (overlayName === 'listen') setIsListenOpen(true)
+    if (overlayName === 'ask') setIsAskOpen(true)
+    if (overlayName === 'share') setIsShareOpen(true)
+    if (overlayName === 'reminders') setIsRemindersOpen(true)
+  }
+
+  const closeOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+    if (typeof window !== 'undefined' && window.history.state?.overlay === overlayName) {
+      window.history.back()
+    } else {
+      if (overlayName === 'listen') setIsListenOpen(false)
+      if (overlayName === 'ask') setIsAskOpen(false)
+      if (overlayName === 'share') setIsShareOpen(false)
+      if (overlayName === 'source') setSourceViewer({ isOpen: false })
+      if (overlayName === 'reminders') setIsRemindersOpen(false)
+    }
+  }
+
+  // Synchronize overlay close with iOS Safari back-swipe (WEB-iOS Fix 1)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { screen?: string; overlay?: string | null } | null
+      const currentOverlay = state?.overlay
+
+      if (isListenOpen && currentOverlay !== 'listen') {
+        setIsListenOpen(false)
+      }
+      if (isAskOpen && currentOverlay !== 'ask') {
+        setIsAskOpen(false)
+      }
+      if (isShareOpen && currentOverlay !== 'share') {
+        setIsShareOpen(false)
+      }
+      if (isRemindersOpen && currentOverlay !== 'reminders') {
+        setIsRemindersOpen(false)
+      }
+      if (sourceViewer.isOpen && currentOverlay !== 'source') {
+        setSourceViewer({ isOpen: false })
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [isListenOpen, isAskOpen, isShareOpen, isRemindersOpen, sourceViewer.isOpen])
 
   // Share state
   const [hidePersonal, setHidePersonal] = useState(true)
@@ -120,7 +186,8 @@ export default function ResultScreen({
   // Quote checker drawer (scrolls into view or displays original text)
   const handleCheckOriginal = (quote?: string, page?: number) => {
     if (!quote) return
-    alert(`Page ${page || 1}: "${quote}"`)
+    openOverlay('source')
+    setSourceViewer({ isOpen: true, quote, page })
   }
 
   // Actions done calculation
@@ -155,7 +222,7 @@ export default function ResultScreen({
     downloadIcs(`action-${idx + 1}.ics`, ics)
   }
 
-  const handleAddAllDates = () => {
+  const handleAddAllDates = async () => {
     if (!result.actions) return
     const validActions = result.actions.filter(
       (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
@@ -176,7 +243,50 @@ export default function ResultScreen({
     })
 
     const ics = generateIcs(events)
-    downloadIcs('all-actions.ics', ics)
+    const filename = 'all-actions.ics'
+
+    // On iOS Safari:
+    if (isIosDevice()) {
+      // Step 1: Web Share with .ics file if supported
+      if (canShareIcsFile()) {
+        setCalendarStatus('Sharing calendar file (.ics)...')
+        const outcome = await shareIcsFile(filename, ics, result.title)
+        if (outcome === 'shared') {
+          setCalendarStatus('Calendar file shared successfully.')
+          return
+        }
+        // If cancelled or failed: skip step 2 and go straight to Reminders sheet
+      }
+      // Step 3 (iOS fallback): Reminders sheet with Google Calendar links and Copy button
+      setCalendarStatus('Showing dates list. Add each to Google Calendar or copy all.')
+      openOverlay('reminders')
+      return
+    }
+
+    // On Desktop / non-iOS browsers:
+    // Step 2: Download .ics file directly
+    downloadIcs(filename, ics)
+    setCalendarStatus('Calendar file downloaded (.ics).')
+  }
+
+  const handleCopyAllDatesText = async () => {
+    if (!result.actions) return
+    const validActions = result.actions.filter(
+      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+    )
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const text = buildDatesText(
+      validActions.map((a) => ({
+        title: a.text,
+        startDate: a.due_date || todayStr,
+        description: a.date_status === 'calculated' ? 'Calculated date' : undefined,
+      }))
+    )
+    const ok = await copyToClipboard(text)
+    if (ok) {
+      setCopyDatesSuccess(true)
+      setTimeout(() => setCopyDatesSuccess(false), 2000)
+    }
   }
 
   const sharedText = buildSharedText(result, contentLang, hidePersonal)
@@ -264,7 +374,7 @@ export default function ResultScreen({
     <div className="flex-1 flex flex-col justify-between pb-28">
       {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
       <div
-        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md px-4 py-2.5 flex items-center justify-between gap-2 transition-shadow ${
+        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md -mx-5 -mt-5 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 transition-shadow ${
           isScrolled ? 'border-b border-[#E6E6E1] shadow-xs' : ''
         }`}
       >
@@ -306,7 +416,7 @@ export default function ResultScreen({
         </button>
       </div>
 
-      <div className="flex flex-col gap-5 px-4 pt-3 max-w-[430px] mx-auto w-full">
+      <div className="flex flex-col gap-5 pt-3 w-full">
         {/* Back to all reports button if viewing a report from multi-report set */}
         {multiReports && multiReports.length > 1 && (
           <button
@@ -566,15 +676,29 @@ export default function ResultScreen({
             </div>
 
             {/* Add all dates button (WEB-8) */}
-            <div className="pt-2 flex justify-between items-center border-t border-[#F0F0EB]">
-              <button
-                type="button"
-                onClick={handleAddAllDates}
-                className="btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
-              >
-                <CalendarIcon className="w-4 h-4" />
-                {t.addAllDates || 'Add all dates (.ics)'}
-              </button>
+            <div className="pt-2 flex flex-col gap-1.5 border-t border-[#F0F0EB]">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddAllDates}
+                  className="btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  {t.addAllDates || 'Add all dates (.ics)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openOverlay('reminders')}
+                  className="btn-press text-xs font-medium text-[#656077] hover:underline"
+                >
+                  {t.viewDatesList || 'View list'}
+                </button>
+              </div>
+              {calendarStatus && (
+                <p className="text-xs text-[#52665C] font-medium" role="status">
+                  {calendarStatus}
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -733,7 +857,7 @@ export default function ResultScreen({
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
-            onClick={() => setIsListenOpen(true)}
+            onClick={() => openOverlay('listen')}
             className="btn-press flex-1 h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors"
           >
             <PlayIcon className="w-4 h-4 ml-0.5" />
@@ -743,7 +867,7 @@ export default function ResultScreen({
           {/* Ask Button (Outlined) */}
           <button
             type="button"
-            onClick={() => setIsAskOpen(true)}
+            onClick={() => openOverlay('ask')}
             className="btn-press flex-1 h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors"
           >
             <MessageSquareIcon className="w-4 h-4" />
@@ -753,7 +877,7 @@ export default function ResultScreen({
           {/* Share Button (Icon button) */}
           <button
             type="button"
-            onClick={() => setIsShareOpen(true)}
+            onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
             className="btn-press w-12 h-12 bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
           >
@@ -765,7 +889,7 @@ export default function ResultScreen({
       {/* Listen Sheet (WEB-9) */}
       <ListenSheet
         isOpen={isListenOpen}
-        onClose={() => setIsListenOpen(false)}
+        onClose={() => closeOverlay('listen')}
         result={result}
         lang={contentLang}
         t={t}
@@ -774,21 +898,21 @@ export default function ResultScreen({
       {/* Ask Sheet (WEB-12) */}
       <AskSheet
         isOpen={isAskOpen}
-        onClose={() => setIsAskOpen(false)}
+        onClose={() => closeOverlay('ask')}
         result={result}
         files={files}
         lang={contentLang}
         t={t}
         onSpeakAnswer={(_text) => {
-          setIsAskOpen(false)
-          setIsListenOpen(true)
+          closeOverlay('ask')
+          openOverlay('listen')
         }}
       />
 
       {/* Share Sheet (WEB-4 Sheet) */}
       <Sheet
         isOpen={isShareOpen}
-        onClose={() => setIsShareOpen(false)}
+        onClose={() => closeOverlay('share')}
         title={t.shareTitle || 'Share or save'}
         maxHeight="max-h-[90vh]"
       >
@@ -799,7 +923,7 @@ export default function ResultScreen({
             </h2>
             <button
               type="button"
-              onClick={() => setIsShareOpen(false)}
+              onClick={() => closeOverlay('share')}
               className="p-1.5 text-[#5E636B] hover:text-[#15171A] rounded-full"
             >
               <CloseIcon className="w-5 h-5" />
@@ -866,6 +990,94 @@ export default function ResultScreen({
             >
               <CopyIcon className="w-4 h-4" />
               <span>{copySuccess ? t.copied || 'Copied!' : t.copyText || 'Copy text'}</span>
+            </button>
+          </div>
+        </div>
+      </Sheet>
+
+      {/* Source Viewer Sheet (WEB-iOS Fix 1) */}
+      <Sheet
+        isOpen={sourceViewer.isOpen}
+        onClose={() => closeOverlay('source')}
+        title={t.checkOriginal || 'Check in original document'}
+        maxHeight="max-h-[85vh]"
+      >
+        <div className="flex flex-col gap-4 py-2">
+          <div className="rounded-xl bg-[#F6F6F3] p-4 border border-[#ECECE8]">
+            <p className="text-xs font-semibold text-[#656077] uppercase tracking-wider mb-2">
+              Page {sourceViewer.page || 1}
+            </p>
+            <blockquote className="text-base text-[#15171A] leading-relaxed italic border-l-2 border-[#1E1838] pl-3 py-1">
+              "{sourceViewer.quote}"
+            </blockquote>
+          </div>
+          <p className="text-xs text-[#5E636B]">
+            This excerpt was matched directly from your original document text.
+          </p>
+        </div>
+      </Sheet>
+
+      {/* Reminders / Visible Dates List Sheet (WEB-iOS Fix 2) */}
+      <Sheet
+        isOpen={isRemindersOpen}
+        onClose={() => closeOverlay('reminders')}
+        title={t.upcomingDates || 'Upcoming dates & reminders'}
+        maxHeight="max-h-[85vh]"
+      >
+        <div className="flex flex-col gap-4 py-2">
+          <p className="text-xs text-[#5E636B] leading-relaxed">
+            {t.calendarDirectNotice ||
+              'Add dates to Google Calendar or copy all dates to your clipboard.'}
+          </p>
+
+          <div className="flex flex-col gap-2.5">
+            {result.actions
+              ?.filter((a) => a.date_status !== 'passed' && (a.due_date || a.recurrence))
+              .map((act, i) => {
+                const todayStr = new Date().toISOString().slice(0, 10)
+                const targetDate = act.due_date || todayStr
+                const gcalUrl = getGoogleCalendarUrl(act.text, targetDate, act.quote)
+                return (
+                  <div
+                    key={i}
+                    className="flex flex-col gap-2 p-3 rounded-xl bg-[#F6F6F3] border border-[#ECECE8]"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold text-[#15171A] leading-snug">
+                        {act.text}
+                      </span>
+                      <span className="text-xs font-bold text-[#1E1838] shrink-0 bg-white px-2 py-0.5 rounded-md border border-[#E6E6E1]">
+                        {formatDate(targetDate, contentLang)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href={gcalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-press inline-flex items-center gap-1.5 text-xs font-bold text-[#1D5FA8] bg-[#E8F1FB] hover:bg-[#D5E5F7] px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        {t.addToGoogleCalendar || 'Add to Google Calendar'}
+                      </a>
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleCopyAllDatesText}
+              className={`btn-press w-full h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
+                copyDatesSuccess
+                  ? 'bg-[#146B4E] text-white'
+                  : 'bg-white border border-[#E6E6E1] text-[#15171A] hover:bg-[#F0F0EB]'
+              }`}
+            >
+              <CopyIcon className="w-4 h-4" />
+              <span>{copyDatesSuccess ? t.copied || 'Copied!' : t.copyAllDates || 'Copy all dates'}</span>
             </button>
           </div>
         </div>

@@ -175,3 +175,103 @@ export function getGoogleCalendarUrl(
   }
   return url
 }
+
+/**
+ * Detects if the device is running iOS (Safari/WebKit)
+ */
+export function isIosDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
+/**
+ * Checks if Web Share API supports file sharing for .ics
+ */
+export function canShareIcsFile(): boolean {
+  if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) {
+    return false
+  }
+  try {
+    const testFile = new File(['BEGIN:VCALENDAR\nEND:VCALENDAR'], 'test.ics', {
+      type: 'text/calendar',
+    })
+    return navigator.canShare({ files: [testFile] })
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Attempts to share an .ics file using Web Share API
+ */
+export async function shareIcsFile(
+  filename: string,
+  icsContent: string,
+  title?: string
+): Promise<'shared' | 'cancelled' | 'failed'> {
+  if (!canShareIcsFile()) return 'failed'
+  try {
+    const file = new File(
+      [icsContent],
+      filename.endsWith('.ics') ? filename : `${filename}.ics`,
+      { type: 'text/calendar;charset=utf-8' }
+    )
+    await navigator.share({
+      files: [file],
+      title: title || filename,
+    })
+    return 'shared'
+  } catch (err: any) {
+    if (err?.name === 'AbortError') return 'cancelled'
+    return 'failed'
+  }
+}
+
+/**
+ * Opens .ics data in same tab (legacy / desktop fallback)
+ */
+export function openIcsInSameTab(icsContent: string): void {
+  const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`
+  window.location.href = dataUrl
+}
+
+export type CalendarFlowAction = 'share' | 'reminders-sheet' | 'download'
+
+/**
+ * Resolves the calendar export flow action.
+ * On iOS: Web Share is used if available; if cancelled, failed, or unavailable,
+ * skips same-tab data URL and routes directly to the Reminders sheet with Google Calendar links.
+ * On desktop: downloads the .ics file.
+ */
+export function determineCalendarAction(
+  isIos: boolean,
+  canShare: boolean,
+  shareOutcome?: 'shared' | 'cancelled' | 'failed' | null
+): CalendarFlowAction {
+  if (isIos) {
+    if (canShare && shareOutcome === 'shared') {
+      return 'share'
+    }
+    return 'reminders-sheet'
+  }
+  return 'download'
+}
+
+/**
+ * Builds formatted summary string of calendar dates for copying
+ */
+export function buildDatesText(
+  events: Array<{ title: string; startDate: string; description?: string }>
+): string {
+  return events
+    .map((e) => {
+      let line = `• ${e.title}: ${e.startDate}`
+      if (e.description) line += ` (${e.description})`
+      return line
+    })
+    .join('\n')
+}

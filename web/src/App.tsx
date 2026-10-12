@@ -35,6 +35,14 @@ import TrayScreen from './components/TrayScreen'
 import A11ySheet, { applyA11ySettings, getStoredA11ySettings } from './components/A11ySheet'
 import PasswordSheet from './components/PasswordSheet'
 import {
+  pushBrowserHistory,
+  replaceBrowserHistory,
+  saveActiveSession,
+  loadActiveSession,
+  clearActiveSession,
+  seedResultHistory,
+} from './utils/history'
+import {
   CalendarIcon,
   AlertTriangleIcon,
   ChevronRightIcon,
@@ -152,6 +160,103 @@ export default function App() {
     }
   }, [])
 
+  // Restore session on reload (WEB-iOS Fix 1)
+  useEffect(() => {
+    const saved = loadActiveSession()
+    if (saved?.result) {
+      setResultData(saved.result)
+      originalResultRef.current = saved.originalResult || saved.result
+      currentResultIdRef.current = saved.currentResultId || null
+      if (saved.multiReports) setMultiReportsData(saved.multiReports)
+      if (saved.lang) setSelectedLang(saved.lang)
+      setScreen('result')
+      seedResultHistory()
+    } else {
+      replaceBrowserHistory({ screen: 'home', overlay: null })
+    }
+  }, [])
+
+  // Keep active result session updated
+  useEffect(() => {
+    if (screen === 'result' && resultData) {
+      saveActiveSession({
+        result: resultData,
+        multiReports: multiReportsData,
+        lang: selectedLang,
+        originalResult: originalResultRef.current,
+        currentResultId: currentResultIdRef.current,
+      })
+    }
+  }, [screen, resultData, multiReportsData, selectedLang])
+
+  // Handle popstate (Back swipe or back button)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // If accessibility sheet is open, close it first
+      if (isA11yOpen) {
+        setIsA11yOpen(false)
+        return
+      }
+      // If password sheet is open, close it
+      if (passwordState.isOpen) {
+        setPasswordState((prev) => ({ ...prev, isOpen: false }))
+        return
+      }
+      // If delete confirm is open, close it
+      if (deleteConfirm) {
+        setDeleteConfirm(null)
+        return
+      }
+
+      const state = event.state as { screen?: AppScreen; overlay?: string | null } | null
+      const targetScreen = state?.screen || 'home'
+      setScreen(targetScreen)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [isA11yOpen, passwordState.isOpen, deleteConfirm])
+
+  const navigateToScreen = (target: AppScreen) => {
+    setScreen(target)
+    pushBrowserHistory({ screen: target, overlay: null })
+  }
+
+  const handleOpenA11y = () => {
+    pushBrowserHistory({ screen, overlay: 'accessibility' })
+    setIsA11yOpen(true)
+  }
+
+  const handleCloseA11y = () => {
+    if (typeof window !== 'undefined' && window.history.state?.overlay === 'accessibility') {
+      window.history.back()
+    } else {
+      setIsA11yOpen(false)
+    }
+  }
+
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
+
+  const updateScrollFades = () => {
+    const el = langRowRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
+  }
+
+  useEffect(() => {
+    const el = langRowRef.current
+    if (!el) return
+    updateScrollFades()
+    el.addEventListener('scroll', updateScrollFades, { passive: true })
+    window.addEventListener('resize', updateScrollFades, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', updateScrollFades)
+      window.removeEventListener('resize', updateScrollFades)
+    }
+  }, [])
+
   const handleSelectLang = (langId: string) => {
     setSelectedLang(langId)
     setStoredLanguage(langId)
@@ -163,10 +268,14 @@ export default function App() {
 
   // Scroll selected language chip into view when selection changes
   useEffect(() => {
-    const chip = chipRefs.current[selectedLang]
-    if (chip) {
-      chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    }
+    const timer = setTimeout(() => {
+      const chip = chipRefs.current[selectedLang]
+      if (chip) {
+        chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+      }
+      updateScrollFades()
+    }, 50)
+    return () => clearTimeout(timer)
   }, [selectedLang])
 
   // Load recent results on initial mount
@@ -211,7 +320,7 @@ export default function App() {
     setIsTranslating(false)
     setReReadInLang(null)
     setTranslateFailedLang(null)
-    setScreen('result')
+    navigateToScreen('result')
   }
 
   const handleDeleteRecentItem = (e: React.MouseEvent, item: RecentResult) => {
@@ -234,8 +343,13 @@ export default function App() {
     if (!deleteConfirm) return
     if (deleteConfirm.type === 'single' && deleteConfirm.id) {
       await deleteRecentResult(deleteConfirm.id)
+      const active = loadActiveSession()
+      if (active?.currentResultId === deleteConfirm.id) {
+        clearActiveSession()
+      }
     } else if (deleteConfirm.type === 'all') {
       await clearAllRecentResults()
+      clearActiveSession()
     }
     setDeleteConfirm(null)
     await loadRecents()
@@ -261,7 +375,7 @@ export default function App() {
     setMultiReportProgress(null)
     setReReadInLang(null)
     setTranslateFailedLang(null)
-    setScreen('reading')
+    navigateToScreen('reading')
 
     const isMultiPdf =
       filesToExplain.length > 1 &&
@@ -342,7 +456,7 @@ export default function App() {
       if (firstReady && firstReady.result) {
         setResultData(firstReady.result)
         setMultiReportsData(updatedCards)
-        setScreen('result')
+        navigateToScreen('result')
 
         if (isSaveRecentEnabled()) {
           const fileCount = filesToExplain.length
@@ -394,7 +508,7 @@ export default function App() {
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
-      setScreen('result')
+      navigateToScreen('result')
 
       if (isSaveRecentEnabled()) {
         const fileCount = filesToExplain.length
@@ -459,7 +573,7 @@ export default function App() {
   const handleCancelPassword = () => {
     setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
     if (screen === 'reading') {
-      setScreen('home')
+      navigateToScreen('home')
     }
   }
 
@@ -522,7 +636,7 @@ export default function App() {
 
     setStagedFiles([staged])
     setTrayErrorMessage(null)
-    setScreen('tray')
+    navigateToScreen('tray')
   }
 
   const handleChooseFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -548,7 +662,7 @@ export default function App() {
 
     setStagedFiles((prev) => [...prev, ...newStaged])
     setTrayErrorMessage(null)
-    setScreen('tray')
+    navigateToScreen('tray')
   }
 
   const handleChooseFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -578,7 +692,7 @@ export default function App() {
 
     setStagedFiles((prev) => [...prev, ...newStaged])
     setTrayErrorMessage(null)
-    setScreen('tray')
+    navigateToScreen('tray')
   }
 
   const handleTrayExplain = async () => {
@@ -590,14 +704,14 @@ export default function App() {
       try {
         const rawFiles = stagedFiles.map((s) => s.file)
         const processed = await processPhotosSequentially(rawFiles)
-        setScreen('reading')
+        navigateToScreen('reading')
         await runExplain(processed, selectedLang)
       } catch (err: unknown) {
         console.warn('Photo processing error:', err)
       }
     } else {
       const rawFiles = stagedFiles.map((s) => s.file)
-      setScreen('reading')
+      navigateToScreen('reading')
       await runExplain(rawFiles, selectedLang)
     }
   }
@@ -610,7 +724,7 @@ export default function App() {
       }
       const updated = prev.filter((item) => item.id !== id)
       if (updated.length === 0) {
-        setScreen('home')
+        navigateToScreen('home')
       }
       return updated
     })
@@ -642,7 +756,7 @@ export default function App() {
         messageLocal: getLocalFallbackError(selectedLang, 'generic'),
         statusCode: 0,
       })
-      setScreen('reading')
+      navigateToScreen('reading')
     }
   }
 
@@ -775,7 +889,8 @@ export default function App() {
     setIsTranslating(false)
     setReReadInLang(null)
     setTranslateFailedLang(null)
-    setScreen('home')
+    clearActiveSession()
+    navigateToScreen('home')
   }
 
   const handleMoveUp = (index: number) => {
@@ -899,7 +1014,7 @@ export default function App() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsA11yOpen(true)}
+                onClick={handleOpenA11y}
                 aria-label={t.makeEasierToRead || 'Make it easier to read'}
                 className="btn-press w-12 h-12 rounded-full border border-line bg-surface text-ink flex items-center justify-center hover:bg-soft transition-colors shadow-xs"
               >
@@ -957,6 +1072,14 @@ export default function App() {
             {/* Language Selection Row */}
             <div className="flex flex-col gap-2.5 animate-card-in-1 min-w-0">
               <div className="relative -mx-5 px-5 min-w-0">
+                {/* Left-edge soft fade */}
+                {canScrollLeft && (
+                  <div
+                    className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 bg-gradient-to-r from-bg to-transparent transition-opacity duration-200"
+                    aria-hidden="true"
+                  />
+                )}
+
                 <div
                   ref={langRowRef}
                   className="flex gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0"
@@ -975,7 +1098,7 @@ export default function App() {
                         aria-selected={isSelected}
                         disabled={lang.disabled}
                         onClick={() => handleSelectLang(lang.id)}
-                        className={`shrink-0 h-[44px] min-h-[44px] px-4 rounded-full text-[15px] font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors select-none active:scale-95 ${
+                        className={`shrink-0 h-[44px] min-h-[44px] min-w-[44px] px-4 rounded-full text-[15px] font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors select-none active:scale-95 focus-ring ${
                           isSelected
                             ? 'bg-ink text-surface border border-ink'
                             : 'bg-surface text-ink border border-line hover:border-muted/40'
@@ -987,7 +1110,7 @@ export default function App() {
                             className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
                               isSelected
                                 ? 'bg-white/20 text-white'
-                                : 'bg-soft text-muted'
+                                : 'bg-[#ECEBFA] text-[#5B52D6]'
                             }`}
                           >
                             {lang.badge}
@@ -996,14 +1119,16 @@ export default function App() {
                       </button>
                     )
                   })}
-                  <div className="w-4 shrink-0" aria-hidden="true" />
+                  <div className="w-5 shrink-0" aria-hidden="true" />
                 </div>
 
                 {/* Right-edge soft fade */}
-                <div
-                  className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-bg to-transparent"
-                  aria-hidden="true"
-                />
+                {canScrollRight && (
+                  <div
+                    className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10 bg-gradient-to-l from-bg to-transparent transition-opacity duration-200"
+                    aria-hidden="true"
+                  />
+                )}
               </div>
             </div>
 
@@ -1342,7 +1467,7 @@ export default function App() {
               setTranslateFailedLang(null)
             }}
             onGoHome={handleGoHome}
-            onA11yClick={() => setIsA11yOpen(true)}
+            onA11yClick={handleOpenA11y}
             multiReports={multiReportsData || undefined}
             onRetrySingleReport={handleRetrySingleReport}
           />
@@ -1352,7 +1477,7 @@ export default function App() {
       {/* Accessibility Panel Sheet (WEB-10) */}
       <A11ySheet
         isOpen={isA11yOpen}
-        onClose={() => setIsA11yOpen(false)}
+        onClose={handleCloseA11y}
         t={t}
       />
 
