@@ -22,6 +22,7 @@ export interface FeedbackCopy {
   send: string
   reasons: Record<ReasonCode, string>
   thanks: string
+  sending: string
   sendFailed: string
   tryAgain: string
 }
@@ -40,6 +41,7 @@ const english: FeedbackCopy = {
     other: 'Other',
   },
   thanks: 'Thanks. Only your rating was saved, never your document.',
+  sending: 'Sending…',
   sendFailed: 'Could not send. Please try again.',
   tryAgain: 'Try again',
 }

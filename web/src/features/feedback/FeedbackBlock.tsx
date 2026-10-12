@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ExplainResponse } from '../../types'
 import {
   buildFeedbackPayload,
@@ -21,6 +21,8 @@ interface FeedbackBlockProps {
 }
 
 type Phase = 'ask' | 'reasons' | 'sending' | 'sent' | 'error'
+
+const SEND_TIMEOUT_MS = 10_000
 
 function storageKeyFor(id: string): string {
   return `sarvam.feedback.${id}`
@@ -57,22 +59,39 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
   const [phase, setPhase] = useState<Phase>('ask')
   const [selected, setSelected] = useState<ReasonCode[]>([])
   const [pending, setPending] = useState<FeedbackPayload | null>(null)
+  const sendGenRef = useRef(0)
 
   useEffect(() => {
     setPhase(readRated(storageKey) ? 'sent' : 'ask')
     setSelected([])
     setPending(null)
+    sendGenRef.current += 1
   }, [storageKey])
 
   async function send(payload: FeedbackPayload) {
+    const gen = ++sendGenRef.current
     setPending(payload)
     setPhase('sending')
     try {
       const { sendFeedback } = await import('./client.js')
-      await sendFeedback(payload)
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timeout')), SEND_TIMEOUT_MS)
+        sendFeedback(payload).then(
+          () => {
+            clearTimeout(timer)
+            resolve()
+          },
+          (err: unknown) => {
+            clearTimeout(timer)
+            reject(err)
+          },
+        )
+      })
+      if (gen !== sendGenRef.current) return
       rememberRating(storageKey, payload.rating)
       setPhase('sent')
     } catch {
+      if (gen !== sendGenRef.current) return
       setPhase('error')
     }
   }
@@ -119,7 +138,12 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
   const busy = phase === 'sending'
 
   return (
-    <section lang={ratingLang} aria-labelledby="feedback-prompt" className="flex flex-col gap-3 pt-1">
+    <section
+      lang={ratingLang}
+      aria-labelledby="feedback-prompt"
+      aria-busy={busy}
+      className="flex flex-col gap-3 pt-1"
+    >
       {phase === 'sent' ? (
         <p className="text-base text-[#15171A] leading-relaxed text-center">{copy.thanks}</p>
       ) : (
@@ -158,6 +182,12 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
               </span>
             </button>
           </div>
+
+          {busy && (
+            <p role="status" aria-live="polite" className="text-base text-[#15171A] text-center">
+              {copy.sending}
+            </p>
+          )}
 
           {showReasons && (
             <div className="flex flex-col gap-2">
