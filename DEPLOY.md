@@ -42,6 +42,8 @@ gcloud services enable \
 
 ## Cloud Run (Explain API)
 
+`--max-instances 4` caps spend on this public, unauthenticated API. `gcloud` splits `--set-env-vars` on commas, so the origin list uses a custom `^@^` delimiter.
+
 ```bash
 gcloud run deploy sarvam-api \
   --project sarvam-510715 \
@@ -51,9 +53,12 @@ gcloud run deploy sarvam-api \
   --memory 1Gi \
   --concurrency 8 \
   --min-instances 1 \
+  --max-instances 4 \
   --allow-unauthenticated \
-  --set-env-vars "ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://sarvam-510715.web.app,https://sarvam-510715.firebaseapp.com"
+  --set-env-vars "^@^ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://sarvam-510715.web.app,https://sarvam-510715.firebaseapp.com@GOOGLE_CLOUD_PROJECT=sarvam-510715@PROJECT=sarvam-510715"
 ```
+
+`api/reader.py` reads `PROJECT` (default `sarvam-510715`) and passes that id into `genai.Client`. It does not read `GOOGLE_CLOUD_PROJECT`. ADC is used for credentials, not to pick the project. `PROJECT` is set here so Vertex uses this project; `GOOGLE_CLOUD_PROJECT` is set for other Google libraries.
 
 Copy the service URL from the command output.
 
