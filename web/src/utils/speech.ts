@@ -81,22 +81,55 @@ export function prepareTextForSpeech(text: string, lang: string): string {
     .replace(/\b([A-Z])\.(?=\s+[A-Z][a-z])/g, '$1')
 }
 
+const ABBR_PATTERN = /(?<!\p{L})(?:rs|no|dr|mr|mrs|ms|smt|sri|shri|st|pvt|ltd|approx|appx|dept|est|vs|vol|ரூ|रु|क्र|सं)\./giu
+
+/**
+ * Splits document readout text into natural sentences.
+ * Protects abbreviations (Rs., No., Dr., Mr., Mrs., Smt., Sri, St., Pvt., Ltd., approx.),
+ * initials (R. Kumar), decimals (48,500.00), and dates (30.11.2026).
+ * Handles Indian danda (।) and double danda (॥).
+ */
+export function splitIntoSentences(text: string): string[] {
+  if (!text) return []
+
+  // Protect decimals: 48,500.00 or 9.2
+  let s = text.replace(/(\d)\.(\d)/g, '$1<NUMDOT>$2')
+
+  // Protect abbreviations
+  s = s.replace(ABBR_PATTERN, (m) => m.slice(0, -1) + '<ABBRDOT>')
+
+  // Protect single uppercase initials: e.g. "R. Kumar" or "A. Meena"
+  s = s.replace(/(?<!\p{L})([A-Z])\.(?=\s+\p{L})/gu, '$1<INITDOT>')
+
+  // Protect e.g. / i.e. / a.m. / p.m.
+  s = s.replace(/\b([a-z])\.([a-z])\./gi, '$1<ABBRDOT>$2<ABBRDOT>')
+
+  // Split on [.!?।॥\n]+ followed by whitespace or end of string
+  const parts = s.split(/([.!?।॥\n]+(?:\s+|$))/)
+  const sentences: string[] = []
+
+  for (let i = 0; i < parts.length; i += 2) {
+    const chunk = parts[i]
+    const punct = parts[i + 1] || ''
+    const full = (chunk + punct).trim()
+      .replace(/<NUMDOT>/g, '.')
+      .replace(/<ABBRDOT>/g, '.')
+      .replace(/<INITDOT>/g, '.')
+    if (full) {
+      sentences.push(full)
+    }
+  }
+
+  return sentences
+}
+
 /**
  * Splits document readout text into sentence chunks (each <= 180 chars).
  */
 export function splitIntoUtteranceChunks(text: string, maxChunkLength = 180): string[] {
   if (!text) return []
 
-  const rawSentences = text
-    .split(/([.!?।\n]+)/)
-    .reduce<string[]>((acc, part, idx, arr) => {
-      if (idx % 2 === 0) {
-        const punctuation = arr[idx + 1] || ''
-        const full = (part + punctuation).trim()
-        if (full) acc.push(full)
-      }
-      return acc
-    }, [])
+  const rawSentences = splitIntoSentences(text)
 
   const chunks: string[] = []
 

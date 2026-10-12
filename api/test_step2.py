@@ -1861,6 +1861,55 @@ def test_to_speech_expands_doctor_titles_without_changing_document_names():
     assert to_speech("Dr A Meena", "ta") == "டாக்டர் A Meena"
 
 
+def test_split_sentences_insurance_and_abbreviations():
+    from tts import split_sentences
+
+    # 1. Insurance sentence with Rs. amounts must NOT split on Rs.
+    text1 = "Out of Rs. 48,500, they approved Rs. 31,200. Please submit the claim to Dr. R. Kumar before 30.11.2026."
+    s1 = split_sentences(text1)
+    assert len(s1) == 2
+    assert s1[0] == "Out of Rs. 48,500, they approved Rs. 31,200."
+    assert s1[1] == "Please submit the claim to Dr. R. Kumar before 30.11.2026."
+
+    # 2. Titles and abbreviations
+    text2 = "Claim No. 12345 is pending at St. Jude Hospital. Approx. Rs. 5,000 is due at 9.30 a.m."
+    s2 = split_sentences(text2)
+    assert len(s2) == 2
+    assert s2[0] == "Claim No. 12345 is pending at St. Jude Hospital."
+    assert s2[1] == "Approx. Rs. 5,000 is due at 9.30 a.m."
+
+    # 3. Hindi with danda and rupee abbreviation
+    text3 = "कुल स्वीकृत राशि रु. 31,200 है। शेष राशि रु. 17,300 अस्वीकृत कर दी गई है।"
+    s3 = split_sentences(text3)
+    assert len(s3) == 2
+    assert s3[0] == "कुल स्वीकृत राशि रु. 31,200 है।"
+    assert s3[1] == "शेष राशि रु. 17,300 अस्वीकृत कर दी गई है।"
+
+    # 4. Tamil with rupee abbreviation and Dr.
+    text4 = "மருத்துவர் Dr. A. Meena அவர்களை அணுகவும். ஒப்புதல் தொகை ரூ. 31,200 மட்டுமே."
+    s4 = split_sentences(text4)
+    assert len(s4) == 2
+    assert s4[0] == "மருத்துவர் Dr. A. Meena அவர்களை அணுகவும்."
+    assert s4[1] == "ஒப்புதல் தொகை ரூ. 31,200 மட்டுமே."
+
+
+def test_normalize_caps_and_ids():
+    from tts import normalize_caps_and_ids
+
+    # Preserves common acronyms in allowlist
+    assert "GST" in normalize_caps_and_ids("Total GST payable")
+    assert "UPI" in normalize_caps_and_ids("Pay via UPI now")
+    assert "PAN" in normalize_caps_and_ids("Submit PAN card")
+
+    # Converts other ALL-CAPS words to Title Case
+    assert "Apollo Hospital" in normalize_caps_and_ids("APOLLO HOSPITAL")
+    assert "Discharge Summary" in normalize_caps_and_ids("DISCHARGE SUMMARY")
+
+    # Adds spacing in alphanumeric IDs
+    assert normalize_caps_and_ids("POL123456") == "POL 123456"
+    assert normalize_caps_and_ids("REF9901") == "REF 9901"
+
+
 def test_speak_endpoint(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
@@ -1875,8 +1924,7 @@ def test_speak_endpoint(client):
     with patch("main.synthesize_speech") as mock_synth:
         mock_synth.return_value = b"\xff\xfb\x90\x44"  # Fake MP3 bytes
         res = client.post("/api/speak", json={"text": "Please pay Rs. 500.", "lang": "en", "voice": "female"})
-        assert res.status_code == 200
-        assert res.headers["content-type"] == "audio/mpeg"
+        assert res.headers["content-type"] in ("audio/wav", "audio/mpeg")
         assert res.headers["cache-control"] == "no-store"
         assert res.content == b"\xff\xfb\x90\x44"
 

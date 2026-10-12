@@ -1228,7 +1228,7 @@ async def translate(
 @app.post(
     "/api/speak",
     responses={
-        200: {"content": {"audio/mpeg": {}}, "description": "MP3 Audio stream"},
+        200: {"content": {"audio/wav": {}, "audio/mpeg": {}}, "description": "Audio stream"},
         422: {"description": "Text too long"},
         429: {"description": "Rate Limit Exceeded"},
         503: {"description": "TTS Service Unavailable"},
@@ -1270,10 +1270,10 @@ async def speak(request: Request, body: SpeakRequest):
                 )
                 return Response(
                     content=audio_bytes,
-                    media_type="audio/mpeg",
+                    media_type="audio/wav",
                     headers={
                         "Cache-Control": "no-store",
-                        "Content-Disposition": "inline; filename=speech.mp3",
+                        "Content-Disposition": "inline; filename=speech.wav",
                     },
                 )
             except Exception as e:
