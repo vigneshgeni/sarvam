@@ -17,6 +17,7 @@ import {
   logTargetVoices,
 } from '../utils/speech'
 import { speakText } from '../api'
+import { resolveLang } from '../i18n'
 
 interface ListenSheetProps {
   isOpen: boolean
@@ -42,6 +43,7 @@ export default function ListenSheet({
   lang,
   t,
 }: ListenSheetProps) {
+  const concreteLang = resolveLang(lang)
   const [mode, setMode] = useState<'quick' | 'full'>('quick')
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
@@ -122,22 +124,22 @@ export default function ListenSheet({
   // Stop audio on language change
   useEffect(() => {
     stopAllAudio()
-  }, [lang])
+  }, [concreteLang])
 
   // Prepare chunks when result or mode changes
   useEffect(() => {
     const script =
       mode === 'quick'
-        ? buildQuickSummaryScript(result, lang)
+        ? buildQuickSummaryScript(result, concreteLang)
         : buildSpokenText(result)
-    const speechScript = prepareTextForSpeech(script, lang)
+    const speechScript = prepareTextForSpeech(script, concreteLang)
     const sentences = splitIntoUtteranceChunks(speechScript, 160)
     setChunks(sentences.length > 0 ? sentences : [speechScript])
     setCurrentChunkIndex(0)
     setPlaybackProgress(0)
     setSeekPreview(null)
     stopAllAudio()
-  }, [result, mode, lang])
+  }, [result, mode, concreteLang])
 
   // Stop all audio helper
   const stopAllAudio = (keepCachedAudio = false) => {
@@ -289,7 +291,7 @@ export default function ListenSheet({
       } else {
         blob = await speakText({
           text,
-          lang,
+          lang: concreteLang,
           voice: selectedGenderRef.current,
           rate: 1,
           signal: controller.signal,
@@ -360,7 +362,7 @@ export default function ListenSheet({
       if (chunkIdx + 1 < chunks.length && !cachedBlobsRef.current.has(chunkIdx + 1)) {
         speakText({
           text: chunks[chunkIdx + 1],
-          lang,
+          lang: concreteLang,
           voice: selectedGenderRef.current,
           rate: 1,
         })
@@ -387,7 +389,7 @@ export default function ListenSheet({
         return
       }
 
-      const voice = findVoiceForLanguage(availableVoicesRef.current, lang)
+      const voice = findVoiceForLanguage(availableVoicesRef.current, concreteLang)
       if (!voice) {
         setNoVoiceWarning(true)
         return
@@ -566,7 +568,7 @@ export default function ListenSheet({
   const visibleProgress = seekPreview ?? playbackProgress
   const percentVal = Math.round(visibleProgress * 100)
   const ariaValueText = (() => {
-    switch (lang) {
+    switch (concreteLang) {
       case 'ta':
         return `${percentVal} சதவீதம்`
       case 'hi':

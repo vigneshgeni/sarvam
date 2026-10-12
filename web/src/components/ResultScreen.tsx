@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType } from '../i18n'
+import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
 import { formatDate } from '../utils/date'
 import {
@@ -80,7 +80,7 @@ export default function ResultScreen({
       ? multiReports[selectedReportIndex].result!
       : initialResult
 
-  const contentLang = result.language || (lang === 'auto' ? 'en' : lang)
+  const contentLang = resolveLang(lang)
   const t = getDictionary(contentLang)
   const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[1]
 
@@ -390,7 +390,11 @@ export default function ResultScreen({
 
         {/* Language selector dropdown */}
         <label className="flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
-          <span className="truncate">{currentLangObj.label}</span>
+          <span className="truncate">
+            {lang === 'auto'
+              ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
+              : currentLangObj.label}
+          </span>
           <ChevronDownIcon className="absolute right-2.5 w-4 h-4 text-[#5E636B]" />
           <select
             aria-label="Change language"
@@ -400,7 +404,10 @@ export default function ResultScreen({
           >
             {SUPPORTED_LANGS.map((l) => (
               <option key={l.id} value={l.id} disabled={l.disabled}>
-                {l.label} {l.badge ? `(${l.badge})` : ''}
+                {l.id === 'auto'
+                  ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
+                  : l.label}{' '}
+                {l.badge ? `(${l.badge})` : ''}
               </option>
             ))}
           </select>

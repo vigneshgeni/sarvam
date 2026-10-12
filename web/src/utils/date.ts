@@ -1,3 +1,5 @@
+import { resolveLang } from '../i18n'
+
 /**
  * Localised date formatting using Intl.DateTimeFormat.
  * Ensures NO ISO dates (YYYY-MM-DD) appear anywhere in the UI.
@@ -7,6 +9,7 @@ export function formatDate(
   lang: string
 ): string {
   if (!dateStr || typeof dateStr !== 'string') return ''
+  const concreteLang = resolveLang(lang)
 
   const trimmed = dateStr.trim()
 
@@ -18,7 +21,7 @@ export function formatDate(
     const day = parseInt(isoMatch[3], 10)
     const d = new Date(year, month, day)
     try {
-      return new Intl.DateTimeFormat(lang, {
+      return new Intl.DateTimeFormat(concreteLang, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -40,7 +43,7 @@ export function formatDate(
     const year = parseInt(dotMatch[3], 10)
     const d = new Date(year, month, day)
     try {
-      return new Intl.DateTimeFormat(lang, {
+      return new Intl.DateTimeFormat(concreteLang, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',

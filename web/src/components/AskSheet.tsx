@@ -12,6 +12,7 @@ import {
   AlertTriangleIcon,
 } from './icons'
 import { askDocument } from '../api'
+import { resolveLang } from '../i18n'
 
 interface AskSheetProps {
   isOpen: boolean
@@ -89,6 +90,7 @@ export default function AskSheet({
       recognition.interimResults = true
 
       // Map language code to speech code (e.g. ta-IN, hi-IN, en-IN)
+      const concreteLang = resolveLang(lang)
       const langSpeechCodes: Record<string, string> = {
         ta: 'ta-IN',
         hi: 'hi-IN',
@@ -96,8 +98,11 @@ export default function AskSheet({
         te: 'te-IN',
         ml: 'ml-IN',
         kn: 'kn-IN',
+        mr: 'mr-IN',
+        bn: 'bn-IN',
+        or: 'or-IN',
       }
-      recognition.lang = langSpeechCodes[lang] || 'en-IN'
+      recognition.lang = langSpeechCodes[concreteLang] || 'en-IN'
 
       recognition.onstart = () => {
         setIsListening(true)
@@ -148,7 +153,7 @@ export default function AskSheet({
     try {
       const resp = await askDocument({
         question: targetQ,
-        lang,
+        lang: resolveLang(lang),
         result,
         files: files && files.length > 0 ? files : undefined,
       })

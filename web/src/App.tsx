@@ -5,6 +5,8 @@ import {
   getStoredLanguage,
   setStoredLanguage,
   getLocalFallbackError,
+  resolveLang,
+  LANG_LABELS,
 } from './i18n'
 import type {
   AppScreen,
@@ -118,9 +120,7 @@ export default function App() {
   const chooseFileInputRef = useRef<HTMLInputElement>(null)
   const chooseFolderInputRef = useRef<HTMLInputElement>(null)
 
-  const currentLangObj =
-    SUPPORTED_LANGS.find((l) => l.id === selectedLang) || SUPPORTED_LANGS[0]
-  const t = getDictionary(selectedLang === 'auto' ? 'en' : selectedLang)
+  const t = getDictionary(resolveLang(selectedLang))
 
   // Apply stored accessibility settings on mount (WEB-10)
   useEffect(() => {
@@ -368,6 +368,8 @@ export default function App() {
   ) => {
     if (!filesToExplain || filesToExplain.length === 0) return
 
+    const targetLang = resolveLang(lang)
+
     activeFilesRef.current = filesToExplain
     setActiveFiles(filesToExplain)
     setCurrentError(null)
@@ -399,7 +401,7 @@ export default function App() {
       await Promise.all(
         filesToExplain.map(async (file, idx) => {
           try {
-            const res = await explainDocument([file], lang, undefined, password)
+            const res = await explainDocument([file], targetLang, undefined, password)
             updatedCards[idx] = {
               ...updatedCards[idx],
               title: res.title || file.name,
@@ -433,13 +435,13 @@ export default function App() {
             } else if (err instanceof Error) {
               appErr = {
                 message: err.message,
-                messageLocal: getLocalFallbackError(lang, 'generic'),
+                messageLocal: getLocalFallbackError(targetLang, 'generic'),
                 statusCode: 0,
               }
             } else {
               appErr = {
                 message: 'Unknown error',
-                messageLocal: getLocalFallbackError(lang, 'generic'),
+                messageLocal: getLocalFallbackError(targetLang, 'generic'),
                 statusCode: 0,
               }
             }
@@ -467,7 +469,7 @@ export default function App() {
             title: displayTitle,
             fileCount,
             fileNames: filesToExplain.map((f) => f.name),
-            lang,
+            lang: targetLang,
             result: firstReady.result,
             multiReports: updatedCards,
           })
@@ -478,7 +480,7 @@ export default function App() {
         setCurrentError(
           firstErr || {
             message: 'Failed to read reports',
-            messageLocal: getLocalFallbackError(lang, 'generic'),
+            messageLocal: getLocalFallbackError(targetLang, 'generic'),
             statusCode: 0,
           }
         )
@@ -489,22 +491,13 @@ export default function App() {
     // Single document pipeline
     setMultiReportsData(null)
     try {
-      const result = await explainDocument(filesToExplain, lang, undefined, password)
-
-      // Handle Auto language (WEB-3)
-      if (lang === 'auto' && result.language) {
-        const isSupported = SUPPORTED_LANGS.some((l) => l.id === result.language && !l.disabled)
-        if (isSupported) {
-          setSelectedLang(result.language)
-          setStoredLanguage(result.language)
-        }
-      }
+      const result = await explainDocument(filesToExplain, targetLang, undefined, password)
 
       const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       currentResultIdRef.current = resultId
       originalResultRef.current = result
       translationCacheRef.current.clear()
-      translationCacheRef.current.set(`${resultId}:${result.language || lang}`, result)
+      translationCacheRef.current.set(`${resultId}:${result.language || targetLang}`, result)
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
@@ -762,7 +755,8 @@ export default function App() {
 
   // Handle changing language while on Result screen: honest failure flow (WEB-2)
   const handleChangeResultLang = async (newLang: string) => {
-    if (newLang === selectedLang && resultData?.language === newLang) return
+    const targetLang = resolveLang(newLang)
+    if (newLang === selectedLang && resultData?.language === targetLang) return
 
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
@@ -772,12 +766,12 @@ export default function App() {
 
     if (!resultId || !originalResult) {
       if (activeFilesRef.current.length > 0) {
-        runExplain(activeFilesRef.current, newLang)
+        runExplain(activeFilesRef.current, targetLang)
       }
       return
     }
 
-    const cacheKey = `${resultId}:${newLang}`
+    const cacheKey = `${resultId}:${targetLang}`
     const cached = translationCacheRef.current.get(cacheKey)
     if (cached) {
       setResultData(cached)
@@ -802,7 +796,7 @@ export default function App() {
 
     // Try 1: /api/translate
     try {
-      const translated = await translateDocument(originalResult, newLang, controller.signal)
+      const translated = await translateDocument(originalResult, targetLang, controller.signal)
       if (controller.signal.aborted) return
 
       translationCacheRef.current.set(cacheKey, translated)
@@ -811,7 +805,7 @@ export default function App() {
       console.log('telemetry: translate_ok', { status: 200 })
 
       if (currentResultIdRef.current) {
-        await saveRecentTranslation(currentResultIdRef.current, newLang, translated)
+        await saveRecentTranslation(currentResultIdRef.current, targetLang, translated)
         await loadRecents()
       }
     } catch (err: unknown) {
@@ -819,7 +813,7 @@ export default function App() {
 
       // Try 2: Auto-retry translate once
       try {
-        const retried = await translateDocument(originalResult, newLang, controller.signal)
+        const retried = await translateDocument(originalResult, targetLang, controller.signal)
         if (controller.signal.aborted) return
 
         translationCacheRef.current.set(cacheKey, retried)
@@ -828,7 +822,7 @@ export default function App() {
         console.log('telemetry: translate_retry_ok', { status: 200 })
 
         if (currentResultIdRef.current) {
-          await saveRecentTranslation(currentResultIdRef.current, newLang, retried)
+          await saveRecentTranslation(currentResultIdRef.current, targetLang, retried)
           await loadRecents()
         }
       } catch (retryErr: unknown) {
@@ -951,7 +945,7 @@ export default function App() {
             let formattedDate = act.due_date
             try {
               formattedDate = new Intl.DateTimeFormat(
-                selectedLang === 'auto' ? 'en' : selectedLang,
+                resolveLang(selectedLang),
                 { day: 'numeric', month: 'short' }
               ).format(new Date(act.due_date))
             } catch {}
@@ -1088,6 +1082,10 @@ export default function App() {
                 >
                   {SUPPORTED_LANGS.map((lang) => {
                     const isSelected = selectedLang === lang.id
+                    const autoResolvedCode = resolveLang('auto')
+                    const autoResolvedLabel = LANG_LABELS[autoResolvedCode] || 'English'
+                    const chipLabel =
+                      lang.id === 'auto' ? `Auto · ${autoResolvedLabel}` : lang.label
                     return (
                       <button
                         key={lang.id}
@@ -1104,7 +1102,7 @@ export default function App() {
                             : 'bg-surface text-ink border border-line hover:border-muted/40'
                         } ${lang.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <span>{lang.label}</span>
+                        <span>{chipLabel}</span>
                         {lang.badge && (
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
@@ -1360,7 +1358,7 @@ export default function App() {
                         </span>
                         <span className="text-[12.5px] text-muted">
                           {new Intl.DateTimeFormat(
-                            selectedLang === 'auto' ? 'en' : selectedLang,
+                            resolveLang(selectedLang),
                             { day: 'numeric', month: 'short', year: 'numeric' }
                           ).format(new Date(item.timestamp))}
                         </span>
@@ -1413,7 +1411,7 @@ export default function App() {
         {screen === 'tray' && (
           <TrayScreen
             files={stagedFiles}
-            lang={selectedLang === 'auto' ? 'en' : selectedLang}
+            lang={resolveLang(selectedLang)}
             errorMessage={trayErrorMessage}
             onExplain={handleTrayExplain}
             onRemoveFile={handleTrayRemove}
@@ -1431,8 +1429,8 @@ export default function App() {
         {screen === 'reading' && (
           <ReadingScreen
             files={activeFiles}
-            lang={selectedLang === 'auto' ? 'en' : selectedLang}
-            langName={currentLangObj.name}
+            lang={resolveLang(selectedLang)}
+            langName={(SUPPORTED_LANGS.find((l) => l.id === resolveLang(selectedLang)) || SUPPORTED_LANGS[1]).name}
             error={currentError}
             multiReportProgress={multiReportProgress}
             onRetry={() => {

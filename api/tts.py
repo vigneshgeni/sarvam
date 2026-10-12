@@ -270,6 +270,8 @@ def synthesize_speech(
     from google.cloud import texttospeech
 
     norm_lang = (lang or "en").lower().split("-")[0]
+    if norm_lang == "auto" or norm_lang not in SPEAK_VOICES:
+        norm_lang = "en"
     voice_info = SPEAK_VOICES.get(norm_lang, SPEAK_VOICES["en"])
     selected_voice_name = voice_info.get(voice_gender, voice_info["female"])
 
