@@ -35,7 +35,7 @@ if curl -sS -m 20 -D "$cors_headers" -o /dev/null \
   -H "Origin: $WEB_ORIGIN" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: content-type"; then
-  if grep -qi "^access-control-allow-origin: ${WEB_ORIGIN}$" "$cors_headers"; then
+  if tr -d '\r' < "$cors_headers" | grep -qi "^access-control-allow-origin: ${WEB_ORIGIN}$"; then
     pass "cors"
   else
     fail "cors (origin not allowed)"
