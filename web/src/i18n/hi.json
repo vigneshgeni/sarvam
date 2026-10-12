@@ -209,5 +209,12 @@
   "foundInDoc": "आपके दस्तावेज़ में मिला",
   "checkAgainstOriginal": "मूल से मिलान करें",
   "calculatedChip": "गणना की गई",
-  "preparingAudio": "ऑडियो तैयार हो रहा है..."
+  "preparingAudio": "ऑडियो तैयार हो रहा है...",
+  "savedOnThisPhoneOnly": "केवल इस फ़ोन पर सहेजा गया (दस्तावेज़ टेक्स्ट सहित)।",
+  "viewDocument": "दस्तावेज़ देखें",
+  "openOriginal": "मूल दस्तावेज़ नए टैब में खोलें",
+  "previewNotAvailable": "इस डिवाइस पर पूर्वावलोकन उपलब्ध नहीं है।",
+  "documentPreview": "दस्तावेज़ पूर्वावलोकन",
+  "aiTranslationDisclaimer": "अनुवाद AI द्वारा तैयार किए गए हैं। किसी भी महत्वपूर्ण जानकारी के लिए मूल दस्तावेज़ देखें।"
 }
+

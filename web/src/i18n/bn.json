@@ -167,5 +167,14 @@
   "errorTryAgain": "কিছু ভুল হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।",
   "viewOriginalDoc": "মূল নথি দেখুন",
   "aiTranslationDisclaimer": "অনুবাদগুলি AI দ্বারা তৈরি। গুরুত্বপূর্ণ তথ্যের জন্য মূল নথি দেখুন।",
-  "preparingAudio": "অডিও প্রস্তুত হচ্ছে..."
+  "preparingAudio": "অডিও প্রস্তুত হচ্ছে...",
+  "savedOnThisPhoneOnly": "কেবল এই ফোনে সংরক্ষিত (নথির পাঠ্য সহ)।",
+  "viewDocument": "নথি দেখুন",
+  "openOriginal": "নতুন ট্যাবে আসল নথি খুলুন",
+  "previewNotAvailable": "এই ডিভাইসে প্রিভিউ উপলব্ধ নেই।",
+  "documentPreview": "নথি প্রিভিউ",
+  "foundInDoc": "আপনার নথিতে পাওয়া গেছে",
+  "checkAgainstOriginal": "মূল নথির সাথে মিলিয়ে দেখুন",
+  "calculatedChip": "গণনা করা হয়েছে"
 }
+

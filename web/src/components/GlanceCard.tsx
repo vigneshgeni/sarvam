@@ -17,6 +17,8 @@ interface GlanceCardProps {
   lang: string
   t: Record<string, string>
   onCheckOriginal?: (quote?: string, page?: number) => void
+  hasDocumentPreview?: boolean
+  onOpenDocumentPreview?: () => void
 }
 
 function CountUpValue({ value }: { value: string }) {
@@ -81,6 +83,8 @@ export default function GlanceCard({
   lang,
   t,
   onCheckOriginal,
+  hasDocumentPreview = false,
+  onOpenDocumentPreview,
 }: GlanceCardProps) {
   if (!glance) return null
 
@@ -111,9 +115,31 @@ export default function GlanceCard({
       {/* Top Header Pill Row */}
       <div className="flex flex-wrap items-center gap-2">
         {docTypeLabel && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A]">
-            {docTypeLabel}
-          </span>
+          hasDocumentPreview && onOpenDocumentPreview ? (
+            <button
+              type="button"
+              onClick={onOpenDocumentPreview}
+              className="btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
+              aria-label={t.viewDocument || 'View document'}
+            >
+              <span>{docTypeLabel}</span>
+              <EyeIcon className="w-3.5 h-3.5 text-[#5E636B]" />
+            </button>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A]">
+              {docTypeLabel}
+            </span>
+          )
+        )}
+        {hasDocumentPreview && onOpenDocumentPreview && (
+          <button
+            type="button"
+            onClick={onOpenDocumentPreview}
+            className="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+          >
+            <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
+            <span>{t.viewDocument || 'View document'}</span>
+          </button>
         )}
         {formattedDate && (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F1FB] text-[#1D5FA8]">
@@ -122,6 +148,7 @@ export default function GlanceCard({
           </span>
         )}
       </div>
+
 
       {/* Main Headline */}
       <h2 className="text-xl font-bold text-[#15171A] leading-snug tracking-tight">

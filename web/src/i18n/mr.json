@@ -167,5 +167,14 @@
   "errorTryAgain": "काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.",
   "viewOriginalDoc": "मूळ दस्तऐवज पहा",
   "aiTranslationDisclaimer": "भाषांतरे AI द्वारे तयार केली जातात. महत्त्वाच्या गोष्टींसाठी मूळ दस्तऐवज तपासा.",
-  "preparingAudio": "ऑडिओ तयार होत आहे..."
+  "preparingAudio": "ऑडिओ तयार होत आहे...",
+  "savedOnThisPhoneOnly": "केवळ या फोनवर सेव्ह केले (दस्तऐवज मजकुरासह).",
+  "viewDocument": "दस्तऐवज पहा",
+  "openOriginal": "मूळ दस्तऐवज नवीन टॅबमध्ये उघडा",
+  "previewNotAvailable": "या डिव्हाइसवर पूर्वावलोकन उपलब्ध नाही.",
+  "documentPreview": "दस्तऐवज पूर्वावलोकन",
+  "foundInDoc": "तुमच्या दस्तऐवजात सापडले",
+  "checkAgainstOriginal": "मूळ दस्तऐवजाशी पडताळून पहा",
+  "calculatedChip": "हिशोब केलेले"
 }
+

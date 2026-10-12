@@ -164,3 +164,92 @@ export async function processPhotosSequentially(
 export async function shrinkFiles(files: File[]): Promise<File[]> {
   return Promise.all(files.map(shrinkImage))
 }
+
+/**
+ * Downscales an image for local preview storage (max 1600px long edge, JPEG 0.8)
+ * per Item 9: "Images: downscale to at most 1600 px on the long side, JPEG 0.8 before storing."
+ */
+export async function downscaleImageForStorage(file: File | Blob, name = 'document.jpg'): Promise<Blob> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return file
+  }
+  if (file.type && !file.type.startsWith('image/') && !name.match(/\.(png|jpe?g|webp)$/i)) {
+    return file
+  }
+
+  const maxDim = 1600
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+      let { width, height } = bitmap
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) {
+          height = Math.round((height * maxDim) / width)
+          width = maxDim
+        } else {
+          width = Math.round((width * maxDim) / height)
+          height = maxDim
+        }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(bitmap, 0, 0, width, height)
+        bitmap.close()
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/jpeg', 0.8)
+        )
+        if (blob) return blob
+      } else {
+        bitmap.close()
+      }
+    } catch {
+      // Fall through to Image fallback
+    }
+  }
+
+  // Fallback using Image element
+  return new Promise((resolve) => {
+    try {
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
+        let { width, height } = img
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width)
+            width = maxDim
+          } else {
+            width = Math.round((width * maxDim) / height)
+            height = maxDim
+          }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(file)
+          return
+        }
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => resolve(blob || file),
+          'image/jpeg',
+          0.8
+        )
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve(file)
+      }
+      img.src = objectUrl
+    } catch {
+      resolve(file)
+    }
+  })
+}
+

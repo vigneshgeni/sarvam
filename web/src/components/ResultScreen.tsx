@@ -22,6 +22,7 @@ import Sheet from './Sheet'
 import GlanceCard from './GlanceCard'
 import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
+import DocumentPreviewModal, { type PreviewFileItem } from './DocumentPreviewModal'
 import FeedbackBlock from '../features/feedback/FeedbackBlock'
 import ListenSheet from './ListenSheet'
 import AskSheet from './AskSheet'
@@ -108,15 +109,47 @@ export default function ResultScreen({
     page?: number
   }>({ isOpen: false })
 
-  const openOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+  // Document preview state (Item 9)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewFiles, setPreviewFiles] = useState<PreviewFileItem[]>([])
+
+  const hasDocumentPreview = files && files.length > 0 && files.some((f) => f.size > 0)
+
+  const handleOpenPreview = () => {
+    if (!hasDocumentPreview) {
+      alert(t.previewNotAvailable || 'Preview not available on this device.')
+      return
+    }
+    const validFiles = files.filter((f) => f.size > 0)
+    const items: PreviewFileItem[] = validFiles.map((f) => ({
+      name: f.name,
+      type: f.type || (f.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+      url: URL.createObjectURL(f),
+    }))
+    setPreviewFiles(items)
+    openOverlay('doc_preview')
+  }
+
+  const handleClosePreview = () => {
+    previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+    setPreviewFiles([])
+    closeOverlay('doc_preview')
+  }
+
+  const openOverlay = (
+    overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders' | 'doc_preview'
+  ) => {
     pushBrowserHistory({ screen: 'result', overlay: overlayName })
     if (overlayName === 'listen') setIsListenOpen(true)
     if (overlayName === 'ask') setIsAskOpen(true)
     if (overlayName === 'share') setIsShareOpen(true)
     if (overlayName === 'reminders') setIsRemindersOpen(true)
+    if (overlayName === 'doc_preview') setIsPreviewOpen(true)
   }
 
-  const closeOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+  const closeOverlay = (
+    overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders' | 'doc_preview'
+  ) => {
     if (typeof window !== 'undefined' && window.history.state?.overlay === overlayName) {
       window.history.back()
     } else {
@@ -125,6 +158,11 @@ export default function ResultScreen({
       if (overlayName === 'share') setIsShareOpen(false)
       if (overlayName === 'source') setSourceViewer({ isOpen: false })
       if (overlayName === 'reminders') setIsRemindersOpen(false)
+      if (overlayName === 'doc_preview') {
+        previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+        setPreviewFiles([])
+        setIsPreviewOpen(false)
+      }
     }
   }
 
@@ -149,11 +187,17 @@ export default function ResultScreen({
       if (sourceViewer.isOpen && currentOverlay !== 'source') {
         setSourceViewer({ isOpen: false })
       }
+      if (isPreviewOpen && currentOverlay !== 'doc_preview') {
+        previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+        setPreviewFiles([])
+        setIsPreviewOpen(false)
+      }
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [isListenOpen, isAskOpen, isShareOpen, isRemindersOpen, sourceViewer.isOpen])
+  }, [isListenOpen, isAskOpen, isShareOpen, isRemindersOpen, sourceViewer.isOpen, isPreviewOpen, previewFiles])
+
 
   // Share state
   const [hidePersonal, setHidePersonal] = useState(true)
@@ -516,20 +560,47 @@ export default function ResultScreen({
             lang={contentLang}
             t={t}
             onCheckOriginal={handleCheckOriginal}
+            hasDocumentPreview={hasDocumentPreview}
+            onOpenDocumentPreview={handleOpenPreview}
           />
         )}
 
         {/* Document Title Header if no glance card */}
         {!result.glance && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
-              {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
-            </span>
+            <div className="flex items-center gap-2">
+              {hasDocumentPreview ? (
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
+                  aria-label={t.viewDocument || 'View document'}
+                >
+                  <span>{getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}</span>
+                  <EyeIcon className="w-3.5 h-3.5 text-[#5E636B]" />
+                </button>
+              ) : (
+                <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
+                  {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
+                </span>
+              )}
+              {hasDocumentPreview && (
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+                >
+                  <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
+                  <span>{t.viewDocument || 'View document'}</span>
+                </button>
+              )}
+            </div>
             <h1 className="font-heading font-bold text-2xl text-[#15171A] leading-tight">
               {result.title}
             </h1>
           </div>
         )}
+
 
         {/* WEB-7: PLACES AND CONTACTS CARD */}
         {(result.places || result.contacts) && (
@@ -1149,6 +1220,16 @@ export default function ResultScreen({
           </div>
         </div>
       </Sheet>
+
+      {/* Document Preview Modal (Item 9) */}
+      <DocumentPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        files={previewFiles}
+        docTitle={result.title}
+        t={t}
+      />
     </div>
   )
 }
+

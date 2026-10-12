@@ -203,5 +203,12 @@
   "foundInDoc": "ನಿಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಕಂಡುಬಂದಿದೆ",
   "checkAgainstOriginal": "ಮೂಲದೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ",
   "calculatedChip": "ಲೆಕ್ಕಹಾಕಲಾಗಿದೆ",
-  "preparingAudio": "ಆಡಿಯೋ ಸಿದ್ಧವಾಗುತ್ತಿದೆ..."
+  "preparingAudio": "ಆಡಿಯೋ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+  "savedOnThisPhoneOnly": "ಈ ಫೋನ್‌ನಲ್ಲಿ ಮಾತ್ರ ಉಳಿಸಲಾಗಿದೆ (ದಾಖಲೆ ಪಠ್ಯ ಸೇರಿದಂತೆ).",
+  "viewDocument": "ದಾಖಲೆಯನ್ನು ನೋಡಿ",
+  "openOriginal": "ಮೂಲ ದಾಖಲೆಯನ್ನು ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ",
+  "previewNotAvailable": "ಈ ಸಾಧನದಲ್ಲಿ ಮುನ್ನೋಟ ಲಭ್ಯವಿಲ್ಲ.",
+  "documentPreview": "ದಾಖಲೆ ಮುನ್ನೋಟ",
+  "aiTranslationDisclaimer": "ಅನುವಾದಗಳನ್ನು AI ರಚಿಸಿದೆ. ಪ್ರಮುಖ ವಿಷಯಗಳಿಗಾಗಿ ಮೂಲ ದಾಖಲೆಯನ್ನು ಪರಿಶೀಲಿಸಿ."
 }
+

@@ -167,5 +167,14 @@
   "errorTryAgain": "କିଛି ତ୍ରୁଟି ଘଟିଛି। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।",
   "viewOriginalDoc": "ମୂଳ ଦଲିଲ ଦେଖନ୍ତୁ",
   "aiTranslationDisclaimer": "ଅନୁବାଦଗୁଡ଼ିକ AI ଦ୍ୱାରା ପ୍ରସ୍ତୁତ। ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ ବିବରଣୀ ପାଇଁ ମୂଳ ଦଲିଲ ଯାଞ୍ଚ କରନ୍ତୁ।",
-  "preparingAudio": "ଅଡିଓ ପ୍ରସ୍ତୁତ ହେଉଛି..."
+  "preparingAudio": "ଅଡିଓ ପ୍ରସ୍ତୁତ ହେଉଛି...",
+  "savedOnThisPhoneOnly": "କେବଳ ଏହି ଫୋନରେ ସଂରକ୍ଷିତ (ଦଲିଲ ପାଠ୍ୟ ସହିତ)।",
+  "viewDocument": "ଦଲିଲ ଦେଖନ୍ତୁ",
+  "openOriginal": "ନୂତନ ଟ୍ୟାବରେ ମୂଳ ଦଲିଲ ଖୋଲନ୍ତୁ",
+  "previewNotAvailable": "ଏହି ଡିଭାଇସରେ ପ୍ରିଭ୍ୟୁ ଉପଲବ୍ଧ ନାହିଁ।",
+  "documentPreview": "ଦଲିଲ ପ୍ରିଭ୍ୟୁ",
+  "foundInDoc": "ଆପଣଙ୍କ ଦଲିଲରେ ମିଳିଲା",
+  "checkAgainstOriginal": "ମୂଳ ଦଲିଲ ସହିତ ମିଳାନ୍ତୁ",
+  "calculatedChip": "ଗଣନା କରାଗଲା"
 }
+
