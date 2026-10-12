@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
-import { formatDate } from '../utils/date'
+import { formatDate, isDatePassed } from '../utils/date'
 import {
   CalendarIcon,
   SparklesIcon,
@@ -197,6 +197,7 @@ export default function ResultScreen({
 
   // Calendar export handlers
   const handleAddActionToCalendar = (act: any, idx: number) => {
+    if (isDatePassed(act.due_date) || act.date_status === 'passed') return
     if (!act.due_date && !act.recurrence) return
     const isRecurring = !!act.recurrence
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -226,7 +227,7 @@ export default function ResultScreen({
   const handleAddAllDates = async () => {
     if (!result.actions) return
     const validActions = result.actions.filter(
-      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+      (a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence)
     )
     if (validActions.length === 0) return
 
@@ -273,7 +274,7 @@ export default function ResultScreen({
   const handleCopyAllDatesText = async () => {
     if (!result.actions) return
     const validActions = result.actions.filter(
-      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+      (a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence)
     )
     const todayStr = new Date().toISOString().slice(0, 10)
     const text = buildDatesText(
@@ -578,7 +579,7 @@ export default function ResultScreen({
               {result.actions.map((act, i) => {
                 const isDone = !!doneActions[i]
                 const isQuoteOpen = !!openActionQuotes[i]
-                const isPassed = act.date_status === 'passed'
+                const isPassed = act.date_status === 'passed' || isDatePassed(act.due_date)
 
                 return (
                   <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
@@ -627,7 +628,7 @@ export default function ResultScreen({
                             <span
                               className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
                                 isPassed
-                                  ? 'bg-[#FDECEA] text-[#B42318]'
+                                  ? 'bg-[#F0F0EB] text-[#5E636B]'
                                   : 'bg-[#E8F1FB] text-[#1D5FA8]'
                               }`}
                             >
@@ -636,7 +637,13 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {act.date_status === 'calculated' && (
+                          {isPassed && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F0F0EB] text-[#5E636B]">
+                              {t.deadlinePassed || t.datePassed || 'Date passed'}
+                            </span>
+                          )}
+
+                          {act.date_status === 'calculated' && !isPassed && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F1ECFB] text-[#6D45C9]">
                               {t.calculatedChip || 'Calculated'}
                             </span>
@@ -1091,7 +1098,7 @@ export default function ResultScreen({
 
           <div className="flex flex-col gap-2.5">
             {result.actions
-              ?.filter((a) => a.date_status !== 'passed' && (a.due_date || a.recurrence))
+              ?.filter((a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence))
               .map((act, i) => {
                 const todayStr = new Date().toISOString().slice(0, 10)
                 const targetDate = act.due_date || todayStr

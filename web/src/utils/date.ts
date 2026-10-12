@@ -86,3 +86,43 @@ export function buildCalculatedChipText(
 
   return formattedDate ? `${calcPrefix}: ${formattedDate}` : calcPrefix
 }
+
+/**
+ * Checks whether a given date string is in the past compared to local today (date only, midnight).
+ * Supports YYYY-MM-DD, DD.MM.YYYY, DD-MM-YYYY, DD/MM/YYYY.
+ */
+export function isDatePassed(
+  dateStr: string | null | undefined,
+  today: Date = new Date()
+): boolean {
+  if (!dateStr || typeof dateStr !== 'string') return false
+  const trimmed = dateStr.trim()
+
+  let d: Date | null = null
+
+  // Match YYYY-MM-DD
+  const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/.exec(trimmed)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const month = parseInt(isoMatch[2], 10) - 1
+    const day = parseInt(isoMatch[3], 10)
+    d = new Date(year, month, day)
+  }
+
+  // Match DD.MM.YYYY, DD-MM-YYYY, DD/MM/YYYY
+  const dmyMatch = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.exec(trimmed)
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10)
+    const month = parseInt(dmyMatch[2], 10) - 1
+    const year = parseInt(dmyMatch[3], 10)
+    d = new Date(year, month, day)
+  }
+
+  if (!d || isNaN(d.getTime())) return false
+
+  const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+  return targetDate.getTime() < localToday.getTime()
+}
+
