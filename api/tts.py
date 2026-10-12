@@ -133,6 +133,14 @@ SPEAK_VOICES: Dict[str, Dict[str, str]] = {
         "female": "en-IN-Chirp3-HD-Achernar",
         "male": "en-IN-Chirp3-HD-Achird",
     },
+    "mr": {
+        "female": "mr-IN-Chirp3-HD-Achernar",
+        "male": "mr-IN-Chirp3-HD-Achird",
+    },
+    "bn": {
+        "female": "bn-IN-Chirp3-HD-Achernar",
+        "male": "bn-IN-Chirp3-HD-Achird",
+    },
 }
 
 
