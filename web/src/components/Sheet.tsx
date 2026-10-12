@@ -144,7 +144,7 @@ export default function Sheet({
         </div>
 
         {/* Content wrapper */}
-        <div className="flex-1 overflow-y-auto px-5 pb-8 pt-1">{children}</div>
+        <div className="flex-1 overflow-y-auto px-5 pt-1 pb-[max(2rem,calc(1.5rem+env(safe-area-inset-bottom)))]">{children}</div>
       </div>
     </div>
   )

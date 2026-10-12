@@ -4,6 +4,72 @@ import hi from './hi.json'
 import te from './te.json'
 import ml from './ml.json'
 import kn from './kn.json'
+import mr from './mr.json'
+import bn from './bn.json'
+import or from './or.json'
+
+export const CONCRETE_LANGS = [
+  'en',
+  'ta',
+  'hi',
+  'te',
+  'ml',
+  'kn',
+  'mr',
+  'bn',
+  'or',
+] as const
+
+export type ConcreteLang = (typeof CONCRETE_LANGS)[number]
+
+export const LANG_LABELS: Record<ConcreteLang, string> = {
+  en: 'English',
+  ta: 'தமிழ்',
+  hi: 'हिंदी',
+  te: 'తెలుగు',
+  ml: 'മലയാളം',
+  kn: 'ಕನ್ನಡ',
+  mr: 'मराठी',
+  bn: 'বাংলা',
+  or: 'ଓଡ଼ିଆ',
+}
+
+/**
+ * Resolves any selected language code (including 'auto' or undefined) into a concrete language code
+ * from the nine supported languages.
+ *
+ * Auto rule: First language in navigator.languages (or passed deviceLanguages) that we support, else English.
+ * Never silently uses the document language or a remembered earlier choice.
+ */
+export function resolveLang(
+  selected?: string | null,
+  deviceLanguages?: readonly string[] | string[] | null
+): ConcreteLang {
+  if (selected && selected !== 'auto') {
+    const norm = selected.toLowerCase().split('-')[0].split('_')[0]
+    if (CONCRETE_LANGS.includes(norm as ConcreteLang)) {
+      return norm as ConcreteLang
+    }
+  }
+
+  const langs =
+    deviceLanguages ??
+    (typeof navigator !== 'undefined' && Array.isArray(navigator.languages)
+      ? navigator.languages
+      : typeof navigator !== 'undefined' && navigator.language
+      ? [navigator.language]
+      : [])
+
+  for (const raw of langs) {
+    if (!raw || typeof raw !== 'string') continue
+    const code = raw.toLowerCase().split('-')[0].split('_')[0]
+    if (CONCRETE_LANGS.includes(code as ConcreteLang)) {
+      return code as ConcreteLang
+    }
+  }
+
+  return 'en'
+}
 
 export interface LanguageOption {
   id: string
@@ -20,9 +86,12 @@ export const SUPPORTED_LANGS: LanguageOption[] = [
   { id: 'en', label: 'English', name: 'English', isBeta: false, speechCode: 'en-IN' },
   { id: 'ta', label: 'தமிழ்', name: 'Tamil', isBeta: false, speechCode: 'ta-IN' },
   { id: 'hi', label: 'हिंदी', name: 'Hindi', isBeta: false, speechCode: 'hi-IN' },
-  { id: 'te', label: 'తెలుగు', name: 'Telugu', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'te-IN' },
-  { id: 'ml', label: 'മലയാളം', name: 'Malayalam', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'ml-IN' },
-  { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'kn-IN' },
+  { id: 'te', label: 'తెలుగు', name: 'Telugu', isBeta: false, speechCode: 'te-IN' },
+  { id: 'ml', label: 'മലയാളം', name: 'Malayalam', isBeta: false, speechCode: 'ml-IN' },
+  { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', isBeta: false, speechCode: 'kn-IN' },
+  { id: 'mr', label: 'मराठी', name: 'Marathi', isBeta: false, speechCode: 'mr-IN' },
+  { id: 'bn', label: 'বাংলা', name: 'Bengali', isBeta: false, speechCode: 'bn-IN' },
+  { id: 'or', label: 'ଓଡ଼ିଆ', name: 'Odia', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'or-IN' },
 ]
 
 export const LANGUAGES = SUPPORTED_LANGS
@@ -36,24 +105,30 @@ const dictionaries: Record<string, Record<string, string>> = {
   te,
   ml,
   kn,
+  mr,
+  bn,
+  or,
 }
 
 export function getTranslation(langId: string, key: TranslationKey): string {
-  const dict = dictionaries[langId] || dictionaries.en
+  const concrete = resolveLang(langId)
+  const dict = dictionaries[concrete] || dictionaries.en
   return dict[key] || dictionaries.en[key] || key
 }
 
 export function getDictionary(langId: string): Record<string, string> {
-  return dictionaries[langId] || dictionaries.en
+  const concrete = resolveLang(langId)
+  return dictionaries[concrete] || dictionaries.en
 }
 
 export function getLocalisedDocType(langId: string, docType?: string | null): string {
-  if (!docType) return getTranslation(langId, 'doctype_document' as TranslationKey)
+  const concrete = resolveLang(langId)
+  if (!docType) return getTranslation(concrete, 'doctype_document' as TranslationKey)
   const key = `doctype_${docType}` as TranslationKey
-  const dict = dictionaries[langId] || dictionaries.en
+  const dict = dictionaries[concrete] || dictionaries.en
   if (dict[key]) return dict[key]
   if (dictionaries.en[key]) return dictionaries.en[key]
-  return getTranslation(langId, 'doctype_document' as TranslationKey)
+  return getTranslation(concrete, 'doctype_document' as TranslationKey)
 }
 
 const STORAGE_KEY = 'sarvam.lang'

@@ -5,6 +5,8 @@ import {
   getStoredLanguage,
   setStoredLanguage,
   getLocalFallbackError,
+  resolveLang,
+  LANG_LABELS,
 } from './i18n'
 import type {
   AppScreen,
@@ -28,6 +30,8 @@ import {
   isSaveRecentEnabled,
   setSaveRecentEnabled as setDbSaveRecentEnabled,
   saveRecentTranslation,
+  saveOriginalFiles,
+  getOriginalFiles,
 } from './utils/db'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
@@ -118,9 +122,7 @@ export default function App() {
   const chooseFileInputRef = useRef<HTMLInputElement>(null)
   const chooseFolderInputRef = useRef<HTMLInputElement>(null)
 
-  const currentLangObj =
-    SUPPORTED_LANGS.find((l) => l.id === selectedLang) || SUPPORTED_LANGS[0]
-  const t = getDictionary(selectedLang === 'auto' ? 'en' : selectedLang)
+  const t = getDictionary(resolveLang(selectedLang))
 
   // Apply stored accessibility settings on mount (WEB-10)
   useEffect(() => {
@@ -169,12 +171,26 @@ export default function App() {
       currentResultIdRef.current = saved.currentResultId || null
       if (saved.multiReports) setMultiReportsData(saved.multiReports)
       if (saved.lang) setSelectedLang(saved.lang)
+
+      if (saved.currentResultId) {
+        getOriginalFiles(saved.currentResultId).then((stored) => {
+          if (stored && stored.length > 0) {
+            const reconstructed = stored.map(
+              (sf) => new File([sf.blob], sf.name, { type: sf.type })
+            )
+            activeFilesRef.current = reconstructed
+            setActiveFiles(reconstructed)
+          }
+        })
+      }
+
       setScreen('result')
       seedResultHistory()
     } else {
       replaceBrowserHistory({ screen: 'home', overlay: null })
     }
   }, [])
+
 
   // Keep active result session updated
   useEffect(() => {
@@ -288,7 +304,7 @@ export default function App() {
     setRecentResults(items)
   }
 
-  const handleOpenRecent = (item: RecentResult) => {
+  const handleOpenRecent = async (item: RecentResult) => {
     currentResultIdRef.current = item.id
     originalResultRef.current = item.result
     translationCacheRef.current.clear()
@@ -304,14 +320,25 @@ export default function App() {
       }
     }
 
-    const dummyFiles = (item.fileNames || []).map((name) => new File([], name))
-    activeFilesRef.current = dummyFiles
-    setActiveFiles(dummyFiles)
+    // Try loading stored originals for document preview
+    const stored = await getOriginalFiles(item.id)
+    if (stored && stored.length > 0) {
+      const reconstructedFiles = stored.map(
+        (sf) => new File([sf.blob], sf.name, { type: sf.type })
+      )
+      activeFilesRef.current = reconstructedFiles
+      setActiveFiles(reconstructedFiles)
+    } else {
+      const dummyFiles = (item.fileNames || []).map((name) => new File([], name))
+      activeFilesRef.current = dummyFiles
+      setActiveFiles(dummyFiles)
+    }
 
     if (item.result.language) {
       setSelectedLang(item.result.language)
       setStoredLanguage(item.result.language)
     }
+
 
     setResultData(item.result)
     setMultiReportsData(item.multiReports && item.multiReports.length > 0 ? item.multiReports : null)
@@ -368,6 +395,8 @@ export default function App() {
   ) => {
     if (!filesToExplain || filesToExplain.length === 0) return
 
+    const targetLang = resolveLang(lang)
+
     activeFilesRef.current = filesToExplain
     setActiveFiles(filesToExplain)
     setCurrentError(null)
@@ -399,7 +428,7 @@ export default function App() {
       await Promise.all(
         filesToExplain.map(async (file, idx) => {
           try {
-            const res = await explainDocument([file], lang, undefined, password)
+            const res = await explainDocument([file], targetLang, undefined, password)
             updatedCards[idx] = {
               ...updatedCards[idx],
               title: res.title || file.name,
@@ -433,13 +462,13 @@ export default function App() {
             } else if (err instanceof Error) {
               appErr = {
                 message: err.message,
-                messageLocal: getLocalFallbackError(lang, 'generic'),
+                messageLocal: getLocalFallbackError(targetLang, 'generic'),
                 statusCode: 0,
               }
             } else {
               appErr = {
                 message: 'Unknown error',
-                messageLocal: getLocalFallbackError(lang, 'generic'),
+                messageLocal: getLocalFallbackError(targetLang, 'generic'),
                 statusCode: 0,
               }
             }
@@ -462,15 +491,19 @@ export default function App() {
           const fileCount = filesToExplain.length
           const displayTitle =
             t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+          const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+          currentResultIdRef.current = multiId
 
           await saveRecentResult({
+            id: multiId,
             title: displayTitle,
             fileCount,
             fileNames: filesToExplain.map((f) => f.name),
-            lang,
+            lang: targetLang,
             result: firstReady.result,
             multiReports: updatedCards,
           })
+          await saveOriginalFiles(multiId, filesToExplain)
           await loadRecents()
         }
       } else {
@@ -478,7 +511,7 @@ export default function App() {
         setCurrentError(
           firstErr || {
             message: 'Failed to read reports',
-            messageLocal: getLocalFallbackError(lang, 'generic'),
+            messageLocal: getLocalFallbackError(targetLang, 'generic'),
             statusCode: 0,
           }
         )
@@ -489,22 +522,13 @@ export default function App() {
     // Single document pipeline
     setMultiReportsData(null)
     try {
-      const result = await explainDocument(filesToExplain, lang, undefined, password)
-
-      // Handle Auto language (WEB-3)
-      if (lang === 'auto' && result.language) {
-        const isSupported = SUPPORTED_LANGS.some((l) => l.id === result.language && !l.disabled)
-        if (isSupported) {
-          setSelectedLang(result.language)
-          setStoredLanguage(result.language)
-        }
-      }
+      const result = await explainDocument(filesToExplain, targetLang, undefined, password)
 
       const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       currentResultIdRef.current = resultId
       originalResultRef.current = result
       translationCacheRef.current.clear()
-      translationCacheRef.current.set(`${resultId}:${result.language || lang}`, result)
+      translationCacheRef.current.set(`${resultId}:${result.language || targetLang}`, result)
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
@@ -518,15 +542,18 @@ export default function App() {
             : result.title || filesToExplain[0]?.name || 'Document'
 
         await saveRecentResult({
+          id: resultId,
           title: displayTitle,
           fileCount,
           fileNames: filesToExplain.map((f) => f.name),
           lang: result.language || lang,
           result,
         })
+        await saveOriginalFiles(resultId, filesToExplain)
         await loadRecents()
       }
     } catch (err: unknown) {
+
       if (err instanceof DOMException && err.name === 'AbortError') return
       if (err instanceof ExplainApiError) {
         if (
@@ -762,7 +789,9 @@ export default function App() {
 
   // Handle changing language while on Result screen: honest failure flow (WEB-2)
   const handleChangeResultLang = async (newLang: string) => {
-    if (newLang === selectedLang && resultData?.language === newLang) return
+    const prevLang = selectedLang
+    const targetLang = resolveLang(newLang)
+    if (newLang === selectedLang && resultData?.language === targetLang) return
 
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
@@ -772,12 +801,12 @@ export default function App() {
 
     if (!resultId || !originalResult) {
       if (activeFilesRef.current.length > 0) {
-        runExplain(activeFilesRef.current, newLang)
+        runExplain(activeFilesRef.current, targetLang)
       }
       return
     }
 
-    const cacheKey = `${resultId}:${newLang}`
+    const cacheKey = `${resultId}:${targetLang}`
     const cached = translationCacheRef.current.get(cacheKey)
     if (cached) {
       setResultData(cached)
@@ -802,7 +831,7 @@ export default function App() {
 
     // Try 1: /api/translate
     try {
-      const translated = await translateDocument(originalResult, newLang, controller.signal)
+      const translated = await translateDocument(originalResult, targetLang, controller.signal)
       if (controller.signal.aborted) return
 
       translationCacheRef.current.set(cacheKey, translated)
@@ -811,7 +840,7 @@ export default function App() {
       console.log('telemetry: translate_ok', { status: 200 })
 
       if (currentResultIdRef.current) {
-        await saveRecentTranslation(currentResultIdRef.current, newLang, translated)
+        await saveRecentTranslation(currentResultIdRef.current, targetLang, translated)
         await loadRecents()
       }
     } catch (err: unknown) {
@@ -819,7 +848,7 @@ export default function App() {
 
       // Try 2: Auto-retry translate once
       try {
-        const retried = await translateDocument(originalResult, newLang, controller.signal)
+        const retried = await translateDocument(originalResult, targetLang, controller.signal)
         if (controller.signal.aborted) return
 
         translationCacheRef.current.set(cacheKey, retried)
@@ -828,7 +857,7 @@ export default function App() {
         console.log('telemetry: translate_retry_ok', { status: 200 })
 
         if (currentResultIdRef.current) {
-          await saveRecentTranslation(currentResultIdRef.current, newLang, retried)
+          await saveRecentTranslation(currentResultIdRef.current, targetLang, retried)
           await loadRecents()
         }
       } catch (retryErr: unknown) {
@@ -860,8 +889,10 @@ export default function App() {
           }
         }
 
-        // Try 4: Everything failed: show banner, keep showing English
+        // Try 4: Everything failed: show calm error and keep previous language
         setIsTranslating(false)
+        setSelectedLang(prevLang)
+        setStoredLanguage(prevLang)
         setTranslateFailedLang(newLang)
         const statusCode = (retryErr as any)?.statusCode || 500
         console.log('telemetry: failed', { status: statusCode })
@@ -951,7 +982,7 @@ export default function App() {
             let formattedDate = act.due_date
             try {
               formattedDate = new Intl.DateTimeFormat(
-                selectedLang === 'auto' ? 'en' : selectedLang,
+                resolveLang(selectedLang),
                 { day: 'numeric', month: 'short' }
               ).format(new Date(act.due_date))
             } catch {}
@@ -1088,6 +1119,10 @@ export default function App() {
                 >
                   {SUPPORTED_LANGS.map((lang) => {
                     const isSelected = selectedLang === lang.id
+                    const autoResolvedCode = resolveLang('auto')
+                    const autoResolvedLabel = LANG_LABELS[autoResolvedCode] || 'English'
+                    const chipLabel =
+                      lang.id === 'auto' ? `Auto · ${autoResolvedLabel}` : lang.label
                     return (
                       <button
                         key={lang.id}
@@ -1104,7 +1139,7 @@ export default function App() {
                             : 'bg-surface text-ink border border-line hover:border-muted/40'
                         } ${lang.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <span>{lang.label}</span>
+                        <span>{chipLabel}</span>
                         {lang.badge && (
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
@@ -1130,7 +1165,12 @@ export default function App() {
                   />
                 )}
               </div>
+              <p className="text-[11px] text-muted text-center sm:text-left px-1 pt-0.5 leading-normal">
+                {t.aiTranslationDisclaimer ||
+                  'Translations are generated by AI. Check the original document for anything important.'}
+              </p>
             </div>
+
 
             {/* Greeting Heading */}
             <h1 className="text-[28px] sm:text-[30px] font-bold font-heading text-ink leading-[1.18] tracking-[-0.015em] m-0 animate-card-in-1">
@@ -1322,6 +1362,66 @@ export default function App() {
                   </span>
                   <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
                 </button>
+
+                {/* Sample 4: Phone invoice & warranty */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-invoice-warranty.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.sampleInvoiceWarranty || 'Phone invoice & warranty (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample4Sub || 'Retail store · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
+
+                {/* Sample 5: Property tax notice */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-property-tax-notice.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.samplePropertyTax || 'Property tax notice (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample5Sub || 'City municipality · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
+
+                {/* Sample 6: Traffic e-challan */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-echallan.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.sampleEChallan || 'Traffic e-challan (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample6Sub || 'Traffic Police · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
               </div>
             </section>
 
@@ -1360,7 +1460,7 @@ export default function App() {
                         </span>
                         <span className="text-[12.5px] text-muted">
                           {new Intl.DateTimeFormat(
-                            selectedLang === 'auto' ? 'en' : selectedLang,
+                            resolveLang(selectedLang),
                             { day: 'numeric', month: 'short', year: 'numeric' }
                           ).format(new Date(item.timestamp))}
                         </span>
@@ -1395,10 +1495,13 @@ export default function App() {
                 </label>
 
                 <p className="text-[12px] text-muted text-center leading-normal">
-                  {t.recentFooter || 'Saved only on this phone. Not stored by Sarvam.'}
+                  {t.savedOnThisPhoneOnly ||
+                    t.recentFooter ||
+                    'Saved on this phone only (including document text).'}
                 </p>
               </section>
             )}
+
 
             {/* Privacy reassurance footer note */}
             <footer className="text-center text-[13px] text-muted leading-relaxed px-3 pt-2">
@@ -1413,7 +1516,7 @@ export default function App() {
         {screen === 'tray' && (
           <TrayScreen
             files={stagedFiles}
-            lang={selectedLang === 'auto' ? 'en' : selectedLang}
+            lang={resolveLang(selectedLang)}
             errorMessage={trayErrorMessage}
             onExplain={handleTrayExplain}
             onRemoveFile={handleTrayRemove}
@@ -1431,8 +1534,8 @@ export default function App() {
         {screen === 'reading' && (
           <ReadingScreen
             files={activeFiles}
-            lang={selectedLang === 'auto' ? 'en' : selectedLang}
-            langName={currentLangObj.name}
+            lang={resolveLang(selectedLang)}
+            langName={(SUPPORTED_LANGS.find((l) => l.id === resolveLang(selectedLang)) || SUPPORTED_LANGS[1]).name}
             error={currentError}
             multiReportProgress={multiReportProgress}
             onRetry={() => {

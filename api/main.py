@@ -737,6 +737,7 @@ async def explain(
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
+        source_text=reader_result.source_text or ("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
         protected_terms=filter_protected_terms(reader_result.protected_terms),
     )
 
@@ -1221,6 +1222,7 @@ async def translate(
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
+        source_text=orig.source_text,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
     )
 
@@ -1228,7 +1230,7 @@ async def translate(
 @app.post(
     "/api/speak",
     responses={
-        200: {"content": {"audio/mpeg": {}}, "description": "MP3 Audio stream"},
+        200: {"content": {"audio/wav": {}, "audio/mpeg": {}}, "description": "Audio stream"},
         422: {"description": "Text too long"},
         429: {"description": "Rate Limit Exceeded"},
         503: {"description": "TTS Service Unavailable"},
@@ -1247,6 +1249,11 @@ async def speak(request: Request, body: SpeakRequest):
 
     if len(body.text) > 1200:
         return make_error_response(422, "text_too_long", body.lang)
+
+    from tts import SPEAK_VOICES
+    norm_lang = (body.lang or "en").lower().split("-")[0]
+    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_VOICES):
+        return make_error_response(400, "tts_unsupported_language", body.lang)
 
     # Acquire TTS semaphore (max 4 concurrent TTS calls)
     try:
@@ -1270,10 +1277,10 @@ async def speak(request: Request, body: SpeakRequest):
                 )
                 return Response(
                     content=audio_bytes,
-                    media_type="audio/mpeg",
+                    media_type="audio/wav",
                     headers={
                         "Cache-Control": "no-store",
-                        "Content-Disposition": "inline; filename=speech.mp3",
+                        "Content-Disposition": "inline; filename=speech.wav",
                     },
                 )
             except Exception as e:
@@ -1357,6 +1364,15 @@ async def ask(
             elif filename.endswith(".png") or mime_type == "image/png":
                 mime_type = "image/png"
             file_data_list.append((content, mime_type))
+
+    # Ground Ask in preserved source_text if files are not provided
+    if not pdf_pages_text:
+        try:
+            parsed_res_data = json.loads(result)
+            if isinstance(parsed_res_data, dict) and parsed_res_data.get("source_text"):
+                pdf_pages_text = [parsed_res_data["source_text"]]
+        except Exception:
+            pass
 
     # Semaphore wait
     try:

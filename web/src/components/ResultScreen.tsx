@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType } from '../i18n'
+import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
-import { formatDate } from '../utils/date'
+import { formatDate, isDatePassed } from '../utils/date'
+import { formatAmountsInText } from '../utils/currency'
 import {
   CalendarIcon,
   SparklesIcon,
@@ -21,6 +22,7 @@ import Sheet from './Sheet'
 import GlanceCard from './GlanceCard'
 import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
+import DocumentPreviewModal, { type PreviewFileItem } from './DocumentPreviewModal'
 import FeedbackBlock from '../features/feedback/FeedbackBlock'
 import ListenSheet from './ListenSheet'
 import AskSheet from './AskSheet'
@@ -80,7 +82,7 @@ export default function ResultScreen({
       ? multiReports[selectedReportIndex].result!
       : initialResult
 
-  const contentLang = result.language || (lang === 'auto' ? 'en' : lang)
+  const contentLang = resolveLang(lang)
   const t = getDictionary(contentLang)
   const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[1]
 
@@ -107,15 +109,50 @@ export default function ResultScreen({
     page?: number
   }>({ isOpen: false })
 
-  const openOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+  // Document preview state (Item 9)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewFiles, setPreviewFiles] = useState<PreviewFileItem[]>([])
+
+  const hasDocumentPreview = files && files.length > 0 && files.some((f) => f.size > 0)
+  const isPhoto =
+    result.source_kind === 'photo' ||
+    (files && files.length > 0 && files.every((f) => !f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf'))
+
+  const handleOpenPreview = () => {
+    if (!hasDocumentPreview) {
+      alert(t.previewNotAvailable || 'Preview not available on this device.')
+      return
+    }
+    const validFiles = files.filter((f) => f.size > 0)
+    const items: PreviewFileItem[] = validFiles.map((f) => ({
+      name: f.name,
+      type: f.type || (f.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+      url: URL.createObjectURL(f),
+    }))
+    setPreviewFiles(items)
+    openOverlay('doc_preview')
+  }
+
+  const handleClosePreview = () => {
+    previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+    setPreviewFiles([])
+    closeOverlay('doc_preview')
+  }
+
+  const openOverlay = (
+    overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders' | 'doc_preview'
+  ) => {
     pushBrowserHistory({ screen: 'result', overlay: overlayName })
     if (overlayName === 'listen') setIsListenOpen(true)
     if (overlayName === 'ask') setIsAskOpen(true)
     if (overlayName === 'share') setIsShareOpen(true)
     if (overlayName === 'reminders') setIsRemindersOpen(true)
+    if (overlayName === 'doc_preview') setIsPreviewOpen(true)
   }
 
-  const closeOverlay = (overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders') => {
+  const closeOverlay = (
+    overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders' | 'doc_preview'
+  ) => {
     if (typeof window !== 'undefined' && window.history.state?.overlay === overlayName) {
       window.history.back()
     } else {
@@ -124,6 +161,11 @@ export default function ResultScreen({
       if (overlayName === 'share') setIsShareOpen(false)
       if (overlayName === 'source') setSourceViewer({ isOpen: false })
       if (overlayName === 'reminders') setIsRemindersOpen(false)
+      if (overlayName === 'doc_preview') {
+        previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+        setPreviewFiles([])
+        setIsPreviewOpen(false)
+      }
     }
   }
 
@@ -148,11 +190,17 @@ export default function ResultScreen({
       if (sourceViewer.isOpen && currentOverlay !== 'source') {
         setSourceViewer({ isOpen: false })
       }
+      if (isPreviewOpen && currentOverlay !== 'doc_preview') {
+        previewFiles.forEach((p) => URL.revokeObjectURL(p.url))
+        setPreviewFiles([])
+        setIsPreviewOpen(false)
+      }
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [isListenOpen, isAskOpen, isShareOpen, isRemindersOpen, sourceViewer.isOpen])
+  }, [isListenOpen, isAskOpen, isShareOpen, isRemindersOpen, sourceViewer.isOpen, isPreviewOpen, previewFiles])
+
 
   // Share state
   const [hidePersonal, setHidePersonal] = useState(true)
@@ -197,6 +245,7 @@ export default function ResultScreen({
 
   // Calendar export handlers
   const handleAddActionToCalendar = (act: any, idx: number) => {
+    if (isDatePassed(act.due_date) || act.date_status === 'passed') return
     if (!act.due_date && !act.recurrence) return
     const isRecurring = !!act.recurrence
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -226,7 +275,7 @@ export default function ResultScreen({
   const handleAddAllDates = async () => {
     if (!result.actions) return
     const validActions = result.actions.filter(
-      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+      (a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence)
     )
     if (validActions.length === 0) return
 
@@ -273,7 +322,7 @@ export default function ResultScreen({
   const handleCopyAllDatesText = async () => {
     if (!result.actions) return
     const validActions = result.actions.filter(
-      (a) => a.date_status !== 'passed' && (a.due_date || a.recurrence)
+      (a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence)
     )
     const todayStr = new Date().toISOString().slice(0, 10)
     const text = buildDatesText(
@@ -372,7 +421,7 @@ export default function ResultScreen({
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between pb-28">
+    <div className="flex-1 flex flex-col justify-between pb-[max(7rem,calc(5rem+env(safe-area-inset-bottom)))]">
       {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
       <div
         className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md -mx-5 -mt-5 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 transition-shadow ${
@@ -390,7 +439,11 @@ export default function ResultScreen({
 
         {/* Language selector dropdown */}
         <label className="flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
-          <span className="truncate">{currentLangObj.label}</span>
+          <span className="truncate">
+            {lang === 'auto'
+              ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
+              : currentLangObj.label}
+          </span>
           <ChevronDownIcon className="absolute right-2.5 w-4 h-4 text-[#5E636B]" />
           <select
             aria-label="Change language"
@@ -400,7 +453,10 @@ export default function ResultScreen({
           >
             {SUPPORTED_LANGS.map((l) => (
               <option key={l.id} value={l.id} disabled={l.disabled}>
-                {l.label} {l.badge ? `(${l.badge})` : ''}
+                {l.id === 'auto'
+                  ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
+                  : l.label}{' '}
+                {l.badge ? `(${l.badge})` : ''}
               </option>
             ))}
           </select>
@@ -507,20 +563,48 @@ export default function ResultScreen({
             lang={contentLang}
             t={t}
             onCheckOriginal={handleCheckOriginal}
+            hasDocumentPreview={hasDocumentPreview}
+            onOpenDocumentPreview={handleOpenPreview}
+            isPhoto={isPhoto}
           />
         )}
 
         {/* Document Title Header if no glance card */}
         {!result.glance && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
-              {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
-            </span>
+            <div className="flex items-center gap-2">
+              {hasDocumentPreview ? (
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
+                  aria-label={t.viewDocument || 'View document'}
+                >
+                  <span>{getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}</span>
+                  <EyeIcon className="w-3.5 h-3.5 text-[#5E636B]" />
+                </button>
+              ) : (
+                <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
+                  {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
+                </span>
+              )}
+              {hasDocumentPreview && (
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+                >
+                  <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
+                  <span>{t.viewDocument || 'View document'}</span>
+                </button>
+              )}
+            </div>
             <h1 className="font-heading font-bold text-2xl text-[#15171A] leading-tight">
               {result.title}
             </h1>
           </div>
         )}
+
 
         {/* WEB-7: PLACES AND CONTACTS CARD */}
         {(result.places || result.contacts) && (
@@ -571,7 +655,7 @@ export default function ResultScreen({
               {result.actions.map((act, i) => {
                 const isDone = !!doneActions[i]
                 const isQuoteOpen = !!openActionQuotes[i]
-                const isPassed = act.date_status === 'passed'
+                const isPassed = act.date_status === 'passed' || isDatePassed(act.due_date)
 
                 return (
                   <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
@@ -611,7 +695,7 @@ export default function ResultScreen({
                             isDone ? 'line-through opacity-50' : ''
                           }`}
                         >
-                          {act.text}
+                          {formatAmountsInText(act.text)}
                         </span>
 
                         {/* Chips row */}
@@ -620,7 +704,7 @@ export default function ResultScreen({
                             <span
                               className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
                                 isPassed
-                                  ? 'bg-[#FDECEA] text-[#B42318]'
+                                  ? 'bg-[#F0F0EB] text-[#5E636B]'
                                   : 'bg-[#E8F1FB] text-[#1D5FA8]'
                               }`}
                             >
@@ -629,7 +713,13 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {act.date_status === 'calculated' && (
+                          {isPassed && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F0F0EB] text-[#5E636B]">
+                              {t.deadlinePassed || t.datePassed || 'Date passed'}
+                            </span>
+                          )}
+
+                          {act.date_status === 'calculated' && !isPassed && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F1ECFB] text-[#6D45C9]">
                               {t.calculatedChip || 'Calculated'}
                             </span>
@@ -647,17 +737,26 @@ export default function ResultScreen({
                             </button>
                           )}
 
-                          {/* Evidence check original */}
-                          {act.quote && (
+                          {/* Evidence Chip */}
+                          {act.evidence === 'matched' ? (
                             <button
                               type="button"
                               onClick={() => toggleActionQuote(i)}
-                              className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
                             >
-                              <EyeIcon className="w-3 h-3" />
-                              {t.checkAgainstOriginal || 'Check original'}
+                              <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                              {t.foundInDoc || 'Found in your document'}
                             </button>
-                          )}
+                          ) : !isPhoto && act.quote ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleActionQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
+                            >
+                              <EyeIcon className="w-3 h-3 text-[#475A7A]" />
+                              {t.checkAgainstOriginal || 'Check against original'}
+                            </button>
+                          ) : null}
                         </div>
 
                         {/* Accordion Quote Box */}
@@ -719,7 +818,7 @@ export default function ResultScreen({
             <div className="flex flex-col gap-2">
               {result.summary.map((line, i) => (
                 <p key={i} className="text-base text-[#1E1838] leading-relaxed">
-                  {line}
+                  {formatAmountsInText(line)}
                 </p>
               ))}
             </div>
@@ -744,10 +843,21 @@ export default function ResultScreen({
                 return (
                   <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
                     <p className="text-base font-medium text-[#5A3500] leading-relaxed">
-                      {warn.text}
+                      {formatAmountsInText(warn.text)}
                     </p>
 
-                    {warn.quote && (
+                    {warn.evidence === 'matched' ? (
+                      <div className="pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleWarningQuote(i)}
+                          className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
+                        >
+                          <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                          {t.foundInDoc || 'Found in your document'}
+                        </button>
+                      </div>
+                    ) : !isPhoto && warn.quote ? (
                       <div className="pt-0.5">
                         <button
                           type="button"
@@ -755,10 +865,10 @@ export default function ResultScreen({
                           className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
                         >
                           <EyeIcon className="w-3 h-3" />
-                          {t.checkAgainstOriginal || 'Check original'}
+                          {t.checkAgainstOriginal || 'Check against original'}
                         </button>
                       </div>
-                    )}
+                    ) : null}
 
                     {isQuoteOpen && warn.quote && (
                       <div className="mt-1.5 p-2 bg-white/80 rounded-xl text-xs text-[#5A3500]">
@@ -784,6 +894,16 @@ export default function ResultScreen({
               </h2>
             </div>
 
+            {isPhoto && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8F8F6] border border-[#E8E8E2] text-xs text-[#52525B] leading-relaxed">
+                <EyeIcon className="w-4 h-4 text-[#71717A] shrink-0 mt-0.5" />
+                <span>
+                  {t.photoVerificationBanner ||
+                    "This is a photo, so we can't check each point automatically. Compare with your original."}
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-col divide-y divide-[#F0F0EB]">
               {factsToDisplay.map((fact, i) => {
                 const isQuoteOpen = !!openFactQuotes[i]
@@ -796,9 +916,26 @@ export default function ResultScreen({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-base text-[#15171A] leading-relaxed">
-                          {fact.text}
+                          {formatAmountsInText(fact.text)}
                         </p>
-                        {fact.quote && (
+                        {fact.evidence === 'matched' ? (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleFactQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
+                            >
+                              <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                              {t.foundInDoc || 'Found in your document'}
+                            </button>
+                          </div>
+                        ) : fact.evidence === 'calculated' ? (
+                          <div className="pt-1">
+                            <span className="inline-flex items-center text-[11px] font-medium text-[#6D45C9] bg-[#F1ECFB] px-2 py-0.5 rounded-md">
+                              {t.calculatedChip || 'Calculated'}
+                            </span>
+                          </div>
+                        ) : !isPhoto && fact.quote ? (
                           <div className="pt-1">
                             <button
                               type="button"
@@ -806,10 +943,10 @@ export default function ResultScreen({
                               className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
                             >
                               <EyeIcon className="w-3 h-3" />
-                              {t.checkAgainstOriginal || 'Check original'}
+                              {t.checkAgainstOriginal || 'Check against original'}
                             </button>
                           </div>
-                        )}
+                        ) : null}
                         {isQuoteOpen && fact.quote && (
                           <div className="mt-1.5 p-2 bg-[#FBF7EF] rounded-xl text-xs text-[#15171A]">
                             <span className="font-semibold text-[#5E636B]">
@@ -854,38 +991,60 @@ export default function ResultScreen({
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] py-3 px-4 shadow-lg flex items-center justify-center">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg flex flex-col items-center justify-center">
         <div className="w-full max-w-[430px] flex items-center gap-3">
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
-            onClick={() => openOverlay('listen')}
-            className="btn-press flex-1 h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors"
+            disabled={isTranslating || contentLang === 'or'}
+            onClick={() => {
+              if (contentLang !== 'or') openOverlay('listen')
+            }}
+            title={contentLang === 'or' ? (t.odiaAudioUnavailable || 'Audio playback is not available for Odia yet') : undefined}
+            aria-disabled={contentLang === 'or'}
+            className={`btn-press flex-1 min-h-[48px] h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <PlayIcon className="w-4 h-4 ml-0.5" />
-            <span>{t.listenBtnLabel || 'Listen'}</span>
+            {isTranslating ? (
+              <span className="sv-spin w-4 h-4 rounded-full border-2 border-white/30 border-t-white shrink-0" />
+            ) : (
+              <PlayIcon className="w-4 h-4 ml-0.5 shrink-0" />
+            )}
+            <span className="truncate">{t.listenBtnLabel || 'Listen'}</span>
           </button>
 
           {/* Ask Button (Outlined) */}
           <button
             type="button"
+            disabled={isTranslating}
             onClick={() => openOverlay('ask')}
-            className="btn-press flex-1 h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors"
+            className={`btn-press flex-1 min-h-[48px] h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <MessageSquareIcon className="w-4 h-4" />
-            <span>{t.askBtnLabel || 'Ask'}</span>
+            <MessageSquareIcon className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t.askBtnLabel || 'Ask'}</span>
           </button>
 
           {/* Share Button (Icon button) */}
           <button
             type="button"
+            disabled={isTranslating}
             onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
-            className="btn-press w-12 h-12 bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+            className={`btn-press w-12 h-12 min-h-[48px] bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <ShareIcon className="w-5 h-5" />
+            <ShareIcon className="w-5 h-5 shrink-0" />
           </button>
         </div>
+        {contentLang === 'or' && (
+          <p className="mt-1.5 text-[11px] font-medium text-[#71717A] text-center">
+            {t.odiaAudioUnavailable || 'ଓଡ଼ିଆ ଭାଷା ପାଇଁ ଅଡିଓ ଏପର୍ଯ୍ୟନ୍ତ ଉପଲବ୍ଧ ନାହିଁ।'}
+          </p>
+        )}
       </div>
 
       {/* Listen Sheet (WEB-9) */}
@@ -1034,7 +1193,7 @@ export default function ResultScreen({
 
           <div className="flex flex-col gap-2.5">
             {result.actions
-              ?.filter((a) => a.date_status !== 'passed' && (a.due_date || a.recurrence))
+              ?.filter((a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence))
               .map((act, i) => {
                 const todayStr = new Date().toISOString().slice(0, 10)
                 const targetDate = act.due_date || todayStr
@@ -1084,6 +1243,16 @@ export default function ResultScreen({
           </div>
         </div>
       </Sheet>
+
+      {/* Document Preview Modal (Item 9) */}
+      <DocumentPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        files={previewFiles}
+        docTitle={result.title}
+        t={t}
+      />
     </div>
   )
 }
+

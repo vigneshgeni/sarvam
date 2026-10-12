@@ -12,6 +12,7 @@ import {
   AlertTriangleIcon,
 } from './icons'
 import { askDocument } from '../api'
+import { resolveLang } from '../i18n'
 
 interface AskSheetProps {
   isOpen: boolean
@@ -89,6 +90,7 @@ export default function AskSheet({
       recognition.interimResults = true
 
       // Map language code to speech code (e.g. ta-IN, hi-IN, en-IN)
+      const concreteLang = resolveLang(lang)
       const langSpeechCodes: Record<string, string> = {
         ta: 'ta-IN',
         hi: 'hi-IN',
@@ -96,8 +98,11 @@ export default function AskSheet({
         te: 'te-IN',
         ml: 'ml-IN',
         kn: 'kn-IN',
+        mr: 'mr-IN',
+        bn: 'bn-IN',
+        or: 'or-IN',
       }
-      recognition.lang = langSpeechCodes[lang] || 'en-IN'
+      recognition.lang = langSpeechCodes[concreteLang] || 'en-IN'
 
       recognition.onstart = () => {
         setIsListening(true)
@@ -144,16 +149,18 @@ export default function AskSheet({
     stopVoiceRecognition()
     setIsLoading(true)
     setAskError(null)
+    setAnswerData(null)
 
     try {
       const resp = await askDocument({
         question: targetQ,
-        lang,
+        lang: resolveLang(lang),
         result,
         files: files && files.length > 0 ? files : undefined,
       })
       setAnswerData(resp)
     } catch (err: any) {
+      setAnswerData(null)
       if (err.errorCode === 'ask_unverified') {
         setAskError(t.askUnverified || "I couldn't verify an answer. Check the original.")
       } else {
@@ -282,8 +289,8 @@ export default function AskSheet({
           )}
         </div>
 
-        {/* Answer Display Card */}
-        {answerData && (
+        {/* Answer Display Card (never displayed if error is present) */}
+        {!askError && answerData && (
           <div className="bg-[#FFFFFF] border border-[#E6E6E1] rounded-2xl p-4 flex flex-col gap-3 shadow-sm animate-card-in">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[#5B52D6] uppercase tracking-wider">

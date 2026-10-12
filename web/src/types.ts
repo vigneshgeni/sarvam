@@ -128,6 +128,7 @@ export interface ExplainResponse {
   contacts?: ContactItem[]
   medicines?: MedicineItem[]
   spoken_summary?: string
+  source_text?: string | null
 }
 
 export interface AskResponse {

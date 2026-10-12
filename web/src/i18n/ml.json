@@ -60,12 +60,12 @@
   "markDone": "Mark as done",
   "takingLonger": "Taking longer than usual. Long documents can take up to a minute.",
   "recurring": "Recurring schedule",
-  "translating": "Translating...",
+  "translating": "വിവർത്തനം ചെയ്യുന്നു...",
   "retryIn": "Try again in {seconds}s",
   "dismiss": "Dismiss",
   "daysFromLetterDate": "{days} days from the letter date",
   "recent": "ഈ ഫോണിലെ സമീപകാല ഫലങ്ങൾ",
-  "recentFooter": "ഈ ഫോണിൽ മാത്രം സംരക്ഷിച്ചു. സർവം സൂക്ഷിക്കുന്നില്ല.",
+  "recentFooter": "ഈ ഫോണിൽ മാത്രം സംരക്ഷിച്ചു (രേഖയിലെ വാചകം ഉൾപ്പെടെ). സർവം സൂക്ഷിക്കുന്നില്ല.",
   "saveRecentSetting": "ഈ ഫോണിൽ ഫലങ്ങൾ സംരക്ഷിക്കുക",
   "deleteAll": "എല്ലാം ഇല്ലാതാക്കുക",
   "deleteItem": "Delete",
@@ -202,5 +202,22 @@
   "askBtnLabel": "ചോദിക്കുക",
   "foundInDoc": "നിങ്ങളുടെ പ്രമാണത്തിൽ കണ്ടെത്തി",
   "checkAgainstOriginal": "യഥാർത്ഥ പ്രമാണവുമായി ഒത്തുനോക്കുക",
-  "calculatedChip": "കണക്കാക്കിയത്"
+  "calculatedChip": "കണക്കാക്കിയത്",
+  "preparingAudio": "ഓഡിയോ തയ്യാറാകുന്നു...",
+  "savedOnThisPhoneOnly": "ഈ ഫോണിൽ മാത്രം സൂക്ഷിച്ചിരിക്കുന്നു (ഡോക്യുമെന്റ് ടെക്സ്റ്റ് ഉൾപ്പെടെ).",
+  "viewDocument": "ഡോക്യുമെന്റ് കാണുക",
+  "openOriginal": "യഥാർത്ഥ രേഖ പുതിയ ടാബിൽ തുറക്കുക",
+  "previewNotAvailable": "ഈ ഉപകരണത്തിൽ പ്രിവ്യൂ ലഭ്യമല്ല.",
+  "documentPreview": "ഡോക്യുമെന്റ് പ്രിവ്യൂ",
+  "aiTranslationDisclaimer": "വിവർത്തനങ്ങൾ AI സൃഷ്ടിച്ചതാണ്. പ്രധാനപ്പെട്ട കാര്യങ്ങൾക്ക് യഥാർത്ഥ രേഖ പരിശോധിക്കുക.",
+  "sampleInvoiceWarranty": "ഫോൺ ഇൻവോയ്സും വാറന്റിയും (PDF)",
+  "sample4Sub": "റീട്ടെയിൽ സ്റ്റോർ · PDF",
+  "samplePropertyTax": "വസ്തു നികുതി നോട്ടീസ് (PDF)",
+  "sample5Sub": "സിറ്റി മുനിസിപ്പാലിറ്റി · PDF",
+  "sampleEChallan": "ട്രാഫിക് ഇ-ചെല്ലാൻ (PDF)",
+  "sample6Sub": "ട്രാഫിക് പോലീസ് · PDF",
+  "odiaAudioUnavailable": "ഒഡിയ ഭാഷയ്ക്ക് ഓഡിയോ ഇതുവരെ ലഭ്യമല്ല.",
+  "photoVerificationBanner": "ഇതൊരു ഫോട്ടോ ആയതിനാൽ, ഓരോ വിവരവും സ്വയമേവ പരിശോധിക്കാൻ കഴിയില്ല. യഥാർത്ഥ പ്രമാണവുമായി ഒത്തുനോക്കുക."
 }
+
+

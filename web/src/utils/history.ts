@@ -16,6 +16,7 @@ export type OverlayType =
   | 'source'
   | 'password'
   | 'delete_confirm'
+  | 'doc_preview'
 
 export interface HistoryEntry {
   screen: AppScreen

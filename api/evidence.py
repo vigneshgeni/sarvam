@@ -422,6 +422,8 @@ def normalize_text_for_evidence(text: str) -> str:
     t = re.sub(r"(?:\bRs\.?|\bINR|₹|ரூ\.?|रु\.?)(?=\s*\d|\b)", "₹", t, flags=re.IGNORECASE)
     t = re.sub(r"₹\s+", "₹", t)
     t = re.sub(r"(?<=\d),(?=\d)", "", t)
+    t = re.sub(r"(?<=\d)\.00(?!\d)", "", t)
+    t = re.sub(r"(?<=\d)/(?=\d)", "-", t)
     t = re.sub(r"\b(lacs?|lakhs?)\b", "lakh", t, flags=re.IGNORECASE)
     return collapse_whitespace(t).lower()
 

@@ -696,6 +696,8 @@ def ask_document_single_attempt(
         QUESTION=question,
         ANALYSIS_JSON=result_json,
     )
+    if pdf_pages_text:
+        prompt += f"\n\nVerbatim Document Text:\n{' '.join(pdf_pages_text)}\n"
 
     client = get_client()
     contents = []
@@ -745,14 +747,15 @@ def ask_document_single_attempt(
     # Evidence assignment
     if ask_res.not_found:
         ask_res.evidence = "none"
-        ask_res.answered_from = "document" if files_data else "summary"
+        ask_res.quote = None
+        ask_res.answered_from = "document" if (files_data or pdf_pages_text) else "summary"
     elif ask_res.quote and pdf_pages_text:
         ev = verify_evidence(ask_res.quote, ask_res.answer, ask_res.page or 1, pdf_pages_text)
         ask_res.evidence = ev
         ask_res.answered_from = "document"
     else:
-        ask_res.evidence = "check_original" if files_data else "none"
-        ask_res.answered_from = "document" if files_data else "summary"
+        ask_res.evidence = "check_original" if (files_data or pdf_pages_text) else "none"
+        ask_res.answered_from = "document" if (files_data or pdf_pages_text) else "summary"
 
     ask_res.language = lang
     return ask_res

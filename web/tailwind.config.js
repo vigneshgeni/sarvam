@@ -53,6 +53,8 @@ export default {
           '"Noto Sans Kannada"',
           '"Noto Sans Malayalam"',
           '"Noto Sans Telugu"',
+          '"Noto Sans Bengali"',
+          '"Noto Sans Oriya"',
           'sans-serif',
         ],
         tamil: ['"Noto Sans Tamil"', 'sans-serif'],
@@ -60,7 +62,11 @@ export default {
         kannada: ['"Noto Sans Kannada"', 'sans-serif'],
         malayalam: ['"Noto Sans Malayalam"', 'sans-serif'],
         telugu: ['"Noto Sans Telugu"', 'sans-serif'],
+        marathi: ['"Noto Sans Devanagari"', 'sans-serif'],
+        bengali: ['"Noto Sans Bengali"', 'sans-serif'],
+        oriya: ['"Noto Sans Oriya"', 'sans-serif'],
       },
+
       borderRadius: {
         card: '22px',
         sheet: '28px',
