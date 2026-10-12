@@ -1,19 +1,16 @@
 # Deploy Sarvam
 
-Run these from the repo root on your machine. This file is a runbook only. Do not treat a docs change as a deploy.
+Run these from the repo root on your machine, in this order. This file is a runbook. Do not treat a docs change as a deploy.
 
 Project: `sarvam-510715`  
 Region: `asia-south1`  
-Explain API service: `sarvam-api`  
-Current Cloud Run origin: `https://sarvam-api-422313883027.asia-south1.run.app`
+Explain API service: `sarvam-api`
 
 `ALLOWED_ORIGINS` (comma-separated, no spaces):
 
 ```
 http://localhost:5173,http://127.0.0.1:5173,https://sarvam-510715.web.app,https://sarvam-510715.firebaseapp.com
 ```
-
-Those four origins are the full list to set on the Explain API:
 
 | Origin | Why |
 | --- | --- |
@@ -22,11 +19,28 @@ Those four origins are the full list to set on the Explain API:
 | `https://sarvam-510715.web.app` | Firebase Hosting |
 | `https://sarvam-510715.firebaseapp.com` | Firebase Hosting alternate domain |
 
-The API also allows the two localhost origins in code. The env var is still set to the full list so Hosting is included and the setting stays obvious.
+## APIs to enable
 
-## 1. Explain API on Cloud Run
+Cloud Text-to-Speech API is required for Chirp 3 HD (`en`, `ta`, `hi`, `te`, `ml`, `kn`). Vertex AI is required for Explain and, after the language PR lands, for Odia Gemini TTS (preview). `api/tts.py` on this branch has no region setting; Chirp 3 HD is called through the Cloud Text-to-Speech client. Vertex for Explain uses `VERTEX_LOCATION` (default `global`) in `api/reader.py`.
 
-From the repo root:
+Console (you): open [Google Cloud APIs](https://console.cloud.google.com/apis/library?project=sarvam-510715) if `gcloud` is not logged in.
+
+```bash
+gcloud config set project sarvam-510715
+gcloud auth login
+gcloud auth application-default login
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  aiplatform.googleapis.com \
+  texttospeech.googleapis.com \
+  firestore.googleapis.com
+```
+
+`gcloud auth login` and `gcloud auth application-default login` are console / browser steps only you can complete.
+
+## Cloud Run (Explain API)
 
 ```bash
 gcloud run deploy sarvam-api \
@@ -41,7 +55,17 @@ gcloud run deploy sarvam-api \
   --set-env-vars "ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://sarvam-510715.web.app,https://sarvam-510715.firebaseapp.com"
 ```
 
-Grant **Vertex AI User** (`roles/aiplatform.user`) to the Cloud Run service identity (not your user account):
+Copy the service URL from the command output.
+
+```bash
+API_URL="$(gcloud run services describe sarvam-api \
+  --project sarvam-510715 \
+  --region asia-south1 \
+  --format='value(status.url)')"
+echo "$API_URL"
+```
+
+Grant **Vertex AI User** to the Cloud Run service identity (not your user account):
 
 ```bash
 PROJECT_NUMBER="$(gcloud projects describe sarvam-510715 --format='value(projectNumber)')"
@@ -57,71 +81,66 @@ gcloud projects add-iam-policy-binding sarvam-510715 \
   --role="roles/aiplatform.user"
 ```
 
-Use the service URL printed by `gcloud run deploy` if it differs from the origin above.
+## Firebase console (you)
 
-## 2. Build the web app
-
-`VITE_API_URL` is read when Vite builds. Put the Cloud Run origin in `web/.env.production` (gitignored) or pass it inline. Do not commit that file.
-
-```bash
-cd web
-VITE_API_URL="https://sarvam-api-422313883027.asia-south1.run.app" npm run build
-```
-
-`npm run build` runs `tsc -b && vite build` and writes `web/dist`.
-
-## 3. Firebase Hosting
-
-From the repo root, after the build in section 2:
-
-```bash
-npx firebase deploy --only hosting --project sarvam-510715
-```
-
-Hosting serves `web/dist`, rewrites unknown paths to `/index.html`, sends `Cache-Control: no-cache` for `/sw.js` and `/index.html`, and caches `/assets/**` for one year (`public, max-age=31536000, immutable`).
-
-## 4. Post-deploy smoke test
-
-```bash
-curl -fsS "https://sarvam-api-422313883027.asia-south1.run.app/health"
-curl -fsS -D - -o /dev/null "https://sarvam-510715.web.app/"
-curl -fsS -D - -o /dev/null "https://sarvam-510715.web.app/index.html"
-curl -fsS -D - -o /dev/null "https://sarvam-510715.web.app/sw.js"
-```
-
-Expect `/health` to return `{"status":"ok"}`. Expect `Cache-Control: no-cache` on `/index.html` and `/sw.js`.
-
-Then open `https://sarvam-510715.web.app` and run the three built-in samples (lab report, insurance letter, pension notice). Each should reach the result screen.
-
-Confirm a hashed file under `/assets/` returns `Cache-Control: public, max-age=31536000, immutable` (the filename changes every build; copy it from `index.html`).
-
-## 5. Firestore feedback (do these yourself)
-
-The app does not create the database or turn on sign-in. Do these in the Firebase console for project `sarvam-510715`, then deploy rules from the repo root:
+Do these in the Firebase console for `sarvam-510715` if they are not already done:
 
 1. Create the Firestore database in **Native mode** in **asia-south1**.
-2. In Authentication, enable the **Anonymous** sign-in provider.
-3. In Authentication → Settings → Authorised domains, add `sarvam-510715.web.app` and `sarvam-510715.firebaseapp.com` if they are not already listed. `localhost` is there by default.
-4. Deploy rules only (this does not deploy Hosting):
+2. Enable the **Anonymous** sign-in provider.
+3. Register a Web app if you have not, and copy `apiKey`, `authDomain`, `projectId`, `appId`.
+4. In Authentication → Settings → Authorised domains, add `sarvam-510715.web.app` and `sarvam-510715.firebaseapp.com`. `localhost` is there by default.
+5. `npx -y firebase-tools login` if you have not logged in (browser).
 
-```bash
-npx firebase deploy --only firestore:rules --project sarvam-510715
-```
-
-Put the web config in `web/.env` (gitignored), using the names in `web/.env.example`:
+Put the four public client keys in `web/.env` (gitignored). Do not commit that file.
 
 ```
+VITE_API_URL=<the Cloud Run URL>
 VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=sarvam-510715
 VITE_FIREBASE_APP_ID=
 ```
 
-Rebuild the web app after those values change. They are public client keys and must not be hard-coded in source.
+`web/.env.example` lists the same names.
 
-## 6. Feedback counts
+## Build the web app and deploy Hosting plus rules
 
-From the repo root, with Application Default Credentials (`gcloud auth application-default login`) and permission to read Firestore:
+`VITE_*` values are read at build time.
+
+```bash
+cd web
+VITE_API_URL="$API_URL" \
+VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY" \
+VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN" \
+VITE_FIREBASE_PROJECT_ID=sarvam-510715 \
+VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID" \
+npm run build
+cd ..
+npx -y firebase-tools deploy --only hosting,firestore:rules --project sarvam-510715
+```
+
+Hosting serves `web/dist`, rewrites unknown paths to `/index.html`, sends `Cache-Control: no-cache` for `/sw.js` and `/index.html`, and caches `/assets/**` for one year.
+
+## Smoke test
+
+```bash
+chmod +x scripts/smoke.sh
+scripts/smoke.sh "$API_URL" "https://sarvam-510715.web.app"
+```
+
+Expect four `PASS` lines: `health`, `cors`, `explain`, `speak`. The script does not print document text.
+
+Then open `https://sarvam-510715.web.app` and run the built-in samples. Each should reach the result screen. Confirm `Cache-Control: no-cache` on `/index.html` and `/sw.js`.
+
+## Install on an iPhone (you)
+
+1. On the phone, open Safari to `https://sarvam-510715.web.app`.
+2. Share → Add to Home Screen.
+3. Open the icon, run a sample, and send one rating (Yes, or No then Send).
+
+## Feedback counts
+
+From the repo root, with Application Default Credentials and permission to read Firestore:
 
 ```bash
 python3 -m venv scripts/.venv
