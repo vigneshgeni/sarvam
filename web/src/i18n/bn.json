@@ -166,5 +166,6 @@
   "cameraUnavailable": "ক্যামেরা অনুপলব্ধ",
   "errorTryAgain": "কিছু ভুল হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।",
   "viewOriginalDoc": "মূল নথি দেখুন",
-  "aiTranslationDisclaimer": "অনুবাদগুলি AI দ্বারা তৈরি। গুরুত্বপূর্ণ তথ্যের জন্য মূল নথি দেখুন।"
+  "aiTranslationDisclaimer": "অনুবাদগুলি AI দ্বারা তৈরি। গুরুত্বপূর্ণ তথ্যের জন্য মূল নথি দেখুন।",
+  "preparingAudio": "অডিও প্রস্তুত হচ্ছে..."
 }

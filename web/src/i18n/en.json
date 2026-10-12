@@ -202,5 +202,6 @@
   "askBtnLabel": "Ask",
   "foundInDoc": "Found in your document",
   "checkAgainstOriginal": "Check against original",
-  "calculatedChip": "Calculated"
+  "calculatedChip": "Calculated",
+  "preparingAudio": "Preparing audio..."
 }

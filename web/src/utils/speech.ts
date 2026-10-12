@@ -224,5 +224,18 @@ export function buildSpokenText(result: ExplainResponse): string {
     parts.push(result.facts.map((f) => f.text).join('. '))
   }
 
-  return parts.join('\n\n')
+  const full = parts.join('. ')
+  if (full.length <= 1180) {
+    return full
+  }
+  const sentences = splitIntoSentences(full)
+  let truncated = ''
+  for (const s of sentences) {
+    if ((truncated + ' ' + s).trim().length <= 1180) {
+      truncated = (truncated + ' ' + s).trim()
+    } else {
+      break
+    }
+  }
+  return truncated || full.slice(0, 1180)
 }

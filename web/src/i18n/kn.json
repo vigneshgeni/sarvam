@@ -202,5 +202,6 @@
   "askBtnLabel": "ಕೇಳಿ",
   "foundInDoc": "ನಿಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಕಂಡುಬಂದಿದೆ",
   "checkAgainstOriginal": "ಮೂಲದೊಂದಿಗೆ ಪರಿಶೀಲಿಸಿ",
-  "calculatedChip": "ಲೆಕ್ಕಹಾಕಲಾಗಿದೆ"
+  "calculatedChip": "ಲೆಕ್ಕಹಾಕಲಾಗಿದೆ",
+  "preparingAudio": "ಆಡಿಯೋ ಸಿದ್ಧವಾಗುತ್ತಿದೆ..."
 }

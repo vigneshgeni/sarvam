@@ -199,8 +199,9 @@
   "tooManyRequests": "அதிக கோரிக்கைகள். ஒரு நிமிடம் காத்திருக்கவும்.",
   "actionsDoneCount": "{total}-ல் {done} முடிந்தது",
   "listenBtnLabel": "படித்துக் காட்டு",
-  "askBtnLabel": "கேள்வி கேளுங்கள்",
+  "askBtnLabel": "கேளுங்கள்",
   "foundInDoc": "உங்கள் ஆவணத்தில் உள்ளது",
   "checkAgainstOriginal": "அசலுடன் ஒப்பிட்டுப் பார்க்கவும்",
-  "calculatedChip": "கணக்கிடப்பட்டது"
+  "calculatedChip": "கணக்கிடப்பட்டது",
+  "preparingAudio": "ஒலி தயாராகிறது..."
 }

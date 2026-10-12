@@ -202,5 +202,6 @@
   "askBtnLabel": "पूछें",
   "foundInDoc": "आपके दस्तावेज़ में मिला",
   "checkAgainstOriginal": "मूल से मिलान करें",
-  "calculatedChip": "गणना की गई"
+  "calculatedChip": "गणना की गई",
+  "preparingAudio": "ऑडियो तैयार हो रहा है..."
 }
