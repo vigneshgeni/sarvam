@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { GlanceSection } from '../types'
 import { getLocalisedDocType } from '../i18n'
+import { formatAmountValue, formatAmountsInText } from '../utils/currency'
 import {
   CurrencyRupeeIcon,
   CalendarIcon,
@@ -124,7 +125,7 @@ export default function GlanceCard({
 
       {/* Main Headline */}
       <h2 className="text-xl font-bold text-[#15171A] leading-snug tracking-tight">
-        {glance.headline}
+        {formatAmountsInText(glance.headline)}
       </h2>
 
       {/* Up to 3 Key Values */}
@@ -145,6 +146,8 @@ export default function GlanceCard({
               IconComponent = CalendarIcon
             }
 
+            const formattedVal = kv.kind === 'amount' ? formatAmountValue(kv.value) : kv.value
+
             return (
               <div
                 key={idx}
@@ -162,7 +165,7 @@ export default function GlanceCard({
                 </div>
 
                 <div className="text-lg text-[#15171A]">
-                  <CountUpValue value={kv.value} />
+                  <CountUpValue value={formattedVal} />
                 </div>
 
                 {/* Evidence chip */}

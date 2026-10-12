@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
 import { formatDate, isDatePassed } from '../utils/date'
+import { formatAmountsInText } from '../utils/currency'
 import {
   CalendarIcon,
   SparklesIcon,
@@ -619,7 +620,7 @@ export default function ResultScreen({
                             isDone ? 'line-through opacity-50' : ''
                           }`}
                         >
-                          {act.text}
+                          {formatAmountsInText(act.text)}
                         </span>
 
                         {/* Chips row */}
@@ -742,7 +743,7 @@ export default function ResultScreen({
             <div className="flex flex-col gap-2">
               {result.summary.map((line, i) => (
                 <p key={i} className="text-base text-[#1E1838] leading-relaxed">
-                  {line}
+                  {formatAmountsInText(line)}
                 </p>
               ))}
             </div>
@@ -767,7 +768,7 @@ export default function ResultScreen({
                 return (
                   <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
                     <p className="text-base font-medium text-[#5A3500] leading-relaxed">
-                      {warn.text}
+                      {formatAmountsInText(warn.text)}
                     </p>
 
                     {warn.evidence === 'matched' ? (
@@ -830,7 +831,7 @@ export default function ResultScreen({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-base text-[#15171A] leading-relaxed">
-                          {fact.text}
+                          {formatAmountsInText(fact.text)}
                         </p>
                         {fact.evidence === 'matched' ? (
                           <div className="pt-1">
