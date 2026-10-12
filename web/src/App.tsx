@@ -1323,6 +1323,66 @@ export default function App() {
                   </span>
                   <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
                 </button>
+
+                {/* Sample 4: Phone invoice & warranty */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-invoice-warranty.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.sampleInvoiceWarranty || 'Phone invoice & warranty (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample4Sub || 'Retail store · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
+
+                {/* Sample 5: Property tax notice */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-property-tax-notice.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.samplePropertyTax || 'Property tax notice (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample5Sub || 'City municipality · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
+
+                {/* Sample 6: Traffic e-challan */}
+                <button
+                  type="button"
+                  onClick={() => handleSampleClick('sample-echallan.pdf')}
+                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
+                >
+                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
+                    PDF
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="text-[15px] font-semibold text-ink leading-snug">
+                      {t.sampleEChallan || 'Traffic e-challan (PDF)'}
+                    </span>
+                    <span className="text-[13px] text-muted leading-tight">
+                      {t.sample6Sub || 'Traffic Police · PDF'}
+                    </span>
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
+                </button>
               </div>
             </section>
 
