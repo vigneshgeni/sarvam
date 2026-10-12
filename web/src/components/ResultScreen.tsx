@@ -372,7 +372,7 @@ export default function ResultScreen({
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between pb-28">
+    <div className="flex-1 flex flex-col justify-between pb-[max(7rem,calc(5rem+env(safe-area-inset-bottom)))]">
       {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
       <div
         className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md -mx-5 -mt-5 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 transition-shadow ${
@@ -898,7 +898,7 @@ export default function ResultScreen({
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] py-3 px-4 shadow-lg flex items-center justify-center">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg flex items-center justify-center">
         <div className="w-full max-w-[430px] flex items-center gap-3">
           {/* Listen Button (Primary Filled Indigo) */}
           <button
