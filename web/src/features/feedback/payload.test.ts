@@ -73,6 +73,11 @@ export function runPayloadTests(): void {
   )
   assertThrows(() => buildFeedbackPayload({ ...base, rating: 'yes' }), /rating/, 'bad rating')
   assertThrows(() => buildFeedbackPayload({ ...base, lang: 'fr' }), /lang/, 'bad lang')
+  assertThrows(() => buildFeedbackPayload({ ...base, lang: 'auto' }), /lang/, 'auto is not a stored language')
+  assertThrows(() => buildFeedbackPayload({ ...base, lang: 'xx' }), /lang/, 'xx is not a stored language')
+  for (const lang of ['mr', 'bn', 'or'] as const) {
+    assertEqual(buildFeedbackPayload({ ...base, lang }).lang, lang, lang)
+  }
   assertThrows(() => buildFeedbackPayload({ ...base, sample: 'false' }), /sample/, 'bad sample')
   assertThrows(
     () => buildFeedbackPayload({ ...base, rating: 'down', reasons: ['wrongDate'] }),

@@ -10,7 +10,7 @@ export const REASON_CODES = [
 
 export type ReasonCode = (typeof REASON_CODES)[number]
 
-export const FEEDBACK_LANGS = ['en', 'ta', 'hi', 'te', 'ml', 'kn'] as const
+export const FEEDBACK_LANGS = ['en', 'ta', 'hi', 'te', 'ml', 'kn', 'mr', 'bn', 'or'] as const
 
 export type FeedbackLang = (typeof FEEDBACK_LANGS)[number]
 
@@ -51,6 +51,9 @@ export const feedbackStrings: Record<FeedbackLang, FeedbackCopy> = {
   te: english,
   ml: english,
   kn: english,
+  mr: english,
+  bn: english,
+  or: english,
 }
 
 export function feedbackCopy(lang: string): FeedbackCopy {

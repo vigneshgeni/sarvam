@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isFeedbackCreate() {
       let data = request.resource.data;
-      let langOk = data.lang in ['en', 'ta', 'hi', 'te', 'ml', 'kn'];
+      let langOk = data.lang in ['en', 'ta', 'hi', 'te', 'ml', 'kn', 'mr', 'bn', 'or'];
       let docOk = data.docType in [
         'utility_bill',
         'telecom_bill',

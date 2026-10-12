@@ -6,7 +6,13 @@ import {
   sampleFromFiles,
   type FeedbackPayload,
 } from './payload.js'
-import { REASON_CODES, feedbackCopy, type ReasonCode } from './strings.js'
+import { FEEDBACK_LANGS, REASON_CODES, feedbackCopy, type FeedbackLang, type ReasonCode } from './strings.js'
+
+function storedLang(lang: string): FeedbackLang {
+  if (lang === 'auto') return 'en'
+  if ((FEEDBACK_LANGS as readonly string[]).includes(lang)) return lang as FeedbackLang
+  return 'en'
+}
 
 interface FeedbackBlockProps {
   result: ExplainResponse
@@ -37,13 +43,14 @@ function rememberRating(key: string, rating: 'up' | 'down'): void {
 }
 
 export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProps) {
-  const copy = feedbackCopy(lang)
+  const ratingLang = storedLang(lang)
+  const copy = feedbackCopy(ratingLang)
   const docType = result.doc_type || result.document_type || ''
   const resultId = localResultId({
     title: result.title || '',
     language: result.language || '',
     docType: String(docType),
-    lang,
+    lang: ratingLang,
     summary: result.summary || [],
   })
   const storageKey = storageKeyFor(resultId)
@@ -74,7 +81,7 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
     try {
       const payload = buildFeedbackPayload({
         rating,
-        lang,
+        lang: ratingLang,
         docType,
         sample: sampleFromFiles(files),
         ...(rating === 'down' ? { reasons: reasons ?? [] } : {}),
@@ -112,7 +119,7 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
   const busy = phase === 'sending'
 
   return (
-    <section lang={lang} aria-labelledby="feedback-prompt" className="flex flex-col gap-3 pt-1">
+    <section lang={ratingLang} aria-labelledby="feedback-prompt" className="flex flex-col gap-3 pt-1">
       {phase === 'sent' ? (
         <p className="text-base text-[#15171A] leading-relaxed text-center">{copy.thanks}</p>
       ) : (

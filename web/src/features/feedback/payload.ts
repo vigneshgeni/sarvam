@@ -125,7 +125,7 @@ export function buildFeedbackPayload(input: object): FeedbackPayload {
     throw new FeedbackPayloadError('rating must be up or down')
   }
 
-  if (typeof record.lang !== 'string' || !(FEEDBACK_LANGS as readonly string[]).includes(record.lang)) {
+  if (typeof record.lang !== 'string' || record.lang === 'auto' || !(FEEDBACK_LANGS as readonly string[]).includes(record.lang)) {
     throw new FeedbackPayloadError('lang is not an allowed language')
   }
   const lang = record.lang as FeedbackLang

@@ -70,6 +70,17 @@ test('signed-in valid up is allowed', async () => {
   await assertSucceeds(setDoc(doc(db(), 'feedback/valid-up'), upBody()))
 })
 
+test('mr, bn and or are accepted', async () => {
+  await assertSucceeds(setDoc(doc(db(), 'feedback/lang-mr'), upBody({ lang: 'mr' })))
+  await assertSucceeds(setDoc(doc(db(), 'feedback/lang-bn'), upBody({ lang: 'bn' })))
+  await assertSucceeds(setDoc(doc(db(), 'feedback/lang-or'), upBody({ lang: 'or' })))
+})
+
+test('auto and xx are rejected', async () => {
+  await assertFails(setDoc(doc(db(), 'feedback/lang-auto'), upBody({ lang: 'auto' })))
+  await assertFails(setDoc(doc(db(), 'feedback/lang-xx'), upBody({ lang: 'xx' })))
+})
+
 test('valid down with reasons is allowed', async () => {
   await assertSucceeds(setDoc(doc(db(), 'feedback/valid-down'), downBody()))
 })
