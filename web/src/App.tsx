@@ -755,6 +755,7 @@ export default function App() {
 
   // Handle changing language while on Result screen: honest failure flow (WEB-2)
   const handleChangeResultLang = async (newLang: string) => {
+    const prevLang = selectedLang
     const targetLang = resolveLang(newLang)
     if (newLang === selectedLang && resultData?.language === targetLang) return
 
@@ -854,8 +855,10 @@ export default function App() {
           }
         }
 
-        // Try 4: Everything failed: show banner, keep showing English
+        // Try 4: Everything failed: show calm error and keep previous language
         setIsTranslating(false)
+        setSelectedLang(prevLang)
+        setStoredLanguage(prevLang)
         setTranslateFailedLang(newLang)
         const statusCode = (retryErr as any)?.statusCode || 500
         console.log('telemetry: failed', { status: statusCode })

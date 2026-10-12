@@ -4,6 +4,9 @@ import hi from './hi.json'
 import te from './te.json'
 import ml from './ml.json'
 import kn from './kn.json'
+import mr from './mr.json'
+import bn from './bn.json'
+import or from './or.json'
 
 export const CONCRETE_LANGS = [
   'en',
@@ -86,6 +89,9 @@ export const SUPPORTED_LANGS: LanguageOption[] = [
   { id: 'te', label: 'తెలుగు', name: 'Telugu', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'te-IN' },
   { id: 'ml', label: 'മലയാളം', name: 'Malayalam', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'ml-IN' },
   { id: 'kn', label: 'ಕನ್ನಡ', name: 'Kannada', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'kn-IN' },
+  { id: 'mr', label: 'मराठी', name: 'Marathi', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'mr-IN' },
+  { id: 'bn', label: 'বাংলা', name: 'Bengali', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'bn-IN' },
+  { id: 'or', label: 'ଓଡ଼ିଆ', name: 'Odia', isBeta: true, badge: 'Beta', disabled: false, speechCode: 'or-IN' },
 ]
 
 export const LANGUAGES = SUPPORTED_LANGS
@@ -99,6 +105,9 @@ const dictionaries: Record<string, Record<string, string>> = {
   te,
   ml,
   kn,
+  mr,
+  bn,
+  or,
 }
 
 export function getTranslation(langId: string, key: TranslationKey): string {

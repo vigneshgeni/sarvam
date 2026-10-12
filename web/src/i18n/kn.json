@@ -60,7 +60,7 @@
   "markDone": "Mark as done",
   "takingLonger": "Taking longer than usual. Long documents can take up to a minute.",
   "recurring": "Recurring schedule",
-  "translating": "Translating...",
+  "translating": "ಅನುವಾದಿಸಲಾಗುತ್ತಿದೆ...",
   "retryIn": "Try again in {seconds}s",
   "dismiss": "Dismiss",
   "daysFromLetterDate": "{days} days from the letter date",

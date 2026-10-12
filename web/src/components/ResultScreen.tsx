@@ -866,31 +866,44 @@ export default function ResultScreen({
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
+            disabled={isTranslating}
             onClick={() => openOverlay('listen')}
-            className="btn-press flex-1 h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors"
+            className={`btn-press flex-1 min-h-[48px] h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <PlayIcon className="w-4 h-4 ml-0.5" />
-            <span>{t.listenBtnLabel || 'Listen'}</span>
+            {isTranslating ? (
+              <span className="sv-spin w-4 h-4 rounded-full border-2 border-white/30 border-t-white shrink-0" />
+            ) : (
+              <PlayIcon className="w-4 h-4 ml-0.5 shrink-0" />
+            )}
+            <span className="truncate">{t.listenBtnLabel || 'Listen'}</span>
           </button>
 
           {/* Ask Button (Outlined) */}
           <button
             type="button"
+            disabled={isTranslating}
             onClick={() => openOverlay('ask')}
-            className="btn-press flex-1 h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors"
+            className={`btn-press flex-1 min-h-[48px] h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <MessageSquareIcon className="w-4 h-4" />
-            <span>{t.askBtnLabel || 'Ask'}</span>
+            <MessageSquareIcon className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t.askBtnLabel || 'Ask'}</span>
           </button>
 
           {/* Share Button (Icon button) */}
           <button
             type="button"
+            disabled={isTranslating}
             onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
-            className="btn-press w-12 h-12 bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+            className={`btn-press w-12 h-12 min-h-[48px] bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isTranslating ? 'cursor-not-allowed' : ''
+            }`}
           >
-            <ShareIcon className="w-5 h-5" />
+            <ShareIcon className="w-5 h-5 shrink-0" />
           </button>
         </div>
       </div>
