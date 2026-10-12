@@ -654,17 +654,26 @@ export default function ResultScreen({
                             </button>
                           )}
 
-                          {/* Evidence check original */}
-                          {act.quote && (
+                          {/* Evidence Chip */}
+                          {act.evidence === 'matched' ? (
                             <button
                               type="button"
                               onClick={() => toggleActionQuote(i)}
-                              className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
                             >
-                              <EyeIcon className="w-3 h-3" />
-                              {t.checkAgainstOriginal || 'Check original'}
+                              <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                              {t.foundInDoc || 'Found in your document'}
                             </button>
-                          )}
+                          ) : act.quote ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleActionQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
+                            >
+                              <EyeIcon className="w-3 h-3 text-[#475A7A]" />
+                              {t.checkAgainstOriginal || 'Check against original'}
+                            </button>
+                          ) : null}
                         </div>
 
                         {/* Accordion Quote Box */}
@@ -754,7 +763,18 @@ export default function ResultScreen({
                       {warn.text}
                     </p>
 
-                    {warn.quote && (
+                    {warn.evidence === 'matched' ? (
+                      <div className="pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleWarningQuote(i)}
+                          className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
+                        >
+                          <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                          {t.foundInDoc || 'Found in your document'}
+                        </button>
+                      </div>
+                    ) : warn.quote ? (
                       <div className="pt-0.5">
                         <button
                           type="button"
@@ -762,10 +782,10 @@ export default function ResultScreen({
                           className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
                         >
                           <EyeIcon className="w-3 h-3" />
-                          {t.checkAgainstOriginal || 'Check original'}
+                          {t.checkAgainstOriginal || 'Check against original'}
                         </button>
                       </div>
-                    )}
+                    ) : null}
 
                     {isQuoteOpen && warn.quote && (
                       <div className="mt-1.5 p-2 bg-white/80 rounded-xl text-xs text-[#5A3500]">
@@ -805,7 +825,24 @@ export default function ResultScreen({
                         <p className="text-base text-[#15171A] leading-relaxed">
                           {fact.text}
                         </p>
-                        {fact.quote && (
+                        {fact.evidence === 'matched' ? (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleFactQuote(i)}
+                              className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
+                            >
+                              <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
+                              {t.foundInDoc || 'Found in your document'}
+                            </button>
+                          </div>
+                        ) : fact.evidence === 'calculated' ? (
+                          <div className="pt-1">
+                            <span className="inline-flex items-center text-[11px] font-medium text-[#6D45C9] bg-[#F1ECFB] px-2 py-0.5 rounded-md">
+                              {t.calculatedChip || 'Calculated'}
+                            </span>
+                          </div>
+                        ) : fact.quote ? (
                           <div className="pt-1">
                             <button
                               type="button"
@@ -813,10 +850,10 @@ export default function ResultScreen({
                               className="btn-press inline-flex items-center gap-1 text-[11px] font-semibold text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md"
                             >
                               <EyeIcon className="w-3 h-3" />
-                              {t.checkAgainstOriginal || 'Check original'}
+                              {t.checkAgainstOriginal || 'Check against original'}
                             </button>
                           </div>
-                        )}
+                        ) : null}
                         {isQuoteOpen && fact.quote && (
                           <div className="mt-1.5 p-2 bg-[#FBF7EF] rounded-xl text-xs text-[#15171A]">
                             <span className="font-semibold text-[#5E636B]">

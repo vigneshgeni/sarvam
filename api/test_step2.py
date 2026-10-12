@@ -2127,3 +2127,27 @@ def test_spoken_summary_natural_date_rendering_hi_ta(client):
         assert "30 நவம்பர் 2026" in ta_body["spoken_summary"]
         assert "2026-11-30" not in ta_body["spoken_summary"]
 
+
+def test_evidence_normalization_amounts_and_dates():
+    from evidence import verify_evidence, normalize_text_for_evidence
+
+    # 1. 89,900 in doc vs 89900.00 in quote/item
+    pages_text = ["Total invoice amount: Rs. 89,900 due on 16/10/2023. Invoice No: INV-100."]
+    ev = verify_evidence(
+        quote="Total invoice amount: Rs. 89900.00",
+        item_text="Total amount: Rs. 89,900.00",
+        page=1,
+        pages_text=pages_text,
+    )
+    assert ev == "matched", f"Expected matched, got {ev}"
+
+    # 2. Date slashes 16/10/2023 matching 16-10-2023
+    ev_date = verify_evidence(
+        quote="due on 16-10-2023",
+        item_text="Payment due on 16/10/2023",
+        page=1,
+        pages_text=pages_text,
+    )
+    assert ev_date == "matched", f"Expected matched, got {ev_date}"
+
+
