@@ -35,6 +35,7 @@ test('Languages - all 9 i18n dictionaries contain required critical keys', () =>
     'checkAgainstOriginal',
     'calculatedChip',
     'odiaAudioUnavailable',
+    'photoVerificationBanner',
   ]
 
   for (const code of LANG_CODES) {
@@ -128,3 +129,42 @@ test('Languages - pension sample share text in te, ml, kn, mr, bn, or hides pers
     assert.ok(text.includes('2,500'), `Language ${code} share text must keep monthly amount`)
   }
 })
+
+test('Photos vs PDFs - Photo inputs show top verification banner and omit per-point chips', () => {
+  // Test across all 9 languages that photo banner is localized
+  for (const code of LANG_CODES) {
+    const bannerText = dictionaries[code].photoVerificationBanner
+    assert.ok(bannerText && bannerText.length > 10, `Banner text missing or too short for ${code}`)
+  }
+
+  // Verification logic simulating ResultScreen
+  function getEvidenceBadges(isPhoto, facts) {
+    const showTopBanner = isPhoto
+    const perPointChips = facts.map((fact) => {
+      if (fact.evidence === 'matched') return 'matched'
+      if (fact.evidence === 'calculated') return 'calculated'
+      if (!isPhoto && fact.quote) return 'check_original'
+      return null
+    }).filter(Boolean)
+
+    return { showTopBanner, perPointChips }
+  }
+
+  const sampleFacts = [
+    { text: 'Name: Kamala Devi', quote: 'Kamala Devi', evidence: 'check_original' },
+    { text: 'Pension: Rs. 1,200', quote: '1,200', evidence: 'check_original' },
+    { text: 'Total: Rs. 1,200', quote: '1,200', evidence: 'matched' },
+  ]
+
+  // Photo mode: top banner shown, 'check_original' chips omitted
+  const photoResult = getEvidenceBadges(true, sampleFacts)
+  assert.equal(photoResult.showTopBanner, true, 'Photo must show top verification banner')
+  assert.ok(!photoResult.perPointChips.includes('check_original'), 'Photo must omit per-point check_original chips')
+  assert.ok(photoResult.perPointChips.includes('matched'), 'Photo can still keep matched chips')
+
+  // PDF mode: no top banner, per-point 'check_original' chips preserved
+  const pdfResult = getEvidenceBadges(false, sampleFacts)
+  assert.equal(pdfResult.showTopBanner, false, 'PDF must not show top photo verification banner')
+  assert.ok(pdfResult.perPointChips.includes('check_original'), 'PDF must preserve per-point check_original chips')
+})
+

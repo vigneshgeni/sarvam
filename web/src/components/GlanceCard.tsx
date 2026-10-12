@@ -19,6 +19,7 @@ interface GlanceCardProps {
   onCheckOriginal?: (quote?: string, page?: number) => void
   hasDocumentPreview?: boolean
   onOpenDocumentPreview?: () => void
+  isPhoto?: boolean
 }
 
 function CountUpValue({ value }: { value: string }) {
@@ -85,6 +86,7 @@ export default function GlanceCard({
   onCheckOriginal,
   hasDocumentPreview = false,
   onOpenDocumentPreview,
+  isPhoto = false,
 }: GlanceCardProps) {
   if (!glance) return null
 
@@ -203,7 +205,7 @@ export default function GlanceCard({
                       {t.foundInDoc || 'Found in your document'}
                     </span>
                   )}
-                  {kv.evidence === 'check_original' && (
+                  {!isPhoto && kv.evidence === 'check_original' && (
                     <button
                       type="button"
                       onClick={() => onCheckOriginal?.()}

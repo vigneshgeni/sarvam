@@ -114,6 +114,9 @@ export default function ResultScreen({
   const [previewFiles, setPreviewFiles] = useState<PreviewFileItem[]>([])
 
   const hasDocumentPreview = files && files.length > 0 && files.some((f) => f.size > 0)
+  const isPhoto =
+    result.source_kind === 'photo' ||
+    (files && files.length > 0 && files.every((f) => !f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf'))
 
   const handleOpenPreview = () => {
     if (!hasDocumentPreview) {
@@ -562,6 +565,7 @@ export default function ResultScreen({
             onCheckOriginal={handleCheckOriginal}
             hasDocumentPreview={hasDocumentPreview}
             onOpenDocumentPreview={handleOpenPreview}
+            isPhoto={isPhoto}
           />
         )}
 
@@ -743,7 +747,7 @@ export default function ResultScreen({
                               <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
                               {t.foundInDoc || 'Found in your document'}
                             </button>
-                          ) : act.quote ? (
+                          ) : !isPhoto && act.quote ? (
                             <button
                               type="button"
                               onClick={() => toggleActionQuote(i)}
@@ -853,7 +857,7 @@ export default function ResultScreen({
                           {t.foundInDoc || 'Found in your document'}
                         </button>
                       </div>
-                    ) : warn.quote ? (
+                    ) : !isPhoto && warn.quote ? (
                       <div className="pt-0.5">
                         <button
                           type="button"
@@ -890,6 +894,16 @@ export default function ResultScreen({
               </h2>
             </div>
 
+            {isPhoto && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8F8F6] border border-[#E8E8E2] text-xs text-[#52525B] leading-relaxed">
+                <EyeIcon className="w-4 h-4 text-[#71717A] shrink-0 mt-0.5" />
+                <span>
+                  {t.photoVerificationBanner ||
+                    "This is a photo, so we can't check each point automatically. Compare with your original."}
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-col divide-y divide-[#F0F0EB]">
               {factsToDisplay.map((fact, i) => {
                 const isQuoteOpen = !!openFactQuotes[i]
@@ -921,7 +935,7 @@ export default function ResultScreen({
                               {t.calculatedChip || 'Calculated'}
                             </span>
                           </div>
-                        ) : fact.quote ? (
+                        ) : !isPhoto && fact.quote ? (
                           <div className="pt-1">
                             <button
                               type="button"
