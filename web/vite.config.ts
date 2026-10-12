@@ -10,9 +10,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globIgnores: ['**/samples/**'],
+        globIgnores: ['**/samples/**', '**/sample-*'],
         navigateFallbackDenylist: [/^\/api\/.*/],
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\/.*/i,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
+
       manifest: {
         name: 'Sarvam',
         short_name: 'Sarvam',
