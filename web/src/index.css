@@ -81,7 +81,7 @@ html[data-reduce-motion="true"] *::after {
     margin: 0;
     background-color: #F6F6F3;
     color: #15171A;
-    font-family: 'Figtree', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Telugu', sans-serif;
+    font-family: 'Figtree', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Telugu', 'Noto Sans Bengali', 'Noto Sans Oriya', sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -92,9 +92,10 @@ html[data-reduce-motion="true"] *::after {
 }
 
 /* Indic script line height constraint: at least 1.65 */
-:lang(ta), :lang(hi), :lang(kn), :lang(ml), :lang(te) {
+:lang(ta), :lang(hi), :lang(kn), :lang(ml), :lang(te), :lang(mr), :lang(bn), :lang(or) {
   line-height: 1.68;
 }
+
 
 /* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {

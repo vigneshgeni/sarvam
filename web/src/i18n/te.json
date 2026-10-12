@@ -209,6 +209,13 @@
   "openOriginal": "అసలు పత్రాన్ని కొత్త ట్యాబ్‌లో తెరవండి",
   "previewNotAvailable": "ఈ పరికరంలో ప్రివ్యూ అందుబాటులో లేదు.",
   "documentPreview": "పత్రం ప్రివ్యూ",
-  "aiTranslationDisclaimer": "అనువాదాలు AI ద్వారా రూపొందించబడ్డాయి. ముఖ్యమైన వివరాల కోసం అసలు పత్రాన్ని తనిఖీ చేయండి."
+  "aiTranslationDisclaimer": "అనువాదాలు AI ద్వారా రూపొందించబడ్డాయి. ముఖ్యమైన వివరాల కోసం అసలు పత్రాన్ని తనిఖీ చేయండి.",
+  "sampleInvoiceWarranty": "ఫోన్ ఇన్‌వాయిస్ & వారంటీ (PDF)",
+  "sample4Sub": "రిటైల్ స్టోర్ · PDF",
+  "samplePropertyTax": "ఆస్తి పన్ను నోటీసు (PDF)",
+  "sample5Sub": "నగర మున్సిపాలిటీ · PDF",
+  "sampleEChallan": "ట్రాఫిక్ ఇ-చలాన్ (PDF)",
+  "sample6Sub": "ట్రాఫిక్ పోలీస్ · PDF"
 }
+
 
