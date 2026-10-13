@@ -1,4 +1,6 @@
 import io
+import logging
+from pathlib import Path
 
 import pypdf
 import pytest
@@ -190,3 +192,85 @@ def test_docs_are_hidden(client):
     assert client.get("/docs").status_code == 404
     assert client.get("/redoc").status_code == 404
     assert client.get("/openapi.json").status_code == 404
+
+
+USER_PASSWORD = "Test1234"
+OWNER_PASSWORD = "OwnerOnly99"
+
+
+def _encrypt_insurance(user_password: str, owner_password: str | None = None) -> bytes:
+    sample = Path(__file__).resolve().parents[1] / "samples" / "sample-insurance-letter.pdf"
+    reader = pypdf.PdfReader(io.BytesIO(sample.read_bytes()))
+    writer = pypdf.PdfWriter()
+    writer.append(reader)
+    if owner_password is None:
+        writer.encrypt(user_password, algorithm="AES-256")
+    else:
+        writer.encrypt(user_password, owner_password, algorithm="AES-256")
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def _assert_secret_absent(text: str) -> None:
+    assert USER_PASSWORD not in text
+    assert OWNER_PASSWORD not in text
+
+
+def test_encrypted_insurance_pdf_reaches_password_logic(client, caplog):
+    caplog.set_level(logging.DEBUG)
+    user_pdf = _encrypt_insurance(USER_PASSWORD)
+    owner_pdf = _encrypt_insurance("", OWNER_PASSWORD)
+    assert classify_upload(user_pdf, "application/pdf") == "ok"
+    assert classify_upload(owner_pdf, "application/pdf") == "ok"
+
+    files = [("files", ("letter.pdf", user_pdf, "application/pdf"))]
+
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="insurance",
+            title="Insurance letter",
+            language="en",
+            summary=["Opened."],
+        )
+
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 422
+        assert res.json().get("error") == "pdf_password_required"
+        _assert_secret_absent(res.text)
+        mock_read.assert_not_called()
+
+        res = client.post(
+            "/api/explain",
+            files=files,
+            data={"lang": "en", "password": "not-the-password"},
+        )
+        assert res.status_code == 422
+        assert res.json().get("error") == "pdf_password_wrong"
+        _assert_secret_absent(res.text)
+        mock_read.assert_not_called()
+
+        res = client.post(
+            "/api/explain",
+            files=files,
+            data={"lang": "en", "password": USER_PASSWORD},
+        )
+        assert res.status_code == 200
+        mock_read.assert_called_once()
+        sent = mock_read.call_args[0][0][0][0]
+        opened = pypdf.PdfReader(io.BytesIO(sent))
+        assert opened.is_encrypted is False
+        assert len(opened.pages) >= 1
+
+        mock_read.reset_mock()
+        owner_files = [("files", ("letter.pdf", owner_pdf, "application/pdf"))]
+        res = client.post("/api/explain", files=owner_files, data={"lang": "en"})
+        assert res.status_code == 200
+        mock_read.assert_called_once()
+        owner_sent = mock_read.call_args[0][0][0][0]
+        owner_opened = pypdf.PdfReader(io.BytesIO(owner_sent))
+        assert owner_opened.is_encrypted is False
+
+    _assert_secret_absent(caplog.text)
+    explain_hits = [len(v) for k, v in IP_REQUESTS.items() if k[0] == "explain"]
+    assert explain_hits and explain_hits[0] >= 4
