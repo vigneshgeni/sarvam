@@ -1,5 +1,7 @@
 import datetime
+import io
 from unittest.mock import patch
+import pypdf
 import pytest
 from fastapi.testclient import TestClient
 
@@ -8,6 +10,7 @@ from dates import (
     detect_date_conflicts,
     evaluate_date_status,
     format_date_human,
+    infer_relative_deadline_from_quote,
     parse_date,
 )
 from evidence import (
@@ -47,6 +50,18 @@ from models import (
 )
 
 
+def _tiny_pdf_bytes() -> bytes:
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+TINY_PDF = _tiny_pdf_bytes()
+JPEG_BYTES = b"\xff\xd8\xff" + b"fake-jpg-content"
+
+
 # --- 1) Dates & Deadlines Tests ---
 
 def test_parse_date():
@@ -58,6 +73,63 @@ def test_parse_date():
     assert parse_date("October 1, 2026") == datetime.date(2026, 10, 1)
     assert parse_date("invalid-date") is None
     assert parse_date(None) is None
+
+
+def test_infer_relative_deadline_from_quote():
+    today = datetime.date(2026, 10, 13)
+    anchor = "2026-10-08"
+
+    hours = infer_relative_deadline_from_quote(
+        "Return the phone within 48 hours of purchase.",
+        anchor,
+        today=today,
+    )
+    assert hours is not None
+    assert hours[0] == datetime.date(2026, 10, 10)
+    assert hours[1] == 2
+    assert hours[2] is True
+
+    days = infer_relative_deadline_from_quote(
+        "Claim within 7 days of the invoice date.",
+        anchor,
+        today=today,
+    )
+    assert days is not None
+    assert days[0] == datetime.date(2026, 10, 15)
+    assert days[1] == 7
+    assert days[2] is False
+
+    partial = infer_relative_deadline_from_quote(
+        "Reply within 36 hours of purchase.",
+        anchor,
+        today=datetime.date(2026, 10, 9),
+    )
+    assert partial is not None
+    assert partial[0] == datetime.date(2026, 10, 10)
+    assert partial[1] == 2
+    assert partial[2] is False
+
+    te_digits = "within ౪౮ hours of purchase"
+    te = infer_relative_deadline_from_quote(te_digits, anchor, today=today)
+    assert te is not None
+    assert te[0] == datetime.date(2026, 10, 10)
+
+    assert infer_relative_deadline_from_quote(
+        "Return the phone within 48 hours of purchase.",
+        None,
+        today=today,
+    ) is None
+    assert infer_relative_deadline_from_quote(None, anchor, today=today) is None
+    assert infer_relative_deadline_from_quote(
+        "The shop is open 24 hours.",
+        anchor,
+        today=today,
+    ) is None
+    assert infer_relative_deadline_from_quote(
+        "Please pay on 10 October 2026.",
+        anchor,
+        today=today,
+    ) is None
 
 
 def test_compute_relative_deadline():
@@ -101,7 +173,7 @@ def test_evaluate_date_status_recurring():
 
 def test_recurring_action_explain_due_date_null(client):
     IP_REQUESTS.clear()
-    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="insurance",
@@ -162,6 +234,35 @@ def test_normalize_text_for_guard():
     assert normalize_text_for_guard("रु. ३१,२००") == "₹ 31200"
     # Indian grouping 1,23,456
     assert normalize_text_for_guard("1,23,456") == "123456"
+
+
+def _script_digits(ascii_text: str, digits: str) -> str:
+    return "".join(digits[int(ch)] if ch.isdigit() else ch for ch in ascii_text)
+
+
+def test_translation_guard_unicode_digits_per_script():
+    """Amounts, dates and IDs in each script pass. A changed number still fails."""
+    scripts = {
+        "te": "౦౧౨౩౪౫౬౭౮౯",
+        "ml": "൦൧൨൩൪൫൬൭൮൯",
+        "kn": "೦೧೨೩೪೫೬೭೮೯",
+        "bn": "০১২৩৪৫৬৭৮৯",
+        "or": "୦୧୨୩୪୫୬୭୮୯",
+    }
+    orig = "Amount Rs. 31,200 on 30.11.2026. ID 4401."
+    for name, digits in scripts.items():
+        trans = (
+            f"ok ₹ {_script_digits('31200', digits)} "
+            f"{_script_digits('30.11.2026', digits)} "
+            f"{_script_digits('4401', digits)}"
+        )
+        assert verify_translation_guard(orig, trans) is True, name
+        wrong = (
+            f"ok ₹ {_script_digits('31201', digits)} "
+            f"{_script_digits('30.11.2026', digits)} "
+            f"{_script_digits('4401', digits)}"
+        )
+        assert verify_translation_guard(orig, wrong) is False, name
 
 
 def test_translation_guard_ta_digits_pass():
@@ -353,7 +454,7 @@ def test_translate_rate_limit(client):
 
 def test_multi_file_10_images_ok(client):
     IP_REQUESTS.clear()
-    files = [("files", (f"page{i}.jpg", b"fake-jpg-content", "image/jpeg")) for i in range(10)]
+    files = [("files", (f"page{i}.jpg", JPEG_BYTES, "image/jpeg")) for i in range(10)]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="pension",
@@ -368,7 +469,7 @@ def test_multi_file_10_images_ok(client):
 
 def test_multi_file_11_images_rejected(client):
     IP_REQUESTS.clear()
-    files = [("files", (f"page{i}.jpg", b"fake-jpg-content", "image/jpeg")) for i in range(11)]
+    files = [("files", (f"page{i}.jpg", JPEG_BYTES, "image/jpeg")) for i in range(11)]
     res = client.post("/api/explain", files=files, data={"lang": "en"})
     assert res.status_code == 400
     assert "10 images" in res.json()["message"]
@@ -377,8 +478,8 @@ def test_multi_file_11_images_rejected(client):
 def test_multi_file_mixed_rejected(client):
     IP_REQUESTS.clear()
     files = [
-        ("files", ("doc.pdf", b"%PDF-1.4...", "application/pdf")),
-        ("files", ("page1.jpg", b"fake-jpg-content", "image/jpeg")),
+        ("files", ("doc.pdf", TINY_PDF, "application/pdf")),
+        ("files", ("page1.jpg", JPEG_BYTES, "image/jpeg")),
     ]
     res = client.post("/api/explain", files=files, data={"lang": "en"})
     assert res.status_code == 400
@@ -397,7 +498,7 @@ def test_pdf_20mb_boundary(client):
 
 def test_report_title_null_when_not_printed(client):
     IP_REQUESTS.clear()
-    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="insurance",
@@ -876,7 +977,7 @@ def test_gemini_semaphore_timeout_returns_503(client):
     try:
         # Patch SEMAPHORE_TIMEOUT to 0.1s for fast unit test
         with patch("main.SEMAPHORE_TIMEOUT", 0.1):
-            files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+            files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
             res = client.post("/api/explain", files=files, data={"lang": "ta"})
             assert res.status_code == 503
             body = res.json()
@@ -955,7 +1056,7 @@ def test_gemini_retry_exhaustion_endpoint_returns_503_message_local(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
 
-    files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document", side_effect=GeminiServiceError("Upstream service unavailable", status_code=503)):
         res = client.post("/api/explain", files=files, data={"lang": "hi"})
         assert res.status_code == 503
@@ -1004,7 +1105,7 @@ def test_deadline_hit_while_waiting_for_semaphore(client):
     try:
         # Patch REQUEST_DEADLINE to 0.1s so deadline expires while waiting for semaphore
         with patch("main.REQUEST_DEADLINE", 0.1):
-            files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+            files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
             res = client.post("/api/explain", files=files, data={"lang": "ta"})
             assert res.status_code == 504
             body = res.json()
@@ -1028,7 +1129,7 @@ def test_deadline_hit_during_retry(client):
     )
 
     with patch("reader.get_client", return_value=mock_client), patch("main.REQUEST_DEADLINE", 1.5):
-        files = [("files", ("page.jpg", b"fake-jpg-content", "image/jpeg"))]
+        files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
         res = client.post("/api/explain", files=files, data={"lang": "hi"})
         assert res.status_code == 504
         body = res.json()
@@ -1337,7 +1438,7 @@ def test_explain_lang_auto_hindi_doc(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
 
-    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("notice.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="government_notice",
@@ -1358,7 +1459,7 @@ def test_explain_lang_auto_tamil_doc(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
 
-    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("notice.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="government_notice",
@@ -1379,7 +1480,7 @@ def test_explain_lang_auto_foreign_doc_defaults_to_english(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
 
-    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("notice.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="other",
@@ -1399,7 +1500,7 @@ def test_explain_explicit_lang_preserved(client):
     from main import IP_REQUESTS
     IP_REQUESTS.clear()
 
-    files = [("files", ("notice.jpg", b"fake-jpg-content", "image/jpeg"))]
+    files = [("files", ("notice.jpg", JPEG_BYTES, "image/jpeg"))]
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
             doc_type="insurance",
@@ -1443,7 +1544,7 @@ def test_report_date_iso_and_glance_integration(client):
     from models import ReaderGlance, ReaderGlanceKeyValue
     IP_REQUESTS.clear()
 
-    files = [("files", ("doc.pdf", b"%PDF-1.4...", "application/pdf"))]
+    files = [("files", ("doc.pdf", TINY_PDF, "application/pdf"))]
     with patch("main.read_document") as mock_read, patch("main.extract_pdf_pages") as mock_pages:
         mock_pages.return_value = [
             "Electricity Department. Bill Date: 01 October 2026. Total Due: Rs. 1,450. Due Date: 25.10.2026."
@@ -2181,7 +2282,7 @@ def test_prescription_medicines_mapping_regression(client):
             protected_terms=["Dr. Sharma", "Apollo Pharmacy"],
         )
 
-        files = [("files", ("prescription.pdf", b"%PDF-1.4 test", "application/pdf"))]
+        files = [("files", ("prescription.pdf", TINY_PDF, "application/pdf"))]
         res = client.post("/api/explain", files=files, data={"lang": "en"})
         assert res.status_code == 200, f"Expected 200 but got {res.status_code}: {res.text}"
         body = res.json()

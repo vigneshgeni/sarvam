@@ -361,9 +361,20 @@ export async function askDocument(params: {
 }
 
 /**
+ * Longer reads need more than 8s. About 25s once the text reaches 900 characters.
+ * Short text stays at 8s.
+ */
+function speakTimeoutMs(text: string): number {
+  const length = text.length
+  if (length >= 900) return 25_000
+  if (length <= 80) return 8_000
+  return Math.round(8_000 + ((length - 80) / (900 - 80)) * 17_000)
+}
+
+/**
  * Server TTS: POST /api/speak (WEB-9)
- * Returns audio/mpeg Blob.
- * 8 s timeout before falling back to device voice.
+ * Returns audio/wav or audio/mpeg Blob.
+ * Timeout scales with text length. Device-voice fallback is not decided here.
  */
 export async function speakText(params: {
   text: string
@@ -373,7 +384,7 @@ export async function speakText(params: {
   signal?: AbortSignal
 }): Promise<Blob> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort('timeout'), 8000)
+  const timeoutId = setTimeout(() => controller.abort('timeout'), speakTimeoutMs(params.text))
 
   const onAbort = () => controller.abort(params.signal?.reason)
   if (params.signal) {

@@ -91,6 +91,27 @@ html[data-reduce-motion="true"] *::after {
   }
 }
 
+/* 44px hit area without changing the visible control size. */
+.hit-44 {
+  position: relative;
+}
+.hit-44::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* At least 16px so iOS does not zoom the page when a field is focused. */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 /* Indic script line height constraint: at least 1.65 */
 :lang(ta), :lang(hi), :lang(kn), :lang(ml), :lang(te), :lang(mr), :lang(bn), :lang(or) {
   line-height: 1.68;

@@ -179,14 +179,29 @@ def check_script_guard(texts: List[str], lang: str) -> Tuple[bool, float]:
 def normalize_text_for_guard(text: str) -> str:
     """
     Normalizes text for translation guard comparison:
-    1. Normalizes Tamil (௦-௯) and Devanagari (०-९) digits to 0-9.
+    1. Maps every Unicode decimal digit (Tamil, Devanagari, Telugu, Kannada,
+       Malayalam, Bengali, Odia, and any other Nd digit) to ASCII 0-9.
     2. Strips thousands separators (including Indian grouping 1,23,456 and standard 12,345).
-    3. Treats Rs./Rs/INR/₹/ரூ/रु as equivalent (canonical symbol ₹).
+    3. Treats Rs./Rs/INR/₹/ரூ/रु/రూ/ರೂ/രൂ/৳ as equivalent (canonical symbol ₹).
     """
     if not text:
         return ""
-    t = normalize_digits(text)
-    t = re.sub(r"(?:\bRs\.?|\bINR|₹|ரூ\.?|रु\.?)(?=\s*\d|\b)", "₹", t, flags=re.IGNORECASE)
+    mapped = []
+    for ch in text:
+        if ch.isdecimal():
+            try:
+                mapped.append(str(unicodedata.decimal(ch)))
+                continue
+            except (TypeError, ValueError):
+                pass
+        mapped.append(ch)
+    t = "".join(mapped)
+    t = re.sub(
+        r"(?:\bRs\.?|\bINR|₹|ரூ\.?|रु\.?|రూ\.?|ರೂ\.?|രൂ\.?|৳)(?=\s*\d|\b)",
+        "₹",
+        t,
+        flags=re.IGNORECASE,
+    )
     t = re.sub(r"(?<=\d),(?=\d)", "", t)
     return t
 

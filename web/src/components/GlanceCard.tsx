@@ -121,7 +121,7 @@ export default function GlanceCard({
             <button
               type="button"
               onClick={onOpenDocumentPreview}
-              className="btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
+              className="hit-44 btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
               aria-label={t.viewDocument || 'View document'}
             >
               <span>{docTypeLabel}</span>
@@ -137,7 +137,7 @@ export default function GlanceCard({
           <button
             type="button"
             onClick={onOpenDocumentPreview}
-            className="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+            className="hit-44 btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
           >
             <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
             <span>{t.viewDocument || 'View document'}</span>

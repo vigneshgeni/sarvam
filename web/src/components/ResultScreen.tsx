@@ -432,13 +432,13 @@ export default function ResultScreen({
           type="button"
           onClick={onGoHome}
           aria-label="Back"
-          className="btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+          className="hit-44 btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
         >
           <ChevronRightIcon className="w-5 h-5 rotate-180" />
         </button>
 
         {/* Language selector dropdown */}
-        <label className="flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
+        <label className="hit-44 flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
           <span className="truncate">
             {lang === 'auto'
               ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
@@ -467,7 +467,7 @@ export default function ResultScreen({
           type="button"
           onClick={onA11yClick}
           aria-label={t.makeEasierToRead || 'Make it easier to read'}
-          className="btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+          className="hit-44 btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
         >
           <A11ySlidersIcon className="w-5 h-5" />
         </button>
@@ -577,7 +577,7 @@ export default function ResultScreen({
                 <button
                   type="button"
                   onClick={handleOpenPreview}
-                  className="btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
+                  className="hit-44 btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
                   aria-label={t.viewDocument || 'View document'}
                 >
                   <span>{getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}</span>
@@ -592,7 +592,7 @@ export default function ResultScreen({
                 <button
                   type="button"
                   onClick={handleOpenPreview}
-                  className="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+                  className="hit-44 btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
                 >
                   <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
                   <span>{t.viewDocument || 'View document'}</span>
@@ -664,7 +664,7 @@ export default function ResultScreen({
                       <button
                         type="button"
                         onClick={() => toggleActionDone(i)}
-                        className={`w-6 h-6 rounded-lg border-2 mt-0.5 flex items-center justify-center shrink-0 transition-colors btn-press ${
+                        className={`hit-44 w-6 h-6 rounded-lg border-2 mt-0.5 flex items-center justify-center shrink-0 transition-colors btn-press ${
                           isDone
                             ? 'bg-[#146B4E] border-[#146B4E]'
                             : 'bg-white border-[#D8D8D2]'
@@ -730,7 +730,7 @@ export default function ResultScreen({
                             <button
                               type="button"
                               onClick={() => handleAddActionToCalendar(act, i)}
-                              className="btn-press text-[11px] font-semibold text-[#5B52D6] bg-[#ECEBFA] hover:bg-[#D8D4EF] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                              className="hit-44 btn-press text-[11px] font-semibold text-[#5B52D6] bg-[#ECEBFA] hover:bg-[#D8D4EF] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
                             >
                               <CalendarIcon className="w-3 h-3" />
                               {t.addToCalendar || 'Add to calendar'}
@@ -781,7 +781,7 @@ export default function ResultScreen({
                 <button
                   type="button"
                   onClick={handleAddAllDates}
-                  className="btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
+                  className="hit-44 btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
                 >
                   <CalendarIcon className="w-4 h-4" />
                   {t.addAllDates || 'Add all dates (.ics)'}
@@ -789,7 +789,7 @@ export default function ResultScreen({
                 <button
                   type="button"
                   onClick={() => openOverlay('reminders')}
-                  className="btn-press text-xs font-medium text-[#656077] hover:underline"
+                  className="hit-44 btn-press text-xs font-medium text-[#656077] hover:underline"
                 >
                   {t.viewDatesList || 'View list'}
                 </button>

@@ -2,6 +2,7 @@ import concurrent.futures
 import io
 import os
 import re
+import time
 import wave
 from typing import Dict, List, Optional, Tuple
 
@@ -439,17 +440,29 @@ def synthesize_speech(
             speaking_rate=max(0.25, min(4.0, rate)),
             effects_profile_id=["handheld-class-device"],
         )
-        response = client.synthesize_speech(
-            input=synthesis_input,
-            voice=voice_params,
-            audio_config=audio_config,
-        )
-        return response.audio_content
+        delay = 0.4
+        for attempt in range(3):
+            try:
+                response = client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice_params,
+                    audio_config=audio_config,
+                )
+                return response.audio_content
+            except Exception as exc:
+                code = getattr(exc, "code", None)
+                text = str(exc).lower()
+                rate_limited = code == 429 or "429" in text or "resource exhausted" in text
+                if rate_limited and attempt < 2:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise
 
     if len(sentences) == 1:
         return synth_segment(sentences[0])
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(sentences))) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(sentences))) as executor:
         segment_wavs = list(executor.map(synth_segment, sentences))
 
     valid_wavs = [w for w in segment_wavs if w]

@@ -117,6 +117,9 @@ app = FastAPI(
     title="Sarvam API",
     description="Official notice explainer API",
     version="0.2.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS configuration
@@ -363,6 +366,15 @@ async def explain(
         if total_bytes > MAX_TOTAL_BYTES:
             return make_error_response(400, "file_too_large", lang)
 
+    from filecheck import classify_upload
+
+    for content, mime_type in file_data_list:
+        upload_problem = classify_upload(content, mime_type)
+        if upload_problem in ("empty", "bad_magic"):
+            return make_error_response(400, "file_cannot_open", lang)
+        if upload_problem == "pdf_unopenable":
+            return make_error_response(422, "file_cannot_open", lang)
+
     # Extract text from PDF if available, decrypting if encrypted
     pdf_pages_text = None
     if pdf_bytes:
@@ -566,15 +578,25 @@ async def explain(
                     is_calculated=False,
                 )
         else:
-            due_date = act.due_date
-            date_status = evaluate_date_status(due_date, is_calculated=False)
-            evidence = verify_evidence(
-                act.quote,
-                act.text,
-                act.page,
-                pdf_pages_text,
-                is_calculated=False,
-            )
+            from dates import infer_relative_deadline_from_quote
+
+            inferred = infer_relative_deadline_from_quote(act.quote, letter_date_iso)
+            if inferred is not None:
+                computed_dt, inferred_days, _is_past = inferred
+                due_date = computed_dt.isoformat()
+                date_status = "calculated"
+                evidence = "calculated"
+                act.deadline_days = inferred_days
+            else:
+                due_date = act.due_date
+                date_status = evaluate_date_status(due_date, is_calculated=False)
+                evidence = verify_evidence(
+                    act.quote,
+                    act.text,
+                    act.page,
+                    pdf_pages_text,
+                    is_calculated=False,
+                )
 
         explain_actions.append(
             ExplainAction(
