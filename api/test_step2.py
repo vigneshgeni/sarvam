@@ -2000,6 +2000,24 @@ def test_ask_endpoint(client):
         pdf_pages = args[4]
         assert pdf_pages == ["Policy Details: Sum Insured Rs. 500000"]
 
+
+def test_extract_text_endpoint(client):
+    from unittest.mock import patch
+
+    # 1. Image extraction calls reader.extract_text_document
+    with patch("reader.extract_text_document", return_value="Sample document extracted text"):
+        res = client.post(
+            "/api/extract-text",
+            files=[("files", ("notice.jpg", b"\xff\xd8\xff\xe0fakejpeg", "image/jpeg"))],
+        )
+        assert res.status_code == 200
+        assert res.json() == {"source_text": "Sample document extracted text"}
+
+    # 2. Empty / no files returns None
+    res = client.post("/api/extract-text")
+    assert res.status_code == 200
+    assert res.json() == {"source_text": None}
+
 def test_spoken_summary_digit_guard():
     from evidence import verify_spoken_summary_digit_guard
 

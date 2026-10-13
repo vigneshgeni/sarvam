@@ -35,6 +35,7 @@ from evidence import (
     extract_pdf_pages,
     filter_protected_terms,
     inspect_and_decrypt_pdf,
+    is_personal_field,
     process_contacts,
     process_places,
     verify_evidence,
@@ -624,6 +625,7 @@ async def explain(
                 quote=fact.quote,
                 page=fact.page,
                 evidence=evidence,
+                is_personal=is_personal_field(fact.text, fact.quote) or getattr(fact, "is_personal", False),
             )
         )
 
@@ -737,7 +739,7 @@ async def explain(
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
-        source_text=reader_result.source_text or ("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
+        source_text=("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
         protected_terms=filter_protected_terms(reader_result.protected_terms),
     )
 
@@ -1419,3 +1421,61 @@ async def ask(
         return make_error_response(503, "service_busy", lang)
     finally:
         GEMINI_SEMAPHORE.release()
+
+
+@app.post("/api/extract-text")
+async def extract_text(
+    files: Optional[List[UploadFile]] = File(None),
+    password: Optional[str] = Form(None),
+):
+    """
+    Separate background endpoint to extract verbatim source text from document files
+    without slowing down the main /api/explain response.
+    """
+    if not files:
+        return {"source_text": None}
+
+    pdf_texts = []
+    image_parts: List[Tuple[bytes, str]] = []
+
+    for file in files:
+        content = await file.read()
+        mime_type = file.content_type or ""
+        filename = (file.filename or "").lower()
+        if filename.endswith(".pdf") or mime_type == "application/pdf":
+            try:
+                content = inspect_and_decrypt_pdf(content, password)
+                pages = extract_pdf_pages(content)
+                if pages:
+                    pdf_texts.append("\n\n".join(pages))
+            except Exception:
+                pass
+        elif filename.endswith((".jpg", ".jpeg", ".png", ".webp")) or mime_type.startswith("image/"):
+            img_mime = "image/png" if filename.endswith(".png") or mime_type == "image/png" else "image/jpeg"
+            image_parts.append((content, img_mime))
+
+    if pdf_texts:
+        return {"source_text": "\n\n".join(pdf_texts)}
+
+    if not image_parts:
+        return {"source_text": None}
+
+    # Transcribe images in background with semaphore
+    try:
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=10.0)
+    except (asyncio.TimeoutError, TimeoutError):
+        return {"source_text": None}
+
+    try:
+        text = await run_in_threadpool(
+            reader.extract_text_document,
+            image_parts,
+            35.0,
+        )
+        return {"source_text": text}
+    except Exception as e:
+        logger.warning("extract-text background error: %s", e)
+        return {"source_text": None}
+    finally:
+        GEMINI_SEMAPHORE.release()
+

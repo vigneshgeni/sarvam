@@ -26,32 +26,58 @@ export const INSTITUTION_TERMS = [
   'virtual court',
 ]
 
+// Generic ID-like token regex: letters and digits joined by / or - (excludes dates YYYY-MM-DD or DD.MM.YYYY)
+export const ID_TOKEN_REGEX =
+  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g
+
 /**
  * Checks if a fact or detail is inherently personal (name, ID, address, phone, vehicle, account).
+ * Fixes structurally: any field that is an identifier, reference or ID number
+ * (pension ID, policy, claim, invoice, notice, challan numbers, property ID, IMEI,
+ * vehicle number, phone, account numbers) is marked personal and removed.
  */
-export function isPersonalField(text: string, quote?: string): boolean {
+export function isPersonalField(text: string, quote?: string, isPersonalExplicit?: boolean): boolean {
+  if (isPersonalExplicit === true) return true
   if (!text) return false
   const lower = (text + ' ' + (quote || '')).toLowerCase()
 
-  // Personal identifiers / roles
+  // 1. Personal identifiers / roles / beneficiary / customer
   if (
-    /\b(patient|customer|policyholder|owner|pensioner|insured|attendee)\b/i.test(lower) ||
-    /\b(dr\.|mr\.|mrs\.|ms\.|shri|smt\.|sri)\s+[A-Za-z]/i.test(text) ||
-    /\b(referred by|signed by|consultant|pathologist)\b/i.test(lower)
+    /\b(patient|customer|policyholder|owner|pensioner|insured|attendee|beneficiary)\b/i.test(lower) ||
+    /\b(dr\.|mr\.|mrs\.|ms\.|shri|smt\.|sri)\s+[A-Za-z\u0900-\u0D7F]/i.test(text) ||
+    /\b(referred by|signed by|consultant|pathologist|issued to|addressed to|beneficiary name|beneficiary is|name is)\b/i.test(lower)
   ) {
     return true
   }
 
-  // Personal ID numbers
+  // 2. Personal ID numbers / references across English & Indic languages
   if (
-    /\b(policy (?:no|number)|claim (?:no|number)|notice (?:no|number)|challan (?:no|number)|invoice (?:no|number)|order (?:no|number))\b/i.test(lower) ||
-    /\b(property id|ward\s*7|ward\s*\d+|vehicle|two-wheeler|imei|sample id|aadhaar|pan|account (?:no|number)|upi ref|utr)\b/i.test(lower) ||
-    /\b(clm-\d|sh\/ind\/|anm\/pt\/|an\/07\/|ech\/\d|sme\/\d|cd-\d|oap\/\d|tn\s*99\s*[a-z]{1,2}\s*\d{1,4})\b/i.test(lower)
+    /\b(pension|policy|claim|notice|challan|invoice|order|receipt|tax demand)\s*(?:id|no|number|num|ref|reference|code)?\b/i.test(lower) ||
+    /\b(property id|ward|door no|vehicle|two-wheeler|reg no|registration|imei|sample id|aadhaar|pan|account|upi|utr|chassis|engine)\b/i.test(lower) ||
+    /\b(ref:|reference:|id:|id is|id number)\b/i.test(lower) ||
+    // Indic terms for ID / reference / registration / beneficiary
+    /(पेंशन|पॉलिसी|दावा|चालान|पहचान|खाता|पंजीकरण|वाहन|लाभार्थी)/.test(text) ||
+    /(ஓய்வூதிய|பாலிசி|கோரிக்கை|விலாசம்|அடையாள|வங்கி கணக்கு|வாகன|பயனாளி)/.test(text) ||
+    /(పెన్షన్|పాలసీ|క్లెయిమ్|చలాన్|ఖాతా|రిజిస్ట్రేషన్|లబ్ధిదారు)/.test(text) ||
+    /(पेन्शन|पॉलिसी|दावा|नोंदणी|खाते)/.test(text)
   ) {
+    // If the field is an amount or date only, don't flag as personal unless it also contains an ID
+    const hasOnlyAmountOrDate =
+      /^(\s*(monthly pension|pension|amount|total|due|rebate|fine|fee|tax)\s*(amount|is|of)?\s*:?\s*(rs\.?|₹|\d|due date|date))/i.test(text) &&
+      !/(id|no|number|num|ref|oap|sh\/|clm|anm|ech|sme|cd-|smt|mr\.|mrs\.)/i.test(lower)
+    if (!hasOnlyAmountOrDate) {
+      return true
+    }
+  }
+
+  // 3. Layer 2 token check: if text contains an ID-like token (letters & digits joined by / or -)
+  if (ID_TOKEN_REGEX.test(text) || (quote && ID_TOKEN_REGEX.test(quote))) {
+    // Reset regex state after test
+    ID_TOKEN_REGEX.lastIndex = 0
     return true
   }
 
-  // Addresses and personal contact info
+  // 4. Addresses and personal contact info
   if (
     /\b(address|cross|jayanagar|ward|door no|pincode|bengaluru\s*560041)\b/i.test(lower) ||
     /\b(\+91|ph:|phone:|tel:|mobile:|0422-000-0000)\b/i.test(lower) ||
@@ -62,7 +88,7 @@ export function isPersonalField(text: string, quote?: string): boolean {
     return true
   }
 
-  // Long digit runs (8+ digits) that are not amounts
+  // 5. Long digit runs (8+ digits) that are not amounts
   const digitRuns = text.match(/\b\d{8,}\b/g)
   if (digitRuns && digitRuns.length > 0) {
     return true
@@ -74,33 +100,46 @@ export function isPersonalField(text: string, quote?: string): boolean {
 /**
  * Sanitizes prose text (titles, summaries, actions) by removing personal detail clauses
  * without leaving `[*]` or broken sentences.
+ * Adds a second layer that strips ID-like tokens (letters and digits joined by / or -) from free text.
  */
 export function sanitizeProse(text: string, protectedTerms: string[] = []): string {
   if (!text) return ''
   let cleaned = text
 
-  // 1. Remove specific clauses like "issued to ...", "referred by ...", "signed by ...", "addressed to ..."
+  // 1. Remove specific personal identity clauses
   cleaned = cleaned.replace(
-    /\b(?:issued to|addressed to|referred by|signed by)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?:,\s*MD)?(?=[.,;\n]|\s+for|\s+regarding|\s+by|\s+from|$)/gi,
+    /\b(?:issued to|addressed to|referred by|signed by|beneficiary is|beneficiary name is)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?:,\s*MD)?(?=[.,;\n]|\s+for|\s+regarding|\s+by|\s+from|$)/gi,
     ''
   )
   cleaned = cleaned.replace(
-    /\b(?:for policyholder|for patient|patient)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?=[.,;\n]|\s+with|\s+for|$)/gi,
+    /\b(?:regarding the Old Age Pension Scheme)\s+for\s+(?:(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)\s+)?[A-Z][A-Za-z.\s]+?(?=[.,;\n]|$)/gi,
+    'regarding the Old Age Pension Scheme'
+  )
+  cleaned = cleaned.replace(
+    /\b(?:for policyholder|for patient|patient|customer|beneficiary|for owner|owner)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?=[.,;\n]|\s+with|\s+for|$)/gi,
+    ''
+  )
+  cleaned = cleaned.replace(
+    /\b(?:for|to)\s+(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.|Sri)\s+[A-Z][A-Za-z.\s]+?(?=[.,;\n]|$)/gi,
     ''
   )
 
-  // 2. Remove ID phrases like "Ref: CLM-...", "Policy No: SH/...", "Invoice No: SME/...", "Notice No: ANM/...", "Property ID: ...", "Challan No: ...", "Vehicle ...", "IMEI ..."
+  // 2. Remove ID phrases with prefixes like "Ref: ...", "Pension ID: ...", "Policy No: ...", etc.
   cleaned = cleaned.replace(
-    /\b(?:Ref|Policy No|Notice No|Challan No|Invoice No|Property ID|Sample ID|IMEI|Vehicle No)[:\s]+[A-Z0-9/_-]+/gi,
+    /\b(?:pension id|policy no|claim no|notice no|challan no|invoice no|property id|sample id|imei|vehicle no|vehicle|ref|order no)[:\s]+[A-Za-z0-9/_-]+/gi,
     ''
   )
-  cleaned = cleaned.replace(
-    /\b(?:CLM-\d[A-Z0-9_-]*|SH\/IND\/[A-Z0-9/_-]+|ANM\/PT\/[A-Z0-9/_-]+|AN\/07\/[A-Z0-9/_-]+|ECH\/[A-Z0-9/_-]+|SME\/[A-Z0-9/_-]+|CD-\d[A-Z0-9_-]*|OAP\/[A-Z0-9/_-]+)\b/gi,
-    ''
-  )
-  cleaned = cleaned.replace(/\bTN\s*99\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
 
-  // 3. Known personal names from samples
+  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -) whatever their format
+  cleaned = cleaned.replace(
+    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g,
+    ''
+  )
+
+  // 4. Indian vehicle registration numbers (e.g. TN 99 AB 1234)
+  cleaned = cleaned.replace(/\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
+
+  // 5. Personal names from protectedTerms and samples
   const personalNames = [
     'Mr. Ravi Kumar',
     'Ravi Kumar',
@@ -110,6 +149,7 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     'Dr. S. Rao',
     'Meena Subramanian',
     'Kamala Devi',
+    'Smt. Kamala Devi',
     'Suresh Raman',
   ]
   for (const name of personalNames) {
@@ -117,7 +157,6 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '')
   }
 
-  // 4. Also check protectedTerms that look like personal names or IDs (exclude business names)
   for (const term of protectedTerms) {
     if (!term || term.trim().length < 2) continue
     const lower = term.toLowerCase().trim()
@@ -128,7 +167,7 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     }
   }
 
-  // 5. Remove residential addresses, phone numbers, IMEI, pincodes
+  // 6. Remove residential addresses, phone numbers, IMEI, pincodes
   cleaned = cleaned.replace(/No\.\s*14,\s*3rd\s*Cross,\s*Jayanagar,\s*Bengaluru\s*560041/gi, '')
   cleaned = cleaned.replace(/\b560041\b/g, '')
   cleaned = cleaned.replace(/0422-000-0000/g, '')
@@ -136,7 +175,11 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
   cleaned = cleaned.replace(/(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/g, '')
   cleaned = cleaned.replace(/\b\d{2}\s*Y\s*\/\s*[MF]\b/gi, '')
 
-  // 6. Clean up any accidental [*] or [***] and multiple punctuation/whitespace
+  // 7. Cleanup dangling prepositions and titles left at end of sentences or before punctuation
+  cleaned = cleaned.replace(/\b(?:for|to|of|by|with)\s*(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)?\s*([.,;]|\s*$)/gi, '$1')
+  cleaned = cleaned.replace(/\b(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)(?=[.,;]|\s*$)/gi, '')
+
+  // 8. Clean up any accidental [*] or [***] and multiple punctuation/whitespace
   cleaned = cleaned.replace(/\[\*{1,}\]/g, '')
   cleaned = cleaned.replace(/\s*—\s*—\s*/g, ' — ')
   cleaned = cleaned.replace(/\s*,\s*,+/g, ',')
@@ -219,7 +262,13 @@ export function buildSharedText(
   // 5. Key Facts (filtered when hidePersonal is true)
   if (result.facts && result.facts.length > 0) {
     const factsList = hidePersonal
-      ? result.facts.filter((fact) => !isPersonalField(fact.text, fact.quote))
+      ? result.facts
+          .filter((fact) => !isPersonalField(fact.text, fact.quote, (fact as any).is_personal))
+          .map((fact) => ({
+            ...fact,
+            text: sanitizeProse(fact.text, result.protected_terms || []),
+          }))
+          .filter((fact) => fact.text.trim().length > 0)
       : result.facts
 
     if (factsList.length > 0) {

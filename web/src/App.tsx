@@ -21,7 +21,7 @@ import {
   isHeicFile,
   processPhotosSequentially,
 } from './utils/image'
-import { explainDocument, translateDocument, ExplainApiError } from './api'
+import { explainDocument, translateDocument, ExplainApiError, extractDocumentText } from './api'
 import {
   getRecentResults,
   saveRecentResult,
@@ -536,13 +536,13 @@ export default function App() {
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
       navigateToScreen('result')
 
-      if (isSaveRecentEnabled()) {
-        const fileCount = filesToExplain.length
-        const displayTitle =
-          fileCount > 1
-            ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
-            : result.title || filesToExplain[0]?.name || 'Document'
+      const fileCount = filesToExplain.length
+      const displayTitle =
+        fileCount > 1
+          ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+          : result.title || filesToExplain[0]?.name || 'Document'
 
+      if (isSaveRecentEnabled()) {
         await saveRecentResult({
           id: resultId,
           title: displayTitle,
@@ -553,6 +553,26 @@ export default function App() {
         })
         await saveOriginalFiles(resultId, filesToExplain)
         await loadRecents()
+      }
+
+      // Background extract text for image documents without blocking explanation
+      if (!result.source_text && filesToExplain.length > 0) {
+        extractDocumentText(filesToExplain, password).then(async (extracted) => {
+          if (extracted) {
+            result.source_text = extracted
+            setResultData((prev) => (prev ? { ...prev, source_text: extracted } : prev))
+            if (resultId) {
+              await saveRecentResult({
+                id: resultId,
+                title: displayTitle,
+                fileCount,
+                fileNames: filesToExplain.map((f) => f.name),
+                lang: result.language || lang,
+                result,
+              })
+            }
+          }
+        }).catch(() => {})
       }
     } catch (err: unknown) {
 

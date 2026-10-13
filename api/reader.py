@@ -44,13 +44,13 @@ TRANSLATE_THINKING: int = 0
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
 TRANSLATE_HEDGE_DELAY: float = float(os.environ.get("TRANSLATE_HEDGE_DELAY", 7.0))
 
-EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 60.0))
-EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 100.0))
-EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 25.0))
+EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 38.0))
+EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.0))
+EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 20.0))
 
 HEDGE_SEMAPHORE_TIMEOUT: float = float(os.environ.get("HEDGE_SEMAPHORE_TIMEOUT", 2.0))
-REQUEST_DEADLINE: float = 110.0  # seconds
-TOTAL_RETRY_BUDGET: float = 100.0  # seconds
+REQUEST_DEADLINE: float = 95.0  # seconds
+TOTAL_RETRY_BUDGET: float = 85.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
 
 
@@ -378,6 +378,7 @@ def call_gemini_with_retry(
                 elif isinstance(config, dict):
                     config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
 
+        attempt_start = time.time()
         try:
             resp = client.models.generate_content(
                 model=model,
@@ -385,11 +386,18 @@ def call_gemini_with_retry(
                 config=config,
             )
             elapsed = time.time() - start_time
+            attempt_dur = time.time() - attempt_start
             usage = getattr(resp, "usage_metadata", None)
             input_tokens = (getattr(usage, "prompt_token_count", 0) or 0) if usage else 0
             output_tokens = (getattr(usage, "candidates_token_count", 0) or 0) if usage else 0
             thinking_tokens = (getattr(usage, "thoughts_token_count", 0) or 0) if usage else 0
 
+            logger.info(
+                "gemini_step: endpoint=%s, attempt=%d, duration=%.2f, status=200",
+                endpoint,
+                attempt + 1,
+                attempt_dur,
+            )
             logger.info(
                 "gemini_call: endpoint=%s, input_tokens=%d, output_tokens=%d, thinking_tokens=%d, attempts=%d, seconds=%.2f, status=200",
                 endpoint,
@@ -402,8 +410,17 @@ def call_gemini_with_retry(
             return resp
         except Exception as e:
             elapsed = time.time() - start_time
+            attempt_dur = time.time() - attempt_start
             now = start_time + elapsed
             code = getattr(e, "code", None) or getattr(e, "status_code", None) or 503
+
+            logger.info(
+                "gemini_step: endpoint=%s, attempt=%d, duration=%.2f, status=%s",
+                endpoint,
+                attempt + 1,
+                attempt_dur,
+                code,
+            )
 
             if isinstance(e, GeminiTimeoutError) or (now >= deadline - 1.0):
                 logger.info(
@@ -732,17 +749,22 @@ def ask_document_single_attempt(
     else:
         ask_res = AskResponse.model_validate_json(response.text)
 
-    # Number guard: verify numbers in answer appear in doc pages, result_json or question
+    # Number guard: verify numbers in answer appear in doc pages, result_json, quote, or question
     full_context = question + " " + result_json
     if pdf_pages_text:
         full_context += " " + " ".join(pdf_pages_text)
+    if ask_res.quote:
+        full_context += " " + ask_res.quote
 
     context_digits = set(extract_digit_sequences(full_context))
     answer_digits = extract_digit_sequences(ask_res.answer)
     for d in answer_digits:
         stripped = d.lstrip("0") or "0"
         if d not in context_digits and stripped not in context_digits:
-            raise AskUnverifiedError(f"Unverified number {d} in answer")
+            if files_data or not pdf_pages_text:
+                ask_res.evidence = "check_original"
+            else:
+                raise AskUnverifiedError(f"Unverified number {d} in answer")
 
     # Evidence assignment
     if ask_res.not_found:
@@ -928,3 +950,46 @@ async def execute_with_hedge(
     finally:
         if hedge_acquired:
             semaphore.release()
+
+
+def extract_text_document(
+    files_data: List[Tuple[bytes, str]],
+    timeout: float = 35.0,
+) -> Optional[str]:
+    """
+    Extracts raw verbatim document text without structured schema overhead.
+    Used by background extraction for grounding Ask without slowing down /api/explain.
+    """
+    if not files_data:
+        return None
+
+    client = get_client()
+    contents = []
+    for data, mime_type in files_data:
+        contents.append(types.Part.from_bytes(data=data, mime_type=mime_type))
+
+    prompt = (
+        "Transcribe all printed and handwritten text in this document verbatim in its original script. "
+        "Do not summarize, explain, or format as JSON. Return only the verbatim document text."
+    )
+    contents.append(prompt)
+
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        http_options=types.HttpOptions(timeout=max(1, int(timeout * 1000))),
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+
+    try:
+        resp = client.models.generate_content(
+            model=MODEL_ID,
+            contents=contents,
+            config=config,
+        )
+        if resp and resp.text:
+            return resp.text.strip()
+        return None
+    except Exception as e:
+        logger.warning("extract_text_document failed: %s", e)
+        return None
+

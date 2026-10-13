@@ -52,7 +52,7 @@ export async function explainDocument(
     const timeoutId = setTimeout(() => {
       timedOut = true
       controller.abort('timeout')
-    }, 180_000)
+    }, 90_000)
 
     const onExternalAbort = () => {
       controller.abort(externalSignal?.reason)
@@ -79,7 +79,7 @@ export async function explainDocument(
       }
       if (timedOut || (err instanceof DOMException && err.name === 'AbortError' && timedOut)) {
         throw new ExplainApiError(
-          'Request timed out after 180 seconds.',
+          'Request timed out after 90 seconds.',
           getLocalFallbackError(lang, 'timeout'),
           504
         )
@@ -348,3 +348,50 @@ export async function speakText(params: {
     }
   }
 }
+
+/**
+ * Separate background endpoint to extract verbatim source text from document files
+ * without slowing down the main explain call.
+ */
+export async function extractDocumentText(
+  files: File[],
+  password?: string,
+  signal?: AbortSignal
+): Promise<string | null> {
+  if (!files || files.length === 0) return null
+
+  const formData = new FormData()
+  for (const f of files) {
+    formData.append('files', f)
+  }
+  if (password) {
+    formData.append('password', password)
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort('timeout'), 40_000)
+
+  const onAbort = () => controller.abort(signal?.reason)
+  if (signal) {
+    signal.addEventListener('abort', onAbort, { once: true })
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/extract-text`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.source_text || null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeoutId)
+    if (signal) {
+      signal.removeEventListener('abort', onAbort)
+    }
+  }
+}
+

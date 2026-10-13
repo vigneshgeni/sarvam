@@ -737,3 +737,50 @@ def inspect_and_decrypt_pdf(pdf_bytes: bytes, password: Optional[str] = None) ->
     out_buf = io.BytesIO()
     writer.write(out_buf)
     return out_buf.getvalue()
+
+
+ID_TOKEN_REGEX = re.compile(
+    r"\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b"
+)
+
+
+def is_personal_field(text: str, quote: str = "") -> bool:
+    if not text:
+        return False
+    combined = (text + " " + (quote or "")).lower()
+
+    # 1. Personal identifiers / roles / names
+    if re.search(r"\b(patient|customer|policyholder|owner|pensioner|insured|attendee|beneficiary)\b", combined):
+        return True
+    if re.search(r"\b(dr\.|mr\.|mrs\.|ms\.|shri|smt\.|sri)\s+[A-Za-z\u0900-\u0D7F]", text, re.IGNORECASE):
+        return True
+    if re.search(r"\b(referred by|signed by|consultant|pathologist|issued to|addressed to|beneficiary name|beneficiary is|name is)\b", combined):
+        return True
+
+    # 2. Personal ID numbers / references across English & Indic languages
+    if (
+        re.search(r"\b(pension|policy|claim|notice|challan|invoice|order|receipt|tax demand)\s*(?:id|no|number|num|ref|reference|code)?\b", combined)
+        or re.search(r"\b(property id|ward|door no|vehicle|two-wheeler|reg no|registration|imei|sample id|aadhaar|pan|account|upi|utr|chassis|engine)\b", combined)
+        or re.search(r"\b(ref:|reference:|id:|id is|id number)\b", combined)
+        or re.search(r"(पेंशन|पॉलिसी|दावा|चालान|पहचान|खाता|पंजीकरण|वाहन|लाभार्थी)", text)
+        or re.search(r"(ஓய்வூதிய|பாலிசி|கோரிக்கை|விலாசம்|அடையாள|வங்கி கணக்கு|வாகன|பயனாளி)", text)
+        or re.search(r"(పెన్షన్|పాలసీ|క్లెయిమ్|చలాన్|ఖాతా|రిజిస్ట్రేషన్|లబ్ధిదారు)", text)
+        or re.search(r"(पेन्शन|पॉलिसी|दावा|नोंदणी|खाते)", text)
+    ):
+        has_only_amount_or_date = (
+            re.search(r"^(\s*(monthly pension|pension|amount|total|due|rebate|fine|fee|tax)\s*(amount|is|of)?\s*:?\s*(rs\.?|₹|\d|due date|date))", combined)
+            and not re.search(r"(id|no|number|num|ref|oap|sh/|clm|anm|ech|sme|cd-|smt|mr\.|mrs\.)", combined)
+        )
+        if not has_only_amount_or_date:
+            return True
+
+    # 3. Layer 2 ID-like token regex (letters & digits joined by / or -)
+    if ID_TOKEN_REGEX.search(text) or (quote and ID_TOKEN_REGEX.search(quote)):
+        return True
+
+    # 4. Long digit sequences (8+ digits, phone numbers, etc.)
+    if re.search(r"\b\d{8,}\b", text):
+        return True
+
+    return False
+
