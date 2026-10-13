@@ -137,10 +137,20 @@ export default function ReadingScreen({
 }: ReadingScreenProps) {
   const [step, setStep] = useState<number>(0)
   const [takingLonger, setTakingLonger] = useState<boolean>(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
 
   const t = getDictionary(lang)
   const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[0]
   const nativeLangName = currentLangObj.label || langName
+
+  // Reset progress state when error clears (e.g. on retry) or document changes
+  useEffect(() => {
+    if (!error) {
+      setStep(0)
+      setTakingLonger(false)
+      setElapsedSeconds(0)
+    }
+  }, [error, files, lang])
 
   // Stepper progress simulation while waiting
   useEffect(() => {
@@ -160,15 +170,22 @@ export default function ReadingScreen({
     }
   }, [error, files, lang])
 
-  // 20-second delay notice per WEB-5
+  // Track elapsed time and delay notices per WEB-5 & live photo processing
   useEffect(() => {
     if (error) return
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => s + 1)
+    }, 1000)
 
     const tLonger = setTimeout(() => {
       setTakingLonger(true)
     }, 20000)
 
-    return () => clearTimeout(tLonger)
+    return () => {
+      clearInterval(interval)
+      clearTimeout(tLonger)
+    }
   }, [error, files, lang])
 
   const fileCount = files.length
@@ -201,6 +218,25 @@ export default function ReadingScreen({
   ]
 
   const showTakingLonger = !error && takingLonger
+
+  const progressiveNoticeText = (() => {
+    if (elapsedSeconds >= 75) {
+      return (
+        t.reassuranceFinalizing ||
+        'Almost ready, finalizing your explanation...'
+      )
+    }
+    if (elapsedSeconds >= 45) {
+      return (
+        t.reassuranceAnalyzing ||
+        'Still analyzing text and details... Please wait a moment'
+      )
+    }
+    return (
+      t.reassuranceText ||
+      'Still reading... Documents with complex tables or multiple pages take a little longer'
+    )
+  })()
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 gap-7 animate-card-in">
@@ -290,7 +326,7 @@ export default function ReadingScreen({
         </div>
       )}
 
-      {/* 20s Reassurance Notice (WEB-5) */}
+      {/* Honest Progressive Reassurance Notice */}
       {showTakingLonger && (
         <div className="w-full bg-[#FBF7EF] border border-[#F1EBDD] rounded-card p-4 flex items-start gap-3 text-ink/80 animate-card-in">
           <svg
@@ -302,15 +338,19 @@ export default function ReadingScreen({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="shrink-0 mt-0.5 text-muted"
+            className="shrink-0 mt-0.5 text-[#B45309]"
           >
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          <span className="text-[13.5px] leading-relaxed">
-            {t.reassuranceText ||
-              'Still reading... Documents with complex tables or multiple pages take a little longer'}
-          </span>
+          <div className="flex-1 flex flex-col gap-1">
+            <span className="text-[13.5px] leading-relaxed font-medium">
+              {progressiveNoticeText}
+            </span>
+            <span className="text-[12px] text-muted tabular-nums">
+              {elapsedSeconds}s · {t.processingSecurely || 'Processing securely'}
+            </span>
+          </div>
         </div>
       )}
 

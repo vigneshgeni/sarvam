@@ -137,3 +137,34 @@ test('splitIntoUtteranceChunks - Leaves short sentences intact and splits long o
   assert.equal(chunks.length, 1)
   assert.equal(chunks[0], 'Out of Rs. 48,500, they approved Rs. 31,200.')
 })
+
+test('audioBlobCache - keeps fetched audio in memory for instant replay', async () => {
+  const cache = new Map()
+  let fetchCallCount = 0
+
+  const fetchAudioWithCache = async (key, fetchFn) => {
+    if (cache.has(key)) {
+      return { blob: cache.get(key), fromCache: true }
+    }
+    const blob = await fetchFn()
+    cache.set(key, blob)
+    return { blob, fromCache: false }
+  }
+
+  const mockBlob = { size: 1024, type: 'audio/wav' }
+  const fakeFetch = async () => {
+    fetchCallCount++
+    return mockBlob
+  }
+
+  const key = 'doc1-full-ta-female'
+  const first = await fetchAudioWithCache(key, fakeFetch)
+  assert.equal(first.fromCache, false)
+  assert.equal(fetchCallCount, 1)
+
+  const replay = await fetchAudioWithCache(key, fakeFetch)
+  assert.equal(replay.fromCache, true)
+  assert.equal(replay.blob, mockBlob)
+  assert.equal(fetchCallCount, 1) // Instant replay with 0 network calls
+})
+

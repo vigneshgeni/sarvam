@@ -233,6 +233,8 @@
   "copyText": "পাঠ্য কপি করুন",
   "shareNative": "শেয়ার করুন...",
   "reassuranceText": "আপনার নথি Google Cloud-এ নিরাপদে পড়া হয় এবং সংরক্ষণ করা হয় না।",
+  "reassuranceAnalyzing": "নথির তথ্য বিশ্লেষণ করা হচ্ছে... অনুগ্রহ করে একটু অপেক্ষা করুন",
+  "reassuranceFinalizing": "প্রায় প্রস্তুত, ব্যাখ্যাটি চূড়ান্ত করা হচ্ছে...",
   "autoDetect": "স্বয়ংক্রিয় শনাক্ত",
   "atAGlance": "এক নজরে",
   "showAll": "সব দেখুন",

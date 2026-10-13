@@ -29,7 +29,7 @@ export class ExplainApiError extends Error {
 /**
  * Sends files, lang, and optional password to /api/explain as multipart/form-data.
  * Concurrency limited to at most 2 in-flight calls via explainQueue.
- * Uses AbortController with a 120 s timeout.
+ * Uses AbortController with a 180 s timeout.
  */
 export async function explainDocument(
   files: File[],
@@ -52,7 +52,7 @@ export async function explainDocument(
     const timeoutId = setTimeout(() => {
       timedOut = true
       controller.abort('timeout')
-    }, 120_000)
+    }, 180_000)
 
     const onExternalAbort = () => {
       controller.abort(externalSignal?.reason)
@@ -79,7 +79,7 @@ export async function explainDocument(
       }
       if (timedOut || (err instanceof DOMException && err.name === 'AbortError' && timedOut)) {
         throw new ExplainApiError(
-          'Request timed out after 120 seconds.',
+          'Request timed out after 180 seconds.',
           getLocalFallbackError(lang, 'timeout'),
           504
         )

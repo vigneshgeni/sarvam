@@ -31,6 +31,9 @@ interface ListenSheetProps {
 const SILENT_WAV_URI =
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
 
+// In-memory cache for synthesized audio Blobs across the entire session: cacheKey -> Blob
+export const audioBlobCache = new Map<string, Blob>()
+
 const BAR_COUNT = 35
 const RESTING_BARS = Array.from({ length: BAR_COUNT }, (_, index) =>
   8 + Math.round((Math.sin(index * 1.7) + 1) * 2)
@@ -75,6 +78,7 @@ export default function ListenSheet({
 
   // Sentences for live captions
   const [sentences, setSentences] = useState<string[]>([])
+  const sentencesRef = useRef<string[]>([])
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(0)
 
   // Audio elements & Web Audio refs
@@ -84,7 +88,6 @@ export default function ListenSheet({
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const currentBlobUrlRef = useRef<string | null>(null)
-  const sectionBlobsRef = useRef<Map<string, Blob>>(new Map())
   const activeControllerRef = useRef<AbortController | null>(null)
   const visualizerActiveRef = useRef(false)
   const playbackSessionRef = useRef(0)
@@ -135,21 +138,32 @@ export default function ListenSheet({
     stopAllAudio()
   }, [concreteLang])
 
-  // Prepare script sentences when result, mode, or concreteLang changes
+  // Prepare script sentences and start synthesis as soon as Listen sheet opens or mode/lang/result changes
   useEffect(() => {
     const rawScript =
       mode === 'quick'
         ? buildQuickSummaryScript(result, concreteLang)
         : buildSpokenText(result)
     const split = splitIntoSentences(rawScript)
-    setSentences(split.length > 0 ? split : [rawScript])
+    const scriptSentences = split.length > 0 ? split : [rawScript]
+    setSentences(scriptSentences)
+    sentencesRef.current = scriptSentences
     setActiveSentenceIndex(0)
     setCurrentTime(0)
     setDuration(0)
     setPlaybackProgress(0)
     setSeekPreview(null)
     stopAllAudio()
-  }, [result, mode, concreteLang])
+
+    if (isOpen && concreteLang !== 'or') {
+      setIsBuffering(true)
+      if (audioElRef.current) {
+        audioElRef.current.src = SILENT_WAV_URI
+        audioElRef.current.play().catch(() => {})
+      }
+      startPlaybackSession(0)
+    }
+  }, [result, mode, concreteLang, isOpen])
 
   // Stop all audio helper
   const stopAllAudio = () => {
@@ -271,19 +285,20 @@ export default function ListenSheet({
   }
 
   // Compute which sentence is playing based on progress
-  const updateSentenceFromTime = (cur: number, total: number, sList: string[]) => {
-    if (!sList.length || total <= 0) return
+  const updateSentenceFromTime = (cur: number, total: number, sList?: string[]) => {
+    const list = sList && sList.length ? sList : sentencesRef.current
+    if (!list.length || total <= 0) return
     const ratio = Math.min(0.999, Math.max(0, cur / total))
-    const totalChars = sList.reduce((acc, s) => acc + s.length, 0) || 1
+    const totalChars = list.reduce((acc, s) => acc + s.length, 0) || 1
     let accumulated = 0
-    for (let i = 0; i < sList.length; i++) {
-      accumulated += sList[i].length
+    for (let i = 0; i < list.length; i++) {
+      accumulated += list[i].length
       if (ratio <= accumulated / totalChars) {
         setActiveSentenceIndex(i)
         return
       }
     }
-    setActiveSentenceIndex(Math.max(0, sList.length - 1))
+    setActiveSentenceIndex(Math.max(0, list.length - 1))
   }
 
   // Setup MediaSession API (Addendum Task 4.3)
@@ -353,15 +368,16 @@ export default function ListenSheet({
         ? buildQuickSummaryScript(result, concreteLang)
         : buildSpokenText(result)
     const speechScript = prepareTextForSpeech(rawScript, concreteLang)
-    const cacheKey = `${mode}-${concreteLang}-${selectedGenderRef.current}`
+    const docId = result.title || result.report_title || 'doc'
+    const cacheKey = `${docId}-${mode}-${concreteLang}-${selectedGenderRef.current}`
 
     const controller = new AbortController()
     activeControllerRef.current = controller
 
     try {
       let blob: Blob
-      if (sectionBlobsRef.current.has(cacheKey)) {
-        blob = sectionBlobsRef.current.get(cacheKey)!
+      if (audioBlobCache.has(cacheKey)) {
+        blob = audioBlobCache.get(cacheKey)!
       } else {
         blob = await speakText({
           text: speechScript,
@@ -371,7 +387,7 @@ export default function ListenSheet({
           signal: controller.signal,
         })
         if (controller.signal.aborted || playbackSessionRef.current !== session) return
-        sectionBlobsRef.current.set(cacheKey, blob)
+        audioBlobCache.set(cacheKey, blob)
       }
 
       setEngine('server')
@@ -408,7 +424,7 @@ export default function ListenSheet({
         if (Number.isFinite(dur) && dur > 0) {
           setDuration(dur)
           setPlaybackProgress(cur / dur)
-          updateSentenceFromTime(cur, dur, sentences)
+          updateSentenceFromTime(cur, dur, sentencesRef.current)
           updateMediaPositionState(cur, dur, audio.playbackRate)
         }
       }
@@ -627,7 +643,7 @@ export default function ListenSheet({
 
   const handleGenderToggle = (g: 'female' | 'male') => {
     if (g === gender) return
-    const hadPlayback = isPlaying || currentBlobUrlRef.current !== null
+    const hadPlayback = isPlaying || currentBlobUrlRef.current !== null || isBuffering
     setGender(g)
     selectedGenderRef.current = g
     try {
@@ -638,7 +654,7 @@ export default function ListenSheet({
     setPlaybackProgress(0)
     setSeekPreview(null)
     setActiveSentenceIndex(0)
-    if (hadPlayback) {
+    if (hadPlayback && isOpen && concreteLang !== 'or') {
       startPlaybackSession(0)
     }
   }

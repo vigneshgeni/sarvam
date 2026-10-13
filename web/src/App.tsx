@@ -111,6 +111,7 @@ export default function App() {
 
   // Session refs
   const activeFilesRef = useRef<File[]>([])
+  const retryActionRef = useRef<(() => void) | null>(null)
   const currentResultIdRef = useRef<string | null>(null)
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
@@ -398,6 +399,7 @@ export default function App() {
     const targetLang = resolveLang(lang)
 
     activeFilesRef.current = filesToExplain
+    retryActionRef.current = () => runExplain(filesToExplain, lang, password)
     setActiveFiles(filesToExplain)
     setCurrentError(null)
     setTranslateError(null)
@@ -726,20 +728,13 @@ export default function App() {
     if (stagedFiles.length === 0) return
     setTrayErrorMessage(null)
 
-    const isAllPhotos = stagedFiles.every((s) => !s.name.toLowerCase().endsWith('.pdf'))
-    if (isAllPhotos) {
-      try {
-        const rawFiles = stagedFiles.map((s) => s.file)
-        const processed = await processPhotosSequentially(rawFiles)
-        navigateToScreen('reading')
-        await runExplain(processed, selectedLang)
-      } catch (err: unknown) {
-        console.warn('Photo processing error:', err)
-      }
-    } else {
+    try {
       const rawFiles = stagedFiles.map((s) => s.file)
+      const processed = await processPhotosSequentially(rawFiles)
       navigateToScreen('reading')
-      await runExplain(rawFiles, selectedLang)
+      await runExplain(processed, selectedLang)
+    } catch (err: unknown) {
+      console.warn('Tray explain error:', err)
     }
   }
 
@@ -759,6 +754,7 @@ export default function App() {
 
   // Handle "Try a sample" items (WEB-14)
   const handleSampleClick = async (sampleFilename: string) => {
+    retryActionRef.current = () => handleSampleClick(sampleFilename)
     try {
       setCurrentError(null)
       const res = await fetch(`/samples/${sampleFilename}`)
@@ -1539,7 +1535,9 @@ export default function App() {
             error={currentError}
             multiReportProgress={multiReportProgress}
             onRetry={() => {
-              if (activeFilesRef.current.length > 0) {
+              if (retryActionRef.current) {
+                retryActionRef.current()
+              } else if (activeFilesRef.current.length > 0) {
                 runExplain(activeFilesRef.current, selectedLang)
               }
             }}

@@ -122,6 +122,8 @@
   "close": "Close",
   "shareNative": "Share via app",
   "reassuranceText": "Still reading... Documents with complex tables or multiple pages take a little longer",
+  "reassuranceAnalyzing": "Still analyzing text and details... Please wait a moment",
+  "reassuranceFinalizing": "Almost ready, finalizing your explanation...",
   "autoDetect": "Auto (Detect)",
   "docInLanguage": "Document is in {lang}",
   "reReadInLang": "Re-read in {lang} (details may differ slightly)",
