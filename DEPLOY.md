@@ -133,7 +133,7 @@ chmod +x scripts/smoke.sh
 scripts/smoke.sh "$API_URL" "https://sarvam-510715.web.app"
 ```
 
-Expect four `PASS` lines: `health`, `cors`, `explain`, `speak`. The script does not print document text.
+Expect four `PASS` lines: `health`, `cors`, `explain`, `speak`. The script does not print document text or audio content. `/api/speak` may return `audio/wav` or `audio/mpeg`.
 
 Then open `https://sarvam-510715.web.app` and run the built-in samples. Each should reach the result screen. Confirm `Cache-Control: no-cache` on `/index.html` and `/sw.js`.
 
