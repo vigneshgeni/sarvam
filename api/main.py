@@ -19,6 +19,7 @@ from dates import (
     compute_relative_deadline,
     evaluate_date_status,
     parse_date,
+    resolve_relative_deadline,
 )
 from errors import (
     AskUnverifiedError,
@@ -577,17 +578,20 @@ async def explain(
                 pdf_pages_text,
                 is_calculated=False,
             )
-        elif act.deadline_days is not None:
-            computed_dt = compute_relative_deadline(
-                act.deadline_days, letter_date_iso, act.deadline_anchor
+        else:
+            relation, computed_dt, inferred_days = resolve_relative_deadline(
+                act.quote, act.text, letter_date_iso
             )
-            if computed_dt:
+            if relation == "computed" and computed_dt is not None:
                 due_date = computed_dt.isoformat()
                 date_status = "calculated"
                 evidence = "calculated"
-            else:
-                due_date = act.due_date
-                date_status = evaluate_date_status(due_date, is_calculated=False)
+                act.deadline_days = inferred_days
+            elif relation == "drop":
+                # A relative deadline the code did not compute is never Calculated.
+                due_date = None
+                date_status = "none"
+                act.deadline_days = None
                 evidence = verify_evidence(
                     act.quote,
                     act.text,
@@ -595,16 +599,24 @@ async def explain(
                     pdf_pages_text,
                     is_calculated=False,
                 )
-        else:
-            from dates import infer_relative_deadline_from_quote
-
-            inferred = infer_relative_deadline_from_quote(act.quote, letter_date_iso)
-            if inferred is not None:
-                computed_dt, inferred_days, _is_past = inferred
-                due_date = computed_dt.isoformat()
-                date_status = "calculated"
-                evidence = "calculated"
-                act.deadline_days = inferred_days
+            elif act.deadline_days is not None:
+                computed_dt = compute_relative_deadline(
+                    act.deadline_days, letter_date_iso, act.deadline_anchor
+                )
+                if computed_dt:
+                    due_date = computed_dt.isoformat()
+                    date_status = "calculated"
+                    evidence = "calculated"
+                else:
+                    due_date = act.due_date
+                    date_status = evaluate_date_status(due_date, is_calculated=False)
+                    evidence = verify_evidence(
+                        act.quote,
+                        act.text,
+                        act.page,
+                        pdf_pages_text,
+                        is_calculated=False,
+                    )
             else:
                 due_date = act.due_date
                 date_status = evaluate_date_status(due_date, is_calculated=False)

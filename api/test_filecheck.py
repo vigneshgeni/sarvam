@@ -274,3 +274,158 @@ def test_encrypted_insurance_pdf_reaches_password_logic(client, caplog):
     _assert_secret_absent(caplog.text)
     explain_hits = [len(v) for k, v in IP_REQUESTS.items() if k[0] == "explain"]
     assert explain_hits and explain_hits[0] >= 4
+
+
+# Invoice date 08 Oct 2026. "Within 48 hours" is 10 Oct 2026.
+# The model instead returns today + 2 days (15 Oct) and a wrong day count.
+_RELATIVE_QUOTES = {
+    "en": "Report a defect within 48 hours of purchase.",
+    "hi": "खरीद के 48 घंटे के भीतर दोष बताएं।",
+    "ta": "வாங்கிய 48 மணி நேரத்திற்குள் குறை தெரிவிக்கவும்.",
+    "te": "కొనుగోలు చేసిన 48 గంటలలోపు లోపం తెలియజేయండి.",
+    "ml": "വാങ്ങിയ 48 മണിക്കൂറിനുള്ളിൽ പറയുക.",
+    "kn": "ಖರೀದಿಸಿದ 48 ಗಂಟೆಗಳ ಒಳಗೆ ತಿಳಿಸಿ.",
+    "mr": "खरेदीच्या 48 तासांच्या आत कळवा.",
+    "bn": "কেনার 48 ঘণ্টার মধ্যে জানান।",
+    "or": "କିଣିବାର 48 ଘଣ୍ଟା ମଧ୍ୟରେ ଜଣାନ୍ତୁ।",
+}
+
+
+def test_relative_deadline_every_language_overrides_today(client):
+    for lang, quote in _RELATIVE_QUOTES.items():
+        IP_REQUESTS.clear()
+        with patch("main.read_document") as mock_read:
+            mock_read.return_value = ReaderResponse(
+                doc_type="receipt",
+                title="Phone invoice",
+                language=lang,
+                letter_date="2026-10-08",
+                summary=["Invoice for a phone."],
+                actions=[
+                    ReaderAction(
+                        text=quote,
+                        due_date="2026-10-15",
+                        deadline_days=7,
+                        deadline_anchor="letter_date",
+                        quote=quote,
+                        page=1,
+                    )
+                ],
+            )
+            res = client.post(
+                "/api/explain",
+                files=[("files", ("invoice.jpg", JPEG_BYTES, "image/jpeg"))],
+                data={"lang": lang},
+            )
+        assert res.status_code == 200, lang
+        action = res.json()["actions"][0]
+        assert action["due_date"] == "2026-10-10", lang
+        assert action["date_status"] == "calculated", lang
+        assert action["evidence"] == "calculated", lang
+        assert action["deadline_days"] == 2, lang
+        assert action["text"] == quote
+
+
+def test_relative_deadline_drops_unparsed_and_keeps_matched_date(client):
+    IP_REQUESTS.clear()
+    unparsed = "खरीद के कई घंटे के भीतर बताएं।"
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="receipt",
+            title="Phone invoice",
+            language="hi",
+            letter_date="2026-10-13",
+            summary=["Invoice for a phone."],
+            actions=[
+                ReaderAction(
+                    text="दोष बताएं।",
+                    due_date="2026-10-15",
+                    deadline_days=2,
+                    deadline_anchor="letter_date",
+                    quote=unparsed,
+                    page=1,
+                )
+            ],
+        )
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("invoice.jpg", JPEG_BYTES, "image/jpeg"))],
+            data={"lang": "hi"},
+        )
+    assert res.status_code == 200
+    action = res.json()["actions"][0]
+    assert action["due_date"] is None
+    assert action["date_status"] != "calculated"
+    assert action["evidence"] != "calculated"
+    assert action["text"] == "दोष बताएं।"
+
+    IP_REQUESTS.clear()
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="receipt",
+            title="Phone invoice",
+            language="hi",
+            letter_date=None,
+            summary=["Invoice for a phone."],
+            actions=[
+                ReaderAction(
+                    text=_RELATIVE_QUOTES["hi"],
+                    due_date="2026-10-15",
+                    quote=_RELATIVE_QUOTES["hi"],
+                    page=1,
+                )
+            ],
+        )
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("invoice.jpg", JPEG_BYTES, "image/jpeg"))],
+            data={"lang": "hi"},
+        )
+    assert res.status_code == 200
+    action = res.json()["actions"][0]
+    assert action["due_date"] is None
+    assert action["date_status"] != "calculated"
+    assert action["evidence"] != "calculated"
+
+    IP_REQUESTS.clear()
+    matched_quote = "Pay by 30 November 2026."
+    with patch("main.read_document") as mock_read, patch("main.extract_pdf_pages") as mock_pages:
+        mock_pages.return_value = [
+            "Shop invoice. Date: 08 October 2026. Pay by 30 November 2026."
+        ]
+        mock_read.return_value = ReaderResponse(
+            doc_type="receipt",
+            title="Phone invoice",
+            language="en",
+            letter_date="2026-10-08",
+            summary=["Invoice for a phone."],
+            actions=[
+                ReaderAction(
+                    text="Pay by 30 November 2026.",
+                    due_date="2026-11-30",
+                    quote=matched_quote,
+                    page=1,
+                )
+            ],
+        )
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("invoice.pdf", _tiny_pdf(), "application/pdf"))],
+            data={"lang": "en"},
+        )
+    assert res.status_code == 200
+    action = res.json()["actions"][0]
+    assert action["due_date"] == "2026-11-30"
+    assert action["date_status"] == "upcoming"
+    assert action["evidence"] == "matched"
+    assert action["text"] == "Pay by 30 November 2026."
+
+
+def test_reader_prompt_does_not_give_the_model_today():
+    from reader import READER_PROMPT_TEMPLATE
+
+    assert "{TODAY}" not in READER_PROMPT_TEMPLATE
+    assert "never from today" in READER_PROMPT_TEMPLATE
+    rendered = READER_PROMPT_TEMPLATE.format(LANG="Hindi")
+    assert "Today is" not in rendered
+    assert "Count a relative deadline from that document date" in rendered

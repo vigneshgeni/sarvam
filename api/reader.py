@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import json
 import logging
 import os
@@ -180,7 +179,7 @@ Rules:
     - Fixed printed calendar date: due_date (YYYY-MM-DD), deadline_days null, deadline_anchor null, deadline_rule null.
     - Relative deadline (e.g. "within 30 days of this letter"): deadline_days (int), deadline_anchor ("letter_date"), deadline_rule (text), due_date null.
     - Recurring obligations: schedule rule in recurrence, due_date null.
-    - letter_date: YYYY-MM-DD if printed, else null. Today is {TODAY}.
+    - letter_date: YYYY-MM-DD if printed on the document, else null. Count a relative deadline from that document date (invoice, issue, or notice date), never from today. Use today only to judge whether a date has already passed.
 12. Conflicts: If document gives contradictory dates or amounts for the same thing, describe in "conflicts".
 13. Medical/lab reports: Quote printed values, ranges, flags verbatim. Never diagnose or say normal/abnormal. Add action "Show this report to your doctor".
 14. Put the most important action first.
@@ -501,8 +500,7 @@ def read_document_single_attempt(
     attempt_idx: int = 1,
 ) -> ReaderResponse:
     target_lang = "auto" if lang == "auto" else resolve_language_name(lang)
-    today_str = datetime.date.today().isoformat()
-    prompt = READER_PROMPT_TEMPLATE.format(LANG=target_lang, TODAY=today_str)
+    prompt = READER_PROMPT_TEMPLATE.format(LANG=target_lang)
 
     client = get_client()
 
