@@ -7,6 +7,7 @@ import random
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
 from google import genai
 from google.genai import errors, types
 from starlette.concurrency import run_in_threadpool
@@ -48,9 +49,15 @@ EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.
 FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
 FALLBACK_TIMEOUT: float = float(os.environ.get("FALLBACK_TIMEOUT", 35.0))
 
-REQUEST_DEADLINE: float = 80.0  # seconds
-TOTAL_RETRY_BUDGET: float = 72.0  # seconds
-BACKOFF_DELAYS: List[float] = [2.0, 5.0]
+ASK_TIMEOUT: float = float(os.environ.get("ASK_TIMEOUT", 22.0))
+ASK_FALLBACK_TIMEOUT: float = float(os.environ.get("ASK_FALLBACK_TIMEOUT", 18.0))
+
+REQUEST_DEADLINE: float = 80.0  # seconds (explain server budget)
+ASK_DEADLINE: float = 45.0  # seconds (ask server budget)
+TOTAL_RETRY_BUDGET: float = 79.0  # seconds
+BACKOFF_DELAYS: List[float] = [1.0, 2.0, 3.0]
+MIN_USEFUL_ATTEMPT_SEC: float = 3.0  # seconds
+SAFETY_MARGIN: float = 0.5  # seconds
 
 
 class GeminiTimeoutError(Exception):
@@ -70,14 +77,20 @@ class GeminiServiceError(Exception):
 
 
 def is_retryable_error(e: Exception) -> bool:
-    code = getattr(e, "code", None) or getattr(e, "status_code", None)
-    if code in (429, 503, 504):
+    if isinstance(e, (TimeoutError, GeminiTimeoutError, httpx.TimeoutException)):
         return True
+    code = getattr(e, "code", None) or getattr(e, "status_code", None)
+    if code in (429, 499, 503, 504):
+        return True
+    if code is not None and code in (400, 401, 403, 404, 422):
+        return False
     err_str = str(e).lower()
+    cls_name = e.__class__.__name__.lower()
     return any(
-        k in err_str
+        k in err_str or k in cls_name
         for k in (
             "429",
+            "499",
             "503",
             "504",
             "resource exhausted",
@@ -86,6 +99,7 @@ def is_retryable_error(e: Exception) -> bool:
             "gateway timeout",
             "timed out",
             "timeout",
+            "cancelled",
         )
     )
 
@@ -255,148 +269,71 @@ def call_gemini_with_retry(
     contents: list,
     config: types.GenerateContentConfig,
     endpoint: str = "unknown",
-    max_retries: int = 2,
+    max_retries: Optional[int] = None,
     deadline: Optional[float] = None,
     attempt_timeout_sec: Optional[float] = None,
+    fallback_model: Optional[str] = None,
+    fallback_timeout_sec: Optional[float] = None,
 ) -> Any:
     start_time = time.time()
     if deadline is None:
-        deadline = start_time + REQUEST_DEADLINE
+        deadline = start_time + (ASK_DEADLINE if endpoint == "ask" else REQUEST_DEADLINE)
+    elif deadline < 1_000_000:
+        deadline = start_time + deadline
 
-    current_model = model
-    model_path = "fallback" if model == FALLBACK_MODEL_ID else "primary"
-    current_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
+    primary_model = model
+    fb_model = fallback_model if fallback_model is not None else FALLBACK_MODEL_ID
+    if attempt_timeout_sec is not None:
+        primary_timeout = attempt_timeout_sec
+    elif endpoint == "ask":
+        primary_timeout = ASK_TIMEOUT
+    else:
+        primary_timeout = EXPLAIN_TIMEOUT
 
-    for attempt in range(max_retries + 1):
-        if attempt == 0:
-            remaining_deadline = deadline - start_time
-            if remaining_deadline - 1.0 <= 0:
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    0.0,
-                )
-                raise GeminiTimeoutError(
-                    f"Overall request deadline ({REQUEST_DEADLINE}s) reached before attempt {attempt + 1}",
-                    status_code=504,
-                )
-            cur_attempt_timeout = min(current_timeout, remaining_deadline - 1.0)
-            if config is not None:
-                if isinstance(config, types.GenerateContentConfig):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
-                elif hasattr(config, "http_options"):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
-                elif isinstance(config, dict):
-                    config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
+    if fallback_timeout_sec is not None:
+        fb_timeout = fallback_timeout_sec
+    elif endpoint == "ask":
+        fb_timeout = ASK_FALLBACK_TIMEOUT
+    else:
+        fb_timeout = FALLBACK_TIMEOUT
 
-        if attempt > 0:
-            elapsed_before_sleep = time.time() - start_time
-            now = start_time + elapsed_before_sleep
-            remaining_deadline = deadline - now
+    current_model = primary_model
+    current_timeout = primary_timeout
+    model_path = "fallback" if current_model == fb_model else "primary"
 
-            if remaining_deadline - 1.0 <= 0:
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    elapsed_before_sleep,
-                )
-                raise GeminiTimeoutError(
-                    f"Overall request deadline ({REQUEST_DEADLINE}s) reached before retry {attempt}",
-                    status_code=504,
-                )
+    retries_on_current_model = 0
+    max_retries_per_model = 3
+    total_retries = 0
+    total_attempts = 0
 
-            if elapsed_before_sleep >= TOTAL_RETRY_BUDGET:
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    elapsed_before_sleep,
-                )
-                raise GeminiServiceError(
-                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded during backoff",
-                    status_code=503,
-                )
+    while True:
+        total_attempts += 1
+        now = time.time()
+        elapsed_so_far = now - start_time
+        remaining_budget = deadline - now
 
-            base_delay = BACKOFF_DELAYS[attempt - 1] if attempt - 1 < len(BACKOFF_DELAYS) else 5.0
-            jitter = random.uniform(0.0, 0.5)
-            sleep_duration = base_delay + jitter
+        if remaining_budget < MIN_USEFUL_ATTEMPT_SEC or elapsed_so_far >= TOTAL_RETRY_BUDGET:
+            logger.info(
+                "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                endpoint,
+                model_path,
+                current_model,
+                total_attempts,
+                now - start_time,
+            )
+            raise GeminiServiceError(
+                f"Retry budget ({TOTAL_RETRY_BUDGET}s) or deadline ({remaining_budget:.2f}s) exceeded for attempt",
+                status_code=503,
+            )
 
-            # Fallback model switch on retryable error: go straight to fallback attempt
-            if current_model != FALLBACK_MODEL_ID and FALLBACK_MODEL_ID:
-                current_model = FALLBACK_MODEL_ID
-                current_timeout = FALLBACK_TIMEOUT
-                model_path = "fallback"
-
-            if elapsed_before_sleep + sleep_duration >= TOTAL_RETRY_BUDGET:
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    elapsed_before_sleep,
-                )
-                raise GeminiServiceError(
-                    f"Retry budget ({TOTAL_RETRY_BUDGET}s) exceeded during backoff",
-                    status_code=503,
-                )
-
-            if (now + sleep_duration >= deadline) or (deadline - (now + sleep_duration) < 1.0):
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    elapsed_before_sleep,
-                )
-                raise GeminiTimeoutError(
-                    "Overall request deadline reached during retry backoff",
-                    status_code=504,
-                )
-
-            if sleep_duration > 0:
-                logger.warning(
-                    "gemini_retry: endpoint=%s, attempt=%d, delay=%.2f, seconds=%.2f",
-                    endpoint,
-                    attempt,
-                    sleep_duration,
-                    elapsed_before_sleep,
-                )
-                time.sleep(sleep_duration)
-
-            now_after_sleep = now + sleep_duration
-            remaining_after_sleep = deadline - now_after_sleep
-            if remaining_after_sleep - 1.0 <= 0:
-                logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
-                    endpoint,
-                    model_path,
-                    current_model,
-                    attempt,
-                    elapsed_before_sleep + sleep_duration,
-                )
-                raise GeminiTimeoutError(
-                    "Overall request deadline reached after retry backoff",
-                    status_code=504,
-                )
-
-            cur_attempt_timeout = min(current_timeout, remaining_after_sleep - 1.0)
-            if config is not None:
-                if isinstance(config, types.GenerateContentConfig):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
-                elif hasattr(config, "http_options"):
-                    config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
-                elif isinstance(config, dict):
-                    config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
+        cur_attempt_timeout = min(current_timeout, max(1.0, remaining_budget - SAFETY_MARGIN))
+        if config is not None:
+            if isinstance(config, types.GenerateContentConfig):
+                config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
+            elif hasattr(config, "http_options"):
+                config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
+            elif isinstance(config, dict):
+                config["http_options"] = {"timeout": max(1, int(cur_attempt_timeout * 1000))}
 
         attempt_start = time.time()
         try:
@@ -405,18 +342,22 @@ def call_gemini_with_retry(
                 contents=contents,
                 config=config,
             )
-            elapsed = time.time() - start_time
-            attempt_dur = time.time() - attempt_start
+            end_time = time.time()
+            elapsed = end_time - start_time
+            attempt_dur = end_time - attempt_start
+            rem_after = max(0.0, deadline - end_time)
             usage = getattr(resp, "usage_metadata", None)
             input_tokens = (getattr(usage, "prompt_token_count", 0) or 0) if usage else 0
             output_tokens = (getattr(usage, "candidates_token_count", 0) or 0) if usage else 0
             thinking_tokens = (getattr(usage, "thoughts_token_count", 0) or 0) if usage else 0
 
             logger.info(
-                "gemini_step: endpoint=%s, attempt=%d, duration=%.2f, status=200",
-                endpoint,
-                attempt + 1,
+                "gemini_step: model=%s, attempt=%d, status=200, duration=%.2f, remaining_budget=%.2f, endpoint=%s",
+                current_model,
+                total_attempts,
                 attempt_dur,
+                rem_after,
+                endpoint,
             )
             logger.info(
                 "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=%d, output_tokens=%d, thinking_tokens=%d, attempts=%d, seconds=%.2f, status=200",
@@ -426,73 +367,130 @@ def call_gemini_with_retry(
                 input_tokens,
                 output_tokens,
                 thinking_tokens,
-                attempt + 1,
+                total_attempts,
                 elapsed,
             )
             return resp
         except Exception as e:
-            elapsed = time.time() - start_time
-            attempt_dur = time.time() - attempt_start
-            now = start_time + elapsed
-            code = getattr(e, "code", None) or getattr(e, "status_code", None) or 503
+            end_time = time.time()
+            elapsed = end_time - start_time
+            attempt_dur = end_time - attempt_start
+            rem_after = max(0.0, deadline - end_time)
+            code = getattr(e, "code", None) or getattr(e, "status_code", None)
+            if not code:
+                if isinstance(e, (TimeoutError, GeminiTimeoutError, httpx.TimeoutException)) or "timeout" in str(e).lower():
+                    code = 504
+                else:
+                    code = 503
+            status_str = str(code)
 
             logger.info(
-                "gemini_step: endpoint=%s, attempt=%d, duration=%.2f, status=%s",
-                endpoint,
-                attempt + 1,
+                "gemini_step: model=%s, attempt=%d, status=%s, duration=%.2f, remaining_budget=%.2f, endpoint=%s",
+                current_model,
+                total_attempts,
+                status_str,
                 attempt_dur,
-                code,
+                rem_after,
+                endpoint,
             )
 
-            if isinstance(e, GeminiTimeoutError) or (now >= deadline - 1.0):
+            if not is_retryable_error(e):
                 logger.info(
-                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%s",
                     endpoint,
                     model_path,
                     current_model,
-                    attempt + 1,
+                    total_attempts,
                     elapsed,
+                    status_str,
                 )
-                raise GeminiTimeoutError(f"Request deadline reached: {e}", status_code=504) from e
+                raise
 
-            if is_retryable_error(e) and attempt < max_retries:
-                logger.warning(
-                    "gemini_retryable_error: endpoint=%s, attempt=%d, status=%s, seconds=%.2f",
+            # Check if caller passed a hard max_retries limit
+            if max_retries is not None and total_retries >= max_retries:
+                logger.info(
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                     endpoint,
-                    attempt + 1,
-                    code,
+                    model_path,
+                    current_model,
+                    total_attempts,
                     elapsed,
                 )
-                continue
-
-            # Non-retryable error or retries exhausted
-            logger.info(
-                "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%d",
-                endpoint,
-                model_path,
-                current_model,
-                attempt + 1,
-                elapsed,
-                code if isinstance(code, int) else 503,
-            )
-            if is_retryable_error(e):
                 raise GeminiServiceError(
-                    f"Gemini call failed after {attempt + 1} attempts: {e}",
+                    f"Gemini retries exhausted ({total_retries} retries)",
                     status_code=503,
                 ) from e
-            raise
 
-    # Fallback if loop ends
-    elapsed = time.time() - start_time
-    logger.info(
-        "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
-        endpoint,
-        model_path,
-        current_model,
-        max_retries + 1,
-        elapsed,
-    )
-    raise GeminiServiceError("Gemini call retries exhausted", status_code=503)
+            # Primary model failed (timeout or fast 429/503): go to fallback immediately
+            can_switch_to_fallback = (
+                current_model != fb_model
+                and bool(fb_model)
+            )
+
+            if can_switch_to_fallback:
+                current_model = fb_model
+                current_timeout = fb_timeout
+                model_path = "fallback"
+                retries_on_current_model = 0
+                total_retries += 1
+                logger.info(
+                    "gemini_fallback: endpoint=%s, switching to fallback model %s, remaining_budget=%.2f",
+                    endpoint,
+                    current_model,
+                    rem_after,
+                )
+                # Switch to fallback immediately without backoff sleep
+                continue
+
+            # On fallback model (or primary if no fallback): retry with backoff while budget remains
+            if retries_on_current_model >= max_retries_per_model:
+                logger.info(
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    endpoint,
+                    model_path,
+                    current_model,
+                    total_attempts,
+                    elapsed,
+                )
+                raise GeminiServiceError(
+                    f"Gemini retries exhausted for model {current_model} ({retries_on_current_model} retries)",
+                    status_code=503,
+                ) from e
+
+            delays = BACKOFF_DELAYS if BACKOFF_DELAYS else [1.0, 2.0, 3.0]
+            delay_idx = min(retries_on_current_model, len(delays) - 1)
+            base_delay = delays[delay_idx]
+            jitter = random.uniform(0.0, 0.3) if base_delay >= 0.5 else 0.0
+            sleep_duration = base_delay + jitter
+
+            now = time.time()
+            rem_budget = deadline - now
+            if rem_budget < sleep_duration + MIN_USEFUL_ATTEMPT_SEC:
+                logger.info(
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    endpoint,
+                    model_path,
+                    current_model,
+                    total_attempts,
+                    elapsed,
+                )
+                raise GeminiServiceError(
+                    f"Insufficient budget ({rem_budget:.2f}s) for backoff ({sleep_duration:.2f}s) and retry",
+                    status_code=503,
+                ) from e
+
+            logger.info(
+                "gemini_retry: endpoint=%s, model=%s, retry=%d, delay=%.2f, remaining_budget=%.2f",
+                endpoint,
+                current_model,
+                retries_on_current_model + 1,
+                sleep_duration,
+                rem_budget,
+            )
+            time.sleep(sleep_duration)
+            retries_on_current_model += 1
+            total_retries += 1
+            continue
 
 
 def read_document_single_attempt(
@@ -751,7 +749,7 @@ def ask_document_single_attempt(
             contents.append(types.Part.from_bytes(data=data, mime_type=mime_type))
     contents.append(prompt)
 
-    timeout_sec = timeout if timeout is not None else 35.0
+    timeout_sec = timeout if timeout is not None else ASK_TIMEOUT
 
     config = types.GenerateContentConfig(
         temperature=0.0,
@@ -768,7 +766,6 @@ def ask_document_single_attempt(
         contents=contents,
         config=config,
         endpoint="ask",
-        max_retries=1,
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
     )
