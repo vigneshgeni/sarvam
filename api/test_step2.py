@@ -2000,6 +2000,24 @@ def test_ask_endpoint(client):
         pdf_pages = args[4]
         assert pdf_pages == ["Policy Details: Sum Insured Rs. 500000"]
 
+
+def test_extract_text_endpoint(client):
+    from unittest.mock import patch
+
+    # 1. Image extraction calls reader.extract_text_document
+    with patch("reader.extract_text_document", return_value="Sample document extracted text"):
+        res = client.post(
+            "/api/extract-text",
+            files=[("files", ("notice.jpg", b"\xff\xd8\xff\xe0fakejpeg", "image/jpeg"))],
+        )
+        assert res.status_code == 200
+        assert res.json() == {"source_text": "Sample document extracted text"}
+
+    # 2. Empty / no files returns None
+    res = client.post("/api/extract-text")
+    assert res.status_code == 200
+    assert res.json() == {"source_text": None}
+
 def test_spoken_summary_digit_guard():
     from evidence import verify_spoken_summary_digit_guard
 
@@ -2221,5 +2239,29 @@ def test_evidence_normalization_amounts_and_dates():
         pages_text=pages_text,
     )
     assert ev_date == "matched", f"Expected matched, got {ev_date}"
+
+
+def test_id_token_regex_and_personal_field_preservation():
+    from evidence import ID_TOKEN_REGEX, is_personal_field
+
+    # 1. Pension ID and policy numbers must be classified as personal
+    assert is_personal_field("Pension ID is OAP/BLR/2019/04417")
+    assert is_personal_field("Policy number SH/IND/22/559102")
+    assert is_personal_field("Claim reference CLM-2026-0884")
+    assert bool(ID_TOKEN_REGEX.search("OAP/BLR/2019/04417"))
+    assert bool(ID_TOKEN_REGEX.search("SH/IND/22/559102"))
+
+    # 2. Codes and month dates must NOT match ID_TOKEN_REGEX and NOT be classified as personal
+    assert not bool(ID_TOKEN_REGEX.search("COVID-19"))
+    assert not bool(ID_TOKEN_REGEX.search("Vitamin B-12"))
+    assert not bool(ID_TOKEN_REGEX.search("Section 80-C"))
+    assert not bool(ID_TOKEN_REGEX.search("30-Nov-2026"))
+    assert not bool(ID_TOKEN_REGEX.search("30-November-2026"))
+
+    # 3. Pure medical/tax items without IDs should not be flagged as personal
+    assert not is_personal_field("Vaccination against COVID-19")
+    assert not is_personal_field("Daily supplement of Vitamin B-12")
+    assert not is_personal_field("Deduction claimed under Section 80-C")
+
 
 

@@ -21,7 +21,7 @@ import {
   isHeicFile,
   processPhotosSequentially,
 } from './utils/image'
-import { explainDocument, translateDocument, ExplainApiError } from './api'
+import { explainDocument, translateDocument, ExplainApiError, extractDocumentText } from './api'
 import {
   getRecentResults,
   saveRecentResult,
@@ -111,6 +111,7 @@ export default function App() {
 
   // Session refs
   const activeFilesRef = useRef<File[]>([])
+  const retryActionRef = useRef<(() => void) | null>(null)
   const currentResultIdRef = useRef<string | null>(null)
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
@@ -398,6 +399,7 @@ export default function App() {
     const targetLang = resolveLang(lang)
 
     activeFilesRef.current = filesToExplain
+    retryActionRef.current = () => runExplain(filesToExplain, lang, password)
     setActiveFiles(filesToExplain)
     setCurrentError(null)
     setTranslateError(null)
@@ -534,13 +536,13 @@ export default function App() {
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
       navigateToScreen('result')
 
-      if (isSaveRecentEnabled()) {
-        const fileCount = filesToExplain.length
-        const displayTitle =
-          fileCount > 1
-            ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
-            : result.title || filesToExplain[0]?.name || 'Document'
+      const fileCount = filesToExplain.length
+      const displayTitle =
+        fileCount > 1
+          ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+          : result.title || filesToExplain[0]?.name || 'Document'
 
+      if (isSaveRecentEnabled()) {
         await saveRecentResult({
           id: resultId,
           title: displayTitle,
@@ -551,6 +553,26 @@ export default function App() {
         })
         await saveOriginalFiles(resultId, filesToExplain)
         await loadRecents()
+      }
+
+      // Background extract text for image documents without blocking explanation
+      if (!result.source_text && filesToExplain.length > 0) {
+        extractDocumentText(filesToExplain, password).then(async (extracted) => {
+          if (extracted) {
+            result.source_text = extracted
+            setResultData((prev) => (prev ? { ...prev, source_text: extracted } : prev))
+            if (resultId) {
+              await saveRecentResult({
+                id: resultId,
+                title: displayTitle,
+                fileCount,
+                fileNames: filesToExplain.map((f) => f.name),
+                lang: result.language || lang,
+                result,
+              })
+            }
+          }
+        }).catch(() => {})
       }
     } catch (err: unknown) {
 
@@ -726,20 +748,13 @@ export default function App() {
     if (stagedFiles.length === 0) return
     setTrayErrorMessage(null)
 
-    const isAllPhotos = stagedFiles.every((s) => !s.name.toLowerCase().endsWith('.pdf'))
-    if (isAllPhotos) {
-      try {
-        const rawFiles = stagedFiles.map((s) => s.file)
-        const processed = await processPhotosSequentially(rawFiles)
-        navigateToScreen('reading')
-        await runExplain(processed, selectedLang)
-      } catch (err: unknown) {
-        console.warn('Photo processing error:', err)
-      }
-    } else {
+    try {
       const rawFiles = stagedFiles.map((s) => s.file)
+      const processed = await processPhotosSequentially(rawFiles)
       navigateToScreen('reading')
-      await runExplain(rawFiles, selectedLang)
+      await runExplain(processed, selectedLang)
+    } catch (err: unknown) {
+      console.warn('Tray explain error:', err)
     }
   }
 
@@ -759,6 +774,7 @@ export default function App() {
 
   // Handle "Try a sample" items (WEB-14)
   const handleSampleClick = async (sampleFilename: string) => {
+    retryActionRef.current = () => handleSampleClick(sampleFilename)
     try {
       setCurrentError(null)
       const res = await fetch(`/samples/${sampleFilename}`)
@@ -1539,7 +1555,9 @@ export default function App() {
             error={currentError}
             multiReportProgress={multiReportProgress}
             onRetry={() => {
-              if (activeFilesRef.current.length > 0) {
+              if (retryActionRef.current) {
+                retryActionRef.current()
+              } else if (activeFilesRef.current.length > 0) {
                 runExplain(activeFilesRef.current, selectedLang)
               }
             }}

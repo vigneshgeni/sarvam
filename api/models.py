@@ -86,6 +86,10 @@ class ReaderFact(BaseModel):
         default=1,
         description="Page number where the quote is located",
     )
+    is_personal: bool = Field(
+        default=False,
+        description="True if this fact contains an identifier, reference or ID number, or personal name",
+    )
 
 
 class ReaderGlanceKeyValue(BaseModel):
@@ -201,10 +205,6 @@ class ReaderResponse(BaseModel):
         default=None,
         description="Reason why the document is unreadable, else null",
     )
-    source_text: Optional[str] = Field(
-        default=None,
-        description="Verbatim extracted or recognized document text for grounding Ask questions",
-    )
     protected_terms: List[str] = Field(
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
@@ -253,6 +253,7 @@ class ExplainFact(BaseModel):
     quote: str
     page: int = 1
     evidence: str = "check_original"  # matched | check_original
+    is_personal: bool = False
 
 
 class GlanceKeyValue(BaseModel):
