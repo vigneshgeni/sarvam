@@ -8,7 +8,8 @@ from typing import Optional
 
 import pypdf
 
-PDF_MAGIC = b"%PDF"
+PDF_HEADER = b"%PDF-"
+PDF_HEADER_WINDOW = 1024
 JPEG_MAGIC = b"\xff\xd8\xff"
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
@@ -22,7 +23,7 @@ def classify_upload(content: Optional[bytes], mime_type: str) -> str:
         return "empty"
 
     if mime_type == "application/pdf":
-        if not content.startswith(PDF_MAGIC):
+        if PDF_HEADER not in content[:PDF_HEADER_WINDOW]:
             return "bad_magic"
         if not _pdf_opens(content):
             return "pdf_unopenable"
