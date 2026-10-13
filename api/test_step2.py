@@ -1201,6 +1201,49 @@ async def test_gemini_retry_on_stall_and_429():
 
 
 @pytest.mark.anyio
+async def test_gemini_fallback_model_on_retryable_error():
+    """Prove that an attempt 1 failure on 3.7-flash switches to 2.5-flash on attempt 2."""
+    import time
+    from unittest.mock import MagicMock
+    from reader import call_gemini_with_retry
+
+    models_called = []
+    fake_client = MagicMock()
+
+    class Fake504Error(Exception):
+        code = 504
+
+    def mock_generate_content(*args, **kwargs):
+        model_name = kwargs.get("model")
+        models_called.append(model_name)
+        if len(models_called) == 1:
+            raise Fake504Error("504 Gateway Timeout")
+        mock_resp = MagicMock()
+        mock_resp.text = '{"status": "ok"}'
+        mock_resp.usage_metadata = None
+        return mock_resp
+
+    fake_client.models.generate_content.side_effect = mock_generate_content
+
+    with patch("reader.BACKOFF_DELAYS", [0.01]):
+        resp = call_gemini_with_retry(
+            client=fake_client,
+            model="gemini-3.7-flash",
+            contents=["test prompt"],
+            config=None,
+            endpoint="test_fallback",
+            max_retries=1,
+            deadline=time.time() + 10.0,
+            attempt_timeout_sec=38.0,
+        )
+
+    assert len(models_called) == 2
+    assert models_called[0] == "gemini-3.7-flash"
+    assert models_called[1] == "gemini-2.5-flash"
+    assert resp.text == '{"status": "ok"}'
+
+
+@pytest.mark.anyio
 async def test_eight_simultaneous_calls_finish_without_503(client):
     """Eight simultaneous fake calls must all finish without 503."""
     import asyncio
