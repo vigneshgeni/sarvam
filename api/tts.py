@@ -2,9 +2,10 @@ import concurrent.futures
 import io
 import os
 import re
+import threading
 import time
 import wave
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 RUPEE_WORDS = {
     "en": "rupees",
@@ -391,11 +392,16 @@ def stitch_wavs(wav_list: List[bytes], silence_ms: int = 250, rate: int = 24000)
     return out_buf.getvalue()
 
 
+_SYNTH_SLOTS = threading.Semaphore(12)
+_SEGMENT_WORKERS = 8
+
+
 def synthesize_speech(
     text: str,
     lang: str = "en",
     voice_gender: str = "female",
     rate: float = 1.0,
+    client: Optional[Any] = None,
 ) -> bytes:
     """
     Synthesizes speech using Google Cloud Text-to-Speech Chirp 3 HD voices.
@@ -422,7 +428,8 @@ def synthesize_speech(
     if not sentences:
         sentences = [normalized]
 
-    client = texttospeech.TextToSpeechClient()
+    if client is None:
+        client = texttospeech.TextToSpeechClient()
 
     def synth_segment(seg_text: str) -> bytes:
         prep_text = to_speech(seg_text, norm_lang)
@@ -440,29 +447,31 @@ def synthesize_speech(
             speaking_rate=max(0.25, min(4.0, rate)),
             effects_profile_id=["handheld-class-device"],
         )
-        delay = 0.4
-        for attempt in range(3):
+        # One try, then at most one retry on 429.
+        for attempt in range(2):
             try:
-                response = client.synthesize_speech(
-                    input=synthesis_input,
-                    voice=voice_params,
-                    audio_config=audio_config,
-                )
+                with _SYNTH_SLOTS:
+                    response = client.synthesize_speech(
+                        input=synthesis_input,
+                        voice=voice_params,
+                        audio_config=audio_config,
+                    )
                 return response.audio_content
             except Exception as exc:
                 code = getattr(exc, "code", None)
-                text = str(exc).lower()
-                rate_limited = code == 429 or "429" in text or "resource exhausted" in text
-                if rate_limited and attempt < 2:
-                    time.sleep(delay)
-                    delay *= 2
+                message = str(exc).lower()
+                rate_limited = code == 429 or "429" in message or "resource exhausted" in message
+                if rate_limited and attempt == 0:
+                    time.sleep(0.05)
                     continue
                 raise
 
     if len(sentences) == 1:
         return synth_segment(sentences[0])
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(sentences))) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=min(_SEGMENT_WORKERS, len(sentences))
+    ) as executor:
         segment_wavs = list(executor.map(synth_segment, sentences))
 
     valid_wavs = [w for w in segment_wavs if w]

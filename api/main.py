@@ -175,6 +175,12 @@ def check_rate_limit(endpoint: str, client_ip: str, limit: int) -> Tuple[bool, i
     return True, 0
 
 
+def _log_guard_failure(kind: str, field: str) -> bool:
+    """Log which guard failed. Never include document text."""
+    logger.info("translation_guard: kind=%s field=%s", kind, field)
+    return False
+
+
 def check_translation_guard(
     orig: ExplainResponse,
     trans: TranslatePayload,
@@ -186,56 +192,56 @@ def check_translation_guard(
     appears in the translated text.
     """
     if not verify_translation_guard(orig.title, trans.title):
-        return False
+        return _log_guard_failure("digit", "title")
 
     if orig.report_title:
         if not verify_translation_guard(orig.report_title, trans.report_title):
-            return False
+            return _log_guard_failure("digit", "report_title")
 
     orig_sum = " ".join(orig.summary)
     trans_sum = " ".join(trans.summary)
     if not verify_translation_guard(orig_sum, trans_sum):
-        return False
+        return _log_guard_failure("digit", "summary")
 
     if len(orig.actions) != len(trans.actions):
-        return False
-    for o_act, t_act in zip(orig.actions, trans.actions):
+        return _log_guard_failure("other", "actions_length")
+    for index, (o_act, t_act) in enumerate(zip(orig.actions, trans.actions)):
         if not verify_translation_guard(o_act.text, t_act.text):
-            return False
+            return _log_guard_failure("digit", f"action_{index}")
         if o_act.deadline_rule and not verify_translation_guard(
             o_act.deadline_rule, t_act.deadline_rule
         ):
-            return False
+            return _log_guard_failure("digit", f"action_{index}_deadline_rule")
         if o_act.recurrence and not verify_translation_guard(
             o_act.recurrence, t_act.recurrence
         ):
-            return False
+            return _log_guard_failure("digit", f"action_{index}_recurrence")
 
     if len(orig.warnings) != len(trans.warnings):
-        return False
-    for o_warn, t_warn in zip(orig.warnings, trans.warnings):
+        return _log_guard_failure("other", "warnings_length")
+    for index, (o_warn, t_warn) in enumerate(zip(orig.warnings, trans.warnings)):
         if not verify_translation_guard(o_warn.text, t_warn.text):
-            return False
+            return _log_guard_failure("digit", f"warning_{index}")
 
     if len(orig.facts) != len(trans.facts):
-        return False
-    for o_fact, t_fact in zip(orig.facts, trans.facts):
+        return _log_guard_failure("other", "facts_length")
+    for index, (o_fact, t_fact) in enumerate(zip(orig.facts, trans.facts)):
         if not verify_translation_guard(o_fact.text, t_fact.text):
-            return False
+            return _log_guard_failure("digit", f"fact_{index}")
 
     orig_conf = " ".join(orig.conflicts)
     trans_conf = " ".join(trans.conflicts)
     if not verify_translation_guard(orig_conf, trans_conf):
-        return False
+        return _log_guard_failure("digit", "conflicts")
 
     if orig.unreadable_reason:
         if not verify_translation_guard(orig.unreadable_reason, trans.unreadable_reason):
-            return False
+            return _log_guard_failure("digit", "unreadable_reason")
 
     if extra_orig and extra_trans:
-        for eo, et in zip(extra_orig, extra_trans):
+        for index, (eo, et) in enumerate(zip(extra_orig, extra_trans)):
             if eo and not verify_translation_guard(eo, et):
-                return False
+                return _log_guard_failure("digit", f"extra_{index}")
 
     # 2. Protected terms guard (names, institutions, places, IDs must remain verbatim in original script)
     if orig.protected_terms:
@@ -278,7 +284,7 @@ def check_translation_guard(
         full_trans = " ".join(trans_user_text_parts)
 
         if not verify_protected_terms_guard(orig.protected_terms, full_orig, full_trans):
-            return False
+            return _log_guard_failure("protected_terms", "protected_terms")
 
     return True
 

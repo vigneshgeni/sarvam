@@ -88,6 +88,65 @@ def test_corrupt_pdf_is_422(client):
     assert body["message_local"] != body["message"]
 
 
+def test_warranty_sample_48_hours_is_calculated(client):
+    """Invoice sample: 08 Oct 2026 plus the out-of-box 48-hour quote."""
+    quote = (
+        "Out-of-box defect: report to the store within 48 hours of purchase "
+        "with this invoice and the original packing."
+    )
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="receipt",
+            title="Phone invoice",
+            language="en",
+            letter_date="08 Oct 2026",
+            summary=["Invoice for a phone."],
+            actions=[
+                ReaderAction(
+                    text="Report an out-of-box defect within 48 hours of purchase.",
+                    quote=quote,
+                    page=1,
+                )
+            ],
+        )
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("invoice.jpg", JPEG_BYTES, "image/jpeg"))],
+            data={"lang": "en"},
+        )
+    assert res.status_code == 200
+    action = res.json()["actions"][0]
+    assert action["due_date"] == "2026-10-10"
+    assert action["date_status"] == "calculated"
+    assert action["evidence"] == "calculated"
+    assert action["deadline_days"] == 2
+
+    with patch("main.read_document") as mock_read:
+        mock_read.return_value = ReaderResponse(
+            doc_type="receipt",
+            title="Phone invoice",
+            language="en",
+            letter_date=None,
+            summary=["Invoice for a phone."],
+            actions=[
+                ReaderAction(
+                    text="Report an out-of-box defect within 48 hours of purchase.",
+                    quote=quote,
+                    page=1,
+                )
+            ],
+        )
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("invoice.jpg", JPEG_BYTES, "image/jpeg"))],
+            data={"lang": "en"},
+        )
+    assert res.status_code == 200
+    action = res.json()["actions"][0]
+    assert action["due_date"] is None
+    assert action["date_status"] != "calculated"
+
+
 def test_explain_infers_warranty_hours_from_quote(client):
     with patch("main.read_document") as mock_read:
         mock_read.return_value = ReaderResponse(
