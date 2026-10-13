@@ -1,6 +1,9 @@
 import datetime
+import math
 import re
+import unicodedata
 from typing import List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 MONTH_MAP = {
     "jan": 1, "january": 1,
@@ -65,6 +68,62 @@ def parse_date(date_str: Optional[str]) -> Optional[datetime.date]:
 def format_date_human(d: datetime.date) -> str:
     month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     return f"{d.day} {month_names[d.month - 1]} {d.year}"
+
+
+def _ascii_decimal_digits(text: str) -> str:
+    mapped = []
+    for ch in text:
+        if ch.isdecimal():
+            try:
+                mapped.append(str(unicodedata.decimal(ch)))
+                continue
+            except (TypeError, ValueError):
+                pass
+        mapped.append(ch)
+    return "".join(mapped)
+
+
+def ist_today(today: Optional[datetime.date] = None) -> datetime.date:
+    if today is not None:
+        return today
+    return datetime.datetime.now(ZoneInfo("Asia/Kolkata")).date()
+
+
+def infer_relative_deadline_from_quote(
+    quote: Optional[str],
+    anchor_date_str: Optional[str],
+    today: Optional[datetime.date] = None,
+) -> Optional[Tuple[datetime.date, int, bool]]:
+    """
+    When the model left deadline_days empty, read a relative rule from the
+    document's own words. English "within N hours/days" only.
+    Hours become whole days, rounded up. Digits may be in any script.
+    Returns (due_date, deadline_days, is_past) or None.
+    No anchor date, no rule, or a phrase that is not relative -> None.
+    is_past uses today's date in IST so every client agrees.
+    """
+    if not quote or not str(quote).strip() or not anchor_date_str:
+        return None
+    anchor = parse_date(anchor_date_str)
+    if anchor is None:
+        return None
+    normalized = _ascii_decimal_digits(quote)
+    match = re.search(r"\bwithin\s+(\d+)\s*(hours?|days?)\b", normalized, re.IGNORECASE)
+    if not match:
+        return None
+    count = int(match.group(1))
+    if count <= 0:
+        return None
+    unit = match.group(2).lower()
+    if unit.startswith("hour"):
+        days = math.ceil(count / 24)
+    else:
+        days = count
+    if days <= 0:
+        return None
+    due = anchor + datetime.timedelta(days=days)
+    past = due < ist_today(today)
+    return due, days, past
 
 
 def compute_relative_deadline(
