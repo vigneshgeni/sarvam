@@ -114,6 +114,45 @@ def test_infer_relative_deadline_from_quote():
     assert te is not None
     assert te[0] == datetime.date(2026, 10, 10)
 
+    weeks = infer_relative_deadline_from_quote(
+        "Claim within 2 weeks of the invoice date.",
+        anchor,
+        today=today,
+    )
+    assert weeks is not None
+    assert weeks[0] == datetime.date(2026, 10, 22)
+    assert weeks[1] == 14
+
+    months = infer_relative_deadline_from_quote(
+        "Reply within 1 month of this letter.",
+        anchor,
+        today=today,
+    )
+    assert months is not None
+    assert months[0] == datetime.date(2026, 11, 8)
+
+    number_words = [
+        "Report a defect within forty-eight hours of purchase.",
+        "खरीद के अड़तालीस घंटे के भीतर।",
+        "வாங்கிய நாற்பத்தெட்டு மணி நேரத்திற்குள்.",
+        "నలభై ఎనిమిది గంటలలోపు.",
+        "നാല്പത്തിയെട്ട് മണിക്കൂറിനുള്ളിൽ.",
+        "ಖರೀದಿಸಿದ ನಲವತ್ತೆಂಟು ಗಂಟೆಗಳ ಒಳಗೆ.",
+        "खरेदीच्या अठ्ठेचाळीस तासांच्या आत.",
+        "কেনার আটচল্লিশ ঘণ্টার মধ্যে।",
+        "କିଣିବାର ଅଠଚାଳିଶ ଘଣ୍ଟା ମଧ୍ୟରେ।",
+        "खरीद के ४८ घंटे के भीतर।",
+        "வாங்கிய ௪௮ மணி நேரத்திற்குள்.",
+        "വാങ്ങിയ ൪൮ മണിക്കൂറിനുള്ളിൽ.",
+        "ಖರೀದಿಸಿದ ೪೮ ಗಂಟೆಗಳ ಒಳಗೆ.",
+        "কেনার ৪৮ ঘণ্টার মধ্যে।",
+        "କିଣିବାର ୪୮ ଘଣ୍ଟା ମଧ୍ୟରେ।",
+    ]
+    for wording in number_words:
+        parsed = infer_relative_deadline_from_quote(wording, anchor, today=today)
+        assert parsed is not None, wording
+        assert parsed[0] == datetime.date(2026, 10, 10), wording
+
     assert infer_relative_deadline_from_quote(
         "Return the phone within 48 hours of purchase.",
         None,
