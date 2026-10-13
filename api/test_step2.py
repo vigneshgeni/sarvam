@@ -1006,7 +1006,7 @@ def test_gemini_retry_jittered_backoff_and_success():
     with patch("time.sleep", side_effect=lambda s: sleeps.append(s)):
         res = call_gemini_with_retry(
             client=mock_client,
-            model="gemini-3.7-flash",
+            model="gemini-2.5-flash",
             contents=["test"],
             config=MagicMock(),
             endpoint="explain",
@@ -1014,8 +1014,8 @@ def test_gemini_retry_jittered_backoff_and_success():
         )
         assert res == mock_resp
         assert len(sleeps) == 1
-        # Jittered backoff on 1st retry: ~2s (2.0 to 2.5)
-        assert 2.0 <= sleeps[0] <= 2.5
+        # Jittered backoff on 1st retry: ~1s (1.0 to 1.4)
+        assert 1.0 <= sleeps[0] <= 1.4
         assert mock_client.models.generate_content.call_count == 2
 
 
@@ -1035,7 +1035,7 @@ def test_gemini_retry_exhaustion_raises_service_error():
         with pytest.raises(GeminiServiceError) as exc_info:
             call_gemini_with_retry(
                 client=mock_client,
-                model="gemini-3.7-flash",
+                model="gemini-2.5-flash",
                 contents=["test"],
                 config=MagicMock(),
                 endpoint="explain",
@@ -1044,10 +1044,10 @@ def test_gemini_retry_exhaustion_raises_service_error():
         assert exc_info.value.status_code == 503
         # Total attempts = 3 (1 initial + 2 retries)
         assert mock_client.models.generate_content.call_count == 3
-        # First retry sleeps ~2s, second sleeps ~5s
+        # First retry sleeps ~1s, second sleeps ~2s
         assert len(sleeps) == 2
-        assert 2.0 <= sleeps[0] <= 2.5
-        assert 5.0 <= sleeps[1] <= 5.5
+        assert 1.0 <= sleeps[0] <= 1.4
+        assert 2.0 <= sleeps[1] <= 2.4
 
 
 def test_gemini_retry_exhaustion_endpoint_returns_503_message_local(client):
@@ -1075,9 +1075,16 @@ def test_gemini_retry_budget_exceeded():
         503, {"error": {"message": "Service Unavailable"}}
     )
 
-    # Simulate start_time at 0 and time advancing beyond 100s budget on retry 1
-    times = [0.0, 1.0, 2.0, 105.0, 106.0]
-    with patch("time.time", side_effect=times):
+    # Simulate start_time at 0 and time advancing beyond budget
+    cur_time = [0.0]
+    def fake_time():
+        t = cur_time[0]
+        cur_time[0] += 1.0
+        if cur_time[0] >= 3.0:
+            return 105.0
+        return t
+
+    with patch("time.time", side_effect=fake_time):
         with pytest.raises(GeminiServiceError) as exc_info:
             call_gemini_with_retry(
                 client=mock_client,
@@ -1086,7 +1093,7 @@ def test_gemini_retry_budget_exceeded():
                 config=MagicMock(),
                 endpoint="explain",
                 max_retries=2,
-                deadline=1000.0,  # Ensure overall deadline is far out so retry budget is tested
+                deadline=1000.0,
             )
         assert "budget" in str(exc_info.value).lower()
         assert exc_info.value.status_code == 503
@@ -1122,7 +1129,7 @@ def test_deadline_hit_during_retry(client):
     IP_REQUESTS.clear()
 
     # Initial Gemini call fails with retryable 503, but deadline is 1.5s
-    # Retry backoff sleeps ~2.2s, so deadline is reached during/before retry
+    # In Round 4, failure inside budget returns calm 503 before deadline, never raw 504
     mock_client = MagicMock()
     mock_client.models.generate_content.side_effect = errors.ServerError(
         503, {"error": {"message": "Service Unavailable"}}
@@ -1131,10 +1138,10 @@ def test_deadline_hit_during_retry(client):
     with patch("reader.get_client", return_value=mock_client), patch("main.REQUEST_DEADLINE", 1.5):
         files = [("files", ("page.jpg", JPEG_BYTES, "image/jpeg"))]
         res = client.post("/api/explain", files=files, data={"lang": "hi"})
-        assert res.status_code == 504
+        assert res.status_code == 503
         body = res.json()
-        assert "Request timed out" in body["message"]
-        assert body["message_local"] == "अनुरोध का समय समाप्त हो गया. कृपया पुन: प्रयास करें."
+        assert "Service is busy" in body["message"]
+        assert body["message_local"] == "सेवा व्यस्त है. कृपया थोड़ी देर बाद पुनः प्रयास करें."
 
 
 # --- Step 5b-3: Protected Terms Safety Net & Generic Office Words Tests ---
@@ -2433,6 +2440,246 @@ def test_id_token_regex_and_personal_field_preservation():
     assert not is_personal_field("Vaccination against COVID-19")
     assert not is_personal_field("Daily supplement of Vitamin B-12")
     assert not is_personal_field("Deduction claimed under Section 80-C")
+
+
+# --- Round 4: Fallback Retry & Budget Management Tests ---
+
+def test_primary_timeout_fallback_503_twice_then_succeeds(client):
+    """
+    Fake client test: primary times out, fallback returns 503 twice, then succeeds:
+    the overall request succeeds with 200 OK.
+    """
+    import json
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    models_called = []
+    mock_client = MagicMock()
+
+    valid_json = json.dumps({
+        "title": "Pension Notice",
+        "document_type": "government_notice",
+        "summary": ["Your pension details."],
+        "actions": [],
+        "warnings": [],
+        "facts": [],
+        "language": "en",
+        "document_language": "en",
+    })
+    mock_resp = MagicMock()
+    mock_resp.text = valid_json
+    mock_resp.parsed = None
+    mock_resp.usage_metadata = None
+
+    def mock_generate(*args, **kwargs):
+        m = kwargs.get("model")
+        models_called.append(m)
+        if len(models_called) == 1:
+            # Primary timeout
+            raise TimeoutError("Simulated primary timeout on 3.7-flash")
+        elif len(models_called) in (2, 3):
+            # Fallback 503
+            raise errors.ServerError(503, {"error": {"message": "Service Unavailable"}})
+        else:
+            # Fallback succeeds on attempt 3
+            return mock_resp
+
+    mock_client.models.generate_content.side_effect = mock_generate
+
+    with patch("reader.get_client", return_value=mock_client), \
+         patch("reader.BACKOFF_DELAYS", [0.01, 0.01, 0.01]), \
+         patch("time.sleep", return_value=None):
+        files = [("files", ("pension.jpg", JPEG_BYTES, "image/jpeg"))]
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
+        assert len(models_called) == 4
+        assert models_called[0] == "gemini-3.7-flash"
+        assert models_called[1] == "gemini-2.5-flash"
+        assert models_called[2] == "gemini-2.5-flash"
+        assert models_called[3] == "gemini-2.5-flash"
+
+
+def test_primary_429_fallback_429_then_success_with_backoff(client):
+    """
+    Fake client test: primary 429, fallback 429, then success:
+    succeeds with backoff on fallback and immediate switch from primary.
+    """
+    import json
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    models_called = []
+    sleeps = []
+    mock_client = MagicMock()
+
+    valid_ask_json = json.dumps({
+        "answer": "Payment is due on 30.11.2026.",
+        "quote": "Due date: 30.11.2026",
+        "page": 1,
+        "not_found": False,
+        "language": "en",
+    })
+    mock_resp = MagicMock()
+    mock_resp.text = valid_ask_json
+    mock_resp.parsed = None
+    mock_resp.usage_metadata = None
+
+    def mock_generate(*args, **kwargs):
+        m = kwargs.get("model")
+        models_called.append(m)
+        if len(models_called) in (1, 2):
+            raise errors.ClientError(429, {"error": {"message": "Resource Exhausted"}})
+        return mock_resp
+
+    mock_client.models.generate_content.side_effect = mock_generate
+
+    with patch("reader.get_client", return_value=mock_client), \
+         patch("reader.BACKOFF_DELAYS", [1.0, 2.0, 3.0]), \
+         patch("time.sleep", side_effect=sleeps.append):
+        res = client.post(
+            "/api/ask",
+            data={
+                "question": "When is payment due?",
+                "lang": "en",
+                "result": json.dumps({"title": "Bill", "summary": ["Due date: 30.11.2026"]}),
+            },
+        )
+        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
+        assert len(models_called) == 3
+        assert models_called[0] == "gemini-3.7-flash"
+        assert models_called[1] == "gemini-2.5-flash"
+        assert models_called[2] == "gemini-2.5-flash"
+        # Zero sleep between call 1 (primary) and call 2 (fallback immediate switch)
+        # Exactly 1 sleep (~1s) between call 2 and call 3 (fallback retry with backoff)
+        assert len(sleeps) == 1
+        assert 1.0 <= sleeps[0] <= 1.4
+
+
+def test_everything_fails_returns_calm_503_before_deadline(client):
+    """
+    Fake client test: everything fails: calm 503 returned before the deadline
+    (asserting total time at or under 80s for explain and 45s for Ask).
+    """
+    import json
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from main import IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    # 1. Test Explain: budget 80s
+    sim_time = [0.0]
+    mock_client = MagicMock()
+    def mock_explain_generate(*args, **kwargs):
+        cfg = kwargs.get("config")
+        to_sec = 20.0
+        if cfg and getattr(cfg, "http_options", None) and getattr(cfg.http_options, "timeout", None):
+            to_sec = cfg.http_options.timeout / 1000.0
+        sim_time[0] += min(20.0, to_sec)
+        raise errors.ServerError(503, {"error": {"message": "Service Unavailable"}})
+
+    mock_client.models.generate_content.side_effect = mock_explain_generate
+
+    with patch("reader.get_client", return_value=mock_client), \
+         patch("time.time", side_effect=lambda: sim_time[0]), \
+         patch("time.sleep", side_effect=lambda s: sim_time.__setitem__(0, sim_time[0] + s)):
+        files = [("files", ("notice.jpg", JPEG_BYTES, "image/jpeg"))]
+        res = client.post("/api/explain", files=files, data={"lang": "en"})
+        assert res.status_code == 503, f"Expected 503, got {res.status_code}: {res.text}"
+        body = res.json()
+        assert "Service is busy" in body["message"]
+        # Total simulated time must be <= 80s
+        assert sim_time[0] <= 80.0
+
+    # 2. Test Ask: budget 45s
+    IP_REQUESTS.clear()
+    ask_sim_time = [0.0]
+    def mock_ask_generate(*args, **kwargs):
+        cfg = kwargs.get("config")
+        to_sec = 15.0
+        if cfg and getattr(cfg, "http_options", None) and getattr(cfg.http_options, "timeout", None):
+            to_sec = cfg.http_options.timeout / 1000.0
+        ask_sim_time[0] += min(15.0, to_sec)
+        raise errors.ServerError(503, {"error": {"message": "Service Unavailable"}})
+
+    mock_ask_client = MagicMock()
+    mock_ask_client.models.generate_content.side_effect = mock_ask_generate
+
+    with patch("reader.get_client", return_value=mock_ask_client), \
+         patch("time.time", side_effect=lambda: ask_sim_time[0]), \
+         patch("time.sleep", side_effect=lambda s: ask_sim_time.__setitem__(0, ask_sim_time[0] + s)):
+        res = client.post(
+            "/api/ask",
+            data={
+                "question": "What is the notice about?",
+                "lang": "en",
+                "result": json.dumps({"title": "Test"}),
+            },
+        )
+        assert res.status_code == 503, f"Expected 503, got {res.status_code}: {res.text}"
+        body = res.json()
+        assert "Service is busy" in body["message"]
+        # Total simulated time must be <= 45s
+        assert ask_sim_time[0] <= 45.0
+
+
+@pytest.mark.anyio
+async def test_eight_simultaneous_fake_calls_with_mixed_failures(client):
+    """
+    Eight simultaneous fake calls with mixed failures: all finish, none hang, no slot leaked.
+    """
+    import asyncio
+    from main import GEMINI_SEMAPHORE, IP_REQUESTS
+    from reader import GeminiServiceError
+    IP_REQUESTS.clear()
+
+    assert GEMINI_SEMAPHORE._value == 8
+
+    mock_resp = ReaderResponse(
+        title="Notice",
+        summary=["Summary text."],
+        actions=[],
+        warnings=[],
+        facts=[],
+        language="en",
+        document_language="en",
+    )
+
+    call_count = 0
+    def mock_reader(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        idx = call_count
+        if idx in (1, 2, 3, 4, 5, 6):
+            return mock_resp
+        else:
+            raise GeminiServiceError("Model unavailable", status_code=503)
+
+    with patch("main.read_document", side_effect=mock_reader), \
+         patch("reader.read_document", side_effect=mock_reader):
+
+        async def make_call(i):
+            loop = asyncio.get_running_loop()
+            def do_post():
+                return client.post(
+                    "/api/explain",
+                    files=[("files", (f"file_{i}.jpg", JPEG_BYTES, "image/jpeg"))],
+                    data={"lang": "en"},
+                )
+            return await loop.run_in_executor(None, do_post)
+
+        tasks = [make_call(i) for i in range(8)]
+        results = await asyncio.gather(*tasks)
+
+        assert len(results) == 8
+        statuses = [r.status_code for r in results]
+        assert statuses.count(200) == 6
+        assert statuses.count(503) == 2
+        assert GEMINI_SEMAPHORE._value == 8
+
 
 
 

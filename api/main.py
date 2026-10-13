@@ -463,6 +463,18 @@ async def explain(
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
 
+        if isinstance(e, GeminiServiceError):
+            status_code = e.status_code
+            logger.info(
+                "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=%d",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
+                elapsed,
+                status_code,
+            )
+            return make_error_response(status_code, "service_busy", lang)
+
         if (
             isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
             or "timeout" in err_str
@@ -1021,6 +1033,18 @@ async def translate(
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         err_str = str(e).lower()
 
+        if isinstance(e, GeminiServiceError):
+            status_code = e.status_code
+            logger.info(
+                "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=%d",
+                start_dt.strftime("%H:%M:%S.%f")[:-3],
+                finish_dt.strftime("%H:%M:%S.%f")[:-3],
+                queue_wait,
+                elapsed,
+                status_code,
+            )
+            return make_error_response(status_code, "service_busy", body.lang)
+
         if (
             isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
             or "timeout" in err_str
@@ -1460,12 +1484,13 @@ async def ask(
                 file_data_list or None,
                 pdf_pages_text,
                 deadline,
-                35.0,
             )
         return ask_res
     except AskUnverifiedError:
         return make_error_response(422, "ask_unverified", lang)
     except Exception as e:
+        if isinstance(e, GeminiServiceError):
+            return make_error_response(e.status_code, "service_busy", lang)
         err_str = str(e).lower()
         if (
             isinstance(e, (GeminiTimeoutError, httpx.TimeoutException, TimeoutError))
