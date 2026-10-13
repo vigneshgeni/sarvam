@@ -20,7 +20,7 @@ export const INSTITUTION_TERMS = [
 ]
 
 export const ID_TOKEN_REGEX =
-  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g
+  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi
 
 export function isPersonalField(text, quote, isPersonalExplicit) {
   if (isPersonalExplicit === true) return true
@@ -108,16 +108,16 @@ export function sanitizeProse(text, protectedTerms = []) {
     ''
   )
 
-  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -)
+  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -) with at least 3 digits, excluding dates
   cleaned = cleaned.replace(
-    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g,
+    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi,
     ''
   )
 
   // 4. Indian vehicle registration numbers
   cleaned = cleaned.replace(/\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
 
-  // 5. Personal names from protectedTerms and samples
+  // 5. Personal names from protectedTerms and samples with Unicode-aware word boundaries
   const personalNames = [
     'Mr. Ravi Kumar',
     'Ravi Kumar',
@@ -144,7 +144,7 @@ export function sanitizeProse(text, protectedTerms = []) {
   ]
   for (const name of personalNames) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '')
+    cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
   }
 
   for (const term of protectedTerms) {
@@ -153,7 +153,7 @@ export function sanitizeProse(text, protectedTerms = []) {
     const isInstitution = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
     if (!isInstitution) {
       const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '')
+      cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
     }
   }
 
@@ -623,4 +623,26 @@ test('Share privacy - Toggle off (hidePersonal=false) shows full details', () =>
   assert.ok(text.includes('Ravi Kumar'), 'Name should be present when hidePersonal is false')
   assert.ok(text.includes('CLM-2026-0884'), 'Claim ID should be present')
   assert.ok(text.includes('SH/IND/22/559102'), 'Policy No should be present')
+})
+
+test('Share privacy - Preserves dates, medical codes, legal codes and protects short names in words', () => {
+  // 1. Strings that must be preserved: "30-Nov-2026", "COVID-19", "Vitamin B-12", "Section 80-C"
+  const proseWithCodes = 'Patient received COVID-19 vaccine and Vitamin B-12 under Section 80-C on 30-Nov-2026. Pension ID: OAP/BLR/2019/04417.'
+  const cleaned = sanitizeProse(proseWithCodes)
+
+  assert.ok(cleaned.includes('30-Nov-2026'), 'Date 30-Nov-2026 was removed')
+  assert.ok(cleaned.includes('COVID-19'), 'Medical code COVID-19 was removed')
+  assert.ok(cleaned.includes('Vitamin B-12'), 'Medical code Vitamin B-12 was removed')
+  assert.ok(cleaned.includes('Section 80-C'), 'Legal code Section 80-C was removed')
+  assert.ok(!cleaned.includes('OAP/BLR/2019/04417'), 'Pension ID OAP/BLR/2019/04417 was leaked')
+
+  // 2. Short name inside a longer word preserved
+  // Protected terms: "Meena", "Rao", "Ravi"
+  const proseWithSubstrings = 'Dr. A. Meena visited Meenakshi temple with Bravo team for Ravishing festival.'
+  const cleanedSubstrings = sanitizeProse(proseWithSubstrings, ['Meena', 'Rao', 'Ravi'])
+
+  assert.ok(cleanedSubstrings.includes('Meenakshi'), 'Meenakshi was corrupted by Meena removal')
+  assert.ok(cleanedSubstrings.includes('Bravo'), 'Bravo was corrupted by Rao removal')
+  assert.ok(cleanedSubstrings.includes('Ravishing'), 'Ravishing was corrupted by Ravi removal')
+  assert.ok(!cleanedSubstrings.includes('Dr. A. Meena'), 'Dr. A. Meena was not removed')
 })

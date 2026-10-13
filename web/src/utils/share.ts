@@ -26,9 +26,11 @@ export const INSTITUTION_TERMS = [
   'virtual court',
 ]
 
-// Generic ID-like token regex: letters and digits joined by / or - (excludes dates YYYY-MM-DD or DD.MM.YYYY)
+// Generic ID-like token regex: letters and digits joined by / or -
+// Requires at least 3 digits in token (protects COVID-19, Vitamin B-12, Section 80-C).
+// Never matches month-name dates (e.g. 30-Nov-2026, 30-November-2026) or standard numeric dates.
 export const ID_TOKEN_REGEX =
-  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g
+  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi
 
 /**
  * Checks if a fact or detail is inherently personal (name, ID, address, phone, vehicle, account).
@@ -130,16 +132,16 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     ''
   )
 
-  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -) whatever their format
+  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -) with at least 3 digits, excluding dates
   cleaned = cleaned.replace(
-    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/g,
+    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi,
     ''
   )
 
   // 4. Indian vehicle registration numbers (e.g. TN 99 AB 1234)
   cleaned = cleaned.replace(/\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
 
-  // 5. Personal names from protectedTerms and samples
+  // 5. Personal names from protectedTerms and samples with Unicode-aware word boundaries
   const personalNames = [
     'Mr. Ravi Kumar',
     'Ravi Kumar',
@@ -151,10 +153,22 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     'Kamala Devi',
     'Smt. Kamala Devi',
     'Suresh Raman',
+    'ரவி குமார்',
+    'லட்சுமி ஆர்.',
+    'டாக்டர் மீனா',
+    'மீனா சுப்பிரமணியன்',
+    'கமலா தேவி',
+    'சுரேஷ் ராமன்',
+    'रवि कुमार',
+    'लक्ष्मी आर.',
+    'डॉक्टर मीना',
+    'मीना सुब्रमण्यन',
+    'कमला देवी',
+    'सुरेश रमन',
   ]
   for (const name of personalNames) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '')
+    cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
   }
 
   for (const term of protectedTerms) {
@@ -163,7 +177,7 @@ export function sanitizeProse(text: string, protectedTerms: string[] = []): stri
     const isInstitution = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
     if (!isInstitution) {
       const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '')
+      cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
     }
   }
 

@@ -740,7 +740,13 @@ def inspect_and_decrypt_pdf(pdf_bytes: bytes, password: Optional[str] = None) ->
 
 
 ID_TOKEN_REGEX = re.compile(
-    r"\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?=[A-Za-z0-9/_-]*[A-Za-z])(?=[A-Za-z0-9/_-]*\d)[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b"
+    r"\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)"
+    r"(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)"
+    r"(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)"
+    r"(?=(?:[A-Za-z0-9/_-]*\d){3,})"
+    r"(?=[A-Za-z0-9/_-]*[A-Za-z])"
+    r"[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b",
+    re.IGNORECASE,
 )
 
 

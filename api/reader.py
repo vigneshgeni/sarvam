@@ -49,8 +49,8 @@ EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.
 EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 20.0))
 
 HEDGE_SEMAPHORE_TIMEOUT: float = float(os.environ.get("HEDGE_SEMAPHORE_TIMEOUT", 2.0))
-REQUEST_DEADLINE: float = 95.0  # seconds
-TOTAL_RETRY_BUDGET: float = 85.0  # seconds
+REQUEST_DEADLINE: float = 80.0  # seconds
+TOTAL_RETRY_BUDGET: float = 72.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
 
 
