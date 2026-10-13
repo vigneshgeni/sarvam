@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
 import { formatDate, isDatePassed } from '../utils/date'
+import { presentActionDate } from '../utils/actionChips.mjs'
 import { formatAmountsInText } from '../utils/currency'
 import {
   CalendarIcon,
@@ -655,7 +656,8 @@ export default function ResultScreen({
               {result.actions.map((act, i) => {
                 const isDone = !!doneActions[i]
                 const isQuoteOpen = !!openActionQuotes[i]
-                const isPassed = act.date_status === 'passed' || isDatePassed(act.due_date)
+                const dateChips = presentActionDate(act, { isPhoto, t })
+                const isPassed = dateChips.isPassed
 
                 return (
                   <div key={i} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
@@ -713,20 +715,20 @@ export default function ResultScreen({
                             </span>
                           )}
 
-                          {isPassed && (
+                          {dateChips.passedMarker && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F0F0EB] text-[#5E636B]">
-                              {t.deadlinePassed || t.datePassed || 'Date passed'}
+                              {dateChips.passedMarker}
                             </span>
                           )}
 
-                          {act.date_status === 'calculated' && !isPassed && (
+                          {dateChips.evidenceChip?.kind === 'calculated' && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F1ECFB] text-[#6D45C9]">
-                              {t.calculatedChip || 'Calculated'}
+                              {dateChips.evidenceChip.text}
                             </span>
                           )}
 
                           {/* Add to Calendar button (.ics) (WEB-8) */}
-                          {!isPassed && (act.due_date || act.recurrence) && (
+                          {dateChips.showCalendar && (
                             <button
                               type="button"
                               onClick={() => handleAddActionToCalendar(act, i)}
@@ -737,24 +739,24 @@ export default function ResultScreen({
                             </button>
                           )}
 
-                          {/* Evidence Chip */}
-                          {act.evidence === 'matched' ? (
+                          {/* Evidence Chip follows the API label, including after the date has passed */}
+                          {dateChips.evidenceChip?.kind === 'matched' ? (
                             <button
                               type="button"
                               onClick={() => toggleActionQuote(i)}
                               className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] hover:bg-[#D4EBDD] px-2 py-0.5 rounded-md transition-colors"
                             >
                               <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
-                              {t.foundInDoc || 'Found in your document'}
+                              {dateChips.evidenceChip.text}
                             </button>
-                          ) : !isPhoto && act.quote ? (
+                          ) : dateChips.evidenceChip?.kind === 'check_original' ? (
                             <button
                               type="button"
                               onClick={() => toggleActionQuote(i)}
                               className="btn-press inline-flex items-center gap-1 text-[11px] font-medium text-[#475A7A] bg-[#EAEFF7] hover:bg-[#DCE5F2] px-2 py-0.5 rounded-md transition-colors"
                             >
                               <EyeIcon className="w-3 h-3 text-[#475A7A]" />
-                              {t.checkAgainstOriginal || 'Check against original'}
+                              {dateChips.evidenceChip.text}
                             </button>
                           ) : null}
                         </div>
