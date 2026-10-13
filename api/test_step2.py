@@ -1369,7 +1369,7 @@ async def test_eight_simultaneous_calls_finish_without_503(client):
             def do_post():
                 return client.post(
                     "/api/explain",
-                    files=[("files", (f"file_{i}.jpg", b"fake-data", "image/jpeg"))],
+                    files=[("files", (f"file_{i}.jpg", JPEG_BYTES, "image/jpeg"))],
                     data={"lang": "en"},
                 )
             return await loop.run_in_executor(None, do_post)
@@ -1400,7 +1400,7 @@ async def test_call_timeout_frees_semaphore_slot(client):
          patch("reader.read_document", side_effect=mock_stalled_reader):
         res = client.post(
             "/api/explain",
-            files=[("files", ("stalled.jpg", b"fake-data", "image/jpeg"))],
+            files=[("files", ("stalled.jpg", JPEG_BYTES, "image/jpeg"))],
             data={"lang": "en"},
         )
         assert res.status_code == 504
