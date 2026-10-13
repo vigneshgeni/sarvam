@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-test the Explain API. Prints PASS or FAIL per check. Does not print document text.
+# Smoke-test the Explain API. Prints PASS or FAIL per check. Does not print document text or audio.
 set -u
 
 if [ "$#" -ne 2 ]; then
@@ -65,15 +65,35 @@ sys.exit(0 if isinstance(data.get("title"), str) and data["title"] else 1)
 fi
 
 speak_headers="$tmp/speak.headers"
+speak_body="$tmp/speak.audio"
 speak_code="$(
-  curl -sS -m 30 -D "$speak_headers" -o "$tmp/speak.mp3" -w "%{http_code}" \
+  curl -sS -m 30 -D "$speak_headers" -o "$speak_body" -w "%{http_code}" \
     -X POST "$API_URL/api/speak" \
     -H "Content-Type: application/json" \
     -d '{"text":"Hello.","lang":"en","voice":"female"}'
 )"
 if [ "$speak_code" = "200" ] \
-  && grep -qi "^content-type: audio/mpeg" "$speak_headers" \
-  && [ -s "$tmp/speak.mp3" ]; then
+  && tr -d '\r' < "$speak_headers" | grep -qiE '^content-type:[[:space:]]*audio/(wav|mpeg)([[:space:]]|;|$)' \
+  && python3 -c '
+import os, sys
+path = sys.argv[1]
+min_bytes = 1024
+try:
+    size = os.path.getsize(path)
+except OSError:
+    sys.exit(1)
+if size < min_bytes:
+    sys.exit(1)
+with open(path, "rb") as fh:
+    head = fh.read(12)
+if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+    sys.exit(0)
+if head[:3] == b"ID3":
+    sys.exit(0)
+if len(head) >= 2 and head[0] == 0xFF and (head[1] & 0xE0) == 0xE0:
+    sys.exit(0)
+sys.exit(1)
+' "$speak_body"; then
   pass "speak"
 else
   fail "speak (HTTP ${speak_code:-none})"
