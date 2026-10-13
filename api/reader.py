@@ -40,15 +40,14 @@ LOCATION = VERTEX_LOCATION
 EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
 TRANSLATE_THINKING: int = 0
 
-# Tail-Latency Hedge Configuration (env-overridable constants in one place)
+# Timeout and Retry Configuration (env-overridable constants)
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
-TRANSLATE_HEDGE_DELAY: float = float(os.environ.get("TRANSLATE_HEDGE_DELAY", 7.0))
-
 EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 38.0))
 EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.0))
-EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 20.0))
 
-HEDGE_SEMAPHORE_TIMEOUT: float = float(os.environ.get("HEDGE_SEMAPHORE_TIMEOUT", 2.0))
+FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
+FALLBACK_TIMEOUT: float = float(os.environ.get("FALLBACK_TIMEOUT", 35.0))
+
 REQUEST_DEADLINE: float = 80.0  # seconds
 TOTAL_RETRY_BUDGET: float = 72.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
@@ -264,13 +263,19 @@ def call_gemini_with_retry(
     if deadline is None:
         deadline = start_time + REQUEST_DEADLINE
 
+    current_model = model
+    model_path = "fallback" if model == FALLBACK_MODEL_ID else "primary"
+    current_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
+
     for attempt in range(max_retries + 1):
         if attempt == 0:
             remaining_deadline = deadline - start_time
             if remaining_deadline - 1.0 <= 0:
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     0.0,
                 )
@@ -278,8 +283,7 @@ def call_gemini_with_retry(
                     f"Overall request deadline ({REQUEST_DEADLINE}s) reached before attempt {attempt + 1}",
                     status_code=504,
                 )
-            base_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
-            cur_attempt_timeout = min(base_timeout, remaining_deadline - 1.0)
+            cur_attempt_timeout = min(current_timeout, remaining_deadline - 1.0)
             if config is not None:
                 if isinstance(config, types.GenerateContentConfig):
                     config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
@@ -295,8 +299,10 @@ def call_gemini_with_retry(
 
             if remaining_deadline - 1.0 <= 0:
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     elapsed_before_sleep,
                 )
@@ -307,8 +313,10 @@ def call_gemini_with_retry(
 
             if elapsed_before_sleep >= TOTAL_RETRY_BUDGET:
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     elapsed_before_sleep,
                 )
@@ -321,10 +329,18 @@ def call_gemini_with_retry(
             jitter = random.uniform(0.0, 0.5)
             sleep_duration = base_delay + jitter
 
+            # Fallback model switch on retryable error: go straight to fallback attempt
+            if current_model != FALLBACK_MODEL_ID and FALLBACK_MODEL_ID:
+                current_model = FALLBACK_MODEL_ID
+                current_timeout = FALLBACK_TIMEOUT
+                model_path = "fallback"
+
             if elapsed_before_sleep + sleep_duration >= TOTAL_RETRY_BUDGET:
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     elapsed_before_sleep,
                 )
@@ -335,8 +351,10 @@ def call_gemini_with_retry(
 
             if (now + sleep_duration >= deadline) or (deadline - (now + sleep_duration) < 1.0):
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     elapsed_before_sleep,
                 )
@@ -345,21 +363,24 @@ def call_gemini_with_retry(
                     status_code=504,
                 )
 
-            logger.warning(
-                "gemini_retry: endpoint=%s, attempt=%d, delay=%.2f, seconds=%.2f",
-                endpoint,
-                attempt,
-                sleep_duration,
-                elapsed_before_sleep,
-            )
-            time.sleep(sleep_duration)
+            if sleep_duration > 0:
+                logger.warning(
+                    "gemini_retry: endpoint=%s, attempt=%d, delay=%.2f, seconds=%.2f",
+                    endpoint,
+                    attempt,
+                    sleep_duration,
+                    elapsed_before_sleep,
+                )
+                time.sleep(sleep_duration)
 
             now_after_sleep = now + sleep_duration
             remaining_after_sleep = deadline - now_after_sleep
             if remaining_after_sleep - 1.0 <= 0:
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt,
                     elapsed_before_sleep + sleep_duration,
                 )
@@ -368,8 +389,7 @@ def call_gemini_with_retry(
                     status_code=504,
                 )
 
-            base_timeout = attempt_timeout_sec if attempt_timeout_sec is not None else 100.0
-            cur_attempt_timeout = min(base_timeout, remaining_after_sleep - 1.0)
+            cur_attempt_timeout = min(current_timeout, remaining_after_sleep - 1.0)
             if config is not None:
                 if isinstance(config, types.GenerateContentConfig):
                     config.http_options = types.HttpOptions(timeout=max(1, int(cur_attempt_timeout * 1000)))
@@ -381,7 +401,7 @@ def call_gemini_with_retry(
         attempt_start = time.time()
         try:
             resp = client.models.generate_content(
-                model=model,
+                model=current_model,
                 contents=contents,
                 config=config,
             )
@@ -399,8 +419,10 @@ def call_gemini_with_retry(
                 attempt_dur,
             )
             logger.info(
-                "gemini_call: endpoint=%s, input_tokens=%d, output_tokens=%d, thinking_tokens=%d, attempts=%d, seconds=%.2f, status=200",
+                "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=%d, output_tokens=%d, thinking_tokens=%d, attempts=%d, seconds=%.2f, status=200",
                 endpoint,
+                model_path,
+                current_model,
                 input_tokens,
                 output_tokens,
                 thinking_tokens,
@@ -424,8 +446,10 @@ def call_gemini_with_retry(
 
             if isinstance(e, GeminiTimeoutError) or (now >= deadline - 1.0):
                 logger.info(
-                    "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
+                    "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=504",
                     endpoint,
+                    model_path,
+                    current_model,
                     attempt + 1,
                     elapsed,
                 )
@@ -443,8 +467,10 @@ def call_gemini_with_retry(
 
             # Non-retryable error or retries exhausted
             logger.info(
-                "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%d",
+                "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=%d",
                 endpoint,
+                model_path,
+                current_model,
                 attempt + 1,
                 elapsed,
                 code if isinstance(code, int) else 503,
@@ -459,8 +485,10 @@ def call_gemini_with_retry(
     # Fallback if loop ends
     elapsed = time.time() - start_time
     logger.info(
-        "gemini_call: endpoint=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
+        "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
         endpoint,
+        model_path,
+        current_model,
         max_retries + 1,
         elapsed,
     )
@@ -723,7 +751,7 @@ def ask_document_single_attempt(
             contents.append(types.Part.from_bytes(data=data, mime_type=mime_type))
     contents.append(prompt)
 
-    timeout_sec = timeout if timeout is not None else 60.0
+    timeout_sec = timeout if timeout is not None else 35.0
 
     config = types.GenerateContentConfig(
         temperature=0.0,
@@ -740,6 +768,7 @@ def ask_document_single_attempt(
         contents=contents,
         config=config,
         endpoint="ask",
+        max_retries=1,
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
     )
@@ -761,10 +790,7 @@ def ask_document_single_attempt(
     for d in answer_digits:
         stripped = d.lstrip("0") or "0"
         if d not in context_digits and stripped not in context_digits:
-            if files_data or not pdf_pages_text:
-                ask_res.evidence = "check_original"
-            else:
-                raise AskUnverifiedError(f"Unverified number {d} in answer")
+            ask_res.evidence = "check_original"
 
     # Evidence assignment
     if ask_res.not_found:
@@ -844,112 +870,6 @@ def translate_result_text(
     if res_payload.protected_terms:
         res_payload.protected_terms = filter_protected_terms(res_payload.protected_terms)
     return res_payload
-
-
-# --- Tail-Latency Hedge Orchestrator (Item 3) ---
-
-async def execute_with_hedge(
-    fn: Any,
-    args: tuple,
-    per_attempt_timeout: float,
-    hedge_delay: float,
-    can_hedge: bool,
-    deadline: float,
-    semaphore: asyncio.Semaphore,
-    endpoint: str,
-) -> Any:
-    """
-    Executes fn with tail-latency hedging.
-    - Launches attempt 1 with per_attempt_timeout.
-    - If attempt 1 does not complete within hedge_delay and can_hedge is True:
-      - Attempts to acquire a 2nd semaphore slot within HEDGE_SEMAPHORE_TIMEOUT (2s).
-      - If acquired, launches attempt 2 and races both attempts (first to succeed wins).
-      - Releases hedge semaphore slot as soon as race finishes.
-    - Logs hedged (True/False) and winning attempt without content.
-    - Enforces REQUEST_DEADLINE (504 when deadline exceeded).
-    """
-    start_time = time.time()
-    remaining = deadline - start_time
-    if remaining <= 1.0:
-        raise GeminiTimeoutError("Request deadline reached before start", status_code=504)
-
-    timeout_1 = min(per_attempt_timeout, max(1.0, remaining - 1.0))
-    task1 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_1, 1))
-
-    done, _ = await asyncio.wait({task1}, timeout=hedge_delay)
-    if task1 in done:
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return task1.result()
-
-    # Attempt 1 still running after hedge_delay
-    if not can_hedge:
-        res = await task1
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return res
-
-    # Try to acquire semaphore slot for attempt 2 within HEDGE_SEMAPHORE_TIMEOUT
-    hedge_acquired = False
-    try:
-        await asyncio.wait_for(semaphore.acquire(), timeout=HEDGE_SEMAPHORE_TIMEOUT)
-        hedge_acquired = True
-    except (asyncio.TimeoutError, TimeoutError):
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, hedge_skipped=semaphore_busy",
-            endpoint,
-        )
-
-    if not hedge_acquired:
-        res = await task1
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return res
-
-    # Launch attempt 2
-    try:
-        remaining_now = deadline - time.time()
-        if remaining_now <= 1.0:
-            raise GeminiTimeoutError("Request deadline reached before hedge attempt", status_code=504)
-        timeout_2 = min(per_attempt_timeout, max(1.0, remaining_now - 1.0))
-        task2 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_2, 2))
-
-        # Race task1 and task2
-        done_set, _ = await asyncio.wait({task1, task2}, return_when=asyncio.FIRST_COMPLETED)
-        first_completed = next(iter(done_set))
-
-        try:
-            result = first_completed.result()
-            winner = 1 if first_completed is task1 else 2
-        except Exception as first_exc:
-            # If the first finished attempt raised an error, wait for the other attempt
-            other_task = task2 if first_completed is task1 else task1
-            result = await other_task
-            winner = 2 if first_completed is task1 else 1
-
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=True, winner=%d, seconds=%.2f",
-            endpoint,
-            winner,
-            elapsed,
-        )
-        return result
-    finally:
-        if hedge_acquired:
-            semaphore.release()
 
 
 def extract_text_document(

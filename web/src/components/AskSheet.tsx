@@ -37,11 +37,24 @@ export default function AskSheet({
   const [isListening, setIsListening] = useState(false)
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isStillWorking, setIsStillWorking] = useState(false)
   const [answerData, setAnswerData] = useState<AskResponse | null>(null)
   const [askError, setAskError] = useState<string | null>(null)
 
   const recognitionRef = useRef<any>(null)
   const silenceTimerRef = useRef<number | null>(null)
+
+  // Track 15s loading timer
+  useEffect(() => {
+    if (!isLoading) {
+      setIsStillWorking(false)
+      return
+    }
+    const timer = setTimeout(() => {
+      setIsStillWorking(true)
+    }, 15000)
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   // Clear answers when sheet closes
   useEffect(() => {
@@ -288,6 +301,14 @@ export default function AskSheet({
             <span className="text-xs text-[#B42318] px-1">{speechError}</span>
           )}
         </div>
+
+        {/* Loading Indicator with "Still working..." after 15s */}
+        {isLoading && (
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F6F6F3] border border-[#E6E6E1] text-xs text-[#5E636B] animate-card-in">
+            <div className="w-3.5 h-3.5 border-2 border-[#5B52D6]/30 border-t-[#5B52D6] rounded-full animate-spin shrink-0" />
+            <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askLoading || 'Looking up answer in document...')}</span>
+          </div>
+        )}
 
         {/* Answer Display Card (never displayed if error is present) */}
         {!askError && answerData && (

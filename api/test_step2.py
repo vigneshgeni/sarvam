@@ -1154,112 +1154,182 @@ def test_translate_endpoint_accepts_translated_grievance_cell_and_rejects_transl
 
 # --- Step 5b-4 Tests (Items 3-6) ---
 
-# Item 3: Tail-Latency Hedge Orchestrator Tests with Fake Slow Client
-@pytest.mark.anyio
-async def test_execute_with_hedge_fast_no_hedge():
-    import asyncio
-    import time
-    from reader import execute_with_hedge
-
-    sem = asyncio.Semaphore(2)
-    call_counts = []
-
-    def fast_fn(deadline, timeout, attempt_idx):
-        call_counts.append(attempt_idx)
-        return f"result-{attempt_idx}"
-
-    res = await execute_with_hedge(
-        fn=fast_fn,
-        args=(),
-        per_attempt_timeout=1.0,
-        hedge_delay=0.2,
-        can_hedge=True,
-        deadline=time.time() + 10.0,
-        semaphore=sem,
-        endpoint="test_fast",
-    )
-    assert res == "result-1"
-    assert call_counts == [1]
-
+# Item 3: Concurrency, Retry, and Semaphore Release Tests (Part A)
 
 @pytest.mark.anyio
-async def test_execute_with_hedge_slow_first_hedge_wins():
-    import asyncio
+async def test_gemini_retry_on_stall_and_429():
+    """Async test with a fake client that stalls, returns 429, then succeeds."""
     import time
-    from reader import execute_with_hedge
+    from unittest.mock import MagicMock
+    from reader import call_gemini_with_retry
 
-    sem = asyncio.Semaphore(2)
+    call_count = 0
+    fake_client = MagicMock()
 
-    def slow_first_fn(deadline, timeout, attempt_idx):
-        if attempt_idx == 1:
-            time.sleep(0.5)
-            return "slow-1"
-        return "fast-hedge-2"
+    class Fake429Error(Exception):
+        code = 429
 
-    res = await execute_with_hedge(
-        fn=slow_first_fn,
-        args=(),
-        per_attempt_timeout=2.0,
-        hedge_delay=0.05,
-        can_hedge=True,
-        deadline=time.time() + 10.0,
-        semaphore=sem,
-        endpoint="test_hedge_wins",
-    )
-    assert res == "fast-hedge-2"
+    def mock_generate_content(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise TimeoutError("Simulated socket timeout on attempt 1")
+        elif call_count == 2:
+            raise Fake429Error("429 Resource exhausted")
+        else:
+            mock_resp = MagicMock()
+            mock_resp.text = '{"status": "ok"}'
+            mock_resp.parsed = None
+            mock_resp.usage_metadata = None
+            return mock_resp
 
+    fake_client.models.generate_content.side_effect = mock_generate_content
 
-@pytest.mark.anyio
-async def test_execute_with_hedge_semaphore_busy_skips_hedge():
-    import asyncio
-    import time
-    from reader import execute_with_hedge
-
-    # Semaphore has 0 available permits for the hedge attempt
-    sem = asyncio.Semaphore(0)
-
-    def slow_fn(deadline, timeout, attempt_idx):
-        time.sleep(0.15)
-        return f"result-{attempt_idx}"
-
-    with patch("reader.HEDGE_SEMAPHORE_TIMEOUT", 0.02):
-        res = await execute_with_hedge(
-            fn=slow_fn,
-            args=(),
-            per_attempt_timeout=2.0,
-            hedge_delay=0.03,
-            can_hedge=True,
+    with patch("reader.BACKOFF_DELAYS", [0.01, 0.01]):
+        resp = call_gemini_with_retry(
+            client=fake_client,
+            model="gemini-3.7-flash",
+            contents=["test prompt"],
+            config=None,
+            endpoint="test_retry",
+            max_retries=2,
             deadline=time.time() + 10.0,
-            semaphore=sem,
-            endpoint="test_sem_busy",
+            attempt_timeout_sec=5.0,
         )
-        assert res == "result-1"
+    assert call_count == 3
+    assert resp.text == '{"status": "ok"}'
 
 
 @pytest.mark.anyio
-async def test_execute_with_hedge_deadline_enforced():
-    import asyncio
+async def test_gemini_fallback_model_on_retryable_error():
+    """Prove that an attempt 1 failure on 3.7-flash switches to 2.5-flash on attempt 2."""
     import time
-    from reader import GeminiTimeoutError, execute_with_hedge
+    from unittest.mock import MagicMock
+    from reader import call_gemini_with_retry
 
-    sem = asyncio.Semaphore(2)
+    models_called = []
+    fake_client = MagicMock()
 
-    def dummy_fn(deadline, timeout, attempt_idx):
-        return "ok"
+    class Fake504Error(Exception):
+        code = 504
 
-    # Deadline already in the past
-    with pytest.raises(GeminiTimeoutError) as exc_info:
-        await execute_with_hedge(
-            fn=dummy_fn,
-            args=(),
-            per_attempt_timeout=2.0,
-            hedge_delay=0.05,
-            can_hedge=True,
-            deadline=time.time() - 1.0,
-            semaphore=sem,
-            endpoint="test_deadline",
+    def mock_generate_content(*args, **kwargs):
+        model_name = kwargs.get("model")
+        models_called.append(model_name)
+        if len(models_called) == 1:
+            raise Fake504Error("504 Gateway Timeout")
+        mock_resp = MagicMock()
+        mock_resp.text = '{"status": "ok"}'
+        mock_resp.usage_metadata = None
+        return mock_resp
+
+    fake_client.models.generate_content.side_effect = mock_generate_content
+
+    with patch("reader.BACKOFF_DELAYS", [0.01]):
+        resp = call_gemini_with_retry(
+            client=fake_client,
+            model="gemini-3.7-flash",
+            contents=["test prompt"],
+            config=None,
+            endpoint="test_fallback",
+            max_retries=1,
+            deadline=time.time() + 10.0,
+            attempt_timeout_sec=38.0,
         )
-    assert exc_info.value.status_code == 504
+
+    assert len(models_called) == 2
+    assert models_called[0] == "gemini-3.7-flash"
+    assert models_called[1] == "gemini-2.5-flash"
+    assert resp.text == '{"status": "ok"}'
+
+
+@pytest.mark.anyio
+async def test_eight_simultaneous_calls_finish_without_503(client):
+    """Eight simultaneous fake calls must all finish without 503."""
+    import asyncio
+    from main import GEMINI_SEMAPHORE, IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    mock_reader_resp = ReaderResponse(
+        title="Notice",
+        summary=["Important summary"],
+        actions=[],
+        warnings=[],
+        facts=[],
+        document_language="en",
+        language="en",
+    )
+
+    with patch("main.read_document", return_value=mock_reader_resp), \
+         patch("reader.read_document", return_value=mock_reader_resp):
+
+        async def make_call(i):
+            loop = asyncio.get_running_loop()
+            def do_post():
+                return client.post(
+                    "/api/explain",
+                    files=[("files", (f"file_{i}.jpg", b"fake-data", "image/jpeg"))],
+                    data={"lang": "en"},
+                )
+            return await loop.run_in_executor(None, do_post)
+
+        tasks = [make_call(i) for i in range(8)]
+        results = await asyncio.gather(*tasks)
+
+        for res in results:
+            assert res.status_code == 200, f"Expected 200 but got {res.status_code}: {res.text}"
+        assert GEMINI_SEMAPHORE._value == 8
+
+
+@pytest.mark.anyio
+async def test_call_timeout_frees_semaphore_slot(client):
+    """Prove that a call reaching deadline releases its semaphore slot."""
+    from reader import GeminiTimeoutError
+    from main import GEMINI_SEMAPHORE, IP_REQUESTS
+    IP_REQUESTS.clear()
+
+    initial_permits = GEMINI_SEMAPHORE._value
+    assert initial_permits == 8
+
+    # Simulate a reader function that raises GeminiTimeoutError (stalled call)
+    def mock_stalled_reader(*args, **kwargs):
+        raise GeminiTimeoutError("Call timed out", status_code=504)
+
+    with patch("main.read_document", side_effect=mock_stalled_reader), \
+         patch("reader.read_document", side_effect=mock_stalled_reader):
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("stalled.jpg", b"fake-data", "image/jpeg"))],
+            data={"lang": "en"},
+        )
+        assert res.status_code == 504
+
+    # Slot must be fully freed back to 8
+    assert GEMINI_SEMAPHORE._value == 8
+
+
+@pytest.mark.anyio
+async def test_extract_limiter_skips_when_busy(client):
+    """Prove /api/extract-text does not acquire GEMINI_SEMAPHORE and skips when EXTRACT_SEMAPHORE is locked."""
+    from main import EXTRACT_SEMAPHORE, GEMINI_SEMAPHORE
+
+    # Acquire EXTRACT_SEMAPHORE to make it busy
+    await EXTRACT_SEMAPHORE.acquire()
+    try:
+        # GEMINI_SEMAPHORE should have all 8 slots available
+        assert GEMINI_SEMAPHORE._value == 8
+
+        res = client.post(
+            "/api/extract-text",
+            files=[("files", ("test.jpg", b"fake-image", "image/jpeg"))],
+        )
+        assert res.status_code == 200
+        assert res.json() == {"source_text": None}
+
+        # GEMINI_SEMAPHORE was never touched
+        assert GEMINI_SEMAPHORE._value == 8
+    finally:
+        EXTRACT_SEMAPHORE.release()
 
 
 # Item 4: lang=auto Tests on /api/explain

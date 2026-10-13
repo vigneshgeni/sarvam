@@ -354,6 +354,20 @@ export default function ReadingScreen({
         </div>
       )}
 
+      {/* Cancel button: always visible during reading across all screen widths down to 360px */}
+      {!error && (
+        <div className="w-full flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-press min-h-[44px] px-6 py-2.5 rounded-full border border-line bg-surface text-muted hover:text-ink font-semibold text-[14px] transition-colors shadow-xs flex items-center justify-center"
+            aria-label={t.cancel || t.goBack || 'Cancel'}
+          >
+            {t.cancel || t.goBack || 'Cancel'}
+          </button>
+        </div>
+      )}
+
       {/* Dedicated Error View if API fails */}
       {error && (
         <ErrorView
