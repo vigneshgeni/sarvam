@@ -116,6 +116,8 @@ export default function App() {
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
   const activeTranslateControllerRef = useRef<AbortController | null>(null)
+  const readingAbortControllerRef = useRef<AbortController | null>(null)
+  const readingTimeoutRef = useRef<number | null>(null)
 
   const langRowRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
@@ -398,6 +400,23 @@ export default function App() {
 
     const targetLang = resolveLang(lang)
 
+    if (readingTimeoutRef.current) {
+      clearTimeout(readingTimeoutRef.current)
+      readingTimeoutRef.current = null
+    }
+    if (readingAbortControllerRef.current) {
+      readingAbortControllerRef.current.abort('cancelled')
+      readingAbortControllerRef.current = null
+    }
+
+    const controller = new AbortController()
+    readingAbortControllerRef.current = controller
+
+    // Single 90s top-level timer from tap covering queue wait, explain, and automatic translate
+    readingTimeoutRef.current = window.setTimeout(() => {
+      controller.abort('timeout')
+    }, 90_000)
+
     activeFilesRef.current = filesToExplain
     retryActionRef.current = () => runExplain(filesToExplain, lang, password)
     setActiveFiles(filesToExplain)
@@ -430,7 +449,7 @@ export default function App() {
       await Promise.all(
         filesToExplain.map(async (file, idx) => {
           try {
-            const res = await explainDocument([file], targetLang, undefined, password)
+            const res = await explainDocument([file], targetLang, controller.signal, password)
             updatedCards[idx] = {
               ...updatedCards[idx],
               title: res.title || file.name,
@@ -524,7 +543,12 @@ export default function App() {
     // Single document pipeline
     setMultiReportsData(null)
     try {
-      const result = await explainDocument(filesToExplain, targetLang, undefined, password)
+      const result = await explainDocument(filesToExplain, targetLang, controller.signal, password)
+
+      if (readingTimeoutRef.current) {
+        clearTimeout(readingTimeoutRef.current)
+        readingTimeoutRef.current = null
+      }
 
       const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       currentResultIdRef.current = resultId
@@ -575,6 +599,24 @@ export default function App() {
         }).catch(() => {})
       }
     } catch (err: unknown) {
+      if (readingTimeoutRef.current) {
+        clearTimeout(readingTimeoutRef.current)
+        readingTimeoutRef.current = null
+      }
+
+      if (controller.signal.aborted) {
+        if (controller.signal.reason === 'cancelled') {
+          return
+        }
+        if (controller.signal.reason === 'timeout') {
+          setCurrentError({
+            message: 'Request timed out after 90 seconds.',
+            messageLocal: getLocalFallbackError(targetLang, 'timeout'),
+            statusCode: 504,
+          })
+          return
+        }
+      }
 
       if (err instanceof DOMException && err.name === 'AbortError') return
       if (err instanceof ExplainApiError) {
@@ -917,6 +959,14 @@ export default function App() {
   }
 
   const handleGoHome = () => {
+    if (readingTimeoutRef.current) {
+      clearTimeout(readingTimeoutRef.current)
+      readingTimeoutRef.current = null
+    }
+    if (readingAbortControllerRef.current) {
+      readingAbortControllerRef.current.abort('cancelled')
+      readingAbortControllerRef.current = null
+    }
     if (activeTranslateControllerRef.current) {
       activeTranslateControllerRef.current.abort()
     }

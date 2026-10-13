@@ -67,18 +67,14 @@ from models import (
 )
 import reader
 from reader import (
-    EXPLAIN_HEDGE_DELAY,
     EXPLAIN_LARGE_TIMEOUT,
     EXPLAIN_TIMEOUT,
     GeminiServiceError,
     GeminiTimeoutError,
-    HEDGE_SEMAPHORE_TIMEOUT,
     REQUEST_DEADLINE,
-    TRANSLATE_HEDGE_DELAY,
     TRANSLATE_TIMEOUT,
     ask_document,
     ask_document_single_attempt,
-    execute_with_hedge,
     read_document,
     read_document_single_attempt,
     translate_keyed_strings,
@@ -94,9 +90,12 @@ MAX_TOTAL_MB = 25
 MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024
 MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024
 
-# Per-instance concurrency semaphore (max 2 concurrent Gemini calls)
-GEMINI_SEMAPHORE = asyncio.Semaphore(2)
+# Per-instance concurrency semaphore (matches Cloud Run concurrency of 8)
+GEMINI_SEMAPHORE = asyncio.Semaphore(8)
 SEMAPHORE_TIMEOUT = 30.0  # seconds waiting for semaphore before 503
+
+# Dedicated limiter for background /api/extract-text (max 1 concurrent; skips if busy)
+EXTRACT_SEMAPHORE = asyncio.Semaphore(1)
 
 # TTS semaphore (max 4 concurrent TTS calls)
 TTS_SEMAPHORE = asyncio.Semaphore(4)
@@ -401,6 +400,11 @@ async def explain(
         queue_wait = time.time() - queue_start
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         elapsed = time.time() - start_time
+        logger.info(
+            "gemini_slot: endpoint=/api/explain, slot_wait=%.3f, status=%s",
+            queue_wait,
+            "504" if (time.time() >= deadline - 1.0 or sem_wait_timeout == remaining) else "503",
+        )
         if time.time() >= deadline - 1.0 or sem_wait_timeout == remaining:
             logger.info(
                 "request_log: endpoint=/api/explain, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
@@ -420,25 +424,22 @@ async def explain(
         return make_error_response(503, "service_busy", lang)
 
     queue_wait = time.time() - queue_start
+    logger.info(
+        "gemini_slot: endpoint=/api/explain, slot_wait=%.3f, status=acquired",
+        queue_wait,
+    )
 
-    # Run Gemini Reader with hedging and AnyIO thread pool so event loop remains completely unblocked
+    # Run Gemini Reader with AnyIO thread pool so event loop remains completely unblocked
     try:
-        if (
-            isinstance(read_document, unittest.mock.MagicMock)
-            or read_document is not reader.read_document
-        ):
-            reader_result = await run_in_threadpool(read_document, file_data_list, lang, deadline)
-        else:
-            reader_result = await execute_with_hedge(
-                fn=read_document_single_attempt,
-                args=(file_data_list, lang),
-                per_attempt_timeout=EXPLAIN_LARGE_TIMEOUT if len(file_data_list) > 3 else EXPLAIN_TIMEOUT,
-                hedge_delay=EXPLAIN_HEDGE_DELAY,
-                can_hedge=len(file_data_list) <= 3,
-                deadline=deadline,
-                semaphore=GEMINI_SEMAPHORE,
-                endpoint="explain",
+        reader_fn = (
+            read_document
+            if (
+                isinstance(read_document, unittest.mock.MagicMock)
+                or read_document is not reader.read_document
             )
+            else reader.read_document
+        )
+        reader_result = await run_in_threadpool(reader_fn, file_data_list, lang, deadline)
     except Exception as e:
         elapsed = time.time() - start_time
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -859,6 +860,11 @@ async def translate(
         queue_wait = time.time() - queue_start
         finish_dt = datetime.datetime.now(datetime.timezone.utc)
         elapsed = time.time() - start_time
+        logger.info(
+            "gemini_slot: endpoint=/api/translate, slot_wait=%.3f, status=%s",
+            queue_wait,
+            "504" if (time.time() >= deadline - 1.0 or sem_wait_timeout == remaining) else "503",
+        )
         if time.time() >= deadline - 1.0 or sem_wait_timeout == remaining:
             logger.info(
                 "request_log: endpoint=/api/translate, start=%s, finish=%s, queue_wait=%.3f, seconds=%.2f, status=504",
@@ -878,8 +884,12 @@ async def translate(
         return make_error_response(503, "service_busy", body.lang)
 
     queue_wait = time.time() - queue_start
+    logger.info(
+        "gemini_slot: endpoint=/api/translate, slot_wait=%.3f, status=acquired",
+        queue_wait,
+    )
 
-    # Run Shrunk Translate with hedging in AnyIO thread pool so event loop remains unblocked
+    # Run Shrunk Translate in AnyIO thread pool so event loop remains unblocked
     try:
         if (
             isinstance(translate_result_text, unittest.mock.MagicMock)
@@ -899,15 +909,20 @@ async def translate(
             trans_places_labels = [p.label for p in orig.places]
             trans_contacts_labels = [c.label for c in orig.contacts]
         else:
-            translated_dict = await execute_with_hedge(
-                fn=translate_keyed_strings,
-                args=(strings_to_translate, body.lang, orig.protected_terms),
-                per_attempt_timeout=TRANSLATE_TIMEOUT,
-                hedge_delay=TRANSLATE_HEDGE_DELAY,
-                can_hedge=True,
-                deadline=deadline,
-                semaphore=GEMINI_SEMAPHORE,
-                endpoint="translate",
+            trans_fn = (
+                translate_keyed_strings
+                if (
+                    isinstance(translate_keyed_strings, unittest.mock.MagicMock)
+                    or translate_keyed_strings is not reader.translate_keyed_strings
+                )
+                else reader.translate_keyed_strings
+            )
+            translated_dict = await run_in_threadpool(
+                trans_fn,
+                strings_to_translate,
+                body.lang,
+                orig.protected_terms,
+                deadline,
             )
             trans_title = translated_dict.get("title", orig.title)
             trans_report_title = translated_dict.get("report_title") if orig.report_title else None
@@ -1317,7 +1332,7 @@ async def ask(
     password: Optional[str] = Form(None),
 ):
     start_time = time.time()
-    deadline = start_time + 60.0  # 60s timeout for ask
+    deadline = start_time + 45.0  # 45s server deadline for ask
     client_ip = get_client_ip(request)
 
     allowed, retry_after = check_rate_limit("ask", client_ip, ASK_RATE_LIMIT)
@@ -1377,10 +1392,22 @@ async def ask(
             pass
 
     # Semaphore wait
+    queue_start = time.time()
     try:
         await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=min(30.0, deadline - time.time()))
     except (asyncio.TimeoutError, TimeoutError):
+        queue_wait = time.time() - queue_start
+        logger.info(
+            "gemini_slot: endpoint=/api/ask, slot_wait=%.3f, status=503",
+            queue_wait,
+        )
         return make_error_response(503, "service_busy", lang)
+
+    queue_wait = time.time() - queue_start
+    logger.info(
+        "gemini_slot: endpoint=/api/ask, slot_wait=%.3f, status=acquired",
+        queue_wait,
+    )
 
     try:
         if (
@@ -1397,15 +1424,15 @@ async def ask(
                 deadline,
             )
         else:
-            ask_res = await execute_with_hedge(
-                fn=ask_document_single_attempt,
-                args=(question, lang, result, file_data_list or None, pdf_pages_text),
-                per_attempt_timeout=50.0,
-                hedge_delay=25.0,
-                can_hedge=True,
-                deadline=deadline,
-                semaphore=GEMINI_SEMAPHORE,
-                endpoint="ask",
+            ask_res = await run_in_threadpool(
+                reader.ask_document_single_attempt,
+                question,
+                lang,
+                result,
+                file_data_list or None,
+                pdf_pages_text,
+                deadline,
+                35.0,
             )
         return ask_res
     except AskUnverifiedError:
@@ -1431,6 +1458,7 @@ async def extract_text(
     """
     Separate background endpoint to extract verbatim source text from document files
     without slowing down the main /api/explain response.
+    Uses its own limiter and skips immediately when busy so it never competes with explain.
     """
     if not files:
         return {"source_text": None}
@@ -1460,10 +1488,15 @@ async def extract_text(
     if not image_parts:
         return {"source_text": None}
 
-    # Transcribe images in background with semaphore
+    # Dedicated limiter for background extraction - never blocks or delays explain
+    if EXTRACT_SEMAPHORE.locked():
+        logger.info("extract_text_skipped: reason=limiter_busy")
+        return {"source_text": None}
+
     try:
-        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=10.0)
+        await asyncio.wait_for(EXTRACT_SEMAPHORE.acquire(), timeout=0.01)
     except (asyncio.TimeoutError, TimeoutError):
+        logger.info("extract_text_skipped: reason=limiter_busy")
         return {"source_text": None}
 
     try:
@@ -1477,5 +1510,5 @@ async def extract_text(
         logger.warning("extract-text background error: %s", e)
         return {"source_text": None}
     finally:
-        GEMINI_SEMAPHORE.release()
+        EXTRACT_SEMAPHORE.release()
 

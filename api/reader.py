@@ -40,15 +40,11 @@ LOCATION = VERTEX_LOCATION
 EXPLAIN_THINKING: int = int(os.environ.get("EXPLAIN_THINKING", 0))
 TRANSLATE_THINKING: int = 0
 
-# Tail-Latency Hedge Configuration (env-overridable constants in one place)
+# Timeout and Retry Configuration (env-overridable constants)
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
-TRANSLATE_HEDGE_DELAY: float = float(os.environ.get("TRANSLATE_HEDGE_DELAY", 7.0))
-
 EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 38.0))
 EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.0))
-EXPLAIN_HEDGE_DELAY: float = float(os.environ.get("EXPLAIN_HEDGE_DELAY", 20.0))
 
-HEDGE_SEMAPHORE_TIMEOUT: float = float(os.environ.get("HEDGE_SEMAPHORE_TIMEOUT", 2.0))
 REQUEST_DEADLINE: float = 80.0  # seconds
 TOTAL_RETRY_BUDGET: float = 72.0  # seconds
 BACKOFF_DELAYS: List[float] = [2.0, 5.0]
@@ -723,7 +719,7 @@ def ask_document_single_attempt(
             contents.append(types.Part.from_bytes(data=data, mime_type=mime_type))
     contents.append(prompt)
 
-    timeout_sec = timeout if timeout is not None else 60.0
+    timeout_sec = timeout if timeout is not None else 35.0
 
     config = types.GenerateContentConfig(
         temperature=0.0,
@@ -740,6 +736,7 @@ def ask_document_single_attempt(
         contents=contents,
         config=config,
         endpoint="ask",
+        max_retries=1,
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
     )
@@ -761,10 +758,7 @@ def ask_document_single_attempt(
     for d in answer_digits:
         stripped = d.lstrip("0") or "0"
         if d not in context_digits and stripped not in context_digits:
-            if files_data or not pdf_pages_text:
-                ask_res.evidence = "check_original"
-            else:
-                raise AskUnverifiedError(f"Unverified number {d} in answer")
+            ask_res.evidence = "check_original"
 
     # Evidence assignment
     if ask_res.not_found:
@@ -844,112 +838,6 @@ def translate_result_text(
     if res_payload.protected_terms:
         res_payload.protected_terms = filter_protected_terms(res_payload.protected_terms)
     return res_payload
-
-
-# --- Tail-Latency Hedge Orchestrator (Item 3) ---
-
-async def execute_with_hedge(
-    fn: Any,
-    args: tuple,
-    per_attempt_timeout: float,
-    hedge_delay: float,
-    can_hedge: bool,
-    deadline: float,
-    semaphore: asyncio.Semaphore,
-    endpoint: str,
-) -> Any:
-    """
-    Executes fn with tail-latency hedging.
-    - Launches attempt 1 with per_attempt_timeout.
-    - If attempt 1 does not complete within hedge_delay and can_hedge is True:
-      - Attempts to acquire a 2nd semaphore slot within HEDGE_SEMAPHORE_TIMEOUT (2s).
-      - If acquired, launches attempt 2 and races both attempts (first to succeed wins).
-      - Releases hedge semaphore slot as soon as race finishes.
-    - Logs hedged (True/False) and winning attempt without content.
-    - Enforces REQUEST_DEADLINE (504 when deadline exceeded).
-    """
-    start_time = time.time()
-    remaining = deadline - start_time
-    if remaining <= 1.0:
-        raise GeminiTimeoutError("Request deadline reached before start", status_code=504)
-
-    timeout_1 = min(per_attempt_timeout, max(1.0, remaining - 1.0))
-    task1 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_1, 1))
-
-    done, _ = await asyncio.wait({task1}, timeout=hedge_delay)
-    if task1 in done:
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return task1.result()
-
-    # Attempt 1 still running after hedge_delay
-    if not can_hedge:
-        res = await task1
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return res
-
-    # Try to acquire semaphore slot for attempt 2 within HEDGE_SEMAPHORE_TIMEOUT
-    hedge_acquired = False
-    try:
-        await asyncio.wait_for(semaphore.acquire(), timeout=HEDGE_SEMAPHORE_TIMEOUT)
-        hedge_acquired = True
-    except (asyncio.TimeoutError, TimeoutError):
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, hedge_skipped=semaphore_busy",
-            endpoint,
-        )
-
-    if not hedge_acquired:
-        res = await task1
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=False, winner=1, seconds=%.2f",
-            endpoint,
-            elapsed,
-        )
-        return res
-
-    # Launch attempt 2
-    try:
-        remaining_now = deadline - time.time()
-        if remaining_now <= 1.0:
-            raise GeminiTimeoutError("Request deadline reached before hedge attempt", status_code=504)
-        timeout_2 = min(per_attempt_timeout, max(1.0, remaining_now - 1.0))
-        task2 = asyncio.create_task(run_in_threadpool(fn, *args, deadline, timeout_2, 2))
-
-        # Race task1 and task2
-        done_set, _ = await asyncio.wait({task1, task2}, return_when=asyncio.FIRST_COMPLETED)
-        first_completed = next(iter(done_set))
-
-        try:
-            result = first_completed.result()
-            winner = 1 if first_completed is task1 else 2
-        except Exception as first_exc:
-            # If the first finished attempt raised an error, wait for the other attempt
-            other_task = task2 if first_completed is task1 else task1
-            result = await other_task
-            winner = 2 if first_completed is task1 else 1
-
-        elapsed = time.time() - start_time
-        logger.info(
-            "gemini_hedge: endpoint=%s, hedged=True, winner=%d, seconds=%.2f",
-            endpoint,
-            winner,
-            elapsed,
-        )
-        return result
-    finally:
-        if hedge_acquired:
-            semaphore.release()
 
 
 def extract_text_document(

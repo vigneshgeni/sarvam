@@ -118,6 +118,15 @@ export function sanitizeProse(text, protectedTerms = []) {
   cleaned = cleaned.replace(/\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
 
   // 5. Personal names from protectedTerms and samples with Unicode-aware word boundaries
+  // Falls back to \b on iOS earlier than 16.4 which lacks lookbehind support
+  const createNameBoundaryRegex = (escaped) => {
+    try {
+      return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui')
+    } catch {
+      return new RegExp(`\\b${escaped}\\b`, 'gi')
+    }
+  }
+
   const personalNames = [
     'Mr. Ravi Kumar',
     'Ravi Kumar',
@@ -144,7 +153,7 @@ export function sanitizeProse(text, protectedTerms = []) {
   ]
   for (const name of personalNames) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
+    cleaned = cleaned.replace(createNameBoundaryRegex(escaped), '')
   }
 
   for (const term of protectedTerms) {
@@ -153,7 +162,7 @@ export function sanitizeProse(text, protectedTerms = []) {
     const isInstitution = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
     if (!isInstitution) {
       const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      cleaned = cleaned.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui'), '')
+      cleaned = cleaned.replace(createNameBoundaryRegex(escaped), '')
     }
   }
 
