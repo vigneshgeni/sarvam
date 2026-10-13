@@ -39,6 +39,15 @@ def test_classify_empty_bad_magic_and_closed_pdf():
     assert classify_upload(b"%PDF-1.4\nnot a real pdf", "application/pdf") == "pdf_unopenable"
 
 
+def test_pdf_header_anywhere_in_first_1024_bytes():
+    pdf = _tiny_pdf()
+    assert pdf.startswith(b"%PDF-")
+    assert classify_upload(b"\xef\xbb\xbf" + pdf, "application/pdf") == "ok"
+    offset = b"\r\n" + b"%PDF-1.4\nnot a real pdf"
+    assert classify_upload(offset, "application/pdf") == "pdf_unopenable"
+    assert classify_upload(b"x" * 1024 + pdf, "application/pdf") == "bad_magic"
+
+
 def test_txt_still_rejected_as_wrong_type(client):
     res = client.post(
         "/api/explain",
