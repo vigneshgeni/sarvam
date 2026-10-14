@@ -45,7 +45,7 @@ function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
   if (choice === '1w') return '-P1W'
   return 'PT9H'
 }
-import { buildShare, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
 import { loadActiveSession, saveActiveSession } from '../utils/history'
@@ -447,8 +447,9 @@ export default function ResultScreen({
         texts.push(current as Text)
         current = walker.nextNode()
       }
+      const birthKeys = collectBirthDateKeys(result)
       for (const text of texts) {
-        if (text.data.trim()) text.data = sanitizeProse(text.data, terms, contentLang)
+        if (text.data.trim()) text.data = sanitizeProse(text.data, terms, contentLang, birthKeys)
       }
     }
     host.appendChild(node)
