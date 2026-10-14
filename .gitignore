@@ -6,6 +6,13 @@ dist/
 .env.*
 .DS_Store
 .firebase/
+api/.venv
 api/.venv/
 *.log
 api/evals/out/
+lostfound-api/
+*.old
+.firebaserc.old
+firebase.old.json
+scratch/
+ROUND2_CHECKLIST.md

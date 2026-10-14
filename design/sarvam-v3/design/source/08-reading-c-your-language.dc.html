@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reading C · your language</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;family=Noto+Sans+Tamil:wght@700&amp;family=Noto+Sans+Devanagari:wght@700&amp;family=Noto+Sans+Telugu:wght@700&amp;family=Noto+Sans+Malayalam:wght@700&amp;family=Noto+Sans+Bengali:wght@700&amp;family=Noto+Sans+Oriya:wght@700&amp;family=Noto+Sans+Kannada:wght@700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+@keyframes cyc{0%{opacity:0;transform:scale(.6) rotate(-8deg)}3%{opacity:1;transform:scale(1) rotate(0)}10%{opacity:1;transform:scale(1)}12%{opacity:0;transform:scale(1.15)}100%{opacity:0}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+@keyframes type{0%{width:0}60%,100%{width:var(--w)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.glyph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:#F4F5F2;opacity:0;animation:cyc 5.4s ease-out infinite}
+.orbit{position:absolute;left:50%;top:50%;width:236px;height:236px;margin:-118px 0 0 -118px;border-radius:50%;border:1.5px dashed #1A1A1A;animation:orbit 14s linear infinite}
+.orbit i{position:absolute;width:14px;height:14px;border-radius:50%;border:1.5px solid #1A1A1A;box-sizing:border-box}
+.ln{display:block;height:6px;border-radius:3px;background:#034F46;animation:type 2.4s ease-out infinite}
+.spin{animation:spin 1s linear infinite}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 24px; justify-content: space-between; overflow: hidden">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" aria-label="Back" style="width: 48px; height: 48px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #1A1A1A; background: #CFE5E0; font-size: 13px; font-weight: 700"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#034F46" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Processing securely</span>
+  </div>
+
+  <div role="img" aria-label="Sarvam writing your document in your language" style="height: 300px; background: #E9B44C; border: 1.5px solid #1A1A1A; box-sizing: border-box; border-radius: 40px; position: relative; overflow: hidden">
+    <div class="orbit" aria-hidden="true"><i style="left: 50%; top: -7px; margin-left: -7px; background: #D9603B"></i><i style="right: 22px; bottom: 22px; background: #034F46"></i><i style="left: 18px; bottom: 40px; background: #F4F5F2"></i></div>
+    <div aria-hidden="true" style="position: absolute; left: 34px; top: 64px; width: 112px; height: 150px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 16px; background: #F4F5F2; transform: rotate(-6deg); padding: 16px 12px; display: flex; flex-direction: column; gap: 9px">
+      <span style="height: 8px; width: 60%; border-radius: 4px; background: #1A1A1A"></span>
+      <span style="height: 6px; width: 92%; border-radius: 3px; background: #C4C8C3"></span>
+      <span style="height: 6px; width: 78%; border-radius: 3px; background: #C4C8C3"></span>
+      <span style="height: 6px; width: 86%; border-radius: 3px; background: #C4C8C3"></span>
+      <span style="height: 6px; width: 64%; border-radius: 3px; background: #C4C8C3"></span>
+    </div>
+    <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -40px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 50%; background: #1A1A1A; z-index: 2">
+      <sc-for list="{{glyphs}}" as="g" hint-placeholder-count="9">
+        <span class="glyph" style="{{g.style}}">{{g.ch}}</span>
+      </sc-for>
+    </div>
+    <div aria-hidden="true" style="position: absolute; right: 30px; top: 80px; width: 120px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 18px; background: #F4F5F2; padding: 14px 12px; display: flex; flex-direction: column; gap: 9px; transform: rotate(5deg)">
+      <span style="font-family: 'Fraunces', serif; font-size: 15px; line-height: 1">Simple words</span>
+      <span class="ln" style="--w: 92%"></span>
+      <span class="ln" style="--w: 74%; animation-delay: .3s"></span>
+      <span class="ln" style="--w: 84%; animation-delay: .6s"></span>
+      <span class="ln" style="--w: 56%; animation-delay: .9s; background: #D9603B"></span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.3px">pension-notice.jpg</h1>
+    <p style="margin: 0; font-size: 15px; color: #575B58">Explaining it in தமிழ்</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; padding: 6px 18px 16px; border-radius: 32px; border: 1.5px solid #1A1A1A">
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span style="width: 30px; height: 30px; flex: none; border-radius: 50%; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Reading your document</span><span style="font-size: 13px; font-weight: 700; color: #034F46">Done</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span style="width: 30px; height: 30px; flex: none; border-radius: 50%; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Checking against the document</span><span style="font-size: 13px; font-weight: 700; color: #034F46">Done</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0">
+      <span aria-hidden="true" class="spin" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 3.5px solid #F8D9CB; border-top-color: #D9603B; border-right-color: #D9603B"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Writing in Tamil</span>
+    </span>
+    <span aria-hidden="true" style="display: block; height: 10px; border-radius: 5px; border: 1.5px solid #1A1A1A; overflow: hidden; margin-top: 4px"><span style="display: block; width: 80%; height: 100%; background: #D9603B"></span></span>
+  </div>
+
+  <a href="Main.dc.html" style="align-self: center; display: inline-flex; align-items: center; height: 48px; padding: 0 28px; border-radius: 24px; border: 1.5px solid #1A1A1A; color: #1A1A1A; font-size: 16px; font-weight: 700; text-decoration: none">Cancel</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = [['அ','Noto Sans Tamil'],['अ','Noto Sans Devanagari'],['అ','Noto Sans Telugu'],['അ','Noto Sans Malayalam'],['ळ','Noto Sans Devanagari'],['অ','Noto Sans Bengali'],['ଅ','Noto Sans Oriya'],['ಅ','Noto Sans Kannada'],['Aa','DM Sans']];
+    const glyphs = L.map(([ch, f], i) => ({ ch, style: "font-family:'" + f + "',sans-serif;animation-delay:" + (i * 0.6).toFixed(1) + 's' }));
+    return { glyphs };
+  }
+}
+</script>
+</body>
+</html>

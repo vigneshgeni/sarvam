@@ -53,7 +53,10 @@ from models import (
     EvidenceSummary,
     ExplainAction,
     ExplainFact,
+    ExplainPart,
     ExplainResponse,
+    ExplainSection,
+    ExplainSectionValue,
     ExplainWarning,
     GlanceKeyValue,
     GlanceSummary,
@@ -127,6 +130,8 @@ app = FastAPI(
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://sarvam-510715.web.app",
+    "https://sarvam-510715.firebaseapp.com",
 ]
 env_origins = os.environ.get("ALLOWED_ORIGINS", "")
 if env_origins:
@@ -137,6 +142,7 @@ if env_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https://sarvam-510715--[a-z0-9-]+\.web\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -146,14 +152,59 @@ logger = logging.getLogger("sarvam-api")
 logging.basicConfig(level=logging.INFO)
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response: Response = await call_next(request)
+    # nosniff everywhere
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Cache-Control: no-store on document-derived responses
+    path = request.url.path
+    if path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
+from fastapi.exceptions import RequestValidationError
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "message": "Invalid request parameters.",
+            "message_local": "Invalid request parameters.",
+        },
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled error: %s", type(exc).__name__)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "message": "An error occurred while processing the request. Please try again.",
+            "message_local": "An error occurred while processing the request. Please try again.",
+        },
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
+
+
 def get_client_ip(request: Request) -> str:
     """
-    Derives client IP from X-Forwarded-For header (first entry),
+    Derives client IP from X-Forwarded-For header (last entry behind Google Cloud Load Balancer / Cloud Run GFE),
     falling back to request.client.host.
+    Cloud Run appends the verified client IP to the end of X-Forwarded-For.
+    Using the first entry allowed spoofing via client-injected headers.
     """
     xfwd = request.headers.get("x-forwarded-for")
     if xfwd:
-        return xfwd.split(",")[0].strip()
+        parts = [p.strip() for p in xfwd.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
@@ -640,6 +691,7 @@ async def explain(
                 quote=act.quote,
                 page=act.page,
                 evidence=evidence,
+                part_id=getattr(act, "part_id", None),
             )
         )
 
@@ -659,6 +711,7 @@ async def explain(
                 quote=warn.quote,
                 page=warn.page,
                 evidence=evidence,
+                part_id=getattr(warn, "part_id", None),
             )
         )
 
@@ -679,6 +732,7 @@ async def explain(
                 page=fact.page,
                 evidence=evidence,
                 is_personal=is_personal_field(fact.text, fact.quote) or getattr(fact, "is_personal", False),
+                part_id=getattr(fact, "part_id", None),
             )
         )
 
@@ -766,6 +820,102 @@ async def explain(
     response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Queue-Wait"] = f"{queue_wait:.3f}"
 
+    # Process sections (Item 1F)
+    processed_sections: Optional[List[ExplainSection]] = None
+    if reader_result.sections:
+        processed_sections = []
+        for s in reader_result.sections:
+            sec_vals = []
+            for v in s.values:
+                val_ev = "check_original"
+                if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
+                    if v.value in pdf_pages_text[s.page - 1]:
+                        val_ev = "matched"
+                sec_vals.append(
+                    ExplainSectionValue(
+                        label=v.label,
+                        value=v.value,
+                        unit=v.unit,
+                        ref_range=v.ref_range,
+                        flag_printed=v.flag_printed,
+                        evidence=val_ev,
+                    )
+                )
+            processed_sections.append(
+                ExplainSection(
+                    heading=s.heading,
+                    page=s.page,
+                    values=sec_vals,
+                )
+            )
+
+    # Process multi-document parts (Item 1F)
+    processed_parts: Optional[List[ExplainPart]] = None
+    if reader_result.parts and len(reader_result.parts) >= 2:
+        processed_parts = []
+        for p in reader_result.parts:
+            part_secs = None
+            if p.sections:
+                part_secs = []
+                for s in p.sections:
+                    sec_vals = []
+                    for v in s.values:
+                        val_ev = "check_original"
+                        if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
+                            if v.value in pdf_pages_text[s.page - 1]:
+                                val_ev = "matched"
+                        sec_vals.append(
+                            ExplainSectionValue(
+                                label=v.label,
+                                value=v.value,
+                                unit=v.unit,
+                                ref_range=v.ref_range,
+                                flag_printed=v.flag_printed,
+                                evidence=val_ev,
+                            )
+                        )
+                    part_secs.append(ExplainSection(heading=s.heading, page=s.page, values=sec_vals))
+
+            part_meds = None
+            if p.medicines:
+                part_meds = process_medicines(
+                    raw_medicines=p.medicines,
+                    pdf_pages_text=pdf_pages_text,
+                    document_type="medical",
+                    source_kind=source_kind,
+                )
+
+            part_glance = None
+            if p.glance:
+                part_glance = GlanceSummary(
+                    headline=p.glance.headline,
+                    key_values=[
+                        GlanceKeyValue(
+                            label=kv.label,
+                            value=kv.value,
+                            kind=kv.kind,
+                            evidence="matched" if (pdf_pages_text and kv.value in " ".join(pdf_pages_text)) else "check_original",
+                        )
+                        for kv in p.glance.key_values
+                    ],
+                )
+
+            processed_parts.append(
+                ExplainPart(
+                    part_id=p.part_id,
+                    title=p.title,
+                    document_type=p.document_type,
+                    issuer=p.issuer,
+                    date_iso=p.date_iso,
+                    pages=p.pages,
+                    glance=part_glance,
+                    sections=part_secs,
+                    medicines=part_meds,
+                    key_points=p.key_points,
+                    summary_lines=p.summary_lines,
+                )
+            )
+
     doc_type_val = reader_result.document_type or reader_result.doc_type or "other"
 
     return ExplainResponse(
@@ -789,6 +939,8 @@ async def explain(
         contacts=processed_contacts,
         medicines=processed_medicines,
         conflicts=all_conflicts,
+        parts=processed_parts,
+        sections=processed_sections,
         evidence_summary=evidence_summary,
         unreadable=False,
         unreadable_reason=None,
@@ -1148,6 +1300,7 @@ async def translate(
                 quote=orig_act.quote,              # Copied by CODE
                 page=orig_act.page,                # Copied by CODE
                 evidence=orig_act.evidence,        # Copied by CODE
+                part_id=orig_act.part_id,          # Copied by CODE
             )
         )
 
@@ -1164,6 +1317,7 @@ async def translate(
                 quote=orig_warn.quote,       # Copied by CODE
                 page=orig_warn.page,         # Copied by CODE
                 evidence=orig_warn.evidence, # Copied by CODE
+                part_id=orig_warn.part_id,   # Copied by CODE
             )
         )
 
@@ -1180,6 +1334,8 @@ async def translate(
                 quote=orig_fact.quote,       # Copied by CODE
                 page=orig_fact.page,         # Copied by CODE
                 evidence=orig_fact.evidence, # Copied by CODE
+                is_personal=orig_fact.is_personal, # Copied by CODE
+                part_id=orig_fact.part_id,   # Copied by CODE
             )
         )
 
@@ -1300,6 +1456,8 @@ async def translate(
         contacts=stitched_contacts,
         medicines=stitched_medicines,
         conflicts=trans_conflicts,
+        parts=orig.parts,
+        sections=orig.sections,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
@@ -1525,17 +1683,51 @@ async def extract_text(
     without slowing down the main /api/explain response.
     Uses its own limiter and skips immediately when busy so it never competes with explain.
     """
+    if password and len(password) > 128:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "Password is too long (maximum 128 characters).",
+                "message_local": "Password is too long (maximum 128 characters).",
+            },
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
+
     if not files:
         return {"source_text": None}
 
+    total_size = 0
     pdf_texts = []
     image_parts: List[Tuple[bytes, str]] = []
 
     for file in files:
-        content = await file.read()
-        mime_type = file.content_type or ""
         filename = (file.filename or "").lower()
-        if filename.endswith(".pdf") or mime_type == "application/pdf":
+        mime_type = file.content_type or ""
+        is_pdf = filename.endswith(".pdf") or mime_type == "application/pdf"
+        is_img = filename.endswith((".jpg", ".jpeg", ".png", ".webp")) or mime_type.startswith("image/")
+        if not (is_pdf or is_img):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": "Unsupported file format. Please upload PDF or image files.",
+                    "message_local": "Unsupported file format. Please upload PDF or image files.",
+                },
+                headers={"X-Content-Type-Options": "nosniff"},
+            )
+
+        content = await file.read()
+        total_size += len(content)
+        if is_pdf and len(content) > MAX_PDF_BYTES:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": f"PDF file size exceeds {MAX_PDF_MB}MB limit.",
+                    "message_local": f"PDF file size exceeds {MAX_PDF_MB}MB limit.",
+                },
+                headers={"X-Content-Type-Options": "nosniff"},
+            )
+
+        if is_pdf:
             try:
                 content = inspect_and_decrypt_pdf(content, password)
                 pages = extract_pdf_pages(content)
@@ -1543,9 +1735,19 @@ async def extract_text(
                     pdf_texts.append("\n\n".join(pages))
             except Exception:
                 pass
-        elif filename.endswith((".jpg", ".jpeg", ".png", ".webp")) or mime_type.startswith("image/"):
+        elif is_img:
             img_mime = "image/png" if filename.endswith(".png") or mime_type == "image/png" else "image/jpeg"
             image_parts.append((content, img_mime))
+
+    if total_size > MAX_TOTAL_BYTES:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": f"Total upload size exceeds {MAX_TOTAL_MB}MB limit.",
+                "message_local": f"Total upload size exceeds {MAX_TOTAL_MB}MB limit.",
+            },
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
 
     if pdf_texts:
         return {"source_text": "\n\n".join(pdf_texts)}

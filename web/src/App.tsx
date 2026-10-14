@@ -46,6 +46,7 @@ import {
   clearActiveSession,
   seedResultHistory,
 } from './utils/history'
+import { useOverlayRestore } from './hooks/useOverlayRestore'
 import {
   CalendarIcon,
   AlertTriangleIcon,
@@ -207,6 +208,26 @@ export default function App() {
       })
     }
   }, [screen, resultData, multiReportsData, selectedLang])
+
+  // 1B Overlay safeguard: close global overlays if session is missing on return from external app
+  useOverlayRestore({
+    currentData: resultData,
+    onRestore: (saved) => {
+      if (saved?.result) {
+        setResultData(saved.result)
+        originalResultRef.current = saved.originalResult || saved.result
+        currentResultIdRef.current = saved.currentResultId || null
+        if (saved.multiReports) setMultiReportsData(saved.multiReports)
+        if (saved.lang) setSelectedLang(saved.lang)
+        setScreen('result')
+      }
+    },
+    onClose: () => {
+      setIsA11yOpen(false)
+      setPasswordState((prev) => ({ ...prev, isOpen: false }))
+      setDeleteConfirm(null)
+    },
+  })
 
   // Handle popstate (Back swipe or back button)
   useEffect(() => {

@@ -5,17 +5,22 @@ import path from 'node:path'
 
 const SAMPLES_DIR = path.resolve(process.cwd(), 'public/samples')
 
-const ALL_SIX_SAMPLES = [
+export const ALL_ELEVEN_SAMPLES = [
   'sample-lab-report.pdf',
   'sample-insurance-letter.pdf',
   'sample-pension-notice.jpg',
   'sample-invoice-warranty.pdf',
   'sample-property-tax-notice.pdf',
   'sample-echallan.pdf',
+  'sample-prescription.jpg',
+  'sample-mutual-fund-statement.pdf',
+  'sample-court-summons.pdf',
+  'sample-bank-deposit-slip.jpg',
+  'sample-health-checkup.pdf',
 ]
 
-test('All 6 samples exist on disk in public/samples and are readable', () => {
-  for (const filename of ALL_SIX_SAMPLES) {
+test('All 11 samples exist on disk in public/samples and are readable', () => {
+  for (const filename of ALL_ELEVEN_SAMPLES) {
     const fullPath = path.join(SAMPLES_DIR, filename)
     assert.ok(fs.existsSync(fullPath), `Sample file ${filename} must exist in public/samples`)
     const stats = fs.statSync(fullPath)

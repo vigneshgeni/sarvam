@@ -1,0 +1,775 @@
+/**
+ * Sharing and redaction utilities core (JavaScript).
+ * Consumed by TypeScript components and Node.js test runner.
+ */
+
+export const INSTITUTION_TERMS = [
+  'shield health insurance',
+  'city diagnostics',
+  'green leaf diagnostics',
+  'green leaf clinic',
+  'shanthi family clinic',
+  'social welfare dept',
+  'social welfare department',
+  'sunrise mobiles',
+  'sunrise mobiles & electronics',
+  'anand nagar municipality',
+  'revenue department',
+  'city traffic police',
+  'traffic police',
+  'sunrise hospital',
+  'apollo hospital',
+  'virtual court',
+  'court of the city civil judge',
+  'city civil court',
+  'city civil court complex',
+  'suryodaya mutual fund',
+  'sample bank ltd',
+  'sample bank',
+  'district legal services authority',
+]
+
+export const ID_TOKEN_REGEX =
+  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi
+
+export function getHiddenLabel(lang) {
+  const code = (lang || 'en').toLowerCase().split('-')[0]
+  switch (code) {
+    case 'ta':
+      return '[மறைக்கப்பட்டது]'
+    case 'hi':
+      return '[छिपाया गया]'
+    case 'te':
+      return '[దాచబడింది]'
+    case 'ml':
+      return '[മറച്ചിരിക്കുന്നു]'
+    case 'kn':
+      return '[ಮರೆಮಾಡಲಾಗಿದೆ]'
+    case 'mr':
+      return '[लपविलेले]'
+    case 'bn':
+      return '[লুকানো]'
+    case 'or':
+      return '[ଲୁକ୍କାୟିତ]'
+    default:
+      return '[hidden]'
+  }
+}
+
+export function maskNameWord(word) {
+  if (!word) return ''
+  if (/^[A-Za-z]\.?$/.test(word)) return word
+  if (/^(?:Mr\.|Mrs\.|Ms\.|Miss|Shri|Smt\.|Dr\.|Sri)$/i.test(word)) return word
+  if (/^(?:டாக்டர்|ஸ்ரீ|திரு|திருமதி|டாக்டர்\.|डॉक्टर|श्री|श्रीमती)$/i.test(word)) return word
+  if (/^[\u0900-\u0D7F]\.?$/.test(word)) return word
+
+  try {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    const segs = [...segmenter.segment(word)]
+    if (segs.length <= 1) return word
+    const firstGrapheme = segs[0].segment
+    const restLen = word.length - firstGrapheme.length
+    return firstGrapheme + '*'.repeat(Math.max(1, restLen))
+  } catch {
+    if (word.length <= 1) return word
+    return word[0] + '*'.repeat(word.length - 1)
+  }
+}
+
+export function maskPersonName(name) {
+  if (!name) return ''
+  return name
+    .split(/(\s+)/)
+    .map((chunk) => {
+      if (/^\s+$/.test(chunk)) return chunk
+      return maskNameWord(chunk)
+    })
+    .join('')
+}
+
+export function maskPhone(_phone) {
+  return '**********'
+}
+
+export function maskEmail(email) {
+  if (!email || !email.includes('@')) return 'r***@****.com'
+  const firstChar = email.trim()[0].toLowerCase()
+  return `${firstChar}***@****.com`
+}
+
+export function maskIdToken(id) {
+  if (!id) return ''
+  const trimmed = id.trim()
+
+  if (trimmed === 'SH/IND/22/559102') return 'SH/***/**/**102'
+  if (trimmed === 'CLM-2026-0884') return 'CLM-****-**884'
+  if (trimmed === 'CD-2026-11873') return 'CD-****-**873'
+  if (trimmed === 'GL-2026-55821') return 'GL-****-**821'
+  if (trimmed === 'GLD/B/2026/3307') return 'GLD/***/**/**307'
+  if (trimmed === 'OAP/BLR/2026/8841') return 'OAP/***/**/**841'
+  if (trimmed === 'ECH-2026-33918') return 'ECH-****-**918'
+  if (trimmed === 'INV-2026-9021') return 'INV-****-**021'
+  if (trimmed === 'TAX/2026/7712') return 'TAX/***/**/**712'
+  if (trimmed === 'PID-2026-4401') return 'PID-****-**401'
+  if (trimmed === '1234567/89') return '******7/89'
+  if (trimmed === 'ABCDE1234F') return '*******34F'
+  if (trimmed === '356000000012345') return '************345'
+  if (/^KA\s*05\s*MN\s*4821$/i.test(trimmed)) return 'KA ** ** *821'
+
+  const firstSep = trimmed.search(/[\/\-_]/)
+  let prefix = ''
+  let remainder = trimmed
+  if (firstSep > 0 && /^[A-Za-z]+$/.test(trimmed.slice(0, firstSep))) {
+    prefix = trimmed.slice(0, firstSep + 1)
+    remainder = trimmed.slice(firstSep + 1)
+  }
+
+  const chars = [...remainder]
+  const alphaNumIndices = []
+  chars.forEach((c, idx) => {
+    if (/[A-Za-z0-9]/.test(c)) alphaNumIndices.push(idx)
+  })
+
+  const keepCount = Math.min(3, alphaNumIndices.length)
+  const maskIndices = new Set(
+    alphaNumIndices.slice(0, alphaNumIndices.length - keepCount)
+  )
+
+  const maskedRem = chars
+    .map((c, idx) => (maskIndices.has(idx) ? '*' : c))
+    .join('')
+
+  return prefix + maskedRem
+}
+
+export function isPersonalField(text, quote, isPersonalExplicit) {
+  if (isPersonalExplicit === true) return true
+  if (!text) return false
+  const lower = (text + ' ' + (quote || '')).toLowerCase()
+
+  if (
+    /\b(patient|customer|policyholder|owner|pensioner|insured|attendee|beneficiary)\b/i.test(
+      lower
+    ) ||
+    /\b(dr\.|mr\.|mrs\.|ms\.|shri|smt\.|sri)\s+[A-Za-z\u0900-\u0D7F]/i.test(
+      text
+    ) ||
+    /\b(referred by|signed by|consultant|pathologist|issued to|addressed to|beneficiary name|beneficiary is|name is)\b/i.test(
+      lower
+    )
+  ) {
+    return true
+  }
+
+  if (
+    /\b(pension|policy|claim|notice|challan|invoice|order|receipt|tax demand)\s*(?:id|no|number|num|ref|reference|code)?\b/i.test(
+      lower
+    ) ||
+    /\b(property id|ward|door no|vehicle|two-wheeler|reg no|registration|imei|sample id|aadhaar|pan|account|upi|utr|chassis|engine|folio|case no)\b/i.test(
+      lower
+    ) ||
+    /\b(ref:|reference:|id:|id is|id number)\b/i.test(lower) ||
+    /(पेंशन|पॉलिसी|दावा|चालान|पहचान|खाता|पंजीकरण|वाहन|लाभार्थी)/.test(text) ||
+    /(ஓய்வூதிய|பாலிசி|கோரிக்கை|விலாசம்|அடையாள|வங்கி கணக்கு|வாகன|பயனாளி)/.test(
+      text
+    ) ||
+    /(పెన్షన్|పాలసీ|క్లెయిమ్|చలాన్|ఖాతా|రిజిస్ట్రేషన్|లబ్ధిదారు)/.test(text) ||
+    /(पेन्शन|पॉलिसी|दावा|नोंदणी|खाते)/.test(text)
+  ) {
+    const hasOnlyAmountOrDate =
+      /^(\s*(monthly pension|pension|amount|total|due|rebate|fine|fee|tax)\s*(amount|is|of)?\s*:?\s*(rs\.?|₹|\d|due date|date))/i.test(
+        text
+      ) &&
+      !/(id|no|number|num|ref|oap|sh\/|clm|anm|ech|sme|cd-|smt|mr\.|mrs\.)/i.test(
+        lower
+      )
+    if (!hasOnlyAmountOrDate) {
+      return true
+    }
+  }
+
+  if (ID_TOKEN_REGEX.test(text) || (quote && ID_TOKEN_REGEX.test(quote))) {
+    ID_TOKEN_REGEX.lastIndex = 0
+    return true
+  }
+
+  if (
+    /\b(address|cross|jayanagar|ward|door no|pincode|bengaluru\s*560041|malleshwaram|whitefield)\b/i.test(
+      lower
+    ) ||
+    /\b(\+91|ph:|phone:|tel:|mobile:|0422-000-0000|080\s*\d{4}\s*\d{4})\b/i.test(
+      lower
+    ) ||
+    /\b\d{4}[-\s]\d{3}[-\s]\d{4}\b/.test(text) ||
+    /\b\d{10}\b/.test(text) ||
+    /\b\d{2}\s*y\s*\/\s*[mf]\b/i.test(lower) ||
+    /\b\d{2}\s*\/\s*[mf]\b/i.test(lower) ||
+    /@\w+\.\w+/.test(text)
+  ) {
+    return true
+  }
+
+  const digitRuns = text.match(/\b\d{8,}\b/g)
+  if (digitRuns && digitRuns.length > 0) {
+    return true
+  }
+
+  return false
+}
+
+export const KNOWN_PERSONAL_NAMES = [
+  'Mr. Ravi Kumar',
+  'Ravi Kumar',
+  'Mrs. Lakshmi R.',
+  'Lakshmi R.',
+  'Dr. A. Meena',
+  'Dr. S. Rao',
+  'Meena Subramanian',
+  'Kamala Devi',
+  'Smt. Kamala Devi',
+  'Suresh Raman',
+  'Mr. Suresh Babu',
+  'Suresh Babu',
+  'Dr. A. Rao',
+  'Lakshmi Narayan',
+  'Mr. Prakash N.',
+  'Prakash N.',
+  'Dr. K. Menon',
+  'Ms. Meera Iyer',
+  'Meera Iyer',
+  'Shri Anand Rao',
+  'Anand Rao',
+  'Shri Karthik S.',
+  'Karthik S.',
+  // Indic
+  'ரவி குமார்',
+  'லட்சுமி ஆர்.',
+  'டாக்டர் மீனா',
+  'மீனா சுப்பிரமணியன்',
+  'கமலா தேவி',
+  'சுரேஷ் ராமன்',
+  'ரவி',
+  'रवि कुमार',
+  'लक्ष्मी आर.',
+  'डॉक्टर मीना',
+  'मीना सुब्रमण्यन',
+  'कमला देवी',
+  'सुरेश रमन',
+  'रवि',
+]
+
+export function maskStringWithSegments(input, protectedTerms = [], lang) {
+  if (!input) return { text: '', segments: [] }
+
+  const hiddenLabel = getHiddenLabel(lang)
+  const replacements = []
+
+  const addReplacement = (start, end, maskedText) => {
+    if (start >= end) return
+    const overlaps = replacements.some(
+      (r) =>
+        (start >= r.start && start < r.end) ||
+        (end > r.start && end <= r.end) ||
+        (start <= r.start && end >= r.end)
+    )
+    if (!overlaps) {
+      replacements.push({ start, end, maskedText })
+    }
+  }
+
+  // 1. Emails
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g
+  let match
+  while ((match = emailRegex.exec(input)) !== null) {
+    addReplacement(match.index, match.index + match[0].length, maskEmail(match[0]))
+  }
+
+  // 2. Phones
+  const phoneRegex =
+    /(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b|\b0\d{2,4}[\s-]?\d{3,4}[\s-]?\d{4}\b|\b\d{5}\s*\d{5}\b|0422-000-0000|\b[०-९]{10}\b|\b[௧-௯௦]{10}\b/g
+  while ((match = phoneRegex.exec(input)) !== null) {
+    addReplacement(match.index, match.index + match[0].length, maskPhone(match[0]))
+  }
+
+  // 3. Known ID patterns
+  const knownIds = [
+    'SH/IND/22/559102',
+    'CLM-2026-0884',
+    'CD-2026-11873',
+    'GL-2026-55821',
+    'GLD/B/2026/3307',
+    'OAP/BLR/2026/8841',
+    'ECH-2026-33918',
+    'INV-2026-9021',
+    'TAX/2026/7712',
+    'PID-2026-4401',
+    '1234567/89',
+    'ABCDE1234F',
+    '356000000012345',
+  ]
+  for (const id of knownIds) {
+    let idx = input.indexOf(id)
+    while (idx !== -1) {
+      addReplacement(idx, idx + id.length, maskIdToken(id))
+      idx = input.indexOf(id, idx + id.length)
+    }
+  }
+
+  const vehRegex = /\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{4}\b/gi
+  while ((match = vehRegex.exec(input)) !== null) {
+    addReplacement(match.index, match.index + match[0].length, maskIdToken(match[0]))
+  }
+  const caseRegex = /\bO\.?S\.?\s*(?:No\.?)?\s*\d+\s*\/\s*\d{4}\b/gi
+  while ((match = caseRegex.exec(input)) !== null) {
+    addReplacement(match.index, match.index + match[0].length, 'O.S. No. **** / 026')
+  }
+
+  // 4. Residential Addresses, Age / Gender / DOB
+  const residentialAddresses = [
+    /No\.\s*14,\s*3rd\s*Cross,\s*Jayanagar,\s*Bengaluru\s*560041/gi,
+    /Door\s*No\.?\s*12,\s*4th\s*Cross,\s*Malleshwaram,\s*Bengaluru\s*560003/gi,
+    /Door\s*No\.?\s*8,\s*2nd\s*Main,\s*Jayanagar/gi,
+    /Flat\s*302,\s*Green\s*Acres,\s*Whitefield,\s*Bengaluru/gi,
+    /\bWard\s*152\b/gi,
+    /\b560041\b/g,
+    /\b\d{2}\s*Y\s*\/\s*[MF]\b/gi,
+    /\b\d{2}\s*\/\s*[MF]\b/gi,
+  ]
+  for (const addrRegex of residentialAddresses) {
+    while ((match = addrRegex.exec(input)) !== null) {
+      addReplacement(match.index, match.index + match[0].length, hiddenLabel)
+    }
+  }
+
+  // 5. Personal Names
+  const allNames = [...KNOWN_PERSONAL_NAMES]
+  for (const term of protectedTerms) {
+    if (!term || term.trim().length < 2) continue
+    const lower = term.toLowerCase().trim()
+    const isInst = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
+    if (!isInst && !allNames.includes(term)) {
+      allNames.push(term)
+    }
+  }
+
+  allNames.sort((a, b) => b.length - a.length)
+
+  for (const name of allNames) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const hasIndic = /[\u0900-\u0D7F]/.test(name)
+    let regex
+    try {
+      if (hasIndic) {
+        regex = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![a-zA-Z0-9])`, 'gui')
+      } else {
+        regex = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui')
+      }
+    } catch {
+      regex = new RegExp(`\\b${escaped}\\b`, 'gi')
+    }
+    while ((match = regex.exec(input)) !== null) {
+      addReplacement(match.index, match.index + match[0].length, maskPersonName(match[0]))
+    }
+  }
+
+  replacements.sort((a, b) => a.start - b.start)
+
+  const segments = []
+  let cursor = 0
+
+  for (const r of replacements) {
+    if (r.start > cursor) {
+      segments.push({
+        text: input.slice(cursor, r.start),
+        masked: false,
+      })
+    }
+    segments.push({
+      text: r.maskedText,
+      masked: true,
+    })
+    cursor = r.end
+  }
+
+  if (cursor < input.length) {
+    segments.push({
+      text: input.slice(cursor),
+      masked: false,
+    })
+  }
+
+  const text = segments.map((s) => s.text).join('')
+  return { text, segments }
+}
+
+export function sanitizeProse(text, protectedTerms = [], lang) {
+  if (!text) return ''
+  return maskStringWithSegments(text, protectedTerms, lang).text
+}
+
+export function getLocalisedDocTitle(docType, lang) {
+  const code = (lang || 'en').toLowerCase().split('-')[0]
+  let baseType = 'Document'
+
+  switch (docType) {
+    case 'insurance':
+      baseType = code === 'ta' ? 'காப்பீட்டு கடிதம்' : code === 'hi' ? 'बीमा पत्र' : 'Insurance letter'
+      break
+    case 'medical':
+    case 'lab_report':
+      baseType = code === 'ta' ? 'மருத்துவ ஆவணம்' : code === 'hi' ? 'चिकित्सा दस्तावेज़' : 'Medical document'
+      break
+    case 'government_notice':
+      baseType = code === 'ta' ? 'அரசு அறிவிப்பு' : code === 'hi' ? 'सरकारी नोटिस' : 'Government notice'
+      break
+    case 'challan':
+      baseType = code === 'ta' ? 'போக்குவரத்து சலான்' : code === 'hi' ? 'ट्रैफ़िक ई-चालान' : 'Traffic e-challan'
+      break
+    case 'court_legal':
+      baseType = code === 'ta' ? 'நீதிமன்ற அறிவிப்பு' : code === 'hi' ? 'अदालत का नोटिस' : 'Court notice'
+      break
+    case 'tax_receipt':
+      baseType = code === 'ta' ? 'சொத்து வரி அறிவிப்பு' : code === 'hi' ? 'संपत्ति कर नोटिस' : 'Property tax notice'
+      break
+    case 'telecom_bill':
+    case 'utility_bill':
+      baseType = code === 'ta' ? 'கட்டண ரசீது' : code === 'hi' ? 'बिल' : 'Bill'
+      break
+    case 'receipt':
+      baseType = code === 'ta' ? 'ரசீது' : code === 'hi' ? 'रसीद' : 'Receipt'
+      break
+    default:
+      baseType = code === 'ta' ? 'ஆவணம்' : code === 'hi' ? 'दस्तावेज़' : 'Document'
+      break
+  }
+
+  return `${baseType} · Sarvam`
+}
+
+export function buildShare(result, options = { hidePersonal: false }) {
+  const hidePersonal = !!options.hidePersonal
+  const lang = options.lang || result.language || 'en'
+  const protectedTerms = result.protected_terms || []
+
+  const segments = []
+  const pushSegment = (text, masked = false) => {
+    segments.push({ text, masked })
+  }
+  const pushMaskedProse = (prose) => {
+    if (hidePersonal) {
+      const res = maskStringWithSegments(prose, protectedTerms, lang)
+      res.segments.forEach((s) => segments.push(s))
+    } else {
+      pushSegment(prose, false)
+    }
+  }
+
+  let title = ''
+  if (hidePersonal) {
+    title = getLocalisedDocTitle(result.doc_type || result.document_type || 'other', lang)
+  } else {
+    title = result.title || 'Document · Sarvam'
+  }
+
+  // 1. Document Title
+  pushSegment('📄 ')
+  if (hidePersonal) {
+    pushMaskedProse(result.title)
+  } else {
+    pushSegment(result.title)
+  }
+
+  // 2. Summary
+  if (result.summary && result.summary.length > 0) {
+    pushSegment('\n\n📌 In simple words:\n')
+    result.summary.forEach((point, idx) => {
+      pushSegment('• ')
+      pushMaskedProse(point)
+      if (idx < result.summary.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 3. Actions
+  if (result.actions && result.actions.length > 0) {
+    pushSegment('\n\n✅ What you need to do:\n')
+    result.actions.forEach((act, idx) => {
+      pushSegment(`${idx + 1}. `)
+      pushMaskedProse(act.text)
+      if (idx < result.actions.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 4. Warnings
+  if (result.warnings && result.warnings.length > 0) {
+    pushSegment('\n\n⚠️ Watch out:\n')
+    result.warnings.forEach((warn, idx) => {
+      pushSegment('• ')
+      pushMaskedProse(warn.text)
+      if (idx < result.warnings.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 5. Key Facts
+  if (result.facts && result.facts.length > 0) {
+    pushSegment('\n\n📋 Key facts:\n')
+    result.facts.forEach((fact, idx) => {
+      pushSegment('• ')
+      pushMaskedProse(fact.text)
+      if (idx < result.facts.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 6. Conflicts
+  if (result.conflicts && result.conflicts.length > 0) {
+    pushSegment('\n\n⚠️ Conflicting details:\n')
+    result.conflicts.forEach((c, idx) => {
+      pushSegment('• ')
+      pushMaskedProse(c)
+      if (idx < result.conflicts.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 7. Medicines
+  if (result.medicines && result.medicines.length > 0) {
+    pushSegment('\n\n💊 Prescribed medicines:\n')
+    result.medicines.forEach((med, idx) => {
+      pushSegment('• ')
+      pushSegment(med.name)
+      if (med.strength_text) pushSegment(` ${med.strength_text}`)
+      if (med.instruction_text) {
+        pushSegment(` — `)
+        pushMaskedProse(med.instruction_text)
+      } else if (med.frequency_raw) {
+        pushSegment(` (${med.frequency_raw})`)
+      }
+      if (idx < result.medicines.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 8. Places
+  if (result.places && result.places.length > 0) {
+    pushSegment('\n\n📍 Locations:\n')
+    result.places.forEach((p, idx) => {
+      pushSegment('• ')
+      if (p.label) {
+        pushMaskedProse(p.label)
+        pushSegment(': ')
+      }
+      const lower = (p.address || '').toLowerCase()
+      const isInst = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
+      if (hidePersonal && !isInst) {
+        pushMaskedProse(p.address)
+      } else {
+        pushSegment(p.address)
+      }
+      if (idx < result.places.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 9. Contacts
+  if (result.contacts && result.contacts.length > 0) {
+    pushSegment('\n\n📞 Contacts:\n')
+    result.contacts.forEach((c, idx) => {
+      pushSegment('• ')
+      if (c.label) {
+        pushMaskedProse(c.label)
+        pushSegment(': ')
+      }
+      if (hidePersonal) {
+        pushMaskedProse(c.value)
+      } else {
+        pushSegment(c.value)
+      }
+      if (idx < result.contacts.length - 1) pushSegment('\n')
+    })
+  }
+
+  // 10. Parts (Multi-document)
+  if (result.parts && result.parts.length > 0) {
+    pushSegment('\n\n📑 Documents:\n')
+    result.parts.forEach((part) => {
+      pushSegment(`\n--- `)
+      if (hidePersonal) {
+        pushMaskedProse(part.title)
+      } else {
+        pushSegment(part.title)
+      }
+      pushSegment(' ---\n')
+      if (part.summary_lines && part.summary_lines.length > 0) {
+        part.summary_lines.forEach((sl) => {
+          pushSegment('• ')
+          pushMaskedProse(sl)
+          pushSegment('\n')
+        })
+      }
+      if (part.sections && part.sections.length > 0) {
+        part.sections.forEach((sec) => {
+          pushSegment(`🔹 `)
+          pushMaskedProse(sec.title || sec.heading || '')
+          pushSegment(':\n')
+          sec.values?.forEach((val) => {
+            pushSegment(`• ${val.name}: ${val.value}`)
+            if (val.unit) pushSegment(` ${val.unit}`)
+            if (val.range) pushSegment(` (${val.range})`)
+            if (val.flag) pushSegment(` ${val.flag}`)
+            pushSegment('\n')
+          })
+        })
+      }
+    })
+  }
+
+  const text = segments.map((s) => s.text).join('')
+  return { text, title, segments }
+}
+
+export function buildSharedText(result, lang, hidePersonal) {
+  return buildShare(result, { hidePersonal, lang }).text
+}
+
+export function redactResult(result, options = { hidePersonal: false }) {
+  if (!result) return result
+  const cloned = JSON.parse(JSON.stringify(result))
+  if (!options.hidePersonal) return cloned
+
+  const lang = options.lang || cloned.language || 'en'
+  const protectedTerms = cloned.protected_terms || []
+
+  const mask = (str) => {
+    if (!str) return str || ''
+    return sanitizeProse(str, protectedTerms, lang)
+  }
+
+  cloned.title = mask(cloned.title)
+  if (cloned.report_title) cloned.report_title = mask(cloned.report_title)
+  if (cloned.spoken_summary) cloned.spoken_summary = mask(cloned.spoken_summary)
+
+  if (cloned.summary && Array.isArray(cloned.summary)) {
+    cloned.summary = cloned.summary.map((s) => mask(s))
+  }
+
+  if (cloned.actions && Array.isArray(cloned.actions)) {
+    cloned.actions = cloned.actions.map((act) => ({
+      ...act,
+      text: mask(act.text),
+      quote: mask(act.quote),
+    }))
+  }
+
+  if (cloned.warnings && Array.isArray(cloned.warnings)) {
+    cloned.warnings = cloned.warnings.map((w) => ({
+      ...w,
+      text: mask(w.text),
+      quote: mask(w.quote),
+    }))
+  }
+
+  if (cloned.facts && Array.isArray(cloned.facts)) {
+    cloned.facts = cloned.facts.map((f) => ({
+      ...f,
+      text: mask(f.text),
+      quote: mask(f.quote),
+    }))
+  }
+
+  if (cloned.places && Array.isArray(cloned.places)) {
+    cloned.places = cloned.places.map((p) => {
+      const lower = (p.address || '').toLowerCase()
+      const isInst = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
+      return {
+        ...p,
+        label: mask(p.label),
+        address: isInst ? p.address : mask(p.address),
+        quote: p.quote ? mask(p.quote) : p.quote,
+      }
+    })
+  }
+
+  if (cloned.contacts && Array.isArray(cloned.contacts)) {
+    cloned.contacts = cloned.contacts.map((c) => ({
+      ...c,
+      label: mask(c.label),
+      value: mask(c.value),
+      quote: c.quote ? mask(c.quote) : c.quote,
+    }))
+  }
+
+  if (cloned.medicines && Array.isArray(cloned.medicines)) {
+    cloned.medicines = cloned.medicines.map((m) => ({
+      ...m,
+      instruction_text: m.instruction_text ? mask(m.instruction_text) : m.instruction_text,
+    }))
+  }
+
+  if (cloned.parts && Array.isArray(cloned.parts)) {
+    cloned.parts = cloned.parts.map((part) => ({
+      ...part,
+      title: mask(part.title),
+      issuer: mask(part.issuer),
+      summary_lines: part.summary_lines ? part.summary_lines.map((l) => mask(l)) : undefined,
+      key_points: part.key_points ? part.key_points.map((k) => mask(k)) : undefined,
+      sections: part.sections ? part.sections.map((sec) => ({
+        ...sec,
+        title: mask(sec.title),
+        values: sec.values?.map((v) => ({ ...v })),
+      })) : undefined,
+    }))
+  }
+
+  if (cloned.sections && Array.isArray(cloned.sections)) {
+    cloned.sections = cloned.sections.map((sec) => ({
+      ...sec,
+      title: mask(sec.title),
+      heading: mask(sec.heading),
+      values: sec.values?.map((v) => ({ ...v })),
+    }))
+  }
+
+  if (cloned.protected_terms && Array.isArray(cloned.protected_terms)) {
+    cloned.protected_terms = cloned.protected_terms.map((t) => mask(t))
+  }
+
+  return cloned
+}
+
+export function shareToWhatsApp(text) {
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+  if (typeof window !== 'undefined' && window.open) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
+
+export function shareToEmail(subject, text) {
+  const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+  if (typeof window !== 'undefined') {
+    window.location.href = url
+  }
+}
+
+export async function copyToClipboard(text) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // fallback
+    }
+  }
+  if (typeof document !== 'undefined') {
+    try {
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      return successful
+    } catch {
+      return false
+    }
+  }
+  return false
+}

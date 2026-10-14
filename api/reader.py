@@ -196,6 +196,32 @@ Rules:
     A conversational summary in {LANG} designed to be read aloud (4-7 simple sentences, under 90 words total).
     Must mention who this is from, what it is about, what action the person must take, and by when.
     Keep all numbers in Western digits (0-9).
+17. Multi-document Packets (`parts`):
+    If the upload contains 2 or more distinct documents (e.g. a packet holding a lab report, a prescription, and a bill with different letterheads, issuers, titles, or dates), split into `parts`:
+    - `part_id`: 'part-1', 'part-2', etc.
+    - `title`: document title for that part
+    - `document_type`: document type for that part (e.g. medical, receipt)
+    - `issuer`: issuer/clinic/organization name printed on this part
+    - `date_iso`: date printed on this part in YYYY-MM-DD format if any, else null
+    - `pages`: [start_page, end_page] (1-indexed)
+    - `sections`: lab test sections if this part is a lab report with >4 values
+    - `medicines`: prescribed medicines if this part is a prescription
+    - `key_points`: key takeaways for that part
+    - `summary_lines`: 1-2 summary sentences for that part
+    IMPORTANT: Split only on clear evidence in the pages (new letterhead, issuer, title or date). Never invent a part. If the upload is a single document (even across multiple pages), do NOT set `parts` (leave `parts` null).
+18. Sectioned Lab Reports (`sections`):
+    For lab reports with more than 4 test values, extract `sections`:
+    - `heading`: the document's own section heading in page order (e.g. 'Blood sugar', 'Lipid profile', 'Complete blood count', 'Vitamins', etc.)
+    - `page`: page number where this section appears
+    - `values`: list of test values with:
+      * `label`: test name (e.g. Fasting blood sugar, Total cholesterol)
+      * `value`: printed value (e.g. 118, 212)
+      * `unit`: printed unit (e.g. mg/dL, %)
+      * `ref_range`: printed reference range (e.g. 70 – 100, Below 200)
+      * `flag_printed`: 'High' or 'Low' ONLY when the document explicitly prints High/Low (or H/L, ↑/↓) for that row, else null. Sarvam never decides High/Low; never invent.
+    If the document has 4 or fewer values, keep them in `glance` and leave `sections` null.
+19. Action and Fact tagging:
+    When `parts` are present, tag each action and fact with `part_id` corresponding to which part it belongs to.
 """
 
 KEYED_TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate the following user-facing text strings into {LANG}.

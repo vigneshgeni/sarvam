@@ -1,0 +1,265 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Access.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "5 · Accessibility (from Home badge)",
+      "w": 390,
+      "x": 4230,
+      "y": 0
+    },
+    "AllDocs.dc.html": {
+      "h": 1070,
+      "is_interactive": true,
+      "title": "1b · All documents (View all)",
+      "w": 390,
+      "x": 2356,
+      "y": 4224
+    },
+    "Ask.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "4b · Ask",
+      "w": 390,
+      "x": 3290,
+      "y": 0
+    },
+    "ContentMap.dc.html": {
+      "h": 2440,
+      "title": "7 · How screens adapt to content",
+      "w": 1240,
+      "x": 4230,
+      "y": 3260
+    },
+    "Delete.dc.html": {
+      "h": 844,
+      "title": "6c · Delete confirm",
+      "w": 390,
+      "x": 3290,
+      "y": 3260
+    },
+    "Listen.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "4a · Listen",
+      "w": 390,
+      "x": 2820,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 2980,
+      "is_interactive": true,
+      "title": "1 · Home",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "MoreTypes.dc.html": {
+      "h": 1140,
+      "title": "3e · Result: challan, legal notice, investment, form",
+      "w": 1760,
+      "x": 0,
+      "y": 5740
+    },
+    "Offline.dc.html": {
+      "h": 844,
+      "title": "6d · Offline / error state",
+      "w": 390,
+      "x": 3760,
+      "y": 3260
+    },
+    "Onboard1.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "0a · Welcome (first open)",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Onboard2.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "0b · Simple words",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Onboard3.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "0c · Listen & ask",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Password.dc.html": {
+      "h": 844,
+      "title": "6b · Password PDF sheet",
+      "w": 390,
+      "x": 2820,
+      "y": 3260
+    },
+    "Reading.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "2a · Reading A (scan)",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "ReadingB.dc.html": {
+      "h": 844,
+      "title": "2b · Reading B (photo pages)",
+      "w": 390,
+      "x": 0,
+      "y": 3260
+    },
+    "ReadingC.dc.html": {
+      "h": 844,
+      "title": "2c · Reading C (your language)",
+      "w": 390,
+      "x": 470,
+      "y": 3260
+    },
+    "ReadingD.dc.html": {
+      "h": 844,
+      "title": "2d · Reading D (finding key facts)",
+      "w": 390,
+      "x": 0,
+      "y": 4224
+    },
+    "Reminders.dc.html": {
+      "h": 844,
+      "title": "6a · Reminders sheet",
+      "w": 390,
+      "x": 2350,
+      "y": 3260
+    },
+    "RemindersRx.dc.html": {
+      "h": 844,
+      "title": "6e · Medicine reminders sheet",
+      "w": 390,
+      "x": 470,
+      "y": 4224
+    },
+    "Result.dc.html": {
+      "h": 2620,
+      "is_interactive": true,
+      "title": "3a · Result: insurance (amounts)",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "ResultLab.dc.html": {
+      "h": 2200,
+      "title": "3b · Result: lab report (values)",
+      "w": 390,
+      "x": 940,
+      "y": 3260
+    },
+    "ResultRx.dc.html": {
+      "h": 1900,
+      "title": "3d · Result: prescription (medicines)",
+      "w": 390,
+      "x": 1880,
+      "y": 3260
+    },
+    "ResultTa.dc.html": {
+      "h": 1900,
+      "title": "3c · Result: pension notice in Tamil (date)",
+      "w": 390,
+      "x": 1410,
+      "y": 3260
+    },
+    "Share.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "4c · Share or save",
+      "w": 390,
+      "x": 3760,
+      "y": 0
+    },
+    "Snapshot.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "8 · Save as image (from Share)",
+      "w": 390,
+      "x": 1840,
+      "y": 5740
+    },
+    "ResultMulti.dc.html": {
+      "h": 4540,
+      "is_interactive": true,
+      "title": "3f · Result: one upload, several documents (health checkup)",
+      "w": 390,
+      "x": 2310,
+      "y": 5740
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-14T07:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "row2": {
+      "kind": "title1",
+      "maxW": 5470,
+      "text": "Variants: reading animations, other document types, sheets & states",
+      "w": 240,
+      "x": 0,
+      "y": 3000
+    },
+    "row3": {
+      "kind": "title1",
+      "maxW": 2700,
+      "text": "Any document: bills, legal notices, investments, forms, multi-page uploads",
+      "w": 240,
+      "x": 0,
+      "y": 5480
+    },
+    "title": {
+      "kind": "title1",
+      "maxW": 5090,
+      "text": "Sarvam · first open → Home → Reading → Result → Listen / Ask / Share",
+      "w": 240,
+      "x": 0,
+      "y": -260
+    }
+  },
+  "order": [
+    "Onboard1.dc.html",
+    "Onboard2.dc.html",
+    "Onboard3.dc.html",
+    "Main.dc.html",
+    "Reading.dc.html",
+    "Result.dc.html",
+    "Listen.dc.html",
+    "Ask.dc.html",
+    "Share.dc.html",
+    "Access.dc.html",
+    "AllDocs.dc.html",
+    "ReadingB.dc.html",
+    "ReadingC.dc.html",
+    "ReadingD.dc.html",
+    "ResultLab.dc.html",
+    "ResultTa.dc.html",
+    "ResultRx.dc.html",
+    "Reminders.dc.html",
+    "Password.dc.html",
+    "Delete.dc.html",
+    "Offline.dc.html",
+    "ContentMap.dc.html",
+    "RemindersRx.dc.html",
+    "MoreTypes.dc.html",
+    "Snapshot.dc.html",
+    "ResultMulti.dc.html"
+  ],
+  "pages": [],
+  "title": "Sarvam Accessibility Button"
+}

@@ -1,277 +1,100 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'node:fs'
-import path from 'node:path'
+import {
+  INSTITUTION_TERMS,
+  ID_TOKEN_REGEX,
+  maskNameWord,
+  maskPersonName,
+  maskPhone,
+  maskEmail,
+  maskIdToken,
+  isPersonalField,
+  maskStringWithSegments,
+  sanitizeProse,
+  buildShare,
+  buildSharedText,
+  redactResult,
+  getHiddenLabel,
+} from '../src/utils/shareCore.js'
 
-export const INSTITUTION_TERMS = [
-  'shield health insurance',
-  'city diagnostics',
-  'social welfare dept',
-  'social welfare department',
-  'sunrise mobiles',
-  'sunrise mobiles & electronics',
-  'anand nagar municipality',
-  'revenue department',
-  'city traffic police',
-  'traffic police',
-  'sunrise hospital',
-  'apollo hospital',
-  'virtual court',
-]
+// --- Unit tests for exact mask formats (1A §3) ---
 
-export const ID_TOKEN_REGEX =
-  /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi
+test('1A Mask format - Person names (single, multiple, titles, initials, Indic)', () => {
+  // English titles and names
+  assert.equal(maskPersonName('Ravi Kumar'), 'R*** K****')
+  assert.equal(maskPersonName('Mr. Ravi Kumar'), 'Mr. R*** K****')
+  assert.equal(maskPersonName('Mrs. Lakshmi R.'), 'Mrs. L****** R.')
+  assert.equal(maskPersonName('Dr. A. Meena'), 'Dr. A. M****')
+  assert.equal(maskPersonName('Dr. S. Rao'), 'Dr. S. R**')
+  assert.equal(maskPersonName('Mr. Suresh Babu'), 'Mr. S***** B***')
+  assert.equal(maskPersonName('Mr. Prakash N.'), 'Mr. P****** N.')
+  assert.equal(maskPersonName('Ms. Meera Iyer'), 'Ms. M**** I***')
+  assert.equal(maskPersonName('Shri Anand Rao'), 'Shri A**** R**')
+  assert.equal(maskPersonName('Shri Karthik S.'), 'Shri K****** S.')
+  assert.equal(maskPersonName('Ravi'), 'R***') // first name alone
 
-export function isPersonalField(text, quote, isPersonalExplicit) {
-  if (isPersonalExplicit === true) return true
-  if (!text) return false
-  const lower = (text + ' ' + (quote || '')).toLowerCase()
+  // Indic names
+  assert.equal(maskPersonName('ரவி குமார்'), 'ர** கு****')
+  assert.equal(maskPersonName('ரவி'), 'ர**')
+  assert.equal(maskPersonName('रवि कुमार'), 'र** कु***')
+  assert.equal(maskPersonName('रवि'), 'र**')
+})
 
-  // 1. Personal identifiers / roles / names
-  if (
-    /\b(patient|customer|policyholder|owner|pensioner|insured|attendee|beneficiary)\b/i.test(lower) ||
-    /\b(dr\.|mr\.|mrs\.|ms\.|shri|smt\.|sri)\s+[A-Za-z\u0900-\u0D7F]/i.test(text) ||
-    /\b(referred by|signed by|consultant|pathologist|issued to|addressed to|beneficiary name|beneficiary is|name is)\b/i.test(lower)
-  ) {
-    return true
-  }
+test('1A Mask format - Phone numbers in any format and native digits -> **********', () => {
+  assert.equal(maskPhone('+91 98765 43210'), '**********')
+  assert.equal(maskPhone('080 0000 0000'), '**********')
+  assert.equal(maskPhone('080 2222 3344'), '**********')
+  assert.equal(maskPhone('080 1111 2222'), '**********')
+  assert.equal(maskPhone('9876543210'), '**********')
+  assert.equal(maskPhone('0422-000-0000'), '**********')
+  assert.equal(maskPhone('९८७६५४३२१०'), '**********')
+  assert.equal(maskPhone('௯௮௭௬௫௪௩௨௧௦'), '**********')
 
-  // 2. Personal ID numbers / references across English & Indic languages
-  if (
-    /\b(pension|policy|claim|notice|challan|invoice|order|receipt|tax demand)\s*(?:id|no|number|num|ref|reference|code)?\b/i.test(lower) ||
-    /\b(property id|ward|door no|vehicle|two-wheeler|reg no|registration|imei|sample id|aadhaar|pan|account|upi|utr|chassis|engine)\b/i.test(lower) ||
-    /\b(ref:|reference:|id:|id is|id number)\b/i.test(lower) ||
-    /(पेंशन|पॉलिसी|दावा|चालान|पहचान|खाता|पंजीकरण|वाहन|लाभार्थी)/.test(text) ||
-    /(ஓய்வூதிய|பாலிசி|கோரிக்கை|விலாசம்|அடையாள|வங்கி கணக்கு|வாகன|பயனாளி)/.test(text) ||
-    /(పెన్షన్|పాలసీ|క్లెయిమ్|చలాన్|ఖాతా|రిజిస్ట్రేషన్|లబ్ధిదారు)/.test(text) ||
-    /(पेन्शन|पॉलिसी|दावा|नोंदणी|खाते)/.test(text)
-  ) {
-    const hasOnlyAmountOrDate =
-      /^(\s*(monthly pension|pension|amount|total|due|rebate|fine|fee|tax)\s*(amount|is|of)?\s*:?\s*(rs\.?|₹|\d|due date|date))/i.test(text) &&
-      !/(id|no|number|num|ref|oap|sh\/|clm|anm|ech|sme|cd-|smt|mr\.|mrs\.)/i.test(lower)
-    if (!hasOnlyAmountOrDate) {
-      return true
-    }
-  }
+  const textWithPhones = 'Call 080 2222 3344 or mobile +91 98765 43210 for help.'
+  const res = maskStringWithSegments(textWithPhones)
+  assert.ok(res.text.includes('Call ********** or mobile ********** for help.'))
+})
 
-  // 3. Layer 2 token check: if text contains an ID-like token (letters & digits joined by / or -)
-  if (ID_TOKEN_REGEX.test(text) || (quote && ID_TOKEN_REGEX.test(quote))) {
-    ID_TOKEN_REGEX.lastIndex = 0
-    return true
-  }
+test('1A Mask format - IDs keep separators and last 3 characters', () => {
+  assert.equal(maskIdToken('SH/IND/22/559102'), 'SH/***/**/**102')
+  assert.equal(maskIdToken('CLM-2026-0884'), 'CLM-****-**884')
+  assert.equal(maskIdToken('CD-2026-11873'), 'CD-****-**873')
+  assert.equal(maskIdToken('GL-2026-55821'), 'GL-****-**821')
+  assert.equal(maskIdToken('GLD/B/2026/3307'), 'GLD/***/**/**307')
+  assert.equal(maskIdToken('OAP/BLR/2026/8841'), 'OAP/***/**/**841')
+  assert.equal(maskIdToken('ECH-2026-33918'), 'ECH-****-**918')
+  assert.equal(maskIdToken('INV-2026-9021'), 'INV-****-**021')
+  assert.equal(maskIdToken('TAX/2026/7712'), 'TAX/***/**/**712')
+  assert.equal(maskIdToken('PID-2026-4401'), 'PID-****-**401')
+  assert.equal(maskIdToken('1234567/89'), '******7/89')
+  assert.equal(maskIdToken('ABCDE1234F'), '*******34F')
+  assert.equal(maskIdToken('356000000012345'), '************345')
+  assert.equal(maskIdToken('KA 05 MN 4821'), 'KA ** ** *821')
+})
 
-  // 4. Addresses and personal contact info
-  if (
-    /\b(address|cross|jayanagar|ward|door no|pincode|bengaluru\s*560041)\b/i.test(lower) ||
-    /\b(\+91|ph:|phone:|tel:|mobile:|0422-000-0000)\b/i.test(lower) ||
-    /\b\d{4}[-\s]\d{3}[-\s]\d{4}\b/.test(text) ||
-    /\b\d{10}\b/.test(text) ||
-    /\b\d{2}\s*y\s*\/\s*[mf]\b/i.test(lower)
-  ) {
-    return true
-  }
+test('1A Mask format - Emails -> r***@****.com', () => {
+  assert.equal(maskEmail('meera.iyer@gmail.com'), 'm***@****.com')
+  assert.equal(maskEmail('advocate.rao@courtmail.com'), 'a***@****.com')
+  assert.equal(maskEmail('ravi@example.com'), 'r***@****.com')
+})
 
-  // 5. Long digit runs (8+ digits) that are not amounts
-  const digitRuns = text.match(/\b\d{8,}\b/g)
-  if (digitRuns && digitRuns.length > 0) {
-    return true
-  }
+test('1A Mask format - Home addresses and dates of birth -> [hidden] (localised)', () => {
+  assert.equal(getHiddenLabel('en'), '[hidden]')
+  assert.equal(getHiddenLabel('ta'), '[மறைக்கப்பட்டது]')
+  assert.equal(getHiddenLabel('hi'), '[छिपाया गया]')
 
-  return false
-}
+  const addrText = 'Resident at No. 14, 3rd Cross, Jayanagar, Bengaluru 560041, Age: 48 Y / M.'
+  const resEn = maskStringWithSegments(addrText, [], 'en')
+  assert.ok(resEn.text.includes('[hidden]'))
+  assert.ok(!resEn.text.includes('No. 14, 3rd Cross'))
+  assert.ok(!resEn.text.includes('48 Y / M'))
 
-export function sanitizeProse(text, protectedTerms = []) {
-  if (!text) return ''
-  let cleaned = text
+  const resTa = maskStringWithSegments(addrText, [], 'ta')
+  assert.ok(resTa.text.includes('[மறைக்கப்பட்டது]'))
+})
 
-  // 1. Remove specific personal identity clauses
-  cleaned = cleaned.replace(
-    /\b(?:issued to|addressed to|referred by|signed by|beneficiary is|beneficiary name is)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?:,\s*MD)?(?=[.,;\n]|\s+for|\s+regarding|\s+by|\s+from|$)/gi,
-    ''
-  )
-  cleaned = cleaned.replace(
-    /\b(?:regarding the Old Age Pension Scheme)\s+for\s+(?:(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)\s+)?[A-Z][A-Za-z.\s]+?(?=[.,;\n]|$)/gi,
-    'regarding the Old Age Pension Scheme'
-  )
-  cleaned = cleaned.replace(
-    /\b(?:for policyholder|for patient|patient|customer|beneficiary|for owner|owner)\s+(?:(?:Mr\.|Mrs\.|Ms\.|Shri|Smt\.|Dr\.|Sri)\s+)?[A-Z][A-Za-z.\s]+?(?=[.,;\n]|\s+with|\s+for|$)/gi,
-    ''
-  )
-  cleaned = cleaned.replace(
-    /\b(?:for|to)\s+(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.|Sri)\s+[A-Z][A-Za-z.\s]+?(?=[.,;\n]|$)/gi,
-    ''
-  )
+// --- All 11 sample fixtures (fictional) ---
 
-  // 2. Remove ID phrases with prefixes
-  cleaned = cleaned.replace(
-    /\b(?:pension id|policy no|claim no|notice no|challan no|invoice no|property id|sample id|imei|vehicle no|vehicle|ref|order no)[:\s]+[A-Za-z0-9/_-]+/gi,
-    ''
-  )
-
-  // 3. Layer 2: Generic ID-like tokens (letters + digits joined by / or -) with at least 3 digits, excluding dates
-  cleaned = cleaned.replace(
-    /\b(?!(?:19|20)\d{2}[-/]\d{2}[-/]\d{2}\b)(?!(?:\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2})\b)(?!(?:\d{1,2}[-/])?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-/]\d{2,4}\b)(?=(?:[A-Za-z0-9/_-]*\d){3,})(?=[A-Za-z0-9/_-]*[A-Za-z])[A-Za-z0-9]+(?:[/-][A-Za-z0-9_-]+)+\b/gi,
-    ''
-  )
-
-  // 4. Indian vehicle registration numbers
-  cleaned = cleaned.replace(/\b[A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,2}\s*\d{1,4}\b/gi, '')
-
-  // 5. Personal names from protectedTerms and samples with Unicode-aware word boundaries
-  // Falls back to \b on iOS earlier than 16.4 which lacks lookbehind support
-  const createNameBoundaryRegex = (escaped) => {
-    try {
-      return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui')
-    } catch {
-      return new RegExp(`\\b${escaped}\\b`, 'gi')
-    }
-  }
-
-  const personalNames = [
-    'Mr. Ravi Kumar',
-    'Ravi Kumar',
-    'Mrs. Lakshmi R.',
-    'Lakshmi R.',
-    'Dr. A. Meena',
-    'Dr. S. Rao',
-    'Meena Subramanian',
-    'Kamala Devi',
-    'Smt. Kamala Devi',
-    'Suresh Raman',
-    'ரவி குமார்',
-    'லட்சுமி ஆர்.',
-    'டாக்டர் மீனா',
-    'மீனா சுப்பிரமணியன்',
-    'கமலா தேவி',
-    'சுரேஷ் ராமன்',
-    'रवि कुमार',
-    'लक्ष्मी आर.',
-    'डॉक्टर मीना',
-    'मीना सुब्रमण्यन',
-    'कमला देवी',
-    'सुरेश रमन',
-  ]
-  for (const name of personalNames) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    cleaned = cleaned.replace(createNameBoundaryRegex(escaped), '')
-  }
-
-  for (const term of protectedTerms) {
-    if (!term || term.trim().length < 2) continue
-    const lower = term.toLowerCase().trim()
-    const isInstitution = INSTITUTION_TERMS.some((inst) => lower.includes(inst))
-    if (!isInstitution) {
-      const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      cleaned = cleaned.replace(createNameBoundaryRegex(escaped), '')
-    }
-  }
-
-  // 6. Remove addresses, phone numbers, IMEI
-  cleaned = cleaned.replace(/No\.\s*14,\s*3rd\s*Cross,\s*Jayanagar,\s*Bengaluru\s*560041/gi, '')
-  cleaned = cleaned.replace(/\b560041\b/g, '')
-  cleaned = cleaned.replace(/0422-000-0000/g, '')
-  cleaned = cleaned.replace(/\b356000000012345\b/g, '')
-  cleaned = cleaned.replace(/(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/g, '')
-  cleaned = cleaned.replace(/\b\d{2}\s*Y\s*\/\s*[MF]\b/gi, '')
-
-  // 7. Cleanup dangling prepositions and titles
-  cleaned = cleaned.replace(/\b(?:for|to|of|by|with)\s*(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)?\s*([.,;]|\s*$)/gi, '$1')
-  cleaned = cleaned.replace(/\b(?:Smt\.|Shri|Mr\.|Mrs\.|Ms\.|Dr\.)(?=[.,;]|\s*$)/gi, '')
-
-  // 8. Clean up accidental [*] and whitespace
-  cleaned = cleaned.replace(/\[\*{1,}\]/g, '')
-  cleaned = cleaned.replace(/\s*—\s*—\s*/g, ' — ')
-  cleaned = cleaned.replace(/\s*,\s*,+/g, ',')
-  cleaned = cleaned.replace(/\s*\.\s*\.+/g, '.')
-  cleaned = cleaned.replace(/\s{2,}/g, ' ')
-  cleaned = cleaned.replace(/\s+([.,;:])/g, '$1')
-  cleaned = cleaned.trim()
-
-  return cleaned
-}
-
-export function buildSharedText(result, lang, hidePersonal) {
-  const lines = []
-
-  if (result.title) {
-    const titleText = hidePersonal
-      ? sanitizeProse(result.title, result.protected_terms || [])
-      : result.title
-    if (titleText) {
-      lines.push(`📄 ${titleText}`)
-    }
-  }
-
-  if (result.summary && result.summary.length > 0) {
-    const summaryPoints = []
-    for (const point of result.summary) {
-      if (hidePersonal) {
-        if (/^(this (?:letter|notice|invoice|report) (?:is|was) (?:addressed|issued) to|patient|customer)/i.test(point.trim())) {
-          continue
-        }
-        const cleaned = sanitizeProse(point, result.protected_terms || [])
-        if (cleaned && cleaned.length > 10) {
-          summaryPoints.push(cleaned)
-        }
-      } else {
-        summaryPoints.push(point)
-      }
-    }
-    if (summaryPoints.length > 0) {
-      lines.push(`\n📌 In simple words:`)
-      summaryPoints.forEach((point) => {
-        lines.push(`• ${point}`)
-      })
-    }
-  }
-
-  if (result.actions && result.actions.length > 0) {
-    lines.push(`\n✅ What you need to do:`)
-    result.actions.forEach((act, idx) => {
-      const actText = hidePersonal
-        ? sanitizeProse(act.text, result.protected_terms || [])
-        : act.text
-      lines.push(`${idx + 1}. ${actText}`)
-    })
-  }
-
-  if (result.warnings && result.warnings.length > 0) {
-    lines.push(`\n⚠️ Watch out:`)
-    result.warnings.forEach((warn) => {
-      lines.push(`• ${warn.text}`)
-    })
-  }
-
-  if (result.facts && result.facts.length > 0) {
-    const factsList = hidePersonal
-      ? result.facts
-          .filter((fact) => !isPersonalField(fact.text, fact.quote, fact.is_personal))
-          .map((fact) => ({
-            ...fact,
-            text: sanitizeProse(fact.text, result.protected_terms || []),
-          }))
-          .filter((fact) => fact.text.trim().length > 0)
-      : result.facts
-
-    if (factsList.length > 0) {
-      lines.push(`\n📋 Key facts:`)
-      factsList.forEach((fact) => {
-        lines.push(`• ${fact.text}`)
-      })
-    }
-  }
-
-  if (result.conflicts && result.conflicts.length > 0) {
-    lines.push(`\n⚠️ Conflicting details:`)
-    result.conflicts.forEach((c) => {
-      lines.push(`• ${c}`)
-    })
-  }
-
-  return lines.join('\n')
-}
-
-// Realistic fixtures for all 6 samples
 const sampleInsurance = {
   title: 'Hospitalisation Claim Settlement Letter from Shield Health Insurance — Mr. Ravi Kumar',
   doc_type: 'insurance',
@@ -301,31 +124,37 @@ const sampleInsurance = {
 }
 
 const sampleLabReport = {
-  title: 'Blood Test Report from City Diagnostics for Mrs. Lakshmi R.',
+  title: 'Blood Test Report from City Diagnostics for Mr. Suresh Babu',
   doc_type: 'medical',
   summary: [
-    'Complete Blood Count and iron profile report issued to Mrs. Lakshmi R. referred by Dr. A. Meena.',
-    'Haemoglobin is 9.2 g/dL which is below normal range.',
-    'Serum Iron is 38 µg/dL indicating low iron stores.',
+    'Blood test from City Diagnostics: 2 values are marked outside the normal range.',
+    'Haemoglobin is 11.2 g/dL (range 13.0 – 17.0) Low.',
+    'Fasting blood sugar is 126 mg/dL (range 70 – 100) High.',
+    'Total cholesterol is 182 mg/dL In range.',
   ],
   actions: [
-    { text: 'Consult your treating doctor for iron supplementation.' },
+    { text: 'Please consult your doctor for follow-up of the flagged values.' },
   ],
   warnings: [
-    { text: 'Microcytic hypochromic picture. Clinical correlation advised.' },
+    { text: 'Not a diagnosis. Clinical correlation with treating physician advised.' },
   ],
   facts: [
-    { text: 'Patient Name: Mrs. Lakshmi R., Age/Sex: 58 Y / F' },
-    { text: 'Doctor: Dr. A. Meena, Pathologist: Dr. S. Rao, MD' },
-    { text: 'Sample ID: CD-2026-118734' },
-    { text: 'Haemoglobin (Hb): 9.2 g/dL (normal: 12.0 - 15.0)' },
-    { text: 'Serum Iron: 38 µg/dL (normal: 50 - 170)' },
+    { text: 'Patient Name: Mr. Suresh Babu, 48 Y / M' },
+    { text: 'Referred by Dr. A. Rao, Lab No. CD-2026-11873' },
+    { text: 'Sample collected 08 Oct 2026, report date 09 Oct 2026' },
+    { text: 'Haemoglobin: 11.2 g/dL, Fasting blood sugar: 126 mg/dL, Total cholesterol: 182 mg/dL' },
   ],
-  protected_terms: ['Mrs. Lakshmi R.', 'Dr. A. Meena', 'Dr. S. Rao', 'CD-2026-118734', 'City Diagnostics'],
+  places: [
+    { label: 'Lab address', address: 'City Diagnostics, 2nd Main, Indiranagar, Bengaluru 560038' },
+  ],
+  contacts: [
+    { label: 'Lab phone', value: '080 0000 0000' },
+  ],
+  protected_terms: ['Mr. Suresh Babu', 'Dr. A. Rao', 'CD-2026-11873', 'City Diagnostics', '080 0000 0000'],
 }
 
 const samplePension = {
-  title: 'Pension Verification Notice from Social Welfare Dept.',
+  title: 'Pension Verification Notice from Social Welfare Dept. for Smt. Kamala Devi',
   doc_type: 'government_notice',
   summary: [
     'Annual Life Certificate submission notice from Social Welfare Department.',
@@ -338,18 +167,19 @@ const samplePension = {
     { text: 'Pension payment will be stopped if certificate is not submitted on time.' },
   ],
   facts: [
+    { text: 'Beneficiary: Smt. Kamala Devi, Door No. 12, 4th Cross, Malleshwaram, Bengaluru 560003' },
     { text: 'Monthly pension amount is Rs. 1,200.' },
-    { text: 'Pensioner Reference ID: OAP/BLR/2019/04417' },
+    { text: 'Pensioner Reference ID: OAP/BLR/2026/8841' },
     { text: 'Submission deadline: 30.11.2026' },
   ],
-  protected_terms: ['OAP/BLR/2019/04417', 'Social Welfare Dept.'],
+  protected_terms: ['Smt. Kamala Devi', 'OAP/BLR/2026/8841', 'Social Welfare Dept.'],
 }
 
 const sampleWarrantyInvoice = {
-  title: 'Tax Invoice from Sunrise Mobiles & Electronics for Meena Subramanian',
+  title: 'Tax Invoice from Sunrise Mobiles & Electronics for Suresh Raman',
   doc_type: 'receipt',
   summary: [
-    'Tax Invoice for purchase of mobile phone issued to Meena Subramanian.',
+    'Tax Invoice for purchase of mobile phone issued to Suresh Raman.',
     'Total amount paid is Rs. 20,999.00 by UPI.',
     'Standard warranty is valid until 07 Oct 2027.',
   ],
@@ -361,297 +191,338 @@ const sampleWarrantyInvoice = {
   ],
   facts: [
     { text: 'Store: Sunrise Mobiles & Electronics, Coimbatore' },
-    { text: 'Item: Zephyr M5 5G (8GB + 128GB)' },
-    { text: 'Total paid: Rs. 20,999.00 (Taxable Rs. 17,795.76 + GST Rs. 3,203.24)' },
-    { text: 'Customer: Meena Subramanian, Phone: 0422-000-0000' },
-    { text: 'Invoice No: SME/2026/004217, IMEI: 356000000012345' },
-    { text: 'Warranty valid until 07 Oct 2027' },
+    { text: 'Customer: Suresh Raman, Phone: 98765 43210' },
+    { text: 'Invoice No: INV-2026-9021, IMEI: 356000000012345' },
+    { text: 'Item: Galaxy A15' },
   ],
-  protected_terms: ['Meena Subramanian', '0422-000-0000', '356000000012345', 'SME/2026/004217', 'Sunrise Mobiles & Electronics'],
+  protected_terms: ['Suresh Raman', '98765 43210', '356000000012345', 'INV-2026-9021', 'Sunrise Mobiles & Electronics'],
 }
 
 const samplePropertyTax = {
-  title: 'Property Tax Demand Notice from Anand Nagar Municipality for Kamala Devi',
-  doc_type: 'tax_notice',
+  title: 'Property Tax Demand Notice from Anand Nagar Municipality for Mrs. Lakshmi R.',
+  doc_type: 'tax_receipt',
   summary: [
-    'Property tax demand notice from Anand Nagar Municipality for owner Kamala Devi.',
+    'Property tax demand notice from Anand Nagar Municipality for owner Mrs. Lakshmi R.',
     'Total demand is Rs. 3,840.00 payable before 31 Dec 2026.',
     'Early payment rebate of 5% (Rs. 192.00) if paid by 30 Nov 2026 (net Rs. 3,648.00).',
   ],
   actions: [
-    { text: 'Pay discounted amount Rs. 3,648.00 on or before 30 Nov 2026.', due_date: '2026-11-30' },
-    { text: 'Pay before 31 Dec 2026 to avoid 2% monthly penalty.', due_date: '2026-12-31' },
+    { text: 'Pay discounted amount of Rs. 3,648.00 before 30 Nov 2026.', due_date: '2026-11-30' },
   ],
   warnings: [
-    { text: 'Non-payment after 31 Dec 2026 attracts 2% per month penalty.' },
+    { text: 'Late fee of 2% per month will be charged after 31 Dec 2026.' },
   ],
   facts: [
-    { text: 'Municipality: Anand Nagar Municipality, Revenue Department' },
-    { text: 'Total demand: Rs. 3,840.00 (Property tax Rs. 3,200.00, Library cess Rs. 160.00, Water Rs. 480.00)' },
-    { text: 'Early payment amount: Rs. 3,648.00 (5% rebate)' },
-    { text: 'Owner: Kamala Devi, Property ID: AN/07/0412/0089, Ward 7' },
-    { text: 'Notice No: ANM/PT/2026/07741' },
+    { text: 'Owner: Mrs. Lakshmi R., Door No. 8, 2nd Main, Jayanagar, Ward 152' },
+    { text: 'Property ID: PID-2026-4401, Notice No: TAX/2026/7712' },
+    { text: 'Full tax amount: Rs. 3,840.00, Net rebate amount: Rs. 3,648.00' },
   ],
-  protected_terms: ['Kamala Devi', 'AN/07/0412/0089', 'ANM/PT/2026/07741', 'Ward 7', 'Anand Nagar Municipality'],
+  protected_terms: ['Mrs. Lakshmi R.', 'PID-2026-4401', 'TAX/2026/7712', 'Anand Nagar Municipality'],
 }
 
-const sampleEchallan = {
-  title: 'Traffic E-Challan Notice from City Traffic Police for Suresh Raman',
+const sampleEChallan = {
+  title: 'Traffic Violation Notice from City Traffic Police — Ravi Kumar',
   doc_type: 'challan',
   summary: [
-    'Traffic violation challan issued to Suresh Raman for vehicle TN 99 AB 1234.',
-    'Violation: rider without a helmet at Lake Road Junction.',
-    'Fine amount of Rs. 1,000.00 to be paid on or before 05 Dec 2026.',
+    'Traffic violation notice issued to vehicle owner Ravi Kumar for riding without helmet.',
+    'Fine amount of Rs. 1,000 must be paid by 05 Dec 2026.',
   ],
   actions: [
-    { text: 'Pay fine of Rs. 1,000.00 online or contest by 05 Dec 2026.', due_date: '2026-12-05' },
+    { text: 'Pay fine of Rs. 1,000 on traffic portal or contest in Virtual Court by 05 Dec 2026.', due_date: '2026-12-05' },
   ],
   warnings: [
-    { text: 'If not paid by 05 Dec 2026, case will be forwarded to Virtual Court.' },
+    { text: 'Unpaid challans will be transferred to Virtual Court for proceedings.' },
   ],
   facts: [
-    { text: 'Authority: City Traffic Police, Anand Nagar' },
-    { text: 'Violation: rider without a helmet' },
-    { text: 'Fine amount: Rs. 1,000.00' },
-    { text: 'Due date: 05 Dec 2026' },
-    { text: 'Challan No: ECH/2026/0098121, Vehicle: TN 99 AB 1234, Owner: Suresh Raman' },
+    { text: 'Challan No: ECH-2026-33918' },
+    { text: 'Vehicle Reg: KA 05 MN 4821' },
+    { text: 'Owner Name: Ravi Kumar' },
+    { text: 'Offence: Riding two-wheeler without helmet (Section 129)' },
+    { text: 'Fine: Rs. 1,000, Due date: 05 Dec 2026' },
   ],
-  protected_terms: ['Suresh Raman', 'TN 99 AB 1234', 'ECH/2026/0098121', 'City Traffic Police'],
+  protected_terms: ['Ravi Kumar', 'ECH-2026-33918', 'KA 05 MN 4821', 'City Traffic Police'],
 }
 
-// Indic test fixtures (Tamil & Hindi)
-const sampleInsuranceTa = {
-  title: 'மருத்துவக் காப்பீட்டு கடிதம் — ரவி குமார்',
-  doc_type: 'insurance',
+const samplePrescription = {
+  title: 'Medical Prescription from Shanthi Family Clinic for Lakshmi Narayan',
+  doc_type: 'medical',
   summary: [
-    'Shield Health Insurance நிறுவனத்திடமிருந்து உங்கள் மருத்துவ கோரிக்கைக்கான கடிதம்.',
-    'மொத்த கோரிக்கை ரூ. 48,500-ல் ரூ. 31,200 அனுமதிக்கப்பட்டுள்ளது.',
+    '3 medicines prescribed, for 5 to 7 days.',
+    'Follow up review on 20/10/2026.',
   ],
   actions: [
-    { text: 'Grievance Cell-க்கு 30 நாட்களுக்குள் மேல்முறையீடு செய்யவும்.', due_date: '2026-10-31' },
+    { text: 'Review on 20/10/2026 at Shanthi Family Clinic.', due_date: '2026-10-20' },
+  ],
+  warnings: [
+    { text: 'Not medical advice. Check against prescription before taking.' },
   ],
   facts: [
-    { text: 'கோரிக்கை எண்: CLM-2026-0884, பாலிசி எண்: SH/IND/22/559102.' },
-    { text: 'அனுமதிக்கப்பட்ட தொகை ரூ. 31,200 மட்டுமே.' },
+    { text: 'Patient: Lakshmi Narayan, 62 / F' },
+    { text: 'Doctor: Dr. S. Rao, Clinic: Shanthi Family Clinic, Rayasandra, Bengaluru' },
+    { text: 'Phone: 080 2222 3344, Date: 13/10/2026' },
   ],
-  protected_terms: ['ரவி குமார்', 'CLM-2026-0884', 'SH/IND/22/559102', 'Shield Health Insurance'],
+  medicines: [
+    { name: 'Amoxicillin', strength_text: '500 mg', frequency_raw: '1-1-1', slots: ['morning', 'afternoon', 'night'], food_timing: 'after_food', duration_days: 7, instruction_text: 'Take 1 tablet after food', decoded: true },
+    { name: 'Paracetamol', strength_text: '650 mg', frequency_raw: '1-0-1', slots: ['morning', 'night'], food_timing: 'after_food', duration_days: 5, instruction_text: 'Take 1 tablet after food', decoded: true },
+    { name: 'Cetirizine', strength_text: '10 mg', frequency_raw: '0-0-1', slots: ['bedtime'], food_timing: 'at_bedtime', duration_days: 5, instruction_text: 'Take 1 tablet at bedtime', decoded: true },
+  ],
+  protected_terms: ['Lakshmi Narayan', 'Dr. S. Rao', '080 2222 3344', 'Shanthi Family Clinic'],
 }
 
-const sampleInsuranceHi = {
-  title: 'स्वास्थ्य बीमा दावा स्वीकृति पत्र — रवि कुमार',
-  doc_type: 'insurance',
+const sampleMutualFund = {
+  title: 'Account Statement from Suryodaya Mutual Fund for Ms. Meera Iyer',
+  doc_type: 'investment',
   summary: [
-    'Shield Health Insurance द्वारा अस्पताल के दावे की स्वीकृति।',
-    'कुल दावा रु. 48,500 में से रु. 31,200 स्वीकृत किया गया है।',
+    'Your mutual fund is now worth ₹1,24,300.',
+    'Total invested ₹1,10,000 with a net gain of ₹14,300.',
   ],
   actions: [
-    { text: 'Grievance Cell को 30 दिनों में आवेदन करें।', due_date: '2026-10-31' },
+    { text: 'Review portfolio performance regularly.' },
+  ],
+  warnings: [
+    { text: 'Mutual fund investments are subject to market risks.' },
   ],
   facts: [
-    { text: 'दावा संख्या CLM-2026-0884 और पॉलिसी संख्या SH/IND/22/559102 है।' },
-    { text: 'स्वीकृत भुगतान राशि रु. 31,200 है।' },
+    { text: 'Investor: Ms. Meera Iyer, PAN: ABCDE1234F, Folio: 1234567/89' },
+    { text: 'Email: meera.iyer@gmail.com, Mobile: 98765 43210' },
+    { text: 'Address: Flat 302, Green Acres, Whitefield, Bengaluru' },
+    { text: 'Units held: 2,200.00, NAV: ₹56.50 on 30 Sep 2026' },
   ],
-  protected_terms: ['रवि कुमार', 'CLM-2026-0884', 'SH/IND/22/559102', 'Shield Health Insurance'],
+  protected_terms: ['Ms. Meera Iyer', 'ABCDE1234F', '1234567/89', 'meera.iyer@gmail.com', '98765 43210', 'Suryodaya Mutual Fund'],
 }
 
-const samplePensionTa = {
-  title: 'ஓய்வூதியதாரர்களுக்கான அறிவிப்பு — கமலா தேவி',
-  doc_type: 'government_notice',
+const sampleCourtSummons = {
+  title: 'Court Summons from Court of the City Civil Judge for Shri Karthik S.',
+  doc_type: 'court_legal',
   summary: [
-    'Social Welfare Department வழங்கும் வாழ்வுச் சான்றிதழ் அறிவிப்பு.',
-    'மாதாந்திர ஓய்வூதியம் ரூ. 1,200 பெற 30.11.2026-க்குள் சமர்ப்பிக்கவும்.',
+    'Court summons from Court of the City Civil Judge. Hearing on 12 Nov 2026.',
+    'Suit filed by Shri Anand Rao against defendant Shri Karthik S.',
   ],
   actions: [
-    { text: 'வங்கி கிளை அல்லது Common Service Centre-ல் சான்றிதழை சமர்ப்பிக்கவும்.', due_date: '2026-11-30' },
+    { text: 'Appear in Court Hall No. 4 on 12 Nov 2026 at 10:30 AM.', due_date: '2026-11-12' },
+    { text: 'File written statement before the hearing date.' },
+  ],
+  warnings: [
+    { text: 'If you fail to appear, the case may be decided in your absence.' },
   ],
   facts: [
-    { text: 'ஓய்வூதிய ஐடி OAP/BLR/2019/04417 ஆகும்.' },
-    { text: 'மாதாந்திர ஓய்வூதியத் தொகை ரூ. 1,200.' },
+    { text: 'Court: Court of the City Civil Judge, Court Hall No. 4' },
+    { text: 'Case: O.S. No. 4417 / 2026' },
+    { text: 'Plaintiff: Shri Anand Rao, Defendant: Shri Karthik S.' },
+    { text: 'Advocate contact: 98765 00000, advocate.rao@courtmail.com' },
+    { text: 'Venue: City Civil Court Complex, K.G. Road' },
   ],
-  protected_terms: ['கமலா தேவி', 'OAP/BLR/2019/04417', 'Social Welfare Dept.'],
+  protected_terms: ['Shri Anand Rao', 'Shri Karthik S.', 'O.S. No. 4417 / 2026', '98765 00000', 'advocate.rao@courtmail.com', 'Court of the City Civil Judge'],
 }
 
-const samplePensionHi = {
-  title: 'पेंशन सत्यापन सूचना — कमला देवी',
-  doc_type: 'government_notice',
+const sampleBankDepositSlip = {
+  title: 'Cash Deposit Slip from Sample Bank Ltd',
+  doc_type: 'form',
   summary: [
-    'Social Welfare Department द्वारा जीवन प्रमाण पत्र प्रस्तुत करने की सूचना।',
-    'मासिक पेंशन रु. 1,200 प्राप्त करने के लिए 30.11.2026 तक जमा करें।',
+    'Cash deposit slip. Fill 6 boxes, then sign.',
   ],
   actions: [
-    { text: 'बैंक शाखा या Common Service Centre में प्रमाण पत्र जमा करें।', due_date: '2026-11-30' },
+    { text: 'Fill in date, account number, name, amount in words, and note denominations.' },
+    { text: 'Sign at the bottom and hand over cash at counter.' },
   ],
+  warnings: [],
   facts: [
-    { text: 'पेंशन आईडी OAP/BLR/2019/04417 है।' },
-    { text: 'मासिक पेंशन राशि रु. 1,200 है।' },
+    { text: 'Bank: Sample Bank Ltd' },
+    { text: 'Boxes: 1 Date, 2 Account No., 3 Name, 4 Amount in words, 5 Denominations, 6 Signature' },
   ],
-  protected_terms: ['कमला देवी', 'OAP/BLR/2019/04417', 'Social Welfare Dept.'],
+  protected_terms: ['Sample Bank Ltd'],
 }
 
-test('Share privacy - NEVER produces literal [*] or [***] in output', () => {
-  const samples = [
-    sampleInsurance,
-    sampleLabReport,
-    samplePension,
-    sampleWarrantyInvoice,
-    samplePropertyTax,
-    sampleEchallan,
-  ]
+const sampleHealthCheckup = {
+  title: 'Executive Health Checkup Package Report for Mr. Prakash N.',
+  doc_type: 'medical',
+  summary: [
+    'Your health checkup: a lab report, a prescription and a bill.',
+    '5 test values are outside the reference range.',
+  ],
+  actions: [
+    { text: 'Show this report to your doctor for follow up on flagged values.' },
+    { text: 'Review on 15 Jan 2027 with repeat lipid profile and HbA1c.', due_date: '2027-01-15', part_id: 'part-2' },
+  ],
+  warnings: [
+    { text: 'Not a diagnosis. Please consult your physician.' },
+  ],
+  facts: [
+    { text: 'Patient: Mr. Prakash N., 52 Y / M, Lab No. GL-2026-55821, Bill No. GLD/B/2026/3307' },
+    { text: 'Doctor: Dr. K. Menon, Phone: 080 1111 2222' },
+    { text: 'Clinic: Green Leaf Diagnostics, Green Leaf Clinic' },
+  ],
+  parts: [
+    {
+      part_id: 'part-1',
+      title: 'Lab Report for Mr. Prakash N.',
+      document_type: 'medical',
+      issuer: 'Green Leaf Diagnostics',
+      date_iso: '2026-10-10',
+      pages: [1, 3],
+      summary_lines: ['Fasting blood sugar 118 mg/dL High, HbA1c 6.1 % High'],
+      sections: [
+        {
+          title: 'Blood sugar',
+          values: [
+            { name: 'Fasting blood sugar', value: '118', unit: 'mg/dL', range: '70 – 100', flag: 'High' },
+            { name: 'HbA1c', value: '6.1', unit: '%', range: '4.0 – 5.6', flag: 'High' },
+          ],
+        },
+        {
+          title: 'Lipid profile',
+          values: [
+            { name: 'Total cholesterol', value: '212', unit: 'mg/dL', range: 'Below 200', flag: 'High' },
+            { name: 'LDL', value: '138', unit: 'mg/dL', range: 'Below 130', flag: 'High' },
+          ],
+        },
+        {
+          title: 'Vitamins',
+          values: [
+            { name: 'Vitamin D (25-OH)', value: '18', unit: 'ng/mL', range: '30 – 100', flag: 'Low' },
+          ],
+        },
+      ],
+    },
+    {
+      part_id: 'part-2',
+      title: 'Prescription by Dr. K. Menon',
+      document_type: 'medical',
+      issuer: 'Green Leaf Clinic',
+      date_iso: '2026-10-12',
+      pages: [4, 4],
+    },
+    {
+      part_id: 'part-3',
+      title: 'Bill GLD/B/2026/3307',
+      document_type: 'receipt',
+      issuer: 'Green Leaf Diagnostics',
+      date_iso: '2026-10-10',
+      pages: [5, 5],
+    },
+  ],
+  medicines: [
+    { name: 'Atorvastatin', strength_text: '10 mg', frequency_raw: '0-0-1', slots: ['night'], food_timing: 'after_food', duration_days: 30, instruction_text: 'Take at night after food', decoded: true },
+    { name: 'Vitamin D3', strength_text: '60,000 IU', frequency_raw: 'Once a week', slots: [], food_timing: 'after_food', duration_days: 56, instruction_text: 'Take once a week after food', decoded: false },
+  ],
+  protected_terms: ['Mr. Prakash N.', 'Dr. K. Menon', 'GL-2026-55821', 'GLD/B/2026/3307', '080 1111 2222', 'Green Leaf Diagnostics'],
+}
 
-  for (const s of samples) {
-    const textHidden = buildSharedText(s, 'en', true)
-    assert.doesNotMatch(textHidden, /\[\*+\]/)
-    const textFull = buildSharedText(s, 'en', false)
-    assert.doesNotMatch(textFull, /\[\*+\]/)
+// All 11 samples map
+const ALL_SAMPLES = [
+  { id: 'insurance', fixture: sampleInsurance, personal: ['Ravi Kumar', 'SH/IND/22/559102', 'CLM-2026-0884', 'No. 14, 3rd Cross', '560041'], retained: ['Shield Health Insurance', 'Sunrise Hospital', '48,500', '31,200', '17,300'] },
+  { id: 'lab', fixture: sampleLabReport, personal: ['Suresh Babu', 'CD-2026-11873', 'Dr. A. Rao', '080 0000 0000', '48 Y / M'], retained: ['City Diagnostics', '11.2', '126', '182', 'Low', 'High', 'In range'] },
+  { id: 'pension', fixture: samplePension, personal: ['Kamala Devi', 'OAP/BLR/2026/8841', 'Door No. 12, 4th Cross'], retained: ['Social Welfare Department', '1,200', '30.11.2026'] },
+  { id: 'invoice', fixture: sampleWarrantyInvoice, personal: ['Suresh Raman', 'INV-2026-9021', '98765 43210', '356000000012345'], retained: ['Sunrise Mobiles & Electronics', 'Galaxy A15', '20,999'] },
+  { id: 'tax', fixture: samplePropertyTax, personal: ['Lakshmi R.', 'PID-2026-4401', 'TAX/2026/7712', 'Door No. 8, 2nd Main', 'Ward 152'], retained: ['Anand Nagar Municipality', '3,840', '3,648', '192'] },
+  { id: 'challan', fixture: sampleEChallan, personal: ['Ravi Kumar', 'ECH-2026-33918', 'KA 05 MN 4821'], retained: ['City Traffic Police', '1,000', '05 Dec 2026', 'Virtual Court'] },
+  { id: 'prescription', fixture: samplePrescription, personal: ['Lakshmi Narayan', 'Dr. S. Rao', '080 2222 3344', '62 / F'], retained: ['Shanthi Family Clinic', 'Amoxicillin', 'Paracetamol', 'Cetirizine', '20/10/2026'] },
+  { id: 'mutual_fund', fixture: sampleMutualFund, personal: ['Meera Iyer', '1234567/89', 'ABCDE1234F', 'meera.iyer@gmail.com', '98765 43210', 'Flat 302, Green Acres'], retained: ['Suryodaya Mutual Fund', '1,10,000', '1,24,300', '14,300'] },
+  { id: 'summons', fixture: sampleCourtSummons, personal: ['Anand Rao', 'Karthik S.', 'O.S. No. 4417 / 2026', '98765 00000', 'advocate.rao@courtmail.com'], retained: ['Court of the City Civil Judge', 'Court Hall No. 4', '12 Nov 2026', '10:30 AM'] },
+  { id: 'deposit_slip', fixture: sampleBankDepositSlip, personal: [], retained: ['Sample Bank Ltd'] },
+  { id: 'health_checkup', fixture: sampleHealthCheckup, personal: ['Prakash N.', 'Dr. K. Menon', 'GL-2026-55821', 'GLD/B/2026/3307', '080 1111 2222', '52 Y / M'], retained: ['Green Leaf Diagnostics', 'Green Leaf Clinic', '118', '6.1', '212', '138', '18', 'Atorvastatin', 'Vitamin D3'] },
+]
+
+test('1A All 11 samples - buildShare with hidePersonal=true hides every personal detail and keeps business facts', () => {
+  for (const { id, fixture, personal, retained } of ALL_SAMPLES) {
+    const res = buildShare(fixture, { hidePersonal: true })
+
+    // segments contract
+    assert.equal(res.text, res.segments.map((s) => s.text).join(''), `${id}: text must equal segments concatenated`)
+
+    // Title must not contain personal name
+    assert.ok(!res.title.includes('Ravi Kumar') && !res.title.includes('Lakshmi') && !res.title.includes('Kamala'), `${id}: title must have no personal name`)
+    assert.ok(res.title.includes('· Sarvam'), `${id}: title must end with · Sarvam`)
+
+    // Every personal detail must NOT appear in output text
+    for (const val of personal) {
+      assert.ok(!res.text.includes(val), `${id}: Output must NOT contain personal detail "${val}"\nGot text:\n${res.text}`)
+    }
+
+    // Every retained fact must appear
+    for (const val of retained) {
+      assert.ok(res.text.includes(val), `${id}: Output MUST retain business fact "${val}"`)
+    }
   }
 })
 
-test('Share privacy - Live pension fixture hides OAP/BLR ID and Kamala Devi', () => {
-  const fixturePath = path.join(process.cwd(), 'web/tests/fixtures/live_pension_en.json')
-  if (fs.existsSync(fixturePath)) {
-    const livePension = JSON.parse(fs.readFileSync(fixturePath, 'utf8'))
-    const text = buildSharedText(livePension, 'en', true)
+test('1A All 11 samples - Toggle OFF shows full details, Toggle ON again hides them', () => {
+  for (const { id, fixture, personal } of ALL_SAMPLES) {
+    // 1. Toggle ON -> Hidden
+    const resOn1 = buildShare(fixture, { hidePersonal: true })
+    for (const val of personal) {
+      assert.ok(!resOn1.text.includes(val), `${id}: Toggle ON should hide "${val}"`)
+    }
 
-    assert.ok(!text.includes('OAP/BLR/2019/04417'), 'Pension ID OAP/BLR leaked')
-    assert.ok(!text.includes('OAP/BLR'), 'Pension ID prefix leaked')
-    assert.ok(!text.includes('Kamala Devi'), 'Beneficiary Kamala Devi leaked')
-    assert.ok(!text.includes('Smt.'), 'Title Smt. leaked')
+    // 2. Toggle OFF -> Visible
+    const resOff = buildShare(fixture, { hidePersonal: false })
+    for (const val of personal) {
+      assert.ok(resOff.text.includes(val), `${id}: Toggle OFF should show "${val}"`)
+    }
 
-    // Must keep business facts
-    assert.ok(text.includes('1,200'), 'Pension amount missing')
-    assert.ok(text.includes('30 November 2026') || text.includes('30.11.2026'), 'Date missing')
+    // 3. Toggle ON again -> Hidden
+    const resOn2 = buildShare(fixture, { hidePersonal: true })
+    for (const val of personal) {
+      assert.ok(!resOn2.text.includes(val), `${id}: Toggle ON again should hide "${val}"`)
+    }
   }
 })
 
-test('Share privacy - Insurance sample hides personal details and retains business facts', () => {
-  const text = buildSharedText(sampleInsurance, 'en', true)
+test('1A All 11 samples - redactResult output serialized contains NONE of the personal values', () => {
+  for (const { id, fixture, personal } of ALL_SAMPLES) {
+    const redacted = redactResult(fixture, { hidePersonal: true })
+    const serialized = JSON.stringify(redacted)
 
-  assert.ok(!text.includes('Ravi Kumar'), 'Ravi Kumar leaked')
-  assert.ok(!text.includes('CLM-2026-0884'), 'Claim ID leaked')
-  assert.ok(!text.includes('SH/IND/22/559102'), 'Policy No leaked')
-  assert.ok(!text.includes('560041'), 'Pincode leaked')
-  assert.ok(!text.includes('3rd Cross'), 'Address leaked')
+    for (const val of personal) {
+      assert.ok(!serialized.includes(val), `${id}: Serialized redacted result must not contain "${val}"`)
+    }
 
-  assert.ok(text.includes('Shield Health Insurance'), 'Insurer name missing')
-  assert.ok(text.includes('Sunrise Hospital'), 'Hospital name missing')
-  assert.ok(text.includes('48,500'), 'Claim amount missing')
-  assert.ok(text.includes('31,200'), 'Approved amount missing')
-  assert.ok(text.includes('17,300'), 'Deduction missing')
+    // Medicines names are NOT personal and stay
+    if (fixture.medicines) {
+      for (const med of fixture.medicines) {
+        assert.ok(serialized.includes(med.name), `${id}: Medicine "${med.name}" must be preserved`)
+      }
+    }
+  }
 })
 
-test('Share privacy - Lab report hides patient and doctor names but keeps tests', () => {
-  const text = buildSharedText(sampleLabReport, 'en', true)
+test('1A Tamil and Hindi fixtures hide personal names without literal [*]', () => {
+  const pensionTa = {
+    ...samplePension,
+    language: 'ta',
+    title: 'ஓய்வூதிய சரிபார்ப்பு அறிவிப்பு — திருமதி கமலா தேவி',
+    summary: ['சமூக நலத்துறையிலிருந்து வருடாந்திர வாழ்வுச் சான்றிதழ் சமர்ப்பிப்பு அறிவிப்பு கமலா தேவிக்காக.'],
+    facts: [
+      { text: 'பயனாளி: திருமதி கமலா தேவி, எண் 12, மல்லேஸ்வரம், பெங்களூரு' },
+      { text: 'ஓய்வூதிய ஐடி: OAP/BLR/2026/8841' },
+      { text: 'மாத ஓய்வூதியம்: ரூ. 1,200' },
+    ],
+    protected_terms: ['திருமதி கமலா தேவி', 'கமலா தேவி', 'OAP/BLR/2026/8841'],
+  }
 
-  assert.ok(!text.includes('Lakshmi R.'), 'Patient name leaked')
-  assert.ok(!text.includes('Meena'), 'Doctor name leaked')
-  assert.ok(!text.includes('Rao'), 'Doctor name leaked')
-  assert.ok(!text.includes('CD-2026-118734'), 'Sample ID leaked')
-  assert.ok(!text.includes('58 Y'), 'Age/sex leaked')
+  const resTa = buildShare(pensionTa, { hidePersonal: true, lang: 'ta' })
+  assert.ok(!resTa.text.includes('கமலா தேவி'))
+  assert.ok(!resTa.text.includes('OAP/BLR/2026/8841'))
+  assert.ok(!resTa.text.includes('[*]'))
+  assert.ok(!resTa.text.includes('[***]'))
+  assert.ok(resTa.text.includes('1,200'))
 
-  assert.ok(text.includes('City Diagnostics'), 'Lab name missing')
-  assert.ok(text.includes('Haemoglobin'), 'Test name missing')
-  assert.ok(text.includes('9.2'), 'Test value missing')
-})
+  const insuranceHi = {
+    ...sampleInsurance,
+    language: 'hi',
+    title: 'शील्ड हेल्थ इंश्योरेंस से अस्पताल दावा निपटान पत्र — श्री रवि कुमार',
+    summary: ['रवि कुमार के लिए सनराइज अस्पताल का दावा स्वीकृत किया गया है।'],
+    facts: [
+      { text: 'पॉलिसीधारक: श्री रवि कुमार, जयनगर' },
+      { text: 'पॉलिसी संख्या: SH/IND/22/559102' },
+      { text: 'स्वीकृत राशि: रु. 31,200' },
+    ],
+    protected_terms: ['श्री रवि कुमार', 'रवि कुमार', 'SH/IND/22/559102'],
+  }
 
-test('Share privacy - Pension sample hides OAP ID but keeps department and amount', () => {
-  const text = buildSharedText(samplePension, 'en', true)
-
-  assert.ok(!text.includes('OAP/BLR/2019/04417'), 'Pension ID leaked')
-  assert.ok(text.includes('Social Welfare'), 'Department name missing')
-  assert.ok(text.includes('1,200'), 'Pension amount missing')
-  assert.ok(text.includes('30.11.2026'), 'Date missing')
-})
-
-test('Share privacy - Warranty invoice hides customer, phone, IMEI, invoice number', () => {
-  const text = buildSharedText(sampleWarrantyInvoice, 'en', true)
-
-  assert.ok(!text.includes('Meena Subramanian'), 'Customer name leaked')
-  assert.ok(!text.includes('0422-000-0000'), 'Phone leaked')
-  assert.ok(!text.includes('356000000012345'), 'IMEI leaked')
-  assert.ok(!text.includes('SME/2026/004217'), 'Invoice No leaked')
-
-  assert.ok(text.includes('Sunrise Mobiles & Electronics'), 'Store name missing')
-  assert.ok(text.includes('Zephyr M5 5G'), 'Item missing')
-  assert.ok(text.includes('20,999.00'), 'Amount missing')
-  assert.ok(text.includes('07 Oct 2027'), 'Warranty date missing')
-})
-
-test('Share privacy - Property tax notice hides owner, property ID, notice number, ward', () => {
-  const text = buildSharedText(samplePropertyTax, 'en', true)
-
-  assert.ok(!text.includes('Kamala Devi'), 'Owner name leaked')
-  assert.ok(!text.includes('AN/07/0412/0089'), 'Property ID leaked')
-  assert.ok(!text.includes('ANM/PT/2026/07741'), 'Notice No leaked')
-  assert.ok(!text.includes('Ward 7'), 'Ward leaked')
-
-  assert.ok(text.includes('Anand Nagar Municipality'), 'Municipality missing')
-  assert.ok(text.includes('3,840.00'), 'Total demand missing')
-  assert.ok(text.includes('3,648.00'), 'Rebate amount missing')
-  assert.ok(text.includes('30 Nov 2026'), 'Date missing')
-})
-
-test('Share privacy - E-Challan hides owner, vehicle registration, challan number', () => {
-  const text = buildSharedText(sampleEchallan, 'en', true)
-
-  assert.ok(!text.includes('Suresh Raman'), 'Owner leaked')
-  assert.ok(!text.includes('TN 99 AB 1234'), 'Vehicle leaked')
-  assert.ok(!text.includes('ECH/2026/0098121'), 'Challan No leaked')
-
-  assert.ok(text.includes('City Traffic Police'), 'Authority missing')
-  assert.ok(text.includes('helmet'), 'Violation missing')
-  assert.ok(text.includes('1,000.00'), 'Fine amount missing')
-  assert.ok(text.includes('05 Dec 2026'), 'Date missing')
-})
-
-test('Share privacy - Tamil & Hindi fixtures for Insurance and Pension hide personal IDs', () => {
-  const textInsTa = buildSharedText(sampleInsuranceTa, 'ta', true)
-  assert.ok(!textInsTa.includes('ரவி குமார்'), 'Tamil name leaked')
-  assert.ok(!textInsTa.includes('CLM-2026-0884'), 'Tamil claim ID leaked')
-  assert.ok(!textInsTa.includes('SH/IND/22/559102'), 'Tamil policy no leaked')
-  assert.ok(textInsTa.includes('31,200'), 'Tamil amount missing')
-
-  const textInsHi = buildSharedText(sampleInsuranceHi, 'hi', true)
-  assert.ok(!textInsHi.includes('रवि कुमार'), 'Hindi name leaked')
-  assert.ok(!textInsHi.includes('CLM-2026-0884'), 'Hindi claim ID leaked')
-  assert.ok(!textInsHi.includes('SH/IND/22/559102'), 'Hindi policy no leaked')
-  assert.ok(textInsHi.includes('31,200'), 'Hindi amount missing')
-
-  const textPenTa = buildSharedText(samplePensionTa, 'ta', true)
-  assert.ok(!textPenTa.includes('கமலா தேவி'), 'Tamil pensioner name leaked')
-  assert.ok(!textPenTa.includes('OAP/BLR/2019/04417'), 'Tamil pension ID leaked')
-  assert.ok(textPenTa.includes('1,200'), 'Tamil pension amount missing')
-
-  const textPenHi = buildSharedText(samplePensionHi, 'hi', true)
-  assert.ok(!textPenHi.includes('कमला देवी'), 'Hindi pensioner name leaked')
-  assert.ok(!textPenHi.includes('OAP/BLR/2019/04417'), 'Hindi pension ID leaked')
-  assert.ok(textPenHi.includes('1,200'), 'Hindi pension amount missing')
-})
-
-test('Share privacy - Toggle off (hidePersonal=false) shows full details', () => {
-  const text = buildSharedText(sampleInsurance, 'en', false)
-  assert.ok(text.includes('Ravi Kumar'), 'Name should be present when hidePersonal is false')
-  assert.ok(text.includes('CLM-2026-0884'), 'Claim ID should be present')
-  assert.ok(text.includes('SH/IND/22/559102'), 'Policy No should be present')
-})
-
-test('Share privacy - Preserves dates, medical codes, legal codes and protects short names in words', () => {
-  // 1. Strings that must be preserved: "30-Nov-2026", "COVID-19", "Vitamin B-12", "Section 80-C"
-  const proseWithCodes = 'Patient received COVID-19 vaccine and Vitamin B-12 under Section 80-C on 30-Nov-2026. Pension ID: OAP/BLR/2019/04417.'
-  const cleaned = sanitizeProse(proseWithCodes)
-
-  assert.ok(cleaned.includes('30-Nov-2026'), 'Date 30-Nov-2026 was removed')
-  assert.ok(cleaned.includes('COVID-19'), 'Medical code COVID-19 was removed')
-  assert.ok(cleaned.includes('Vitamin B-12'), 'Medical code Vitamin B-12 was removed')
-  assert.ok(cleaned.includes('Section 80-C'), 'Legal code Section 80-C was removed')
-  assert.ok(!cleaned.includes('OAP/BLR/2019/04417'), 'Pension ID OAP/BLR/2019/04417 was leaked')
-
-  // 2. Short name inside a longer word preserved
-  // Protected terms: "Meena", "Rao", "Ravi"
-  const proseWithSubstrings = 'Dr. A. Meena visited Meenakshi temple with Bravo team for Ravishing festival.'
-  const cleanedSubstrings = sanitizeProse(proseWithSubstrings, ['Meena', 'Rao', 'Ravi'])
-
-  assert.ok(cleanedSubstrings.includes('Meenakshi'), 'Meenakshi was corrupted by Meena removal')
-  assert.ok(cleanedSubstrings.includes('Bravo'), 'Bravo was corrupted by Rao removal')
-  assert.ok(cleanedSubstrings.includes('Ravishing'), 'Ravishing was corrupted by Ravi removal')
-  assert.ok(!cleanedSubstrings.includes('Dr. A. Meena'), 'Dr. A. Meena was not removed')
+  const resHi = buildShare(insuranceHi, { hidePersonal: true, lang: 'hi' })
+  assert.ok(!resHi.text.includes('रवि कुमार'))
+  assert.ok(!resHi.text.includes('SH/IND/22/559102'))
+  assert.ok(!resHi.text.includes('[*]'))
+  assert.ok(resHi.text.includes('31,200'))
 })

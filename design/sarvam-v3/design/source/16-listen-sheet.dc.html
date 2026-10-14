@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Listen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.55)}}
+.eq{transform-origin:center;animation:eq 1.1s ease-in-out infinite}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #8A8F8C; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="padding: 16px; display: flex; flex-direction: column; gap: 14px; opacity: 0.35">
+    <div style="height: 48px; border-radius: 24px; background: #F4F5F2"></div>
+    <div style="height: 220px; border-radius: 32px; background: #F4F5F2"></div>
+    <div style="height: 160px; border-radius: 32px; background: #E9B44C"></div>
+  </div>
+
+  <section aria-label="Listen" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F4F5F2; border-top: 1.5px solid #1A1A1A; border-radius: 40px 40px 0 0; padding: 12px 20px 28px; display: flex; flex-direction: column; gap: 18px">
+    <span aria-hidden="true" style="width: 44px; height: 5px; border-radius: 3px; background: #1A1A1A; opacity: .25; align-self: center"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <div role="tablist" style="display: flex; padding: 3px; border-radius: 24px; border: 1.5px solid #1A1A1A">
+        <button role="tab" aria-selected="true" style="height: 38px; padding: 0 16px; border-radius: 19px; border: 0; background: #E9B44C; font: 700 14px DM Sans, sans-serif; color: #1A1A1A">Quick summary</button>
+        <button role="tab" aria-selected="false" style="height: 38px; padding: 0 16px; border-radius: 19px; border: 0; background: transparent; font: 600 14px DM Sans, sans-serif; color: #575B58">Full details</button>
+      </div>
+      <a href="Result.dc.html" aria-label="Close" style="width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+    </div>
+
+    <div style="background: #1A1A1A; border-radius: 32px; padding: 18px; display: flex; flex-direction: column; gap: 14px; color: #F4F5F2">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+        <span style="display: flex; align-items: center; gap: 10px; min-width: 0"><span style="width: 36px; height: 36px; flex: none; border-radius: 50%; background: #E9B44C; display: flex; align-items: center; justify-content: center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path></svg></span><span style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Claim Settlement Letter</span></span>
+        <span style="font-size: 13px; color: #C4C8C3; flex: none">0:02 / 0:25</span>
+      </div>
+      <div aria-hidden="true" style="display: flex; align-items: center; gap: 4px; height: 64px">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="34">
+          <span class="eq" style="{{b.style}}"></span>
+        </sc-for>
+      </div>
+      <div aria-hidden="true" style="height: 4px; border-radius: 2px; background: #383B39"><span style="display: block; width: 9%; height: 4px; border-radius: 2px; background: #D9603B"></span></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <p style="margin: 0; font-family: 'Fraunces', serif; font-size: 26px; line-height: 1.15">This letter is from Shield Health Insurance about your hospital claim.</p>
+      <p style="margin: 0; font-size: 16px; line-height: 1.4; color: #575B58">Out of ₹48,500 claimed, they approved ₹31,200.</p>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: center; gap: 28px">
+      <button aria-label="Back 10 seconds" style="width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid #1A1A1A; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8"></path><path d="M4 4v4h4"></path></svg></button>
+      <button aria-label="Pause" style="width: 78px; height: 78px; border-radius: 50%; border: 1.5px solid #1A1A1A; background: #E9B44C; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="#1A1A1A"></rect><rect x="14" y="5" width="4" height="14" rx="1.5" fill="#1A1A1A"></rect></svg></button>
+      <button aria-label="Stop" style="width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid #1A1A1A; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" fill="#1A1A1A"></rect></svg></button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1.5px solid #E2E5E0">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 15px; font-weight: 600">Voice</span>
+        <div style="display: flex; padding: 3px; border-radius: 22px; border: 1.5px solid #1A1A1A">
+          <button style="height: 34px; padding: 0 16px; border-radius: 17px; border: 0; background: #E9B44C; font: 700 14px DM Sans, sans-serif">Female</button>
+          <button style="height: 34px; padding: 0 16px; border-radius: 17px; border: 0; background: transparent; font: 600 14px DM Sans, sans-serif; color: #575B58">Male</button>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 15px; font-weight: 600">Speed</span>
+        <div style="display: flex; padding: 3px; border-radius: 22px; border: 1.5px solid #1A1A1A">
+          <button style="height: 34px; padding: 0 14px; border-radius: 17px; border: 0; background: transparent; font: 600 14px DM Sans, sans-serif; color: #575B58">Slow</button>
+          <button style="height: 34px; padding: 0 14px; border-radius: 17px; border: 0; background: #E9B44C; font: 700 14px DM Sans, sans-serif">Normal</button>
+          <button style="height: 34px; padding: 0 14px; border-radius: 17px; border: 0; background: transparent; font: 600 14px DM Sans, sans-serif; color: #575B58">Fast</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const h = [22, 34, 48, 30, 56, 40, 26, 44, 60, 36, 28, 50, 38, 24, 46, 58, 32, 42, 54, 30, 22, 40, 52, 36, 28, 46, 34, 24, 42, 30, 20, 36, 26, 18];
+    const bars = h.map((v, i) => ({ style: 'flex:1;border-radius:3px;height:' + v + 'px;animation-delay:' + ((i % 7) * 0.12) + 's;background:' + (i < 3 ? '#D9603B' : (i < 16 ? '#E9B44C' : '#525754')) }));
+    return { bars };
+  }
+}
+</script>
+</body>
+</html>
