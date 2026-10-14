@@ -63,6 +63,8 @@ const CUES: Cue[] = [
   { kind: 'prescription', words: ['prescription', ' rx', 'tab.', 'cap.', 'bd', 'tds', '1-0-1'] },
   { kind: 'discharge_summary', words: ['discharge summary', 'advice on discharge', 'admission'] },
   { kind: 'hospital_bill', words: ['hospital bill', 'room charges', 'ip bill', 'op bill'] },
+  { kind: 'utility_bill', words: ['electricity', 'units consumed', 'water bill', 'gas bill'] },
+  { kind: 'telecom_bill', words: ['broadband', 'mobile bill', 'data plan'] },
   { kind: 'pension_notice', words: ['pension', 'life certificate', 'jeevan pramaan', 'ppo'] },
   { kind: 'tax_notice', words: ['property tax', 'demand notice', 'assessment', 'rebate'] },
   { kind: 'challan', words: ['e-challan', 'echallan', 'offence', 'virtual court'] },
@@ -75,8 +77,6 @@ const CUES: Cue[] = [
   { kind: 'salary_slip', words: ['salary', 'net pay', 'earnings', 'deductions'] },
   { kind: 'agreement', words: ['rental', 'lease', 'lock-in', 'notice period', 'tenant', 'lessor'] },
   { kind: 'form', words: ['fill in', 'block letters', 'application form', 'account opening'] },
-  { kind: 'utility_bill', words: ['electricity', 'units consumed', 'water bill', 'gas bill'] },
-  { kind: 'telecom_bill', words: ['broadband', 'mobile bill', 'data plan'] },
   { kind: 'school', words: ['school', 'college', 'report card', 'tuition'] },
   { kind: 'receipt', words: ['received with thanks', 'payment receipt'] },
   { kind: 'government_notice', words: ['hereby informed', 'government of'] },
@@ -123,14 +123,22 @@ function haystack(source: KindSource): string {
   return bits.join(' \n ').toLowerCase()
 }
 
+function cueHit(text: string, word: string): boolean {
+  if (word.includes(' ') || word.length > 4) return text.includes(word)
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`).test(text)
+}
+
 export function inferKind(source: KindSource): DocumentKind {
   const given = (source.document_kind || '').toLowerCase()
   if (KIND_SET.has(given)) return given as DocumentKind
+  const text = haystack(source)
+  // A discharge summary lists medicines. Its own words win before the medicine shortcut.
+  if (text.includes('discharge summary') || text.includes('advice on discharge')) return 'discharge_summary'
   if ((source.medicines?.length || 0) > 0 && !(source.sections && source.sections.length)) return 'prescription'
   if ((source.sections?.length || 0) > 0) return 'lab_report'
-  const text = haystack(source)
   for (const cue of CUES) {
-    if (cue.words.some((word) => text.includes(word))) return cue.kind
+    if (cue.words.some((word) => cueHit(text, word))) return cue.kind
   }
   const type = (source.document_type || source.doc_type || '').toLowerCase()
   if ((source.medicines?.length || 0) > 0 && type === 'medical') return 'prescription'
