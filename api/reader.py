@@ -230,46 +230,10 @@ Rules:
 12. Conflicts: If document gives contradictory dates or amounts for the same thing, describe in "conflicts".
 13. Medical/lab reports: Quote printed values, ranges, flags verbatim. Never diagnose or say normal/abnormal. Add action "Show this report to your doctor".
 14. Put the most important action first.
-15. Medicines (`medicines`): If the document prints a prescription or a list of medicines, extract them (up to 12), even when the rest of the upload is a lab report or a bill:
-    - name: medicine name (e.g. Paracetamol, Metformin 500mg)
-    - strength_text: dosage/strength if printed (e.g. 500mg, 5ml), else null
-    - frequency_raw: raw frequency/dosage instructions exactly as written (e.g. 1-0-1, BD, TDS, SOS)
-    - food_timing: before_food | after_food | null
-    - duration_days: duration in days if stated, else null
-    - instruction_text: simple explanation of how to take it in {LANG}
-    - quote: verbatim quote from document
-    - page: page number
-16. Spoken summary (`spoken_summary`):
-    A conversational summary in {LANG} designed to be read aloud (4-7 simple sentences, under 90 words total).
-    Must mention who this is from, what it is about, what action the person must take, and by when.
-    Keep all numbers in Western digits (0-9).
-17. Multi-document Packets (`parts`):
-    Always return `parts`. One document is exactly one part. Two or more distinct documents (a packet holding a lab report, a prescription, and a bill with different letterheads, issuers, titles, or dates) are one part each. Put that document's `profile` on the part. Leave the top-level profile as an empty string.
-    - `part_id`: 'part-1', 'part-2', etc.
-    - `title`: document title for that part
-    - `document_kind`: the specific kind for that part, and `document_type`: the coarse type for that kind
-    - `issuer`: issuer/clinic/organization name printed on this part
-    - `date_iso`: date printed on this part in YYYY-MM-DD format if any, else null
-    - `pages`: [start_page, end_page] (1-indexed)
-    - `sections`: every printed lab test row under that part's own headings, even when there are only a few rows
-    - `medicines`: prescribed medicines if this part is a prescription
-    - `key_points`: key takeaways for that part
-    - `summary_lines`: 1-2 summary sentences for that part
-    IMPORTANT: Split only on clear evidence in the pages (new letterhead, issuer, title or date). Never invent an extra part. A single document, even across many pages, is one part.
-18. Sectioned Lab Reports (`sections`):
-    For every lab report, extract `sections` (up to 80 rows). Do this even when there are 4 or fewer values:
-    - `heading`: the document's own section heading in page order (e.g. 'Blood sugar', 'Lipid profile', 'Complete blood count', 'Vitamins', etc.)
-    - `page`: page number where this section appears
-    - `values`: list of test values with:
-      * `label`: test name (e.g. Fasting blood sugar, Total cholesterol)
-      * `value`: printed value (e.g. 118, 212)
-      * `unit`: printed unit (e.g. mg/dL, %)
-      * `ref_range`: printed reference range (e.g. 70 – 100, Below 200)
-      * `flag_printed`: 'High' or 'Low' ONLY when the document explicitly prints High/Low (or H/L, ↑/↓) for that row, else null. Sarvam never decides High/Low; never invent.
-      * `quote` and `page`: include them ONLY for a row whose flag_printed is High or Low. Leave quote empty for every in-range row.
-    Return every printed row. Do not drop in-range rows. Also keep the most important rows in `glance`. Never leave `sections` empty when the page prints test rows.
-19. Action and Fact tagging:
-    When `parts` are present, tag each action and fact with `part_id` corresponding to which part it belongs to.
+15. Medicines, up to 12, including a prescription inside a lab report or a bill: name, strength_text, frequency_raw exactly as written, food_timing, duration_days or null, instruction_text in {LANG}, quote, page.
+16. spoken_summary in {LANG}: 4 to 7 short sentences, under 90 words, covering who it is from, what it says, what to do and by when. Western digits.
+17. Always return parts. One document is one part, even across many pages. Split only when the pages show a new letterhead, issuer, title or date. Each part has part_id, title, document_kind, document_type, issuer, date_iso, pages, sections, medicines, key_points and summary_lines, plus that part's profile. With two or more parts the top-level profile is an empty string. Tag each action and fact with part_id.
+18. Lab sections keep every printed row, up to 80, including in-range rows: heading, page, and values with label, value, unit, ref_range and flag_printed. flag_printed is High or Low only when the page prints High, Low, H, L or an arrow. Include quote and page only on those flagged rows.
 """
 
 CHUNK_NOTE = """
@@ -352,6 +316,7 @@ def call_gemini_with_retry(
     fallback_model: Optional[str] = None,
     fallback_timeout_sec: Optional[float] = None,
     retry_budget: Optional[float] = None,
+    fallback_contents: Optional[list] = None,
 ) -> Any:
     start_time = time.time()
     if deadline is None:
@@ -512,6 +477,12 @@ def call_gemini_with_retry(
                 model_path = "fallback"
                 retries_on_current_model = 0
                 total_retries += 1
+                if fallback_contents is not None:
+                    contents = fallback_contents
+                # The backup gets its own window. A slow primary must not
+                # leave it too little time to answer.
+                if deadline - end_time < fb_timeout + SAFETY_MARGIN:
+                    deadline = end_time + fb_timeout + SAFETY_MARGIN
                 logger.info(
                     "gemini_fallback: endpoint=%s, switching to fallback model %s, remaining_budget=%.2f",
                     endpoint,
@@ -632,6 +603,17 @@ def finish_name_renderings(
     return merged, bool(still)
 
 
+def backup_language_prompt(prompt: str, lang_name: str) -> Optional[str]:
+    """The backup model's first try. English and auto keep the original prompt."""
+    if not lang_name or lang_name == "auto" or lang_name.lower() in ("en", "english"):
+        return None
+    return (
+        prompt
+        + f"\nWrite every user-facing sentence in {lang_name}, using {lang_name} script. "
+        + "Do not answer in English."
+    )
+
+
 def read_document_single_attempt(
     files_data: List[Tuple[bytes, str]],
     lang: str,
@@ -666,6 +648,7 @@ def read_document_single_attempt(
         thinking_config=types.ThinkingConfig(thinking_budget=EXPLAIN_THINKING),
     )
 
+    backup_prompt = backup_language_prompt(prompt, target_lang)
     response = call_gemini_with_retry(
         client=client,
         model=MODEL_ID,
@@ -674,6 +657,7 @@ def read_document_single_attempt(
         endpoint="explain",
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
+        fallback_contents=(contents[:-1] + [backup_prompt]) if backup_prompt else None,
     )
 
     if isinstance(response.parsed, GeminiReaderResponse):
@@ -702,16 +686,17 @@ def read_document_single_attempt(
                 ratio,
                 norm_lang,
             )
-            strict_prompt = prompt + f"\nCRITICAL RETRY INSTRUCTION: The previous attempt returned text in English/Latin script. Every user-facing sentence MUST be written in {target_lang} using native {target_lang} script. At least 40% of the characters must be in {target_lang} script."
+            strict_prompt = backup_language_prompt(prompt, target_lang) or prompt
             retry_contents = contents[:-1] + [strict_prompt]
             retry_resp = call_gemini_with_retry(
                 client=client,
-                model=MODEL_ID,
+                model=FALLBACK_MODEL_ID,
                 contents=retry_contents,
                 config=config,
                 endpoint="explain",
-                deadline=deadline,
-                attempt_timeout_sec=timeout_sec,
+                deadline=time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN,
+                attempt_timeout_sec=FALLBACK_TIMEOUT,
+                fallback_model=FALLBACK_MODEL_ID,
             )
             if isinstance(retry_resp.parsed, GeminiReaderResponse):
                 result = lift_reader_result(retry_resp.parsed)
@@ -893,6 +878,7 @@ def translate_keyed_strings(
         thinking_config=types.ThinkingConfig(thinking_budget=TRANSLATE_THINKING),
     )
 
+    backup_prompt = backup_language_prompt(prompt, lang_name)
     response = call_gemini_with_retry(
         client=client,
         model=MODEL_ID,
@@ -901,6 +887,7 @@ def translate_keyed_strings(
         endpoint="translate",
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
+        fallback_contents=[backup_prompt] if backup_prompt else None,
     )
 
     candidate = response.candidates[0] if (getattr(response, "candidates", None) and len(response.candidates) > 0) else None
@@ -947,15 +934,16 @@ def translate_keyed_strings(
                 ratio,
                 norm_lang,
             )
-            strict_prompt = prompt + f"\nCRITICAL RETRY INSTRUCTION: The previous attempt returned English text without translating. Every single sentence MUST be translated into {lang_name} using native {lang_name} script. At least 40% of the output characters MUST be in {lang_name} script."
+            strict_prompt = backup_language_prompt(prompt, lang_name) or prompt
             retry_resp = call_gemini_with_retry(
                 client=client,
-                model=MODEL_ID,
+                model=FALLBACK_MODEL_ID,
                 contents=[strict_prompt],
                 config=config,
                 endpoint="translate",
-                deadline=deadline,
-                attempt_timeout_sec=timeout_sec,
+                deadline=time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN,
+                attempt_timeout_sec=FALLBACK_TIMEOUT,
+                fallback_model=FALLBACK_MODEL_ID,
             )
             try:
                 raw_data = json.loads(retry_resp.text)
