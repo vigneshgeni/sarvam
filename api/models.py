@@ -114,7 +114,7 @@ class ReaderGlance(BaseModel):
     headline: str = Field(description="Short headline in 12 words or fewer")
     key_values: List[ReaderGlanceKeyValue] = Field(
         default_factory=list,
-        description="Max 3 key-value pairs (amounts, dates, reference numbers)",
+        description="Up to 6 key-value pairs. kind amount is only for money.",
     )
 
 
@@ -203,7 +203,7 @@ class ReaderResponse(BaseModel):
     )
     glance: Optional[ReaderGlance] = Field(
         default=None,
-        description="Headline (<=12 words) and up to 3 key-value pairs",
+        description="Headline (<=12 words) and up to 6 key-value pairs",
     )
     summary: List[str] = Field(
         description="2-4 sentence explanation in the requested language"
@@ -327,7 +327,7 @@ class GlanceKeyValue(BaseModel):
 
 class GlanceSummary(BaseModel):
     headline: str  # <= 12 words
-    key_values: List[GlanceKeyValue] = Field(default_factory=list)  # max 3
+    key_values: List[GlanceKeyValue] = Field(default_factory=list)  # max 6
 
 
 class PlaceInfo(BaseModel):

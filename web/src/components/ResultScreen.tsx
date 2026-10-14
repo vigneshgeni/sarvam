@@ -19,7 +19,7 @@ import {
   CopyIcon,
 } from './icons'
 import Sheet from './Sheet'
-import SummaryCard from './v3/SummaryCard'
+import SummaryCard, { PartPanels } from './v3/SummaryCard'
 import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
 import DocumentPreviewModal, { type PreviewFileItem } from './DocumentPreviewModal'
@@ -37,7 +37,7 @@ import {
   getGoogleCalendarUrl,
   type CalendarEventInput,
 } from '../utils/ics'
-import { buildShare, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { buildShare, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
 
@@ -374,11 +374,29 @@ export default function ResultScreen({
   }
 
   const handleSaveImage = async () => {
-    const node = document.getElementById('sv-result')
-    if (!node) {
+    const source = document.getElementById(snapshotMode === 'summary' ? 'sv-summary' : 'sv-result')
+    if (!source) {
       setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
       return
     }
+    const host = document.createElement('div')
+    host.style.cssText = `position:fixed;left:-10000px;top:0;width:${source.offsetWidth}px;background:#F4F5F2`
+    const node = source.cloneNode(true) as HTMLElement
+    if (hidePersonal) {
+      const terms = result.protected_terms || []
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+      const texts: Text[] = []
+      let current = walker.nextNode()
+      while (current) {
+        texts.push(current as Text)
+        current = walker.nextNode()
+      }
+      for (const text of texts) {
+        if (text.data.trim()) text.data = sanitizeProse(text.data, terms, contentLang)
+      }
+    }
+    host.appendChild(node)
+    document.body.appendChild(host)
     try {
       const { toPng } = await import('html-to-image')
       await document.fonts.ready
@@ -402,6 +420,8 @@ export default function ResultScreen({
       setImageStatus(t.imageSaved || 'Image saved')
     } catch {
       setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
+    } finally {
+      host.remove()
     }
   }
 
@@ -617,6 +637,7 @@ export default function ResultScreen({
           hasDocumentPreview={hasDocumentPreview}
           onOpenDocumentPreview={handleOpenPreview}
         />
+        <PartPanels result={result} t={t} />
 
 
         {/* WEB-7: PLACES AND CONTACTS CARD */}

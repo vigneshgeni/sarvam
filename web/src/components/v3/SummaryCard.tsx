@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import type { ExplainResponse, GlanceKeyValue, ReportSection } from '../../types'
+import type { ExplainResponse, GlanceKeyValue, Part, Section } from '../../types'
 import { getLocalisedDocType } from '../../i18n'
-import { pickGlance, visualForDocument } from '../../design/catalog'
+import { isMoneyValue, pickGlance, visualForDocument } from '../../design/catalog'
 import { DocIcon } from '../../ui/icons'
 import { formatAmountValue } from '../../utils/currency'
 
@@ -81,11 +81,11 @@ export default function SummaryCard({
   const dateLabel = formatChipDate(result.report_date_iso || result.letter_date, lang)
   const headline = result.glance?.headline || result.title
   const kvs = result.glance?.key_values || []
-  const amounts = kvs.filter((k) => k.kind === 'amount' || amountNumber(k.value) != null)
+  const amounts = kvs.filter((k) => isMoneyValue(k.kind, k.value))
   const allMatched = kvs.length > 0 && kvs.every((k) => k.evidence === 'matched')
 
   return (
-    <section className="sv-card-in border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-4">
+    <section id="sv-summary" className="sv-card-in border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-1.5 h-8 pl-[5px] pr-3 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold" style={{ background: visual.bg, color: visual.ink }}>
           <span className="w-[22px] h-[22px] rounded-full bg-[#1A1A1A] flex items-center justify-center">
@@ -150,7 +150,7 @@ function SplitAmounts({
         {amounts.map((s, i) => (
           <div key={s.label + i} className={`flex flex-col gap-1.5 p-3 min-w-0 ${i > 0 ? 'border-l-[1.5px] border-[#1A1A1A]' : ''}`}>
             <span className="text-[12px] font-semibold text-[#3B3E3C] leading-tight">{s.label}</span>
-            <span className="sv-display text-[20px] leading-none tabular-nums whitespace-nowrap">{formatAmountValue(s.value)}</span>
+            <span className="sv-display text-[20px] leading-[1.1] tabular-nums break-words">{formatAmountValue(s.value)}</span>
           </div>
         ))}
       </div>
@@ -259,7 +259,7 @@ function ValueTiles({
   )
 }
 
-function SectionedValues({ sections, t }: { sections: ReportSection[]; t: Record<string, string> }) {
+function SectionedValues({ sections, t }: { sections: Section[]; t: Record<string, string> }) {
   const ranked = [...sections].sort((a, b) => {
     const fa = a.values.some((v) => v.flag_printed) ? 0 : 1
     const fb = b.values.some((v) => v.flag_printed) ? 0 : 1
@@ -359,5 +359,54 @@ function PageMap({ result, t }: { result: ExplainResponse; t: Record<string, str
       </div>
       <Tick label={t.splitUsingHeadings || 'Split using the headings on your pages'} />
     </div>
+  )
+}
+
+export function PartPanels({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
+  const parts = result.parts || []
+  if (parts.length < 2) return null
+  return (
+    <div className="flex flex-col gap-5">
+      {parts.map((part, index) => (
+        <PartPanel key={part.part_id || part.title} part={part} index={index} t={t} />
+      ))}
+    </div>
+  )
+}
+
+function PartPanel({ part, index, t }: { part: Part; index: number; t: Record<string, string> }) {
+  const tints = ['#CFE5E0', '#F8D9CB', '#FBEBC4']
+  const amounts = (part.glance?.key_values || []).filter((k) => isMoneyValue(k.kind, k.value))
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-start gap-3">
+        <span className="w-8 h-8 shrink-0 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[14px] font-bold" style={{ background: tints[index % 3] }}>
+          {index + 1}
+        </span>
+        <div className="min-w-0">
+          <h2 className="sv-display text-[26px] leading-[1.05] m-0">{part.title}</h2>
+          <p className="m-0 mt-1 text-[13px] text-[#575B58]">
+            {part.issuer ? `${part.issuer} · ` : ''}
+            {t.pages || 'Pages'} {part.pages[0]}–{part.pages[1]}
+          </p>
+        </div>
+      </div>
+      {part.sections && part.sections.length > 0 && <SectionedValues sections={part.sections} t={t} />}
+      {part.medicines && part.medicines.length > 0 && (
+        <div className="rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0] p-4 flex flex-col gap-3">
+          <h3 className="m-0 text-[16px] font-bold">{part.medicines.length} {t.medicines || 'medicines'}</h3>
+          {part.medicines.map((med) => (
+            <div key={med.name} className="rounded-[22px] bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] p-3">
+              <span className="block text-[16px] font-bold">{med.name}{med.strength_text ? ` ${med.strength_text}` : ''}</span>
+              <span className="block text-[13px] text-[#3B3E3C] mt-1">{med.instruction_text || med.frequency_raw}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {amounts.length >= 2 && amounts.length <= 3 && <AmountStrip amounts={amounts} t={t} allMatched={amounts.every((a) => a.evidence === 'matched')} />}
+      {part.summary_lines && part.summary_lines.length > 0 && (
+        <p className="m-0 text-[15px] leading-[1.45] text-[#3B3E3C]">{part.summary_lines.join(' ')}</p>
+      )}
+    </section>
   )
 }

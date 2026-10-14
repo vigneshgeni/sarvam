@@ -743,7 +743,7 @@ async def explain(
     glance_summary = None
     if reader_result.glance:
         kvs = []
-        for kv in (reader_result.glance.key_values or [])[:3]:
+        for kv in (reader_result.glance.key_values or [])[:6]:
             lbl = kv.label
             val = kv.value
             knd = kv.kind if kv.kind in ("amount", "date", "text") else "text"

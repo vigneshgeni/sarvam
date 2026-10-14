@@ -1026,37 +1026,34 @@ export default function App() {
     setStagedFiles((prev) => [...prev, ...newStaged])
   }
 
-  // Soonest upcoming action across saved results (WEB-15)
+  // Next step from the newest saved document that still has something to do.
   const nextUpAction = (() => {
-    const allActions: { text: string; date: string; formattedDate: string; recentItem: RecentResult }[] = []
     const today = new Date().toISOString().slice(0, 10)
 
     for (const item of recentResults) {
-      if (item.result?.actions) {
-        for (const act of item.result.actions) {
-          if (act.due_date && act.due_date >= today && act.date_status !== 'passed') {
-            let formattedDate = act.due_date
-            try {
-              formattedDate = new Intl.DateTimeFormat(
-                resolveLang(selectedLang),
-                { day: 'numeric', month: 'short' }
-              ).format(new Date(act.due_date))
-            } catch {}
-
-            allActions.push({
-              text: act.text,
-              date: act.due_date,
-              formattedDate,
-              recentItem: item,
-            })
-          }
-        }
+      const upcoming = (item.result?.actions || []).filter(
+        (act) => act.due_date && act.due_date >= today && act.date_status !== 'passed'
+      )
+      if (upcoming.length === 0) continue
+      upcoming.sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))
+      const act = upcoming[0]
+      let formattedDate = act.due_date || ''
+      try {
+        formattedDate = new Intl.DateTimeFormat(resolveLang(selectedLang), {
+          day: 'numeric',
+          month: 'short',
+        }).format(new Date(act.due_date || ''))
+      } catch {
+        /* keep the printed date */
+      }
+      return {
+        text: act.text,
+        date: act.due_date || '',
+        formattedDate,
+        recentItem: item,
       }
     }
-
-    if (allActions.length === 0) return null
-    allActions.sort((a, b) => a.date.localeCompare(b.date))
-    return allActions[0]
+    return null
   })()
 
   return (

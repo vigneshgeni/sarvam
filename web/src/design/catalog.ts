@@ -142,6 +142,17 @@ function amountNumber(value: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+/** A printed amount. Reference numbers and lab readings are not amounts. */
+export function isMoneyValue(kind: string, value: string): boolean {
+  if (kind === 'date') return false
+  const hasCurrency = /[₹]|Rs\.?|INR/i.test(value)
+  if (kind !== 'amount' && !hasCurrency) return false
+  const withoutCurrency = value.replace(/Rs\.?|INR/gi, '')
+  if (/[A-Za-z]/.test(withoutCurrency)) return false
+  if ((value.match(/,/g) || []).length > 2) return false
+  return amountNumber(value) != null
+}
+
 export type GlanceKind = 'A' | 'B' | 'C' | 'D' | 'Dplus' | 'F' | 'E' | 'multi'
 
 const SPLIT_TYPES = new Set(['insurance', 'utility_bill', 'telecom_bill', 'tax_receipt', 'receipt'])
@@ -150,10 +161,10 @@ export function pickGlance(result: ExplainResponse): GlanceKind {
   if (result.parts && result.parts.length > 1) return 'multi'
   const sections = result.sections || []
   const sectionValues = sections.reduce((n, s) => n + (s.values?.length || 0), 0)
-  if (sectionValues > 4) return 'Dplus'
+  if (sectionValues > 0) return 'Dplus'
 
   const kvs = result.glance?.key_values || []
-  const amounts = kvs.filter((k) => k.kind === 'amount' || /^[₹Rs.\s]*[\d,]+/.test(k.value))
+  const amounts = kvs.filter((k) => isMoneyValue(k.kind, k.value))
   const doc = String(result.doc_type || result.document_type || '')
   if (amounts.length === 3 && SPLIT_TYPES.has(doc)) {
     const nums = amounts.map((a) => amountNumber(a.value)).filter((n): n is number => n != null)

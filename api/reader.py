@@ -159,7 +159,7 @@ Rules:
      * Challan: offence, amount, last date to pay, how to contest.
 4. Glance (`glance`):
    - headline: <= 12 words summarizing the essence of the document.
-   - key_values: up to 3 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document.
+   - key_values: up to 6 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document. Use kind "amount" only for money. Lab readings, sample IDs and reference numbers are kind "text" or "date".
 5. Places (`places`):
    - Up to 5 places/addresses printed in the document with label, full address, quote, and page.
 6. Contacts (`contacts`):
@@ -188,7 +188,7 @@ Rules:
 12. Conflicts: If document gives contradictory dates or amounts for the same thing, describe in "conflicts".
 13. Medical/lab reports: Quote printed values, ranges, flags verbatim. Never diagnose or say normal/abnormal. Add action "Show this report to your doctor".
 14. Put the most important action first.
-15. Medicines (`medicines`): If document_type == medical, extract any prescribed medicines (up to 12):
+15. Medicines (`medicines`): If the document prints a prescription or a list of medicines, extract them (up to 12), even when the rest of the upload is a lab report or a bill:
     - name: medicine name (e.g. Paracetamol, Metformin 500mg)
     - strength_text: dosage/strength if printed (e.g. 500mg, 5ml), else null
     - frequency_raw: raw frequency/dosage instructions exactly as written (e.g. 1-0-1, BD, TDS, SOS)
@@ -209,13 +209,13 @@ Rules:
     - `issuer`: issuer/clinic/organization name printed on this part
     - `date_iso`: date printed on this part in YYYY-MM-DD format if any, else null
     - `pages`: [start_page, end_page] (1-indexed)
-    - `sections`: lab test sections if this part is a lab report with >4 values
+    - `sections`: every printed lab test row under that part's own headings, even when there are only a few rows
     - `medicines`: prescribed medicines if this part is a prescription
     - `key_points`: key takeaways for that part
     - `summary_lines`: 1-2 summary sentences for that part
     IMPORTANT: Split only on clear evidence in the pages (new letterhead, issuer, title or date). Never invent a part. If the upload is a single document (even across multiple pages), do NOT set `parts` (leave `parts` null).
 18. Sectioned Lab Reports (`sections`):
-    For lab reports with more than 4 test values, extract `sections`:
+    For every lab report, extract `sections` (up to 80 rows). Do this even when there are 4 or fewer values:
     - `heading`: the document's own section heading in page order (e.g. 'Blood sugar', 'Lipid profile', 'Complete blood count', 'Vitamins', etc.)
     - `page`: page number where this section appears
     - `values`: list of test values with:
@@ -224,7 +224,7 @@ Rules:
       * `unit`: printed unit (e.g. mg/dL, %)
       * `ref_range`: printed reference range (e.g. 70 – 100, Below 200)
       * `flag_printed`: 'High' or 'Low' ONLY when the document explicitly prints High/Low (or H/L, ↑/↓) for that row, else null. Sarvam never decides High/Low; never invent.
-    If the document has 4 or fewer values, keep them in `glance` and leave `sections` null.
+    Also keep the most important rows in `glance`. Never leave `sections` empty when the page prints test rows.
 19. Action and Fact tagging:
     When `parts` are present, tag each action and fact with `part_id` corresponding to which part it belongs to.
 """
