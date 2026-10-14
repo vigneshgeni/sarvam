@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>10 · Result · Claim settlement letter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+window.DCLogic = class { constructor(p){ this.props = p || {}; this.state = this.state || {}; } setState(s){ Object.assign(this.state, s); } };
+function look(scope, path){ path = path.trim(); if (path === 'true') return true; if (path === 'false') return false;
+  let v = scope; for (const k of path.split('.')) { if (v == null) return undefined; v = v[k]; } return v; }
+function interp(str, scope){ return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => { const v = look(scope, p); return typeof v === 'function' ? '' : (v == null ? '' : String(v)); }); }
+function expand(node, scope){
+  for (const child of Array.from(node.childNodes)) {
+    if (child.nodeType === 3) { child.textContent = interp(child.textContent, scope); continue; }
+    if (child.nodeType !== 1) continue;
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const m = (child.getAttribute('list')||'').match(/\{\{\s*([^}]+?)\s*\}\}/); const list = m ? look(scope, m[1]) || [] : [];
+      const as = child.getAttribute('as') || 'item'; const frag = document.createDocumentFragment();
+      list.forEach((it, i) => { const wrap = document.createElement('div'); wrap.innerHTML = child.innerHTML; const s = Object.assign({}, scope, {[as]: it, $index: i}); expand(wrap, s); while (wrap.firstChild) frag.appendChild(wrap.firstChild); });
+      child.replaceWith(frag); continue;
+    }
+    if (tag === 'sc-if') {
+      const m = (child.getAttribute('value')||'').match(/\{\{\s*([^}]+?)\s*\}\}/); const ok = m ? !!look(scope, m[1]) : false;
+      if (!ok) { child.remove(); continue; }
+      const frag = document.createDocumentFragment(); expand(child, scope); while (child.firstChild) frag.appendChild(child.firstChild); child.replaceWith(frag); continue;
+    }
+    for (const a of Array.from(child.attributes)) { if (a.value.includes('{{')) child.setAttribute(a.name, interp(a.value, scope)); }
+    expand(child, scope);
+  }
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const sc = document.querySelector('script[data-dc-script]');
+  const C = new Function(sc.textContent + '; return Component;')();
+  const props = {}; try { const dp = JSON.parse(sc.getAttribute('data-props')||'{}'); for (const k in dp) if (dp[k] && 'default' in dp[k]) props[k] = dp[k].default; } catch(e){}
+  const inst = new C(props); const vals = inst.renderVals();
+  const xdc = document.querySelector('x-dc'); const helmet = xdc.querySelector('helmet');
+  if (helmet) { document.head.insertAdjacentHTML('beforeend', helmet.innerHTML); helmet.remove(); }
+  expand(xdc, vals); window.__ready = true; document.dispatchEvent(new Event('sv-ready'));
+});
+</script>
+<style>
+@keyframes sv-push-in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes sv-back-in{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes sv-sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sv-scrim-in{from{opacity:0}to{opacity:1}}
+@keyframes sv-fade-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sv-out{transition:opacity 160ms ease-in, transform 160ms ease-in;opacity:0;transform:translateX(-14px)}
+.sv-out-back{transition:opacity 160ms ease-in, transform 160ms ease-in;opacity:0;transform:translateX(14px)}
+.sv-sheet-out{transition:transform 200ms cubic-bezier(.4,0,1,1);transform:translateY(100%)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
+</style>
+<script>
+(function(){
+  const SHEET = false;
+  function root(){ const x = document.querySelector('x-dc'); return x && x.firstElementChild; }
+  function sheetEl(r){ return r && Array.from(r.querySelectorAll('section')).find(s => s.style.position === 'absolute' && (s.style.borderRadius||'').startsWith('40px 40px')); }
+  function enter(){
+    const r = root(); if (!r) return;
+    const back = location.hash === '#back';
+    if (SHEET) {
+      const s = sheetEl(r);
+      r.style.animation = 'sv-scrim-in 200ms ease-out both';
+      if (s) s.style.animation = back ? 'none' : 'sv-sheet-up 260ms cubic-bezier(.2,.8,.2,1) both';
+    } else {
+      r.style.animation = (back ? 'sv-back-in' : 'sv-push-in') + ' 280ms cubic-bezier(.2,.8,.2,1) both';
+      const cards = Array.from(r.querySelectorAll('.stack > section, .stack > details, .stack > nav'));
+      cards.slice(0, 10).forEach((c, i) => { c.style.animation = 'sv-fade-up 320ms cubic-bezier(.2,.8,.2,1) both'; c.style.animationDelay = (120 + i * 40) + 'ms'; });
+    }
+  }
+  document.addEventListener('sv-ready', enter);
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]'); if (!a) return;
+    const href = a.getAttribute('href'); if (!/^\d\d-[a-z0-9-]+\.html/.test(href)) return;
+    e.preventDefault();
+    const label = (a.getAttribute('aria-label') || '').toLowerCase();
+    const back = label === 'back' || label === 'close';
+    const r = root(); const s = sheetEl(r);
+    if (SHEET && back && s) s.classList.add('sv-sheet-out'); else if (r) r.classList.add(back ? 'sv-out-back' : 'sv-out');
+    setTimeout(() => { location.href = href + (back ? '#back' : ''); }, SHEET && back ? 200 : 160);
+  });
+})();
+</script>
+<style>html,body{background:#E8EAE7}body{margin:0}x-dc>div{margin:0 auto}</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+.stack > *{flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 2620px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; position: relative; overflow: hidden">
+<div class="stack" style="padding: 16px 16px 140px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: center; gap: 10px">
+    <a href="04-home.html" aria-label="Back" style="width: 48px; height: 48px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <button style="flex: 1; height: 48px; border-radius: 24px; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px DM Sans, sans-serif; color: #1A1A1A; cursor: pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"></path></svg>
+      Auto · English
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+    </button>
+    <button aria-label="Menu" style="width: 48px; height: 48px; flex: none; border-radius: 50%; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16"></path><path d="M4 15h10"></path></svg></button>
+  </div>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 5px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: #E9B44C; font-size: 13px; font-weight: 700"><span style="width: 22px; height: 22px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E9B44C" stroke-width="2.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path></svg></span>Insurance</span>
+      <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; font-size: 13px; font-weight: 600">Oct 1, 2026</span>
+      <button style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: transparent; font: 600 13px DM Sans, sans-serif; color: #1A1A1A; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>View document</button>
+    </div>
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 34px; line-height: 1.05; letter-spacing: -0.4px">Health insurance claim settled for ₹31,200 out of ₹48,500.</h1>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div role="img" aria-label="64 percent approved, 36 percent cut" style="display: flex; height: 48px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 24px; overflow: hidden">
+        <span style="width: 64%; background: #034F46; color: #F4F5F2; display: flex; align-items: center; padding-left: 16px; font-size: 14px; font-weight: 700; border-right: 1.5px solid #1A1A1A">64% approved</span>
+        <span style="flex: 1; background-color: #D9603B; background-image: repeating-linear-gradient(135deg, rgba(26,26,26,0.12) 0 6px, transparent 6px 12px); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700">36% cut</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1.5px solid #1A1A1A; border-radius: 24px; overflow: hidden">
+        <sc-for list="{{stats}}" as="s" hint-placeholder-count="3">
+          <div style="{{s.box}}">
+            <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #3B3E3C"><span style="{{s.dot}}"></span>{{s.label}}</span>
+            <span style="font-family: 'Fraunces', serif; font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap">{{s.value}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#034F46"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>All amounts found in your document</span>
+    </div>
+  </section>
+
+  <section style="background: #E9B44C; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E9B44C" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"></path></svg></span>
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">In simple words<span style="color: #D9603B">.</span></h2>
+    </div>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">Shield Health Insurance has processed your hospitalisation claim for Sunrise Hospital, Jayanagar.</p>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5"><b>₹31,200</b> of the ₹48,500 you claimed is approved and will reach your bank account within 7 working days.</p>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5"><b>₹17,300</b> was cut because your room rent was above the allowed limit of 1% of the Sum Insured.</p>
+  </section>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 25px; white-space: nowrap">What you need to do<span style="color: #D9603B">.</span></h2>
+      <span style="flex: none; white-space: nowrap; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 12px; border: 1.5px solid #1A1A1A">0 of 1 done</span>
+    </div>
+    <label style="display: flex; gap: 14px; align-items: flex-start; cursor: pointer">
+      <input type="checkbox" style="width: 26px; height: 26px; margin: 2px 0 0; accent-color: #034F46; flex: none">
+      <span style="display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 16px; line-height: 1.45">If you disagree, write to the Grievance Cell with the room tariff and discharge summary within 30 days.</span>
+        <span style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <span style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: #F8D9CB; border: 1.5px solid #1A1A1A; box-sizing: border-box; font-size: 13px; font-weight: 700">By Oct 31, 2026</span>
+          <button style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 17px; border: 1.5px solid #1A1A1A; background: #E9B44C; color: #1A1A1A; font: 700 13px DM Sans, sans-serif; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect><path d="M3.5 10h17M12 13v5M9.5 15.5h5"></path></svg>Remind me</button>
+        </span>
+      </span>
+    </label>
+  </section>
+
+  <section style="background: #D9603B; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start">
+    <span style="width: 40px; height: 40px; flex: none; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9603B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg></span>
+    <span style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 16px; font-weight: 700">Watch out</span>
+      <span style="font-size: 15.5px; line-height: 1.45">Review requests sent after 30 days will not be considered.</span>
+    </span>
+  </section>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 8px 16px; display: flex; flex-direction: column">
+    <h2 style="margin: 12px 4px 6px; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">Places &amp; contacts<span style="color: #D9603B">.</span></h2>
+    <sc-for list="{{contacts}}" as="c" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 4px; border-top: 1.5px solid #E2E5E0">
+        <span style="{{c.tile}}">
+          <sc-if value="{{c.isPin}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg></sc-if>
+          <sc-if value="{{c.isHospital}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M12 8v8M8 12h8"></path></svg></sc-if>
+          <sc-if value="{{c.isPhone}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg></sc-if>
+          <sc-if value="{{c.isMail}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M4 7l8 6 8-6"></path></svg></sc-if>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 12.5px; font-weight: 600; color: #575B58">{{c.label}}</span><span style="font-size: 15px; font-weight: 600; line-height: 1.3">{{c.value}}</span></span>
+        <button style="{{c.btn}}">{{c.action}}</button>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="background: #1A1A1A; color: #F4F5F2; border-radius: 40px; padding: 22px 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">Key facts<span style="color: #D9603B">.</span></h2>
+    <sc-for list="{{facts}}" as="f" hint-placeholder-count="5">
+      <div style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #383B39; align-items: flex-start">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #D9603B; color: #1A1A1A; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">{{f.n}}</span>
+        <span style="flex: 1; font-size: 15.5px; line-height: 1.45; color: #E4E7E3">{{f.label}} <b style="color: #F4F5F2">{{f.value}}</b></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" role="img" aria-label="Found in your document" style="flex: none; margin-top: 3px"><circle cx="12" cy="12" r="10" fill="#CFE5E0"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#034F46" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </sc-for>
+    <button style="margin-top: 8px; height: 46px; border-radius: 23px; border: 2px solid #F4F5F2; background: transparent; font: 600 14px DM Sans, sans-serif; color: #F4F5F2; cursor: pointer">Show all 10 facts</button>
+  </section>
+
+  <p style="margin: 4px 12px 0; text-align: center; font-size: 13px; line-height: 1.45; color: #575B58">Sarvam explains your document. It does not replace your doctor, insurer or government office.</p>
+
+  <section style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0">
+    <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 26px">Was this explanation right?</h2>
+    <div style="display: flex; gap: 10px; width: 100%">
+      <button style="flex: 1; height: 54px; border-radius: 27px; border: 1.5px solid #1A1A1A; background: #E9B44C; color: #1A1A1A; font: 700 16px DM Sans, sans-serif; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v10H4V10zM7 10l4-7c1.5 0 2.5 1.2 2.2 2.7L12.5 9H19a2 2 0 0 1 2 2.3l-1.3 7A2 2 0 0 1 17.7 20H7"></path></svg>Yes</button>
+      <button style="flex: 1; height: 54px; border-radius: 27px; border: 1.5px solid #1A1A1A; background: transparent; color: #1A1A1A; font: 700 16px DM Sans, sans-serif; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M7 14V4H4v10zM7 14l4 7c1.5 0 2.5-1.2 2.2-2.7L12.5 15H19a2 2 0 0 0 2-2.3l-1.3-7A2 2 0 0 0 17.7 4H7"></path></svg>No</button>
+    </div>
+  </section>
+</div>
+
+  <nav aria-label="Actions" style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px 26px; background: #F4F5F2; border-top: 1.5px solid #1A1A1A; display: flex; gap: 10px; align-items: center">
+    <a href="16-listen-sheet.html" style="flex: 1.2; height: 56px; box-sizing: border-box; border-radius: 28px; background: #1A1A1A; border: 1.5px solid #1A1A1A; color: #F4F5F2; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 700; text-decoration: none"><span style="width: 32px; height: 32px; border-radius: 50%; background: #D9603B; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="#1A1A1A"></path></svg></span>Listen</a>
+    <a href="17-ask-sheet.html" style="flex: 1; height: 56px; box-sizing: border-box; border-radius: 28px; background: #E9B44C; border: 1.5px solid #1A1A1A; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 700; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Ask</a>
+    <a href="18-share-sheet.html" aria-label="Share or save" style="width: 56px; height: 56px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2620}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const stats = [
+      { label: 'Claimed', value: '₹48,500', c: '#1A1A1A', bg: '#F4F5F2' },
+      { label: 'Approved', value: '₹31,200', c: '#034F46', bg: '#CFE5E0' },
+      { label: 'Cut', value: '₹17,300', c: '#D9603B', bg: '#F8D9CB' }
+    ].map((s, i) => ({ ...s, box: 'display:flex;flex-direction:column;gap:8px;padding:12px 10px;background:' + s.bg + (i < 2 ? ';border-right:1.5px solid #1A1A1A' : ''), dot: 'width:9px;height:9px;border-radius:50%;border:1.5px solid #1A1A1A;background:' + s.c }));
+    const btn = (primary) => 'flex:none;height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #1A1A1A;font:700 13px DM Sans,sans-serif;color:#1A1A1A;cursor:pointer;background:' + (primary ? '#E9B44C' : 'transparent');
+    const contacts = [
+      { label: 'Your address', value: 'No. 14, 3rd Cross, Jayanagar, Bengaluru 560041', icon: 'pin', ink: '#1A1A1A', bg: '#F8D9CB', action: 'Map', primary: false },
+      { label: 'Hospital', value: 'Sunrise Hospital, Jayanagar', icon: 'hospital', ink: '#F4F5F2', bg: '#034F46', action: 'Directions', primary: false },
+      { label: 'Toll-free helpline', value: '1800 000 0000', icon: 'phone', ink: '#1A1A1A', bg: '#E9B44C', action: 'Call', primary: true },
+      { label: 'Claims email', value: 'claims@example.com', icon: 'mail', ink: '#1A1A1A', bg: '#CFE5E0', action: 'Email', primary: false }
+    ].map((c) => ({ ...c, tile: 'width:44px;height:44px;flex:none;box-sizing:border-box;border-radius:50%;border:1.5px solid #1A1A1A;display:flex;align-items:center;justify-content:center;background:' + c.bg, btn: btn(c.primary), isPin: c.icon === 'pin', isHospital: c.icon === 'hospital', isPhone: c.icon === 'phone', isMail: c.icon === 'mail' }));
+    const facts = [
+      { n: 1, label: 'Claim reference', value: 'CLM-2026-0884' },
+      { n: 2, label: 'Policy number', value: 'SH/IND/22/559102' },
+      { n: 3, label: 'Letter is addressed to', value: 'Mr. Ravi Kumar' },
+      { n: 4, label: 'Hospital stay', value: '12 Sep – 16 Sep 2026' },
+      { n: 5, label: 'Total claimed', value: '₹48,500' }
+    ];
+    return { stats, contacts, facts };
+  }
+}
+</script>
+</body>
+</html>

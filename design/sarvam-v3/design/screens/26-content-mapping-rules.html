@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>26 · How screens adapt to content</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+window.DCLogic = class { constructor(p){ this.props = p || {}; this.state = this.state || {}; } setState(s){ Object.assign(this.state, s); } };
+function look(scope, path){ path = path.trim(); if (path === 'true') return true; if (path === 'false') return false;
+  let v = scope; for (const k of path.split('.')) { if (v == null) return undefined; v = v[k]; } return v; }
+function interp(str, scope){ return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, p) => { const v = look(scope, p); return typeof v === 'function' ? '' : (v == null ? '' : String(v)); }); }
+function expand(node, scope){
+  for (const child of Array.from(node.childNodes)) {
+    if (child.nodeType === 3) { child.textContent = interp(child.textContent, scope); continue; }
+    if (child.nodeType !== 1) continue;
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'sc-for') {
+      const m = (child.getAttribute('list')||'').match(/\{\{\s*([^}]+?)\s*\}\}/); const list = m ? look(scope, m[1]) || [] : [];
+      const as = child.getAttribute('as') || 'item'; const frag = document.createDocumentFragment();
+      list.forEach((it, i) => { const wrap = document.createElement('div'); wrap.innerHTML = child.innerHTML; const s = Object.assign({}, scope, {[as]: it, $index: i}); expand(wrap, s); while (wrap.firstChild) frag.appendChild(wrap.firstChild); });
+      child.replaceWith(frag); continue;
+    }
+    if (tag === 'sc-if') {
+      const m = (child.getAttribute('value')||'').match(/\{\{\s*([^}]+?)\s*\}\}/); const ok = m ? !!look(scope, m[1]) : false;
+      if (!ok) { child.remove(); continue; }
+      const frag = document.createDocumentFragment(); expand(child, scope); while (child.firstChild) frag.appendChild(child.firstChild); child.replaceWith(frag); continue;
+    }
+    for (const a of Array.from(child.attributes)) { if (a.value.includes('{{')) child.setAttribute(a.name, interp(a.value, scope)); }
+    expand(child, scope);
+  }
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const sc = document.querySelector('script[data-dc-script]');
+  const C = new Function(sc.textContent + '; return Component;')();
+  const props = {}; try { const dp = JSON.parse(sc.getAttribute('data-props')||'{}'); for (const k in dp) if (dp[k] && 'default' in dp[k]) props[k] = dp[k].default; } catch(e){}
+  const inst = new C(props); const vals = inst.renderVals();
+  const xdc = document.querySelector('x-dc'); const helmet = xdc.querySelector('helmet');
+  if (helmet) { document.head.insertAdjacentHTML('beforeend', helmet.innerHTML); helmet.remove(); }
+  expand(xdc, vals); window.__ready = true; document.dispatchEvent(new Event('sv-ready'));
+});
+</script>
+<style>
+@keyframes sv-push-in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes sv-back-in{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes sv-sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sv-scrim-in{from{opacity:0}to{opacity:1}}
+@keyframes sv-fade-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sv-out{transition:opacity 160ms ease-in, transform 160ms ease-in;opacity:0;transform:translateX(-14px)}
+.sv-out-back{transition:opacity 160ms ease-in, transform 160ms ease-in;opacity:0;transform:translateX(14px)}
+.sv-sheet-out{transition:transform 200ms cubic-bezier(.4,0,1,1);transform:translateY(100%)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
+</style>
+<script>
+(function(){
+  const SHEET = false;
+  function root(){ const x = document.querySelector('x-dc'); return x && x.firstElementChild; }
+  function sheetEl(r){ return r && Array.from(r.querySelectorAll('section')).find(s => s.style.position === 'absolute' && (s.style.borderRadius||'').startsWith('40px 40px')); }
+  function enter(){
+    const r = root(); if (!r) return;
+    const back = location.hash === '#back';
+    if (SHEET) {
+      const s = sheetEl(r);
+      r.style.animation = 'sv-scrim-in 200ms ease-out both';
+      if (s) s.style.animation = back ? 'none' : 'sv-sheet-up 260ms cubic-bezier(.2,.8,.2,1) both';
+    } else {
+      r.style.animation = (back ? 'sv-back-in' : 'sv-push-in') + ' 280ms cubic-bezier(.2,.8,.2,1) both';
+      const cards = Array.from(r.querySelectorAll('.stack > section, .stack > details, .stack > nav'));
+      cards.slice(0, 10).forEach((c, i) => { c.style.animation = 'sv-fade-up 320ms cubic-bezier(.2,.8,.2,1) both'; c.style.animationDelay = (120 + i * 40) + 'ms'; });
+    }
+  }
+  document.addEventListener('sv-ready', enter);
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]'); if (!a) return;
+    const href = a.getAttribute('href'); if (!/^\d\d-[a-z0-9-]+\.html/.test(href)) return;
+    e.preventDefault();
+    const label = (a.getAttribute('aria-label') || '').toLowerCase();
+    const back = label === 'back' || label === 'close';
+    const r = root(); const s = sheetEl(r);
+    if (SHEET && back && s) s.classList.add('sv-sheet-out'); else if (r) r.classList.add(back ? 'sv-out-back' : 'sv-out');
+    setTimeout(() => { location.href = href + (back ? '#back' : ''); }, SHEET && back ? 200 : 160);
+  });
+})();
+</script>
+<style>html,body{background:#E8EAE7}body{margin:0}x-dc>div{margin:0 auto}</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+.card{border:1.5px solid #1A1A1A;border-radius:28px;padding:18px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.cap{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#575B58}
+.rule{font-size:13.5px;line-height:1.4;color:#3B3E3C}
+.h{font-family:'Fraunces',serif;font-weight:400}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td,th{text-align:left;padding:9px 10px;border-top:1.5px solid #E2E5E0;vertical-align:top;line-height:1.35}
+th{font-size:12px;letter-spacing:1px;color:#575B58;border-top:0}
+</style>
+</helmet>
+<div style="width: 1240px; height: 2440px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; padding: 40px; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <h1 class="h" style="margin: 0; font-size: 44px; letter-spacing: -0.6px">How every screen adapts to the document<span style="color: #D9603B">.</span></h1>
+    <p class="rule" style="margin: 0; font-size: 16px">One design system, many documents. The API fields decide which blocks appear; empty fields hide their block. Never show sample text.</p>
+  </div>
+
+  <div class="cap">1 · THE "AT A GLANCE" BLOCK PICKS ONE OF SIX LAYOUTS FROM glance.key_values (first match wins, A → F)</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+    <div class="card">
+      <span style="font-weight: 700">A · Split amounts</span>
+      <div style="display: flex; height: 30px; border: 1.5px solid #1A1A1A; border-radius: 15px; overflow: hidden; font-size: 11px; font-weight: 700"><span style="width: 64%; background: #034F46; color: #F4F5F2; display: flex; align-items: center; padding-left: 10px; border-right: 1.5px solid #1A1A1A">64%</span><span style="flex: 1; background: #D9603B; display: flex; align-items: center; justify-content: center">36%</span></div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); border: 1.5px solid #1A1A1A; border-radius: 14px; overflow: hidden; font-family: 'Fraunces', serif; font-size: 14px; text-align: center"><span style="padding: 6px 0; border-right: 1.5px solid #1A1A1A">48.5k</span><span style="padding: 6px 0; background: #CFE5E0; border-right: 1.5px solid #1A1A1A">31.2k</span><span style="padding: 6px 0; background: #F8D9CB">17.3k</span></div>
+      <span class="rule">3 amounts, the largest = sum of the other two, and the type is insurance, a bill, a receipt or tax. Claims, bills with deductions.</span>
+    </div>
+    <div class="card">
+      <span style="font-weight: 700">B · Amount to pay</span>
+      <div style="border: 1.5px solid #1A1A1A; border-radius: 18px; padding: 10px 12px; background: #F8D9CB; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; font-weight: 700; letter-spacing: 1px">TO PAY</span><span class="h" style="font-size: 30px; line-height: 1">₹1,000</span><span style="font-size: 12px; font-weight: 600">by Dec 5 · 52 days left</span></div>
+      <span class="rule">1 amount (plus an optional due date). Challans, utility and internet bills, property tax, fees.</span>
+    </div>
+    <div class="card">
+      <span style="font-weight: 700">C · Deadline</span>
+      <div style="display: flex; border: 1.5px solid #1A1A1A; border-radius: 18px; overflow: hidden"><span style="width: 64px; background: #1A1A1A; color: #F4F5F2; display: flex; flex-direction: column; align-items: center; padding: 8px 0"><span style="font-size: 10px; font-weight: 700; color: #E9B44C">NOV</span><span class="h" style="font-size: 28px; line-height: 1">30</span></span><span style="flex: 1; background: #F8D9CB; padding: 8px 10px; display: flex; flex-direction: column; justify-content: center"><span class="h" style="font-size: 22px; line-height: 1">47</span><span style="font-size: 12px; font-weight: 600">days left</span></span></div>
+      <span class="rule">Only dates, no amounts. Notices, summons, renewals. Past date: ink "Date has passed" chip, no Remind me.</span>
+    </div>
+    <div class="card">
+      <span style="font-weight: 700">D · Values</span>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px"><span style="border: 1.5px solid #1A1A1A; border-radius: 12px; padding: 6px 8px; font-size: 11px">Hb<br><b class="h" style="font-size: 18px; font-weight: 400">11.2</b> <span style="background: #F8D9CB; border: 1px solid #1A1A1A; border-radius: 6px; padding: 0 4px; font-weight: 700">Low</span></span><span style="border: 1.5px solid #1A1A1A; border-radius: 12px; padding: 6px 8px; font-size: 11px">Sugar<br><b class="h" style="font-size: 18px; font-weight: 400">126</b> <span style="background: #D9603B; border: 1px solid #1A1A1A; border-radius: 6px; padding: 0 4px; font-weight: 700">High</span></span></div>
+      <span class="rule">Text values with units. Lab reports. Flags only when the document prints them. 2-column tiles, max 4, then Key facts.</span>
+    </div>
+    <div class="card">
+      <span style="font-weight: 700">E · Headline only</span>
+      <div style="border: 1.5px dashed #1A1A1A; border-radius: 18px; padding: 12px; font-family: 'Fraunces', serif; font-size: 18px; line-height: 1.15">Your rental agreement renews every 11 months.</div>
+      <span class="rule">No glance values. Agreements, letters, forms. Headline card only; In simple words or the steps follow.</span>
+    </div>
+    <div class="card">
+      <span style="font-weight: 700">F · Amount strip</span>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); border: 1.5px solid #1A1A1A; border-radius: 14px; overflow: hidden; font-family: 'Fraunces', serif; font-size: 14px; text-align: center"><span style="padding: 6px 0; border-right: 1.5px solid #1A1A1A">1.10L</span><span style="padding: 6px 0; background: #CFE5E0; border-right: 1.5px solid #1A1A1A">1.24L</span><span style="padding: 6px 0; background: #E9B44C">+14.3k</span></div>
+      <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 10px; width: 88%; border: 1.2px solid #1A1A1A; border-radius: 5px"></span><span style="height: 10px; width: 100%; border: 1.2px solid #1A1A1A; border-radius: 5px; background: #034F46"></span></div>
+      <span class="rule">2–3 amounts that are not A or B. Investments, bank statements, salary slips. Optional bars compare only the printed values; never draw a trend.</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.55fr 1fr; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">2 · RESULT SECTIONS, IN THIS ORDER (hidden when empty)</div>
+      <div class="card" style="padding: 6px 10px">
+        <table>
+          <tr><th>SECTION</th><th>FROM FIELD</th><th>LOOK</th></tr>
+          <tr><td><b>Summary</b> (type chip, date, View document, headline, glance)</td><td>document_type, report_date_iso, glance</td><td>Outline card; chip colour = type colour (§4)</td></tr>
+          <tr><td><b>Medicine reminders.</b></td><td>medicines (medical only)</td><td>Teal-tint panel; one card per medicine; slot chips; mustard "Set medicine reminders"</td></tr>
+          <tr><td><b>In simple words.</b></td><td>summary</td><td>Mustard panel</td></tr>
+          <tr><td><b>What you need to do.</b></td><td>actions[]</td><td>Outline card; date chip coral tint; "Remind me" if date is upcoming; "Calculated" chip if calculated</td></tr>
+          <tr><td>… as <b>numbered steps</b></td><td>actions[] with no dates and 3+ items (forms)</td><td>Mustard number circles, field name in a dashed chip from the quote, done steps struck through</td></tr>
+          <tr><td><b>Watch out</b> (one per warning)</td><td>warnings[]</td><td>Coral panel</td></tr>
+          <tr><td><b>Places &amp; contacts.</b></td><td>places[], contacts[]</td><td>One outline card; one action per row</td></tr>
+          <tr><td><b>Key facts.</b></td><td>key_points / facts</td><td>Ink panel; first 5 then "Show all (N)"</td></tr>
+          <tr><td>Rating + bottom bar</td><td>always</td><td>Mustard Yes, outline No; Listen / Ask / Share</td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">3 · WHICH READING ANIMATION</div>
+      <div class="card">
+        <span class="rule"><b>B · Photo pages</b>: when the upload is photos or more than one file.</span>
+        <span class="rule"><b>C · Your language</b>: when the chosen language is not English (the step reads "Writing in Tamil").</span>
+        <span class="rule"><b>A · Scan</b> (teal) or <b>D · Finding key facts</b> (light teal, lens): every other case, alternating A and D.</span>
+        <span class="rule">If the picked variant was shown on the previous scan, show the next one (A → B → C → D → A) so it never feels repetitive. Remember only the last variant letter in <code>sarvam.readingVariant</code>.</span>
+      </div>
+      <div class="cap">4 · RECENT ON HOME</div>
+      <div class="card">
+        <span class="rule">Show the newest 4. From 5 saved results, a full-width "View all documents (N)" button opens <b>All documents</b>: search, type filter chips, grouped by This week / Earlier this month / month name. Same row design and icons everywhere.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.55fr 1fr; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">5 · DOCUMENT TYPE → ICON AND COLOUR (Home samples, Recent, All documents, type chip)</div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{icons}}" as="i" hint-placeholder-count="14">
+          <div style="display: flex; align-items: center; gap: 10px; border: 1.5px solid #1A1A1A; border-radius: 20px; padding: 10px">
+            <span style="{{i.tile}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{i.ink}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{i.d}}"></path></svg></span>
+            <span style="display: flex; flex-direction: column"><span style="font-size: 13.5px; font-weight: 700">{{i.name}}</span><span style="font-size: 11.5px; color: #575B58">{{i.keys}}</span></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">6 · HIDE PERSONAL DETAILS (share preview = what is sent)</div>
+      <div class="card">
+        <table>
+          <tr><th>VALUE</th><th>SHOWN AND SENT AS</th></tr>
+          <tr><td>Person name</td><td><code>R*** K****</code></td></tr>
+          <tr><td>Phone number</td><td><code>**********</code> (fully hidden)</td></tr>
+          <tr><td>Policy, account, UHID, IDs</td><td><code>SH/***/**/**102</code> (last 3 kept)</td></tr>
+          <tr><td>Email</td><td><code>r***@****.com</code></td></tr>
+          <tr><td>Home address, date of birth</td><td><code>[hidden]</code></td></tr>
+          <tr><td>Business names, amounts, dates</td><td>kept</td></tr>
+        </table>
+        <span class="rule">Phones are fully masked. In the preview each masked value is a dashed mustard-tint chip in monospace; the shared text contains the same asterisks.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">7 · ONE UPLOAD, SEVERAL DOCUMENTS OR SECTIONS (screen 3f)</div>
+      <div class="card">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px">
+          <span style="height: 52px; border: 1.5px solid #1A1A1A; border-radius: 10px; background: #CFE5E0"></span><span style="height: 52px; border: 1.5px solid #1A1A1A; border-radius: 10px; background: #CFE5E0"></span><span style="height: 52px; border: 1.5px solid #1A1A1A; border-radius: 10px; background: #CFE5E0"></span><span style="height: 52px; border: 1.5px solid #1A1A1A; border-radius: 10px; background: #F8D9CB"></span><span style="height: 52px; border: 1.5px solid #1A1A1A; border-radius: 10px; background: #FBEBC4"></span>
+          <span style="grid-column: 1 / 4; height: 8px; border: 1.5px solid #1A1A1A; border-radius: 4px; background: #034F46"></span><span style="height: 8px; border: 1.5px solid #1A1A1A; border-radius: 4px; background: #D9603B"></span><span style="height: 8px; border: 1.5px solid #1A1A1A; border-radius: 4px; background: #E9B44C"></span>
+          <span style="grid-column: 1 / 4; font-size: 12px; font-weight: 700">Lab report → D values</span><span style="font-size: 12px; font-weight: 700">Rx → medicines</span><span style="font-size: 12px; font-weight: 700">Bill → F</span>
+        </div>
+        <span class="rule"><b>Split:</b> when the pages hold more than one document (new issuer, new letterhead, new title), the API returns <code>parts[]</code>, each with its pages, type, issuer and date. One part: the normal single result.</span>
+        <span class="rule"><b>Each part keeps its own layout</b>: lab report → value tiles (D), prescription → medicine cards, bill or statement → amount strip (F), notice → deadline (C). Parts appear in page order under "Document N of M · pages".</span>
+        <span class="rule"><b>Sections inside a lab report</b> use the report's own headings (Blood sugar, Lipid profile…). Sections with a printed High/Low flag come first, open; all-in-range sections are collapsed with an "All in range" pill.</span>
+        <span class="rule"><b>Look at these first</b> lists every flagged value across sections, at most 6, each linking to its section. Hidden when nothing is flagged.</span>
+        <span class="rule"><b>What you need to do</b> merges actions from all parts, each with a "From: …" tag. Key facts show which part and page each fact came from.</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="cap">8 · SAMPLE TEMPLATES → THE SCREEN EACH ONE MUST PRODUCE</div>
+      <div class="card" style="padding: 6px 10px">
+        <table>
+          <tr><th>SAMPLE FILE (web/public/samples)</th><th>SCREEN</th><th>LAYOUT</th></tr>
+          <tr><td>sample-insurance-letter.pdf</td><td>3a · insurance</td><td>A split + contacts</td></tr>
+          <tr><td>sample-lab-report.pdf (new)</td><td>3b · lab report</td><td>D values</td></tr>
+          <tr><td>sample-pension-notice.jpg (Tamil output)</td><td>3c · pension, Tamil</td><td>C deadline</td></tr>
+          <tr><td>sample-prescription.jpg (new)</td><td>3d · prescription → 6a reminders</td><td>E + medicines</td></tr>
+          <tr><td>sample-health-checkup.pdf (new, 5 pages)</td><td>3f · multi-document</td><td>parts: D + medicines + F</td></tr>
+          <tr><td>sample-echallan.pdf</td><td>3e · challan</td><td>B to pay</td></tr>
+          <tr><td>sample-court-summons.pdf (new)</td><td>3e · legal notice</td><td>C deadline</td></tr>
+          <tr><td>sample-mutual-fund-statement.pdf (new)</td><td>3e · investment</td><td>F amount strip</td></tr>
+          <tr><td>sample-bank-deposit-slip.jpg (new)</td><td>3e · form</td><td>E + numbered steps</td></tr>
+          <tr><td>sample-property-tax-notice.pdf</td><td>rules above</td><td>A split (total = pay with rebate + rebate)</td></tr>
+          <tr><td>sample-invoice-warranty.pdf</td><td>rules above</td><td>F strip (taxable, GST, total)</td></tr>
+        </table>
+        <span class="rule" style="padding: 4px 10px 10px">Every value on screens 3a–3f comes from these files. If a screen shows something the file does not print, that is a defect.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":2440}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = [
+      ['Lab / medical', 'medical (report)', 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3M7.5 15h9', '#034F46', '#F4F5F2'],
+      ['Prescription', 'medical + medicines', 'M4.5 15.5l8-8a4 4 0 0 1 5.6 5.6l-8 8a4 4 0 0 1-5.6-5.6zM8.5 11.5l5.6 5.6', '#CFE5E0', '#1A1A1A'],
+      ['Insurance', 'insurance', 'M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6zM12 9v6M9 12h6', '#E9B44C', '#1A1A1A'],
+      ['Pension / benefit', 'pension in govt notice', 'M7 5h10M7 9h10M7 5c6 0 6 8 0 8l7 7', '#D9603B', '#1A1A1A'],
+      ['Govt notice', 'government_notice', 'M6 3h8l4 4v14H6zM14 3v4h4M12 11.4a2.6 2.6 0 1 0 0 5.2a2.6 2.6 0 1 0 0-5.2', '#CFE5E0', '#1A1A1A'],
+      ['Bank', 'bank, receipt', 'M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18', '#F8D9CB', '#1A1A1A'],
+      ['Electricity / water', 'utility_bill', 'M13 2L5 13h6l-1 9 8-11h-6z', '#E9B44C', '#1A1A1A'],
+      ['Phone / internet', 'telecom_bill', 'M4 9.5a12 12 0 0 1 16 0M7 13a7.5 7.5 0 0 1 10 0M10 16.5a3 3 0 0 1 4 0M12 20h.01', '#1A1A1A', '#F4F5F2'],
+      ['Challan', 'challan', 'M4 16v-4l2-5h12l2 5v4zM8 16.5a1.8 1.8 0 1 0 0 .1M16 16.5a1.8 1.8 0 1 0 0 .1', '#D9603B', '#FFFFFF'],
+      ['Property tax', 'tax_receipt', 'M4 11l8-7 8 7v9H4zM10 20v-5h4v5', '#CFE5E0', '#1A1A1A'],
+      ['Court / legal', 'court_legal', 'M14 4l6 6M11 7l6 6M12.5 5.5l-5 5M3 21l7-7M8 12l4 4', '#1A1A1A', '#F4F5F2'],
+      ['Investment', 'statement with units/NAV (bank, corporate)', 'M3 17l6-6 4 4 8-8M15 7h6v6', '#CFE5E0', '#1A1A1A'],
+      ['Form', 'forms to fill (any type)', 'M5 4h14v17H5zM9 4V3h6v1M8.5 10h7M8.5 14h7M8.5 18h4', '#E9B44C', '#1A1A1A'],
+      ['Agreement / other', 'agreement, corporate, other', 'M4 20l4-1 11-11-3-3L5 16zM14 6l3 3M4 20h16', '#F4F5F2', '#1A1A1A']
+    ];
+    const icons = L.map(([name, keys, d, bg, ink]) => ({ name, keys, d, ink, tile: 'width:40px;height:40px;flex:none;box-sizing:border-box;border-radius:14px;border:1.5px solid #1A1A1A;display:flex;align-items:center;justify-content:center;background:' + bg }));
+    return { icons };
+  }
+}
+</script>
+</body>
+</html>

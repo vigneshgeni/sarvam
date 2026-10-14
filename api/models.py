@@ -64,6 +64,10 @@ class ReaderAction(BaseModel):
         default=1,
         description="Page number where the quote is located",
     )
+    part_id: Optional[str] = Field(
+        default=None,
+        description="Part ID if from a multi-document upload, else null",
+    )
 
 
 class ReaderWarning(BaseModel):
@@ -74,6 +78,10 @@ class ReaderWarning(BaseModel):
     page: int = Field(
         default=1,
         description="Page number where the quote is located",
+    )
+    part_id: Optional[str] = Field(
+        default=None,
+        description="Part ID if from a multi-document upload, else null",
     )
 
 
@@ -89,6 +97,10 @@ class ReaderFact(BaseModel):
     is_personal: bool = Field(
         default=False,
         description="True if this fact contains an identifier, reference or ID number, or personal name",
+    )
+    part_id: Optional[str] = Field(
+        default=None,
+        description="Part ID if from a multi-document upload, else null",
     )
 
 
@@ -129,6 +141,37 @@ class ReaderMedicine(BaseModel):
     instruction_text: str = Field(default="", description="Simple instruction in requested language")
     quote: str = Field(default="", description="Exact quote from document")
     page: int = Field(default=1, description="Page number where quote appears")
+
+
+class ReaderSectionValue(BaseModel):
+    label: str = Field(description="Test or item name, e.g. Fasting blood sugar, Total cholesterol")
+    value: str = Field(description="Value printed, e.g. 118, 212")
+    unit: Optional[str] = Field(default=None, description="Unit printed, e.g. mg/dL, %")
+    ref_range: Optional[str] = Field(default=None, description="Reference range printed, e.g. 70 – 100")
+    flag_printed: Optional[str] = Field(
+        default=None,
+        description="'High' | 'Low' only when document prints High/Low or H/L or arrows, else null. Never invent.",
+    )
+
+
+class ReaderSection(BaseModel):
+    heading: str = Field(description="Section heading exactly as printed, in page order, e.g. Blood sugar, Lipid profile")
+    page: int = Field(default=1, description="Page number where this section appears")
+    values: List[ReaderSectionValue] = Field(default_factory=list)
+
+
+class ReaderPart(BaseModel):
+    part_id: str = Field(description="Unique part identifier, e.g. part-1, part-2")
+    title: str = Field(description="Document title for this part, e.g. Lab Report, Prescription, Bill")
+    document_type: str = Field(description="Document type for this part: medical, receipt, etc.")
+    issuer: Optional[str] = Field(default=None, description="Issuer or clinic name printed on this part")
+    date_iso: Optional[str] = Field(default=None, description="Date printed on this part in YYYY-MM-DD format if present, else null")
+    pages: List[int] = Field(description="Start and end page [start, end] (1-indexed)")
+    glance: Optional[ReaderGlance] = None
+    sections: Optional[List[ReaderSection]] = None
+    medicines: Optional[List[ReaderMedicine]] = None
+    key_points: Optional[List[str]] = None
+    summary_lines: Optional[List[str]] = None
 
 
 class ReaderResponse(BaseModel):
@@ -209,6 +252,14 @@ class ReaderResponse(BaseModel):
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
+    parts: Optional[List[ReaderPart]] = Field(
+        default=None,
+        description="Parts if upload contains 2+ distinct documents, else null",
+    )
+    sections: Optional[List[ReaderSection]] = Field(
+        default=None,
+        description="Sections for lab report with more than 4 test values, else null",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -239,6 +290,7 @@ class ExplainAction(BaseModel):
     quote: str
     page: int = 1
     evidence: str = "check_original"  # matched | check_original | calculated
+    part_id: Optional[str] = None
 
 
 class ExplainWarning(BaseModel):
@@ -246,6 +298,7 @@ class ExplainWarning(BaseModel):
     quote: str
     page: int = 1
     evidence: str = "check_original"  # matched | check_original
+    part_id: Optional[str] = None
 
 
 class ExplainFact(BaseModel):
@@ -254,6 +307,7 @@ class ExplainFact(BaseModel):
     page: int = 1
     evidence: str = "check_original"  # matched | check_original
     is_personal: bool = False
+    part_id: Optional[str] = None
 
 
 class GlanceKeyValue(BaseModel):
@@ -299,6 +353,35 @@ class MedicineInfo(BaseModel):
     evidence: str = "check_original"  # matched | check_original | calculated
 
 
+class ExplainSectionValue(BaseModel):
+    label: str
+    value: str
+    unit: Optional[str] = None
+    ref_range: Optional[str] = None
+    flag_printed: Optional[str] = None  # 'High' | 'Low' | None
+    evidence: str = "check_original"
+
+
+class ExplainSection(BaseModel):
+    heading: str
+    page: int = 1
+    values: List[ExplainSectionValue] = Field(default_factory=list)
+
+
+class ExplainPart(BaseModel):
+    part_id: str
+    title: str
+    document_type: str
+    issuer: Optional[str] = None
+    date_iso: Optional[str] = None
+    pages: List[int]  # [start, end]
+    glance: Optional[GlanceSummary] = None
+    sections: Optional[List[ExplainSection]] = None
+    medicines: Optional[List[MedicineInfo]] = None
+    key_points: Optional[List[str]] = None
+    summary_lines: Optional[List[str]] = None
+
+
 class ExplainResponse(BaseModel):
     doc_type: str = "other"
     document_type: str = "other"
@@ -320,6 +403,8 @@ class ExplainResponse(BaseModel):
     contacts: List[ContactInfo] = Field(default_factory=list)
     medicines: List[MedicineInfo] = Field(default_factory=list)
     conflicts: List[str] = Field(default_factory=list)
+    parts: Optional[List[ExplainPart]] = None
+    sections: Optional[List[ExplainSection]] = None
     evidence_summary: EvidenceSummary = Field(default_factory=EvidenceSummary)
     unreadable: bool = False
     unreadable_reason: Optional[str] = None

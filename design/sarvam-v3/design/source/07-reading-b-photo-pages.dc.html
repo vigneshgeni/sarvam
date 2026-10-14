@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reading B · photo pages</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+@keyframes fly{0%{opacity:0;transform:translateY(70px) rotate(var(--r0))}14%{opacity:1;transform:translateY(0) rotate(var(--r))}86%{opacity:1;transform:translateY(0) rotate(var(--r))}100%{opacity:0;transform:translateY(-10px) rotate(var(--r))}}
+@keyframes flash{0%,100%{opacity:0}4%{opacity:.85}12%{opacity:0}}
+@keyframes sweep{0%{top:4%}50%{top:86%}100%{top:4%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes count{0%,33%{content:"1"}34%,66%{content:"2"}67%,100%{content:"3"}}
+.pg{position:absolute;left:50%;top:50%;width:132px;height:172px;margin:-86px 0 0 -66px;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:16px;background:#F4F5F2;padding:16px 14px;display:flex;flex-direction:column;gap:9px;animation:fly 4.5s cubic-bezier(.2,.8,.2,1) infinite both}
+.pg span{height:6px;border-radius:3px;background:#C4C8C3}
+.flash{position:absolute;inset:0;background:#F4F5F2;animation:flash 4.5s ease-out infinite;pointer-events:none}
+.sweep{position:absolute;left:-12px;right:-12px;height:3px;border-radius:2px;background:#034F46;box-shadow:0 0 0 6px rgba(3,79,70,.18);animation:sweep 2.2s ease-in-out infinite}
+.spin{animation:spin 1s linear infinite}
+.count::before{content:"1";animation:count 4.5s steps(1) infinite}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 24px; justify-content: space-between; overflow: hidden">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" aria-label="Back" style="width: 48px; height: 48px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #1A1A1A; background: #CFE5E0; font-size: 13px; font-weight: 700"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#034F46" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Processing securely</span>
+  </div>
+
+  <div role="img" aria-label="Sarvam stacking your photographed pages" style="height: 300px; background: #D9603B; border: 1.5px solid #1A1A1A; box-sizing: border-box; border-radius: 40px; position: relative; overflow: hidden">
+    <span aria-hidden="true" style="position: absolute; left: 24px; top: 22px; width: 44px; height: 44px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 50%; background: #E9B44C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"></path><circle cx="12" cy="13" r="3.4"></circle></svg></span>
+    <span aria-hidden="true" style="position: absolute; z-index: 3; right: 22px; top: 26px; height: 34px; padding: 0 14px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 17px; background: #F4F5F2; color: #1A1A1A; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700">Page <span class="count"></span> of 3</span>
+    <span aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%; border: 1.5px dashed #1A1A1A; opacity: .45"></span>
+    <div class="pg" style="--r0: -18deg; --r: -8deg; animation-delay: 0s"><span style="width: 58%; height: 8px; background: #1A1A1A"></span><span style="width: 92%"></span><span style="width: 76%"></span><span style="width: 88%"></span><span style="width: 64%"></span></div>
+    <div class="pg" style="--r0: 16deg; --r: 5deg; animation-delay: .5s; background: #E9B44C"><span style="width: 48%; height: 8px; background: #1A1A1A"></span><span style="width: 90%"></span><span style="width: 70%"></span><span style="width: 84%; height: 18px; background: #F4F5F2; border: 1.5px solid #1A1A1A"></span><span style="width: 60%"></span></div>
+    <div class="pg" style="--r0: -6deg; --r: -1deg; animation-delay: 1s; position: absolute">
+      <span style="width: 62%; height: 8px; background: #1A1A1A"></span><span style="width: 95%"></span><span style="width: 80%"></span><span style="width: 88%"></span><span style="width: 70%"></span><span style="width: 90%"></span>
+      <div class="sweep" aria-hidden="true"></div>
+    </div>
+    <div class="flash" aria-hidden="true"></div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.3px">3 photos</h1>
+    <p style="margin: 0; font-size: 15px; color: #575B58">Reading them together as one document</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; padding: 6px 18px 16px; border-radius: 32px; border: 1.5px solid #1A1A1A">
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span aria-hidden="true" class="spin" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 3.5px solid #F8D9CB; border-top-color: #D9603B; border-right-color: #D9603B"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Reading your photos</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span aria-hidden="true" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px dashed #A4A9A4"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 500; color: #575B58">Checking against the document</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0">
+      <span aria-hidden="true" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px dashed #A4A9A4"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 500; color: #575B58">Writing in English</span>
+    </span>
+    <span aria-hidden="true" style="display: block; height: 10px; border-radius: 5px; border: 1.5px solid #1A1A1A; overflow: hidden; margin-top: 4px"><span style="display: block; width: 22%; height: 100%; background: #D9603B"></span></span>
+  </div>
+
+  <a href="Main.dc.html" style="align-self: center; display: inline-flex; align-items: center; height: 48px; padding: 0 28px; border-radius: 24px; border: 1.5px solid #1A1A1A; color: #1A1A1A; font-size: 16px; font-weight: 700; text-decoration: none">Cancel</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

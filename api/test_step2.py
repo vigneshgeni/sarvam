@@ -2720,5 +2720,386 @@ async def test_eight_simultaneous_fake_calls_with_mixed_failures(client):
         assert GEMINI_SEMAPHORE._value == 8
 
 
+# --- S3 Security & 1F Multi-document Tests (Antigravity Final) ---
+
+def test_s3_cors_origins(client):
+    """
+    S3 API: CORS only real origins plus preview channel regex:
+    ^https://sarvam-510715--[a-z0-9-]+\.web\.app$
+    Test that malicious / subdomain origins are refused.
+    """
+    # 1. Allowed origins
+    for origin in [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://sarvam-510715.web.app",
+        "https://sarvam-510715.firebaseapp.com",
+        "https://sarvam-510715--stage-pr42.web.app",
+        "https://sarvam-510715--feat-final-design.web.app",
+    ]:
+        res = client.options(
+            "/api/health",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert res.headers.get("access-control-allow-origin") == origin, f"Origin {origin} must be allowed"
+
+    # 2. Refused origins
+    for bad_origin in [
+        "https://sarvam-510715--x.web.app.evil.com",
+        "https://example.com",
+        "https://evil.com",
+        "https://sarvam-510715.otherdomain.com",
+        "http://sarvam-510715.web.app",  # insecure http
+    ]:
+        res = client.options(
+            "/api/health",
+            headers={
+                "Origin": bad_origin,
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert res.headers.get("access-control-allow-origin") != bad_origin, f"Origin {bad_origin} must be refused"
+
+
+def test_s3_non_spoofable_client_ip_rate_limiting(client):
+    """
+    S3 API: rate-limit key correct behind Cloud Run without spoofable X-Forwarded-For.
+    Cloud Run GFE appends the true client IP to the end of X-Forwarded-For.
+    Verify that varying client-injected initial IPs cannot bypass rate limits.
+    """
+    from main import IP_REQUESTS, check_rate_limit, get_client_ip
+    from fastapi import Request
+
+    IP_REQUESTS.clear()
+
+    # Create dummy scope
+    scope = {
+        "type": "http",
+        "headers": [(b"x-forwarded-for", b"1.1.1.1, 10.0.0.1, 203.0.113.50")],
+        "client": ("127.0.0.1", 12345),
+    }
+    req = Request(scope)
+    # Must pick the last IP (203.0.113.50), not the spoofed first IP (1.1.1.1)
+    ip = get_client_ip(req)
+    assert ip == "203.0.113.50"
+
+    # Verify rate limit enforcement on the true IP even when client changes fake first IP
+    endpoint = "test_ep"
+    limit = 3
+    # 3 allowed requests
+    for fake_ip in ["1.1.1.1", "1.1.1.2", "1.1.1.3"]:
+        req_scope = {
+            "type": "http",
+            "headers": [(b"x-forwarded-for", f"{fake_ip}, 203.0.113.50".encode("utf-8"))],
+            "client": ("127.0.0.1", 12345),
+        }
+        client_ip = get_client_ip(Request(req_scope))
+        allowed, retry_after = check_rate_limit(endpoint, client_ip, limit)
+        assert allowed is True
+
+    # 4th request with a brand new fake first IP MUST be rate limited
+    req_scope_4 = {
+        "type": "http",
+        "headers": [(b"x-forwarded-for", b"9.9.9.9, 203.0.113.50")],
+        "client": ("127.0.0.1", 12345),
+    }
+    client_ip = get_client_ip(Request(req_scope_4))
+    allowed, retry_after = check_rate_limit(endpoint, client_ip, limit)
+    assert allowed is False
+    assert retry_after > 0
+
+
+def test_s3_extract_text_and_security_headers(client):
+    """
+    S3 API: /api/extract-text size cap and calm 400 for wrong types, password <= 128 chars,
+    Cache-Control: no-store, nosniff everywhere, no stack trace in errors.
+    """
+    # 1. Password > 128 chars returns calm 400
+    res = client.post(
+        "/api/extract-text",
+        data={"password": "p" * 129},
+        files=[("files", ("test.pdf", b"%PDF-fake", "application/pdf"))],
+    )
+    assert res.status_code == 400
+    assert "maximum 128 characters" in res.json().get("message", "")
+    assert res.headers.get("x-content-type-options") == "nosniff"
+
+    # 2. Unsupported file type returns calm 400
+    res = client.post(
+        "/api/extract-text",
+        files=[("files", ("malware.exe", b"MZ\x90\x00", "application/x-dosexec"))],
+    )
+    assert res.status_code == 400
+    assert "Unsupported file format" in res.json().get("message", "")
+
+    # 3. Security headers: nosniff and no-store on API responses
+    res = client.get("/api/health")
+    assert res.headers.get("x-content-type-options") == "nosniff"
+    assert "no-store" in res.headers.get("cache-control", "")
+
+    # 4. Validation 422 does not leak python stack trace or model internals
+    res = client.post("/api/speak", json={"invalid_field": 123})
+    assert res.status_code == 422
+    assert "Invalid request parameters" in res.json().get("message", "")
+
+
+def test_1f_medicine_frequency_decoders():
+    """
+    1F Medicines Decoder:
+    - 'at bedtime' -> bedtime slot
+    - non-daily patterns ('once a week', 'weekly', 'alternate days') -> decoded: false, slots: []
+    - 'SOS' -> decoded: true, slots: []
+    """
+    from medicines import decode_medicine_frequency
+
+    # 1. Daily with bedtime
+    code, slots, food, dur, decoded = decode_medicine_frequency("0-0-1", raw_food="at bedtime", raw_duration=5)
+    assert code == "0-0-1"
+    assert slots == ["bedtime"]
+    assert food == "at_bedtime"
+    assert dur == 5
+    assert decoded is True
+
+    # 2. Word pattern at bedtime
+    code, slots, food, dur, decoded = decode_medicine_frequency("Take 1 tablet at bedtime", raw_duration=7)
+    assert slots == ["bedtime"]
+    assert decoded is True
+
+    # 3. Non-daily patterns
+    for non_daily in ["Once a week", "weekly", "Take once a week after food", "Alternate days"]:
+        code, slots, food, dur, decoded = decode_medicine_frequency(non_daily, raw_duration=56)
+        assert slots == [], f"Non-daily '{non_daily}' must have no daily slots"
+        assert decoded is False, f"Non-daily '{non_daily}' must have decoded=False"
+
+    # 4. SOS / As needed
+    code, slots, food, dur, decoded = decode_medicine_frequency("SOS", raw_duration=None)
+    assert code == "SOS"
+    assert slots == []
+    assert decoded is True
+
+
+def test_1f_multi_document_health_checkup_and_single_document(client):
+    """
+    1F Multi-document split & sections:
+    - Health checkup sample gives 3 parts [1,3], [4,4], [5,5], 6 sections, exactly 5 flag_printed values,
+      2 medicines, review action tagged to prescription, bill amounts.
+    - Single document sample returns no parts (parts is None).
+    """
+    from models import (
+        ReaderAction,
+        ReaderFact,
+        ReaderGlance,
+        ReaderGlanceKeyValue,
+        ReaderMedicine,
+        ReaderPart,
+        ReaderResponse,
+        ReaderSection,
+        ReaderSectionValue,
+    )
+
+    # 1. Multi-document: Health Checkup mock
+    mock_health_checkup = ReaderResponse(
+        doc_type="medical",
+        document_type="medical",
+        title="Executive Health Checkup Package Report for Mr. Prakash N.",
+        language="en",
+        document_language="en",
+        summary=[
+            "Your health checkup: a lab report, a prescription and a bill.",
+            "5 test values are outside the reference range.",
+        ],
+        actions=[
+            ReaderAction(
+                text="Show this report to your doctor for follow up on flagged values.",
+                quote="Please consult your doctor for interpretation.",
+                page=3,
+                part_id="part-1",
+            ),
+            ReaderAction(
+                text="Review on 15 Jan 2027 with repeat lipid profile and HbA1c.",
+                due_date="2027-01-15",
+                quote="Review on 15 Jan 2027",
+                page=4,
+                part_id="part-2",
+            ),
+        ],
+        facts=[
+            ReaderFact(text="Patient: Mr. Prakash N., 52 Y / M", quote="Mr. Prakash N.", page=1, part_id="part-1"),
+        ],
+        parts=[
+            ReaderPart(
+                part_id="part-1",
+                title="Lab Report for Mr. Prakash N.",
+                document_type="medical",
+                issuer="Green Leaf Diagnostics",
+                date_iso="2026-10-10",
+                pages=[1, 3],
+                sections=[
+                    ReaderSection(
+                        heading="Blood sugar",
+                        page=1,
+                        values=[
+                            ReaderSectionValue(label="Fasting blood sugar", value="118", unit="mg/dL", ref_range="70 – 100", flag_printed="High"),
+                            ReaderSectionValue(label="HbA1c", value="6.1", unit="%", ref_range="4.0 – 5.6", flag_printed="High"),
+                        ],
+                    ),
+                    ReaderSection(
+                        heading="Complete blood count",
+                        page=1,
+                        values=[
+                            ReaderSectionValue(label="Haemoglobin", value="14.2", unit="g/dL", ref_range="13.0 – 17.0", flag_printed=None),
+                            ReaderSectionValue(label="Total WBC count", value="7,200", unit="cells/cumm", ref_range="4,000 – 11,000", flag_printed=None),
+                            ReaderSectionValue(label="Platelet count", value="2.4", unit="lakh/cumm", ref_range="1.5 – 4.5", flag_printed=None),
+                        ],
+                    ),
+                    ReaderSection(
+                        heading="Lipid profile",
+                        page=2,
+                        values=[
+                            ReaderSectionValue(label="Total cholesterol", value="212", unit="mg/dL", ref_range="Below 200", flag_printed="High"),
+                            ReaderSectionValue(label="LDL", value="138", unit="mg/dL", ref_range="Below 130", flag_printed="High"),
+                            ReaderSectionValue(label="HDL", value="46", unit="mg/dL", ref_range="Above 40", flag_printed=None),
+                            ReaderSectionValue(label="Triglycerides", value="145", unit="mg/dL", ref_range="Below 150", flag_printed=None),
+                        ],
+                    ),
+                    ReaderSection(
+                        heading="Thyroid profile",
+                        page=3,
+                        values=[
+                            ReaderSectionValue(label="TSH", value="2.8", unit="mIU/L", ref_range="0.4 – 4.0", flag_printed=None),
+                        ],
+                    ),
+                    ReaderSection(
+                        heading="Kidney function",
+                        page=3,
+                        values=[
+                            ReaderSectionValue(label="Serum creatinine", value="0.9", unit="mg/dL", ref_range="0.7 – 1.3", flag_printed=None),
+                        ],
+                    ),
+                    ReaderSection(
+                        heading="Vitamins",
+                        page=3,
+                        values=[
+                            ReaderSectionValue(label="Vitamin D (25-OH)", value="18", unit="ng/mL", ref_range="30 – 100", flag_printed="Low"),
+                        ],
+                    ),
+                ],
+            ),
+            ReaderPart(
+                part_id="part-2",
+                title="Prescription by Dr. K. Menon",
+                document_type="medical",
+                issuer="Green Leaf Clinic",
+                date_iso="2026-10-12",
+                pages=[4, 4],
+                medicines=[
+                    ReaderMedicine(name="Atorvastatin", strength_text="10 mg", frequency_raw="0-0-1", food_timing="after_food", duration_days=30, quote="Atorvastatin", page=4),
+                    ReaderMedicine(name="Vitamin D3", strength_text="60,000 IU", frequency_raw="Once a week", food_timing="after_food", duration_days=56, quote="Vitamin D3", page=4),
+                ],
+            ),
+            ReaderPart(
+                part_id="part-3",
+                title="Bill GLD/B/2026/3307",
+                document_type="receipt",
+                issuer="Green Leaf Diagnostics",
+                date_iso="2026-10-10",
+                pages=[5, 5],
+                glance=ReaderGlance(
+                    headline="Total bill amount Rs. 3,500",
+                    key_values=[
+                        ReaderGlanceKeyValue(label="Total Amount", value="3,500", kind="amount"),
+                        ReaderGlanceKeyValue(label="Paid", value="3,500", kind="amount"),
+                    ],
+                ),
+            ),
+        ],
+    )
+
+    with patch("main.read_document", return_value=mock_health_checkup):
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("health_checkup.pdf", TINY_PDF, "application/pdf"))],
+            data={"lang": "en"},
+        )
+        assert res.status_code == 200
+        data = res.json()
+
+        # Multi-document checks
+        assert data.get("parts") is not None
+        assert len(data["parts"]) == 3
+        assert data["parts"][0]["pages"] == [1, 3]
+        assert data["parts"][1]["pages"] == [4, 4]
+        assert data["parts"][2]["pages"] == [5, 5]
+
+        # 6 sections in Part 1
+        part1_sections = data["parts"][0]["sections"]
+        assert len(part1_sections) == 6
+        section_headings = [s["heading"] for s in part1_sections]
+        assert section_headings == [
+            "Blood sugar",
+            "Complete blood count",
+            "Lipid profile",
+            "Thyroid profile",
+            "Kidney function",
+            "Vitamins",
+        ]
+
+        # Exactly 5 flag_printed values
+        all_flags = []
+        for s in part1_sections:
+            for v in s["values"]:
+                if v.get("flag_printed"):
+                    all_flags.append((v["label"], v["flag_printed"]))
+        assert len(all_flags) == 5
+        assert ("Fasting blood sugar", "High") in all_flags
+        assert ("HbA1c", "High") in all_flags
+        assert ("Total cholesterol", "High") in all_flags
+        assert ("LDL", "High") in all_flags
+        assert ("Vitamin D (25-OH)", "Low") in all_flags
+
+        # 2 medicines in Part 2
+        part2_meds = data["parts"][1]["medicines"]
+        assert len(part2_meds) == 2
+        assert part2_meds[0]["name"] == "Atorvastatin"
+        assert part2_meds[0]["decoded"] is True
+        assert part2_meds[1]["name"] == "Vitamin D3"
+        assert part2_meds[1]["decoded"] is False  # Weekly is non-daily
+
+        # Part 3 bill amounts
+        part3_glance = data["parts"][2]["glance"]
+        assert part3_glance is not None
+        assert part3_glance["key_values"][0]["value"] == "3,500"
+
+        # Action tagged to prescription
+        assert data["actions"][1]["part_id"] == "part-2"
+
+    # 2. Single document returns NO parts
+    mock_single_doc = ReaderResponse(
+        doc_type="insurance",
+        document_type="insurance",
+        title="Insurance Claim Settlement Letter",
+        language="en",
+        document_language="en",
+        summary=["Your claim was approved."],
+        actions=[ReaderAction(text="File grievance within 30 days.", quote="within 30 days", page=1)],
+        facts=[ReaderFact(text="Approved: Rs. 31,200", quote="Rs. 31,200", page=1)],
+        parts=None,
+    )
+
+    with patch("main.read_document", return_value=mock_single_doc):
+        res = client.post(
+            "/api/explain",
+            files=[("files", ("single_insurance.pdf", TINY_PDF, "application/pdf"))],
+            data={"lang": "en"},
+        )
+        assert res.status_code == 200
+        single_data = res.json()
+        assert single_data.get("parts") is None, "Single document upload must return parts=None"
+
+
+
 
 

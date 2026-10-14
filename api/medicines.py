@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 from models import MedicineInfo, ReaderMedicine
 
 VALID_SLOTS = ["morning", "afternoon", "evening", "night", "bedtime", "as_needed"]
-VALID_FOOD_TIMINGS = ["before_food", "after_food"]
+VALID_FOOD_TIMINGS = ["before_food", "after_food", "at_bedtime"]
 
 def decode_medicine_frequency(
     raw_freq: str,
@@ -27,11 +27,15 @@ def decode_medicine_frequency(
     food_timing: Optional[str] = None
     if raw_food in VALID_FOOD_TIMINGS:
         food_timing = raw_food
+    elif raw_food and "bedtime" in raw_food.lower():
+        food_timing = "at_bedtime"
     else:
         if re.search(r"\b(before\s+(food|meals?)|ac|empty\s+stomach)\b", freq_clean, re.IGNORECASE):
             food_timing = "before_food"
         elif re.search(r"\b(after\s+(food|meals?)|pc)\b", freq_clean, re.IGNORECASE):
             food_timing = "after_food"
+        elif re.search(r"\b(at\s+bedtime|bedtime)\b", freq_clean, re.IGNORECASE):
+            food_timing = "at_bedtime"
 
     # Check duration from raw text or raw_duration
     duration_days = raw_duration
@@ -45,6 +49,10 @@ def decode_medicine_frequency(
             duration_days = val * 30
         else:
             duration_days = val
+
+    # Non-daily patterns (weekly, alternate days, etc.) -> decoded: false, slots: []
+    if re.search(r"\b(ONCE\s+A\s+WEEK|WEEKLY|ALTERNATE\s+DAYS?|EVERY\s+OTHER\s+DAY)\b", upper):
+        return (freq_clean, [], food_timing, duration_days, False)
 
     # 1. Number pattern a-b-c(-d), e.g. 1-0-1, 1-1-1, 0-0-1, 1-1-1-1
     pattern_match = re.search(r"\b(\d+)\s*[-/]\s*(\d+)\s*[-/]\s*(\d+)(?:\s*[-/]\s*(\d+))?\b", freq_clean)
@@ -70,7 +78,10 @@ def decode_medicine_frequency(
             if int(a) > 0:
                 slots.append("afternoon")
             if int(e) > 0:
-                slots.append("night")
+                if re.search(r"\b(bedtime|at\s+bedtime|hs)\b", freq_clean, re.IGNORECASE) or food_timing == "at_bedtime":
+                    slots.append("bedtime")
+                else:
+                    slots.append("night")
         return (frequency_code, slots, food_timing, duration_days, decoded)
 
     # 2. Latin acronyms and common text patterns

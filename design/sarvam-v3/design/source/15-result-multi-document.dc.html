@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Result · Multi-document upload</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+.stack > *{flex-shrink:0}
+details > summary{list-style:none;cursor:pointer}
+details > summary::-webkit-details-marker{display:none}
+details[open] .chev{transform:rotate(180deg)}
+.chev{transition:transform .24s cubic-bezier(.2,.8,.2,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px) rotate(0)}to{opacity:1}}
+.pg{animation:pageIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.br{transform-origin:left center;animation:grow .6s cubic-bezier(.2,.8,.2,1) .45s both}
+@media (prefers-reduced-motion: reduce){.pg,.br{animation:none}.chev{transition:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 4540px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; position: relative; overflow: hidden">
+<div class="stack" style="padding: 16px 16px 140px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: center; gap: 10px">
+    <a href="Main.dc.html" aria-label="Back" style="width: 48px; height: 48px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <button style="flex: 1; height: 48px; border-radius: 24px; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px DM Sans, sans-serif; color: #1A1A1A"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"></path></svg>Auto · English<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    <button aria-label="Menu" style="width: 48px; height: 48px; flex: none; border-radius: 50%; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16"></path><path d="M4 15h10"></path></svg></button>
+  </div>
+
+  <!-- SUMMARY + WHAT IS IN THIS UPLOAD -->
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 5px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: #E2E5E0; font-size: 13px; font-weight: 700"><span style="width: 22px; height: 22px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h9l3 3v12H8z"></path><path d="M4 7v14h12"></path></svg></span>3 documents</span>
+      <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; font-size: 13px; font-weight: 600">PDF · 5 pages</span>
+      <button style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: transparent; font: 600 13px DM Sans, sans-serif; color: #1A1A1A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>View document</button>
+    </div>
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 32px; line-height: 1.08; letter-spacing: -0.4px">Your health checkup: a lab report, a prescription and a bill.</h1>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #575B58">IN THIS UPLOAD</span>
+      <div role="img" aria-label="Pages 1 to 3 are the lab report, page 4 is the prescription, page 5 is the bill" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; row-gap: 8px">
+        <sc-for list="{{pages}}" as="p" hint-placeholder-count="5">
+          <span class="pg" style="{{p.thumb}}">
+            <span style="{{p.l100}}"></span>
+            <span style="{{p.l70}}"></span>
+            <span style="{{p.l100}}"></span>
+            <span style="{{p.l50}}"></span>
+            <span style="margin-top: auto; align-self: center; font-size: 11px; font-weight: 700">{{p.n}}</span>
+          </span>
+        </sc-for>
+        <span class="br" style="grid-column: 1 / 4; height: 8px; border-radius: 4px; border: 1.5px solid #1A1A1A; background: #034F46"></span>
+        <span class="br" style="grid-column: 4 / 5; height: 8px; border-radius: 4px; border: 1.5px solid #1A1A1A; background: #D9603B"></span>
+        <span class="br" style="grid-column: 5 / 6; height: 8px; border-radius: 4px; border: 1.5px solid #1A1A1A; background: #E9B44C"></span>
+        <span style="grid-column: 1 / 4; font-size: 12.5px; font-weight: 700">Lab report</span>
+        <span style="grid-column: 4 / 5; font-size: 12.5px; font-weight: 700">Rx</span>
+        <span style="grid-column: 5 / 6; font-size: 12.5px; font-weight: 700">Bill</span>
+      </div>
+    </div>
+    <span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#034F46"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Split using the headings on your pages</span>
+  </section>
+
+  <!-- DOCUMENT TABS (sticky in the app, scroll-spy) -->
+  <nav aria-label="Documents in this upload" style="display: flex; gap: 8px; padding: 4px; border: 1.5px solid #1A1A1A; border-radius: 28px; background: #F4F5F2">
+    <a href="#doc-lab" aria-current="true" style="flex: 1.3; height: 44px; border-radius: 22px; background: #E9B44C; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 700; text-decoration: none"><span style="width: 20px; height: 20px; border-radius: 50%; background: #1A1A1A; color: #F4F5F2; font-size: 11px; display: flex; align-items: center; justify-content: center">1</span>Lab report</a>
+    <a href="#doc-rx" style="flex: 1.3; height: 44px; border-radius: 22px; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; text-decoration: none"><span style="width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; font-size: 11px; display: flex; align-items: center; justify-content: center">2</span>Prescription</a>
+    <a href="#doc-bill" style="flex: 0.8; height: 44px; border-radius: 22px; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; text-decoration: none"><span style="width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; font-size: 11px; display: flex; align-items: center; justify-content: center">3</span>Bill</a>
+  </nav>
+
+  <!-- LOOK AT THESE FIRST -->
+  <section style="background: #F8D9CB; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 4px">
+      <span style="width: 40px; height: 40px; flex: none; border-radius: 50%; background: #D9603B; border: 1.5px solid #1A1A1A; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5M12 16h.01"></path></svg></span>
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 26px; line-height: 1.1">Look at these first<span style="color: #D9603B">.</span></h2>
+    </div>
+    <p style="margin: 0 4px; font-size: 14.5px; line-height: 1.4">5 values are marked outside the range on your lab report.</p>
+    <div style="display: flex; flex-direction: column; background: #F4F5F2; border: 1.5px solid #1A1A1A; border-radius: 24px; padding: 2px 14px">
+      <sc-for list="{{flagged}}" as="f" hint-placeholder-count="5">
+        <a href="{{f.href}}" style="{{f.row}}">
+          <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 15px; font-weight: 700; line-height: 1.25">{{f.label}}</span><span style="font-size: 12px; color: #575B58">{{f.section}} · page {{f.page}}</span></span>
+          <span style="display: flex; align-items: baseline; gap: 3px; flex: none"><span style="font-family: 'Fraunces', serif; font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums">{{f.value}}</span><span style="font-size: 11.5px; font-weight: 600; color: #3B3E3C">{{f.unit}}</span></span>
+          <span style="{{f.flagStyle}}">{{f.flag}}</span>
+        </a>
+      </sc-for>
+    </div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; font-size: 12.5px; font-weight: 600"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#034F46"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Values and flags exactly as printed</span>
+  </section>
+
+  <!-- DOCUMENT 1: LAB REPORT -->
+  <div id="doc-lab" style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 0">
+    <span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #1A1A1A; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></span>
+    <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 11.5px; font-weight: 700; letter-spacing: 1.2px; color: #575B58">DOCUMENT 1 OF 3 · PAGES 1–3</span><span style="font-family: 'Fraunces', serif; font-size: 26px; line-height: 1.1">Lab report<span style="color: #D9603B">.</span></span><span style="font-size: 13px; color: #3B3E3C">Green Leaf Diagnostics · Oct 10, 2026</span></span>
+  </div>
+
+  <sc-for list="{{sectionsOut}}" as="s" hint-placeholder-count="3">
+    <details open style="border: 1.5px solid #1A1A1A; border-radius: 28px; background: #F4F5F2; overflow: hidden">
+      <summary style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 44px">
+        <span style="{{s.tile}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{s.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0"><span style="font-size: 16px; font-weight: 700; line-height: 1.2">{{s.heading}}</span><span style="font-size: 12px; color: #575B58">{{s.count}} · page {{s.page}}</span></span>
+        <span style="{{s.pill}}">{{s.status}}</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex: none"><path d="M6 9l6 6 6-6"></path></svg>
+      </summary>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 14px 14px">
+        <sc-for list="{{s.values}}" as="v" hint-placeholder-count="2">
+          <div style="{{v.box}}">
+            <span style="font-size: 12.5px; font-weight: 600; color: #3B3E3C; line-height: 1.25">{{v.label}}</span>
+            <span style="display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap"><span style="font-family: 'Fraunces', serif; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums">{{v.value}}</span><span style="font-size: 12px; font-weight: 600; color: #3B3E3C">{{v.unit}}</span></span>
+            <span style="font-size: 11.5px; color: #575B58">{{v.ref}}</span>
+            <span style="{{v.flagStyle}}">{{v.flag}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </details>
+  </sc-for>
+  <sc-for list="{{sectionsIn}}" as="s" hint-placeholder-count="3">
+    <details style="border: 1.5px solid #1A1A1A; border-radius: 28px; background: #F4F5F2; overflow: hidden">
+      <summary style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 44px">
+        <span style="{{s.tile}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{s.ink}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0"><span style="font-size: 16px; font-weight: 700; line-height: 1.2">{{s.heading}}</span><span style="font-size: 12px; color: #575B58">{{s.count}} · page {{s.page}}</span></span>
+        <span style="{{s.pill}}">{{s.status}}</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex: none"><path d="M6 9l6 6 6-6"></path></svg>
+      </summary>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 14px 14px">
+        <sc-for list="{{s.values}}" as="v" hint-placeholder-count="2">
+          <div style="{{v.box}}">
+            <span style="font-size: 12.5px; font-weight: 600; color: #3B3E3C; line-height: 1.25">{{v.label}}</span>
+            <span style="display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap"><span style="font-family: 'Fraunces', serif; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums">{{v.value}}</span><span style="font-size: 12px; font-weight: 600; color: #3B3E3C">{{v.unit}}</span></span>
+            <span style="font-size: 11.5px; color: #575B58">{{v.ref}}</span>
+            <span style="{{v.flagStyle}}">{{v.flag}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </details>
+  </sc-for>
+
+  <section style="background: #E9B44C; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E9B44C" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"></path></svg></span>
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">In simple words<span style="color: #D9603B">.</span></h2>
+    </div>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">The lab report has six parts. The lab marked <b>blood sugar</b>, <b>two cholesterol values</b> and <b>vitamin D</b> outside its normal range.</p>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">Blood count, thyroid and kidney values are within range. The report asks you to consult your doctor.</p>
+  </section>
+
+  <section style="background: #D9603B; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 16px 18px; display: flex; gap: 12px; align-items: center">
+    <span style="width: 36px; height: 36px; flex: none; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9603B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg></span>
+    <span style="font-size: 14.5px; line-height: 1.4"><b>Not a diagnosis.</b> Sarvam explains what is printed. Only your doctor can say what it means for you.</span>
+  </section>
+
+  <!-- DOCUMENT 2: PRESCRIPTION -->
+  <div id="doc-rx" style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 0">
+    <span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #1A1A1A; background: #CFE5E0; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 15.5l8-8a4 4 0 0 1 5.6 5.6l-8 8a4 4 0 0 1-5.6-5.6z"></path><path d="M8.5 11.5l5.6 5.6"></path></svg></span>
+    <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 11.5px; font-weight: 700; letter-spacing: 1.2px; color: #575B58">DOCUMENT 2 OF 3 · PAGE 4</span><span style="font-family: 'Fraunces', serif; font-size: 26px; line-height: 1.1">Prescription<span style="color: #D9603B">.</span></span><span style="font-size: 13px; color: #3B3E3C">Dr. K. Menon, Green Leaf Clinic · Oct 12, 2026</span></span>
+  </div>
+
+  <section style="background: #CFE5E0; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 18px 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px">
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 25px">2 medicines<span style="color: #D9603B">.</span></h2>
+      <span style="flex: none; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 12px; border: 1.5px solid #1A1A1A; background: #F4F5F2">Review Jan 15</span>
+    </div>
+    <div style="background: #F4F5F2; border: 1.5px solid #1A1A1A; border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+        <span style="font-size: 17px; font-weight: 700">Atorvastatin <span style="font-weight: 500; color: #3B3E3C">10 mg</span></span>
+        <span style="flex: none; font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; padding: 2px 8px; border: 1.5px solid #1A1A1A; border-radius: 8px">0-0-1</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 15px; border: 1.5px solid #1A1A1A; font-size: 12.5px; font-weight: 700; background: #1A1A1A; color: #F4F5F2">Night 9:00</span></div>
+      <span style="font-size: 13.5px; color: #3B3E3C">After food · 30 days</span>
+    </div>
+    <div style="background: #F4F5F2; border: 1.5px solid #1A1A1A; border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+        <span style="font-size: 17px; font-weight: 700">Vitamin D3 <span style="font-weight: 500; color: #3B3E3C">60,000 IU</span></span>
+        <span style="flex: none; font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700; padding: 2px 8px; border: 1.5px solid #1A1A1A; border-radius: 8px">Once a week</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 15px; border: 1.5px dashed #1A1A1A; font-size: 12.5px; font-weight: 700; background: rgba(233,180,76,.22)">Pick a day and time</span></div>
+      <span style="font-size: 13.5px; color: #3B3E3C">After food · 8 weeks</span>
+    </div>
+    <a href="RemindersRx.dc.html" style="height: 52px; margin: 2px 4px 0; box-sizing: border-box; border-radius: 26px; border: 1.5px solid #1A1A1A; background: #E9B44C; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 700; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect><path d="M3.5 10h17M12 13v5M9.5 15.5h5"></path></svg>Set medicine reminders</a>
+  </section>
+
+  <!-- DOCUMENT 3: BILL -->
+  <div id="doc-bill" style="display: flex; align-items: center; gap: 12px; padding: 8px 4px 0">
+    <span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #1A1A1A; background: #E9B44C; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></span>
+    <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 11.5px; font-weight: 700; letter-spacing: 1.2px; color: #575B58">DOCUMENT 3 OF 3 · PAGE 5</span><span style="font-family: 'Fraunces', serif; font-size: 26px; line-height: 1.1">Bill<span style="color: #D9603B">.</span></span><span style="font-size: 13px; color: #3B3E3C">Green Leaf Diagnostics · Oct 10, 2026</span></span>
+  </div>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1.5px solid #1A1A1A; border-radius: 24px; overflow: hidden">
+      <div style="padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; border-right: 1.5px solid #1A1A1A"><span style="font-size: 12px; font-weight: 600; color: #3B3E3C; line-height: 1.25">Checkup package</span><span style="font-family: 'Fraunces', serif; font-size: 19px; line-height: 1; white-space: nowrap">₹3,499</span></div>
+      <div style="padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; background: #CFE5E0; border-right: 1.5px solid #1A1A1A"><span style="font-size: 12px; font-weight: 600; color: #3B3E3C; line-height: 1.25">Consultation</span><span style="font-family: 'Fraunces', serif; font-size: 19px; line-height: 1; white-space: nowrap">₹500</span></div>
+      <div style="padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; background: #E9B44C"><span style="font-size: 12px; font-weight: 700; color: #1A1A1A; line-height: 1.25">Total paid</span><span style="font-family: 'Fraunces', serif; font-size: 19px; line-height: 1; white-space: nowrap">₹3,999</span></div>
+    </div>
+    <span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#034F46"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Paid by UPI on Oct 10 · nothing left to pay</span>
+  </section>
+
+  <!-- ACTIONS ACROSS ALL DOCUMENTS -->
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 25px; white-space: nowrap">What you need to do<span style="color: #D9603B">.</span></h2>
+      <span style="flex: none; white-space: nowrap; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 12px; border: 1.5px solid #1A1A1A">0 of 3 done</span>
+    </div>
+    <label style="display: flex; gap: 14px; align-items: flex-start">
+      <input type="checkbox" style="width: 26px; height: 26px; margin: 2px 0 0; accent-color: #034F46; flex: none">
+      <span style="display: flex; flex-direction: column; gap: 8px"><span style="font-size: 16px; line-height: 1.45">Show the lab report to your doctor.</span><span style="align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 10px; border: 1.5px solid #1A1A1A; background: #CFE5E0">From: Lab report</span></span>
+    </label>
+    <label style="display: flex; gap: 14px; align-items: flex-start; padding-top: 14px; border-top: 1.5px solid #E2E5E0">
+      <input type="checkbox" style="width: 26px; height: 26px; margin: 2px 0 0; accent-color: #034F46; flex: none">
+      <span style="display: flex; flex-direction: column; gap: 8px"><span style="font-size: 16px; line-height: 1.45">Take the medicines as written: Atorvastatin for 30 days, Vitamin D3 for 8 weeks.</span><span style="align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 10px; border: 1.5px solid #1A1A1A; background: #F8D9CB">From: Prescription</span></span>
+    </label>
+    <label style="display: flex; gap: 14px; align-items: flex-start; padding-top: 14px; border-top: 1.5px solid #E2E5E0">
+      <input type="checkbox" style="width: 26px; height: 26px; margin: 2px 0 0; accent-color: #034F46; flex: none">
+      <span style="display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 16px; line-height: 1.45">Review visit with repeat lipid profile and HbA1c.</span>
+        <span style="display: flex; flex-wrap: wrap; gap: 8px">
+          <span style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: #F8D9CB; border: 1.5px solid #1A1A1A; box-sizing: border-box; font-size: 13px; font-weight: 700">Jan 15, 2027</span>
+          <a href="Reminders.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; box-sizing: border-box; border-radius: 17px; border: 1.5px solid #1A1A1A; background: #E9B44C; color: #1A1A1A; font-size: 13px; font-weight: 700; text-decoration: none">Remind me</a>
+        </span>
+        <span style="align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 10px; border: 1.5px solid #1A1A1A; background: #F8D9CB">From: Prescription</span>
+      </span>
+    </label>
+  </section>
+
+  <section style="background: #1A1A1A; color: #F4F5F2; border-radius: 40px; padding: 22px 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">Key facts<span style="color: #D9603B">.</span></h2>
+    <sc-for list="{{facts}}" as="f" hint-placeholder-count="4">
+      <div style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #383B39; align-items: flex-start">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #D9603B; color: #1A1A1A; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">{{f.n}}</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; line-height: 1.45; color: #E4E7E3">{{f.label}} <b style="color: #F4F5F2">{{f.value}}</b></span><span style="font-size: 12px; color: #B3B8B3">{{f.doc}}</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" role="img" aria-label="Found in your document" style="flex: none; margin-top: 3px"><circle cx="12" cy="12" r="10" fill="#CFE5E0"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#034F46" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </sc-for>
+    <button style="margin-top: 8px; height: 46px; border-radius: 23px; border: 1.5px solid #F4F5F2; background: transparent; color: #F4F5F2; font: 700 14px DM Sans, sans-serif">Show all 8 facts</button>
+  </section>
+</div>
+
+  <nav aria-label="Actions" style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px 26px; background: #F4F5F2; border-top: 1.5px solid #1A1A1A; display: flex; gap: 10px; align-items: center">
+    <a href="Listen.dc.html" style="flex: 1.2; height: 56px; box-sizing: border-box; border-radius: 28px; background: #1A1A1A; color: #F4F5F2; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 700; text-decoration: none"><span style="width: 32px; height: 32px; border-radius: 50%; background: #D9603B; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="#1A1A1A"></path></svg></span>Listen</a>
+    <a href="Ask.dc.html" style="flex: 1; height: 56px; box-sizing: border-box; border-radius: 28px; background: #E9B44C; border: 1.5px solid #1A1A1A; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 700; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Ask</a>
+    <a href="Share.dc.html" aria-label="Share or save" style="width: 56px; height: 56px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":4540}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const flagCss = {
+      Low: 'background:#F8D9CB;color:#1A1A1A',
+      High: 'background:#D9603B;color:#1A1A1A',
+      'In range': 'background:#CFE5E0;color:#1A1A1A'
+    };
+    const flagStyle = (f) => 'flex:none;align-self:center;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;border:1.5px solid #1A1A1A;' + flagCss[f];
+    const tileFlag = (f) => 'align-self:flex-start;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;border:1.5px solid #1A1A1A;' + flagCss[f];
+    const box = 'display:flex;flex-direction:column;gap:6px;padding:12px;border:1.5px solid #1A1A1A;border-radius:22px;background:#F4F5F2';
+
+    const pageCol = ['#034F46', '#034F46', '#034F46', '#D9603B', '#E9B44C'];
+    const pages = [1, 2, 3, 4, 5].map((n, i) => ({
+      n,
+      thumb: 'height:78px;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:12px;padding:9px 7px 5px;display:flex;flex-direction:column;gap:5px;animation-delay:' + (i * 0.07).toFixed(2) + 's;background:' + (i < 3 ? '#CFE5E0' : i === 3 ? '#F8D9CB' : '#FBEBC4'),
+      l100: 'height:3px;border-radius:2px;background:' + pageCol[i],
+      l70: 'height:3px;width:70%;border-radius:2px;background:' + pageCol[i],
+      l50: 'height:3px;width:50%;border-radius:2px;background:' + pageCol[i]
+    }));
+
+    const flagged = [
+      { label: 'Fasting blood sugar', section: 'Blood sugar', page: 1, value: '118', unit: 'mg/dL', flag: 'High' },
+      { label: 'HbA1c', section: 'Blood sugar', page: 1, value: '6.1', unit: '%', flag: 'High' },
+      { label: 'Total cholesterol', section: 'Lipid profile', page: 2, value: '212', unit: 'mg/dL', flag: 'High' },
+      { label: 'LDL cholesterol', section: 'Lipid profile', page: 2, value: '138', unit: 'mg/dL', flag: 'High' },
+      { label: 'Vitamin D (25-OH)', section: 'Vitamins', page: 3, value: '18', unit: 'ng/mL', flag: 'Low' }
+    ].map((f, i) => ({ ...f, href: '#doc-lab', flagStyle: flagStyle(f.flag), row: 'display:flex;align-items:center;gap:10px;padding:12px 0;text-decoration:none;color:#1A1A1A;' + (i ? 'border-top:1.5px solid #E2E5E0' : '') }));
+
+    const ICON = {
+      sugar: ['M12 3c3.5 4.5 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.5-6.5 6-11z', '#D9603B', '#1A1A1A'],
+      lipid: ['M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z', '#F8D9CB', '#1A1A1A'],
+      vit: ['M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7', '#E9B44C', '#1A1A1A'],
+      blood: ['M5 12h3l2-5 4 10 2-5h3', '#034F46', '#F4F5F2'],
+      thyroid: ['M8 5c-2 2-3 5-2 9s3 5 4 3l2-4 2 4c1 2 3 1 4-3s0-7-2-9', '#CFE5E0', '#1A1A1A'],
+      kidney: ['M9 4c-3 0-5 3.5-5 8s2 8 5 8 4-3 3-5-2-3 0-5 1-6-3-6zM15 4c3 0 5 3.5 5 8s-2 8-5 8', '#CFE5E0', '#1A1A1A']
+    };
+    const V = (label, value, unit, ref, flag) => ({ label, value, unit, ref, flag, box, flagStyle: tileFlag(flag) });
+    const S = (heading, page, ic, values, open) => {
+      const out = values.filter((v) => v.flag !== 'In range').length;
+      const allIn = out === 0;
+      return {
+        heading, page, values,
+        icon: ICON[ic][0], ink: ICON[ic][2],
+        tile: 'width:38px;height:38px;flex:none;box-sizing:border-box;border-radius:50%;border:1.5px solid #1A1A1A;display:flex;align-items:center;justify-content:center;background:' + ICON[ic][1],
+        count: values.length + (values.length === 1 ? ' value' : ' values'),
+        status: allIn ? (values.length === 1 ? 'In range' : 'All in range') : out + ' outside',
+        pill: 'flex:none;white-space:nowrap;font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;border:1.5px solid #1A1A1A;background:' + (allIn ? '#CFE5E0' : '#D9603B')
+      };
+    };
+    const sections = [
+      S('Blood sugar', 1, 'sugar', [V('Fasting blood sugar', '118', 'mg/dL', 'Range 70 – 100', 'High'), V('HbA1c', '6.1', '%', 'Range 4.0 – 5.6', 'High')], true),
+      S('Lipid profile', 2, 'lipid', [V('Total cholesterol', '212', 'mg/dL', 'Below 200', 'High'), V('LDL cholesterol', '138', 'mg/dL', 'Below 130', 'High'), V('HDL cholesterol', '46', 'mg/dL', 'Above 40', 'In range'), V('Triglycerides', '145', 'mg/dL', 'Below 150', 'In range')], true),
+      S('Vitamins', 3, 'vit', [V('Vitamin D (25-OH)', '18', 'ng/mL', 'Range 30 – 100', 'Low')], true),
+      S('Complete blood count', 1, 'blood', [V('Haemoglobin', '14.2', 'g/dL', 'Range 13.0 – 17.0', 'In range'), V('Total WBC count', '7,200', 'cells/cumm', '4,000 – 11,000', 'In range'), V('Platelet count', '2.4', 'lakh/cumm', 'Range 1.5 – 4.5', 'In range')], false),
+      S('Thyroid profile', 3, 'thyroid', [V('TSH', '2.8', 'mIU/L', 'Range 0.4 – 4.0', 'In range')], false),
+      S('Kidney function', 3, 'kidney', [V('Serum creatinine', '0.9', 'mg/dL', 'Range 0.7 – 1.3', 'In range')], false)
+    ];
+    const facts = [
+      { n: 1, label: 'Patient', value: 'Prakash N.', doc: 'Lab report, prescription, bill' },
+      { n: 2, label: 'Lab number', value: 'GL-2026-55821', doc: 'Lab report · page 1' },
+      { n: 3, label: 'Referred by', value: 'Dr. K. Menon', doc: 'Lab report · page 1' },
+      { n: 4, label: 'Bill number', value: 'GLD/B/2026/3307', doc: 'Bill · page 5' }
+    ];
+    return { pages, flagged, sectionsOut: sections.slice(0, 3), sectionsIn: sections.slice(3), facts };
+  }
+}
+</script>
+</body>
+</html>

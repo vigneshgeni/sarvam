@@ -10,7 +10,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globIgnores: ['**/samples/**', '**/sample-*'],
+        skipWaiting: true,
+        clientsClaim: true,
+        globIgnores: ['**/samples/**', '**/sample-*', '**/fixtures/**', '**/*fixture*'],
         navigateFallbackDenylist: [/^\/api\/.*/],
         runtimeCaching: [
           {

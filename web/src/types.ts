@@ -35,6 +35,7 @@ export interface ExplainAction {
   quote: string
   page: number
   evidence: EvidenceType | string
+  part_id?: string
 }
 
 export interface ExplainWarning {
@@ -42,6 +43,7 @@ export interface ExplainWarning {
   quote: string
   page: number
   evidence: 'matched' | 'check_original' | string
+  part_id?: string
 }
 
 export interface ExplainFact {
@@ -49,6 +51,7 @@ export interface ExplainFact {
   quote: string
   page: number
   evidence: 'matched' | 'check_original' | string
+  part_id?: string
 }
 
 export interface EvidenceSummary {
@@ -129,6 +132,46 @@ export interface ExplainResponse {
   medicines?: MedicineItem[]
   spoken_summary?: string
   source_text?: string | null
+  parts?: Part[]
+  sections?: Section[]
+}
+
+export interface SectionValue {
+  label: string
+  name?: string
+  value: string
+  unit?: string
+  ref_range?: string
+  range?: string
+  flag_printed?: 'High' | 'Low' | 'In range' | null
+  flag?: string
+  evidence?: string
+}
+
+export interface Section {
+  heading: string
+  title?: string
+  page: number
+  values: SectionValue[]
+}
+
+export interface KeyPoint {
+  text: string
+  quote?: string
+}
+
+export interface Part {
+  part_id: string
+  title: string
+  document_type: string
+  issuer?: string
+  date_iso?: string
+  pages: [number, number]
+  glance?: GlanceSection
+  sections?: Section[]
+  medicines?: MedicineItem[]
+  key_points?: (string | KeyPoint)[]
+  summary_lines?: string[]
 }
 
 export interface AskResponse {

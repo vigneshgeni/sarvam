@@ -38,8 +38,9 @@ import {
   getGoogleCalendarUrl,
   type CalendarEventInput,
 } from '../utils/ics'
-import { buildSharedText, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { buildShare, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { pushBrowserHistory } from '../utils/history'
+import { useOverlayRestore } from '../hooks/useOverlayRestore'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -113,6 +114,19 @@ export default function ResultScreen({
   // Document preview state (Item 9)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewFiles, setPreviewFiles] = useState<PreviewFileItem[]>([])
+
+  // 1B Overlay safeguard: close dangling overlays or restore data on returning from WhatsApp / external app
+  useOverlayRestore({
+    currentData: result,
+    onClose: () => {
+      setIsListenOpen(false)
+      setIsAskOpen(false)
+      setIsShareOpen(false)
+      setIsRemindersOpen(false)
+      setSourceViewer({ isOpen: false })
+      setIsPreviewOpen(false)
+    },
+  })
 
   const hasDocumentPreview = files && files.length > 0 && files.some((f) => f.size > 0)
   const isPhoto =
@@ -340,7 +354,8 @@ export default function ResultScreen({
     }
   }
 
-  const sharedText = buildSharedText(result, contentLang, hidePersonal)
+  const sharePayload = buildShare(result, { hidePersonal, lang: contentLang })
+  const sharedText = sharePayload.text
 
   const handleCopyShared = async () => {
     const ok = await copyToClipboard(sharedText)
@@ -1135,7 +1150,7 @@ export default function ResultScreen({
               </button>
               <button
                 type="button"
-                onClick={() => shareToEmail(result.title, sharedText)}
+                onClick={() => shareToEmail(sharePayload.title, sharedText)}
                 className="btn-press h-11 rounded-xl border border-[#E6E6E1] bg-white text-[#15171A] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#F0F0EB]"
               >
                 {t.shareViaEmail || 'Email'}

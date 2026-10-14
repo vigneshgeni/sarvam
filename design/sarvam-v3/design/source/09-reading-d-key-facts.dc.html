@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reading D · finding key facts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+@keyframes lens{0%{transform:translate(0,0)}22%{transform:translate(58px,46px)}44%{transform:translate(4px,96px)}66%{transform:translate(60px,128px)}88%{transform:translate(8px,18px)}100%{transform:translate(0,0)}}
+@keyframes pop{0%,8%{opacity:0;transform:scale(.4) translateY(8px)}16%{opacity:1;transform:scale(1.08)}22%,82%{opacity:1;transform:scale(1)}92%,100%{opacity:0;transform:scale(.9)}}
+@keyframes mark{0%,12%{background:#E2E5E0}20%,80%{background:var(--hl)}92%,100%{background:#E2E5E0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1)}}
+.lens{position:absolute;left:96px;top:44px;animation:lens 4.4s cubic-bezier(.45,0,.25,1) infinite}
+.chip{position:absolute;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:17px;font-size:13px;font-weight:700;opacity:0;animation:pop 4.4s ease-out infinite}
+.mk{display:block;height:7px;border-radius:4px;background:#E2E5E0;animation:mark 4.4s ease-out infinite}
+.spin{animation:spin 1s linear infinite}
+.tw{position:absolute;width:10px;height:10px;border-radius:50%;animation:twinkle 2.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.lens,.chip,.mk,.spin,.tw{animation:none}.chip{opacity:1}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 24px; justify-content: space-between; overflow: hidden">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" aria-label="Back" style="width: 48px; height: 48px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #1A1A1A; background: #CFE5E0; font-size: 13px; font-weight: 700"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#034F46" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Processing securely</span>
+  </div>
+
+  <div role="img" aria-label="Sarvam finding the amounts, dates and IDs in your document" style="height: 300px; background: #CFE5E0; border: 1.5px solid #1A1A1A; box-sizing: border-box; border-radius: 40px; position: relative; overflow: hidden">
+    <span class="tw" aria-hidden="true" style="left: 30px; top: 30px; background: #D9603B"></span>
+    <span class="tw" aria-hidden="true" style="right: 36px; bottom: 30px; background: #034F46; animation-delay: .7s"></span>
+    <span class="tw" aria-hidden="true" style="left: 46px; bottom: 54px; background: #E9B44C; animation-delay: 1.4s"></span>
+
+    <div aria-hidden="true" style="position: absolute; left: 78px; top: 40px; width: 150px; height: 214px; box-sizing: border-box; border: 1.5px solid #1A1A1A; border-radius: 18px; background: #F4F5F2; padding: 18px 14px; display: flex; flex-direction: column; gap: 11px">
+      <span style="height: 9px; width: 58%; border-radius: 5px; background: #1A1A1A"></span>
+      <span class="mk" style="width: 92%; --hl: #E2E5E0"></span>
+      <span class="mk" style="width: 70%; --hl: #E9B44C; animation-delay: .7s"></span>
+      <span class="mk" style="width: 86%; --hl: #E2E5E0"></span>
+      <span class="mk" style="width: 62%; --hl: #F8D9CB; animation-delay: 1.7s"></span>
+      <span class="mk" style="width: 90%; --hl: #E2E5E0"></span>
+      <span class="mk" style="width: 54%; --hl: #CFE5E0; animation-delay: 2.7s"></span>
+      <span class="mk" style="width: 80%; --hl: #E2E5E0"></span>
+      <span class="mk" style="width: 66%; --hl: #E2E5E0"></span>
+    </div>
+
+    <div class="lens" aria-hidden="true">
+      <svg width="78" height="88" viewBox="0 0 78 88">
+        <circle cx="34" cy="34" r="28" fill="#F4F5F2" fill-opacity=".35" stroke="#1A1A1A" stroke-width="2"></circle>
+        <circle cx="34" cy="34" r="22" fill="none" stroke="#D9603B" stroke-width="6"></circle>
+        <path d="M54 56l16 18" stroke="#1A1A1A" stroke-width="9" stroke-linecap="round"></path>
+        <path d="M54 56l16 18" stroke="#D9603B" stroke-width="5" stroke-linecap="round"></path>
+        <path d="M22 24a14 14 0 0 1 12-6" fill="none" stroke="#F4F5F2" stroke-width="3" stroke-linecap="round"></path>
+      </svg>
+    </div>
+
+    <span class="chip" style="right: 18px; top: 52px; background: #E9B44C; animation-delay: .7s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5h10M7 9h10M7 5c6 0 6 8 0 8l7 7"></path></svg>Amount</span>
+    <span class="chip" style="right: 14px; top: 132px; background: #F8D9CB; animation-delay: 1.7s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect><path d="M3.5 10h17"></path></svg>Due date</span>
+    <span class="chip" style="left: 14px; top: 200px; background: #1A1A1A; color: #F4F5F2; animation-delay: 2.7s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>To-do</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.3px">electricity-bill.pdf</h1>
+    <p style="margin: 0; font-size: 15px; color: #575B58">Finding amounts, dates and what to do</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; padding: 6px 18px 16px; border-radius: 32px; border: 1.5px solid #1A1A1A">
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span style="width: 30px; height: 30px; flex: none; border-radius: 50%; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Reading your document</span><span style="font-size: 13px; font-weight: 700; color: #034F46">Done</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1.5px solid #E2E5E0">
+      <span aria-hidden="true" class="spin" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 3.5px solid #F8D9CB; border-top-color: #D9603B; border-right-color: #D9603B"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 600">Checking against the document</span>
+    </span>
+    <span style="display: flex; align-items: center; gap: 14px; padding: 12px 0">
+      <span aria-hidden="true" style="width: 30px; height: 30px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px dashed #A4A9A4"></span>
+      <span style="flex: 1; font-size: 16px; font-weight: 500; color: #575B58">Writing in English</span>
+    </span>
+    <span aria-hidden="true" style="display: block; height: 10px; border-radius: 5px; border: 1.5px solid #1A1A1A; overflow: hidden; margin-top: 4px"><span style="display: block; width: 52%; height: 100%; background: #D9603B"></span></span>
+  </div>
+
+  <a href="Main.dc.html" style="align-self: center; display: inline-flex; align-items: center; height: 48px; padding: 0 28px; border-radius: 24px; border: 1.5px solid #1A1A1A; color: #1A1A1A; font-size: 16px; font-weight: 700; text-decoration: none">Cancel</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Result · Lab report</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#034F46}a:hover{color:#1A1A1A}
+.stack > *{flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 2200px; box-sizing: border-box; background: #F4F5F2; font-family: DM Sans, system-ui, sans-serif; color: #1A1A1A; position: relative; overflow: hidden">
+<div class="stack" style="padding: 16px 16px 140px; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: center; gap: 10px">
+    <a href="Main.dc.html" aria-label="Back" style="width: 48px; height: 48px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <button style="flex: 1; height: 48px; border-radius: 24px; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px DM Sans, sans-serif; color: #1A1A1A"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"></path></svg>Auto · English<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    <button aria-label="Menu" style="width: 48px; height: 48px; flex: none; border-radius: 50%; background: transparent; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 9h16"></path><path d="M4 15h10"></path></svg></button>
+  </div>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 5px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: #CFE5E0; font-size: 13px; font-weight: 700"><span style="width: 22px; height: 22px; border-radius: 50%; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path></svg></span>Lab report</span>
+      <span style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; font-size: 13px; font-weight: 600">Oct 9, 2026</span>
+      <button style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid #1A1A1A; background: transparent; font: 600 13px DM Sans, sans-serif; color: #1A1A1A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>View document</button>
+    </div>
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 34px; line-height: 1.05; letter-spacing: -0.4px">Blood test from City Diagnostics: 2 values are marked outside the normal range.</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{values}}" as="v" hint-placeholder-count="4">
+        <div style="{{v.box}}">
+          <span style="font-size: 12.5px; font-weight: 600; color: #3B3E3C; line-height: 1.25">{{v.label}}</span>
+          <span style="display: flex; align-items: baseline; gap: 4px"><span style="font-family: 'Fraunces', serif; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums">{{v.value}}</span><span style="font-size: 12.5px; font-weight: 600; color: #3B3E3C">{{v.unit}}</span></span>
+          <span style="font-size: 11.5px; color: #575B58">{{v.ref}}</span>
+          <span style="{{v.flagStyle}}">{{v.flag}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#034F46"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Values and flags exactly as printed on your report</span>
+  </section>
+
+  <section style="background: #E9B44C; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 40px; height: 40px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E9B44C" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z"></path></svg></span>
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">In simple words<span style="color: #D9603B">.</span></h2>
+    </div>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">This is a blood test from City Diagnostics, dated 9 October 2026.</p>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">The lab marked <b>haemoglobin as low</b> and <b>fasting sugar as high</b> compared with its normal range. Cholesterol is within the range.</p>
+    <p style="margin: 0; font-size: 16.5px; line-height: 1.5">Show this report to your doctor. Only your doctor can say what these numbers mean for you.</p>
+  </section>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px">
+      <h2 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 400; font-size: 25px; white-space: nowrap">What you need to do<span style="color: #D9603B">.</span></h2>
+      <span style="flex: none; white-space: nowrap; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 12px; border: 1.5px solid #1A1A1A">0 of 1 done</span>
+    </div>
+    <label style="display: flex; gap: 14px; align-items: flex-start">
+      <input type="checkbox" style="width: 26px; height: 26px; margin: 2px 0 0; accent-color: #034F46; flex: none">
+      <span style="font-size: 16px; line-height: 1.45">Take this report to your doctor. The lab suggests a follow-up for the values it marked.</span>
+    </label>
+  </section>
+
+  <section style="background: #D9603B; border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start">
+    <span style="width: 40px; height: 40px; flex: none; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D9603B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg></span>
+    <span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; font-weight: 700">Not a diagnosis</span><span style="font-size: 15.5px; line-height: 1.45">Sarvam explains what is printed. It does not interpret your health.</span></span>
+  </section>
+
+  <section style="border: 1.5px solid #1A1A1A; border-radius: 32px; padding: 8px 16px; display: flex; flex-direction: column">
+    <h2 style="margin: 12px 4px 6px; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">Places &amp; contacts<span style="color: #D9603B">.</span></h2>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 4px; border-top: 1.5px solid #E2E5E0">
+      <span style="width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; background: #034F46; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4F5F2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path></svg></span>
+      <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 12.5px; font-weight: 600; color: #575B58">Lab</span><span style="font-size: 15px; font-weight: 600; line-height: 1.3">City Diagnostics, 2nd Main, Indiranagar</span></span>
+      <button style="flex: none; height: 40px; padding: 0 14px; border-radius: 20px; border: 1.5px solid #1A1A1A; background: transparent; font: 700 13px DM Sans, sans-serif">Directions</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 14px 4px; border-top: 1.5px solid #E2E5E0">
+      <span style="width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; background: #E9B44C; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg></span>
+      <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 12.5px; font-weight: 600; color: #575B58">Lab phone</span><span style="font-size: 15px; font-weight: 600">080 0000 0000</span></span>
+      <button style="flex: none; height: 40px; padding: 0 14px; border-radius: 20px; border: 1.5px solid #1A1A1A; background: #E9B44C; font: 700 13px DM Sans, sans-serif">Call</button>
+    </div>
+  </section>
+
+  <section style="background: #1A1A1A; color: #F4F5F2; border-radius: 40px; padding: 22px 20px; display: flex; flex-direction: column; gap: 4px">
+    <h2 style="margin: 0 0 8px; font-family: 'Fraunces', serif; font-weight: 400; font-size: 28px">Key facts<span style="color: #D9603B">.</span></h2>
+    <sc-for list="{{facts}}" as="f" hint-placeholder-count="3">
+      <div style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #383B39; align-items: flex-start">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #D9603B; color: #1A1A1A; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">{{f.n}}</span>
+        <span style="flex: 1; font-size: 15.5px; line-height: 1.45; color: #E4E7E3">{{f.label}} <b style="color: #F4F5F2">{{f.value}}</b></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" role="img" aria-label="Found in your document" style="flex: none; margin-top: 3px"><circle cx="12" cy="12" r="10" fill="#CFE5E0"></circle><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#034F46" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </sc-for>
+  </section>
+</div>
+
+  <nav aria-label="Actions" style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px 26px; background: #F4F5F2; border-top: 1.5px solid #1A1A1A; display: flex; gap: 10px; align-items: center">
+    <a href="Listen.dc.html" style="flex: 1.2; height: 56px; box-sizing: border-box; border-radius: 28px; background: #1A1A1A; color: #F4F5F2; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 700; text-decoration: none"><span style="width: 32px; height: 32px; border-radius: 50%; background: #D9603B; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="#1A1A1A"></path></svg></span>Listen</a>
+    <a href="Ask.dc.html" style="flex: 1; height: 56px; box-sizing: border-box; border-radius: 28px; background: #E9B44C; border: 1.5px solid #1A1A1A; color: #1A1A1A; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 700; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Ask</a>
+    <a href="Share.dc.html" aria-label="Share or save" style="width: 56px; height: 56px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1A1A1A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const flags = {
+      Low: 'background:#F8D9CB;color:#1A1A1A',
+      High: 'background:#D9603B;color:#1A1A1A',
+      'In range': 'background:#CFE5E0;color:#1A1A1A',
+      '': 'display:none'
+    };
+    const values = [
+      { label: 'Haemoglobin', value: '11.2', unit: 'g/dL', ref: 'Range 13.0 – 17.0', flag: 'Low', bg: '#F4F5F2' },
+      { label: 'Fasting blood sugar', value: '126', unit: 'mg/dL', ref: 'Range 70 – 100', flag: 'High', bg: '#F4F5F2' },
+      { label: 'Total cholesterol', value: '182', unit: 'mg/dL', ref: 'Below 200', flag: 'In range', bg: '#F4F5F2' },
+      { label: 'Report date', value: '9 Oct', unit: '2026', ref: 'Sample collected 8 Oct', flag: '', bg: '#CFE5E0' }
+    ].map((v) => ({ ...v, box: 'display:flex;flex-direction:column;gap:6px;padding:14px;border:1.5px solid #1A1A1A;border-radius:22px;background:' + v.bg, flagStyle: 'align-self:flex-start;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;border:1.5px solid #1A1A1A;' + flags[v.flag] }));
+    const facts = [
+      { n: 1, label: 'Test', value: 'Blood count, blood sugar, lipid profile' },
+      { n: 2, label: 'Referred by', value: 'Dr. A. Rao' },
+      { n: 3, label: 'Lab number', value: 'CD-2026-11873' }
+    ];
+    return { values, facts };
+  }
+}
+</script>
+</body>
+</html>
