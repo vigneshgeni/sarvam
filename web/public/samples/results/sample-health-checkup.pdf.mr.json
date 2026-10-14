@@ -1,0 +1,760 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "document_kind": "lab_report",
+  "profile": null,
+  "document_language": "en",
+  "title": "वैद्यकीय नोंदी: प्रयोगशाळा अहवाल, औषधोपचार चिठ्ठी आणि बिल",
+  "report_title": "एक्झिक्युटिव्ह हेल्थ चेकअप",
+  "report_date": "10 Oct 2026",
+  "report_date_iso": "2026-10-10",
+  "language": "mr",
+  "letter_date": "2026-10-10",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Prakash N. यांचा आरोग्य तपासणी अहवाल, डॉक्टरांची औषधोपचार चिठ्ठी आणि पावती.",
+    "key_values": [
+      {
+        "label": "रुग्णाचे नाव",
+        "value": "Mr. Prakash N.",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "प्रयोगशाळा क्रमांक",
+        "value": "GL-2026-55821",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "उपाशीपोटी रक्तातील साखर",
+        "value": "118 mg/dL",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "HbA1c",
+        "value": "6.1 %",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "एकूण भरलेली रक्कम",
+        "value": "3,999.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "पुढील तपासणीची तारीख",
+        "value": "15 Jan 2027",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "या कागदपत्रांमध्ये Green Leaf Diagnostics चा 3 पानांचा प्रयोगशाळा अहवाल, Dr. K. Menon यांची औषधोपचार चिठ्ठी आणि एक पेमेंट पावती समाविष्ट आहे.",
+    "प्रयोगशाळा अहवालात रक्तातील साखर, HbA1c, कोलेस्टेरॉल जास्त आणि व्हिटॅमिन डी चे प्रमाण कमी असल्याचे दिसून येते.",
+    "Dr. Menon यांनी 30 दिवसांसाठी अ‍ॅटोर्वास्टॅटिन आणि 8 आठवड्यांसाठी व्हिटॅमिन डी3 लिहून दिले आहे, तसेच 15 Jan 2027 रोजी पुन्हा तपासणी करण्यास सांगितले आहे."
+  ],
+  "spoken_summary": "हे वैद्यकीय नोंदी: प्रयोगशाळा अहवाल, औषधोपचार चिठ्ठी आणि बिल याविषयीचे अधिकृत कागदपत्र आहे. कृपया महत्त्वाचे तपशील तपासा. अ‍ॅटोर्वास्टॅटिन 10 mg ची गोळी 30 दिवस रोज रात्री जेवणानंतर एकदा घ्या.",
+  "actions": [
+    {
+      "text": "अ‍ॅटोर्वास्टॅटिन 10 mg ची गोळी 30 दिवस रोज रात्री जेवणानंतर एकदा घ्या",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": 30,
+      "deadline_anchor": null,
+      "recurrence": "दररोज रात्री एकदा",
+      "date_status": "recurring",
+      "quote": "1. Tab. Atorvastatin 10 mg\n0 - 0 - 1 after food x 30 days",
+      "page": 4,
+      "evidence": "matched",
+      "part_id": "part-2"
+    },
+    {
+      "text": "व्हिटॅमिन डी3 60,000 IU ची कॅप्सूल 8 आठवडे आठवड्यातून एकदा जेवणानंतर घ्या",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": 56,
+      "deadline_anchor": null,
+      "recurrence": "आठवड्यातून एकदा",
+      "date_status": "recurring",
+      "quote": "2. Cap. Vitamin D3 60,000 IU\nOnce a week after food x 8 weeks",
+      "page": 4,
+      "evidence": "matched",
+      "part_id": "part-2"
+    },
+    {
+      "text": "15 Jan 2027 रोजी पुन्हा लिपिड प्रोफाइल आणि HbA1c चाचण्या करून तपासणीसाठी जा",
+      "due_date": "2027-01-15",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Review on 15 Jan 2027 with repeat lipid profile and HbA1c.",
+      "page": 4,
+      "evidence": "matched",
+      "part_id": "part-2"
+    },
+    {
+      "text": "हा अहवाल समजून घेण्यासाठी आपल्या डॉक्टरांना दाखवा",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "Values outside the reference range are flagged. Please consult your doctor for interpretation.",
+      "page": 3,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "सामान्य मर्यादेबाहेरील मूल्यांवर खूण केली आहे आणि यासाठी डॉक्टरांचा सल्ला घेणे आवश्यक आहे",
+      "quote": "Values outside the reference range are flagged. Please consult your doctor for interpretation.",
+      "page": 3,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "रुग्णाचे नाव Mr. Prakash N., 52 वर्षे पुरुष आहे",
+      "quote": "Patient Mr. Prakash N.\nAge / Sex 52 Y / M",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "प्रयोगशाळा चाचणी संदर्भ क्रमांक GL-2026-55821 आहे",
+      "quote": "Lab No. GL-2026-55821",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Dr. K. Menon यांनी शिफारस केली आहे",
+      "quote": "Referred by Dr. K. Menon",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "अहवाल तपासणारे पॅथॉलॉजिस्ट Dr. P. Iyer, MD (Pathology) हे आहेत",
+      "quote": "Dr. P. Iyer, MD (Pathology)",
+      "page": 3,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "12 Oct 2026 रोजी आरोग्य तपासणीच्या पुनरावलोकनासाठी भेट दिली होती",
+      "quote": "Date 12 Oct 2026\nVisit Health checkup review",
+      "page": 4,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-2"
+    },
+    {
+      "text": "पावती क्रमांक GLD/B/2026/3307 ची एकूण भरलेली रक्कम UPI द्वारे 3,999.00 रुपये आहे",
+      "quote": "Bill No. GLD/B/2026/3307\nTotal paid 3,999.00\nReceived with thanks by UPI on 10 Oct 2026.",
+      "page": 5,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-3"
+    }
+  ],
+  "places": [
+    {
+      "label": "निदान केंद्राचा पत्ता",
+      "address": "14, Lake Road, Anand Nagar",
+      "quote": "14, Lake Road, Anand Nagar",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Green Leaf Diagnostics फोन",
+      "value": "080 1111 2222",
+      "quote": "Ph: 080 1111 2222",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "Green Leaf Clinic फोन",
+      "value": "080 1111 3333",
+      "quote": "Ph: 080 1111 3333",
+      "page": 4,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [
+    {
+      "name": "Tab. Atorvastatin",
+      "strength_text": "10 mg",
+      "frequency_raw": "0 - 0 - 1",
+      "frequency_code": "0-0-1",
+      "slots": [
+        "night"
+      ],
+      "food_timing": "after_food",
+      "duration_days": 30,
+      "instruction_text": "30 दिवस रोज रात्री जेवणानंतर 1 गोळी घ्या",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "1. Tab. Atorvastatin 10 mg\n0 - 0 - 1 after food x 30 days",
+      "page": 4,
+      "evidence": "matched"
+    },
+    {
+      "name": "Cap. Vitamin D3",
+      "strength_text": "60,000 IU",
+      "frequency_raw": "Once a week",
+      "frequency_code": "Once a week",
+      "slots": [],
+      "food_timing": "after_food",
+      "duration_days": 56,
+      "instruction_text": "8 आठवडे आठवड्यातून एकदा जेवणानंतर 1 कॅप्सूल घ्या",
+      "decoded": false,
+      "as_needed": false,
+      "quote": "2. Cap. Vitamin D3 60,000 IU\nOnce a week after food x 8 weeks",
+      "page": 4,
+      "evidence": "matched"
+    }
+  ],
+  "conflicts": [],
+  "parts": [
+    {
+      "part_id": "part-1",
+      "title": "प्रयोगशाळा अहवाल",
+      "document_type": "medical",
+      "document_kind": "lab_report",
+      "profile": null,
+      "issuer": "Green Leaf Diagnostics",
+      "date_iso": "2026-10-10",
+      "pages": [
+        1,
+        3
+      ],
+      "glance": {
+        "headline": "Diagnostic test report with blood sugar, lipid, CBC, kidney and vitamin profiles.",
+        "key_values": [
+          {
+            "label": "Fasting Blood Sugar",
+            "value": "118 mg/dL",
+            "kind": "text",
+            "evidence": "check_original"
+          },
+          {
+            "label": "HbA1c",
+            "value": "6.1 %",
+            "kind": "text",
+            "evidence": "check_original"
+          },
+          {
+            "label": "Total Cholesterol",
+            "value": "212 mg/dL",
+            "kind": "text",
+            "evidence": "check_original"
+          },
+          {
+            "label": "Vitamin D (25-OH)",
+            "value": "18 ng/mL",
+            "kind": "text",
+            "evidence": "check_original"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "heading": "रक्तातील साखर",
+          "heading_printed": "BLOOD SUGAR",
+          "page": 1,
+          "values": [
+            {
+              "label": "Fasting blood sugar",
+              "value": "118",
+              "unit": "mg/dL",
+              "ref_range": "70 - 100",
+              "flag_printed": "High",
+              "quote": "Fasting blood sugar 118 mg/dL 70 - 100 High",
+              "page": 1,
+              "evidence": "matched"
+            },
+            {
+              "label": "HbA1c",
+              "value": "6.1",
+              "unit": "%",
+              "ref_range": "4.0 - 5.6",
+              "flag_printed": "High",
+              "quote": "HbA1c 6.1 % 4.0 - 5.6 High",
+              "page": 1,
+              "evidence": "matched"
+            }
+          ]
+        },
+        {
+          "heading": "संपूर्ण रक्त तपासणी (सीबीसी)",
+          "heading_printed": "COMPLETE BLOOD COUNT",
+          "page": 1,
+          "values": [
+            {
+              "label": "Haemoglobin",
+              "value": "14.2",
+              "unit": "g/dL",
+              "ref_range": "13.0 - 17.0",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            },
+            {
+              "label": "Total WBC count",
+              "value": "7,200",
+              "unit": "cells/cumm",
+              "ref_range": "4,000 - 11,000",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            },
+            {
+              "label": "Platelet count",
+              "value": "2.4",
+              "unit": "lakh/cumm",
+              "ref_range": "1.5 - 4.5",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            }
+          ]
+        },
+        {
+          "heading": "लिपिड प्रोफाइल",
+          "heading_printed": "LIPID PROFILE",
+          "page": 2,
+          "values": [
+            {
+              "label": "Total cholesterol",
+              "value": "212",
+              "unit": "mg/dL",
+              "ref_range": "Below 200",
+              "flag_printed": "High",
+              "quote": "Total cholesterol 212 mg/dL Below 200 High",
+              "page": 2,
+              "evidence": "matched"
+            },
+            {
+              "label": "LDL cholesterol",
+              "value": "138",
+              "unit": "mg/dL",
+              "ref_range": "Below 130",
+              "flag_printed": "High",
+              "quote": "LDL cholesterol 138 mg/dL Below 130 High",
+              "page": 2,
+              "evidence": "matched"
+            },
+            {
+              "label": "HDL cholesterol",
+              "value": "46",
+              "unit": "mg/dL",
+              "ref_range": "Above 40",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            },
+            {
+              "label": "Triglycerides",
+              "value": "145",
+              "unit": "mg/dL",
+              "ref_range": "Below 150",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            }
+          ]
+        },
+        {
+          "heading": "थायरॉईड प्रोफाइल",
+          "heading_printed": "THYROID PROFILE",
+          "page": 3,
+          "values": [
+            {
+              "label": "TSH",
+              "value": "2.8",
+              "unit": "mIU/L",
+              "ref_range": "0.4 - 4.0",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            }
+          ]
+        },
+        {
+          "heading": "मूत्रपिंडाचे कार्य",
+          "heading_printed": "KIDNEY FUNCTION",
+          "page": 3,
+          "values": [
+            {
+              "label": "Serum creatinine",
+              "value": "0.9",
+              "unit": "mg/dL",
+              "ref_range": "0.7 - 1.3",
+              "flag_printed": null,
+              "quote": "",
+              "page": 0,
+              "evidence": "matched"
+            }
+          ]
+        },
+        {
+          "heading": "व्हिटॅमिन्स",
+          "heading_printed": "VITAMINS",
+          "page": 3,
+          "values": [
+            {
+              "label": "Vitamin D (25-OH)",
+              "value": "18",
+              "unit": "ng/mL",
+              "ref_range": "30 - 100",
+              "flag_printed": "Low",
+              "quote": "Vitamin D (25-OH) 18 ng/mL 30 - 100 Low",
+              "page": 3,
+              "evidence": "matched"
+            }
+          ]
+        }
+      ],
+      "medicines": null,
+      "key_points": [
+        "Fasting blood sugar is 118 mg/dL (High)",
+        "HbA1c is 6.1 % (High)",
+        "Total cholesterol is 212 mg/dL (High)",
+        "Vitamin D is 18 ng/mL (Low)"
+      ],
+      "summary_lines": [
+        "या प्रयोगशाळा चाचणी अहवालात रक्तातील साखर, लिपिड प्रोफाइल, सीबीसी, थायरॉईड, मूत्रपिंडाचे कार्य आणि व्हिटॅमिनच्या पातळीचा समावेश आहे.",
+        "रक्तातील साखर, HbA1c, एकूण कोलेस्टेरॉल आणि एलडीएल कोलेस्टेरॉलचे प्रमाण जास्त आढळले आहे.",
+        "व्हिटॅमिन डी 18 ng/mL इतके कमी आढळले आहे."
+      ]
+    },
+    {
+      "part_id": "part-2",
+      "title": "औषधोपचार चिठ्ठी",
+      "document_type": "medical",
+      "document_kind": "prescription",
+      "profile": null,
+      "issuer": "Green Leaf Clinic",
+      "date_iso": "2026-10-12",
+      "pages": [
+        4,
+        4
+      ],
+      "glance": {
+        "headline": "Doctor prescription for cholesterol and Vitamin D treatment.",
+        "key_values": [
+          {
+            "label": "Doctor",
+            "value": "Dr. K. Menon",
+            "kind": "text",
+            "evidence": "matched"
+          },
+          {
+            "label": "Review Date",
+            "value": "15 Jan 2027",
+            "kind": "date",
+            "evidence": "matched"
+          }
+        ]
+      },
+      "sections": null,
+      "medicines": [
+        {
+          "name": "Tab. Atorvastatin",
+          "strength_text": "10 mg",
+          "frequency_raw": "0 - 0 - 1",
+          "frequency_code": "0-0-1",
+          "slots": [
+            "night"
+          ],
+          "food_timing": "after_food",
+          "duration_days": 30,
+          "instruction_text": "Take 1 tablet at night after food for 30 days",
+          "decoded": true,
+          "as_needed": false,
+          "quote": "1. Tab. Atorvastatin 10 mg\n0 - 0 - 1 after food x 30 days",
+          "page": 4,
+          "evidence": "matched"
+        },
+        {
+          "name": "Cap. Vitamin D3",
+          "strength_text": "60,000 IU",
+          "frequency_raw": "Once a week",
+          "frequency_code": "Once a week",
+          "slots": [],
+          "food_timing": "after_food",
+          "duration_days": 56,
+          "instruction_text": "Take 1 capsule once a week after food for 8 weeks",
+          "decoded": false,
+          "as_needed": false,
+          "quote": "2. Cap. Vitamin D3 60,000 IU\nOnce a week after food x 8 weeks",
+          "page": 4,
+          "evidence": "matched"
+        }
+      ],
+      "key_points": [
+        "Prescribed Tab. Atorvastatin 10 mg daily at night for 30 days",
+        "Prescribed Cap. Vitamin D3 60,000 IU once weekly for 8 weeks",
+        "Repeat lipid profile and HbA1c tests for review on 15 Jan 2027"
+      ],
+      "summary_lines": [
+        "आरोग्य तपासणीच्या पुनरावलोकनानंतर Dr. K. Menon यांनी ही औषधोपचार चिठ्ठी दिली आहे.",
+        "यामध्ये कोलेस्टेरॉल नियंत्रण आणि व्हिटॅमिन डी च्या कमतरतेसाठी औषधे आहेत.",
+        "15 Jan 2027 रोजी पुन्हा रक्ताच्या चाचण्यांसह पुढील भेटीची विनंती केली आहे."
+      ]
+    },
+    {
+      "part_id": "part-3",
+      "title": "बिल पावती",
+      "document_type": "receipt",
+      "document_kind": "receipt",
+      "profile": null,
+      "issuer": "Green Leaf Diagnostics",
+      "date_iso": "2026-10-10",
+      "pages": [
+        5,
+        5
+      ],
+      "glance": {
+        "headline": "Paid receipt of Rs. 3,999.00 for health checkup package and consultation.",
+        "key_values": [
+          {
+            "label": "Bill Number",
+            "value": "GLD/B/2026/3307",
+            "kind": "text",
+            "evidence": "matched"
+          },
+          {
+            "label": "Total Paid",
+            "value": "3,999.00",
+            "kind": "amount",
+            "evidence": "matched"
+          },
+          {
+            "label": "Payment Mode",
+            "value": "UPI",
+            "kind": "text",
+            "evidence": "matched"
+          }
+        ]
+      },
+      "sections": null,
+      "medicines": null,
+      "key_points": [
+        "Executive health checkup package: Rs. 3,499.00",
+        "Doctor consultation: Rs. 500.00",
+        "Total amount of Rs. 3,999.00 paid in full via UPI"
+      ],
+      "summary_lines": [
+        "आरोग्य पॅकेज आणि तपासणीसाठी Green Leaf Diagnostics कडून मिळालेली पावती.",
+        "10 Oct 2026 रोजी UPI द्वारे 3,999.00 रुपयांचे पूर्ण पेमेंट प्राप्त झाले."
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "heading": "रक्तातील साखर",
+      "heading_printed": "BLOOD SUGAR",
+      "page": 1,
+      "values": [
+        {
+          "label": "Fasting blood sugar",
+          "value": "118",
+          "unit": "mg/dL",
+          "ref_range": "70 - 100",
+          "flag_printed": "High",
+          "quote": "Fasting blood sugar 118 mg/dL 70 - 100 High",
+          "page": 1,
+          "evidence": "matched"
+        },
+        {
+          "label": "HbA1c",
+          "value": "6.1",
+          "unit": "%",
+          "ref_range": "4.0 - 5.6",
+          "flag_printed": "High",
+          "quote": "HbA1c 6.1 % 4.0 - 5.6 High",
+          "page": 1,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "संपूर्ण रक्त तपासणी (सीबीसी)",
+      "heading_printed": "COMPLETE BLOOD COUNT",
+      "page": 1,
+      "values": [
+        {
+          "label": "Haemoglobin",
+          "value": "14.2",
+          "unit": "g/dL",
+          "ref_range": "13.0 - 17.0",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        },
+        {
+          "label": "Total WBC count",
+          "value": "7,200",
+          "unit": "cells/cumm",
+          "ref_range": "4,000 - 11,000",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        },
+        {
+          "label": "Platelet count",
+          "value": "2.4",
+          "unit": "lakh/cumm",
+          "ref_range": "1.5 - 4.5",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "लिपिड प्रोफाइल",
+      "heading_printed": "LIPID PROFILE",
+      "page": 2,
+      "values": [
+        {
+          "label": "Total cholesterol",
+          "value": "212",
+          "unit": "mg/dL",
+          "ref_range": "Below 200",
+          "flag_printed": "High",
+          "quote": "Total cholesterol 212 mg/dL Below 200 High",
+          "page": 2,
+          "evidence": "matched"
+        },
+        {
+          "label": "LDL cholesterol",
+          "value": "138",
+          "unit": "mg/dL",
+          "ref_range": "Below 130",
+          "flag_printed": "High",
+          "quote": "LDL cholesterol 138 mg/dL Below 130 High",
+          "page": 2,
+          "evidence": "matched"
+        },
+        {
+          "label": "HDL cholesterol",
+          "value": "46",
+          "unit": "mg/dL",
+          "ref_range": "Above 40",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        },
+        {
+          "label": "Triglycerides",
+          "value": "145",
+          "unit": "mg/dL",
+          "ref_range": "Below 150",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "थायरॉईड प्रोफाइल",
+      "heading_printed": "THYROID PROFILE",
+      "page": 3,
+      "values": [
+        {
+          "label": "TSH",
+          "value": "2.8",
+          "unit": "mIU/L",
+          "ref_range": "0.4 - 4.0",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "मूत्रपिंडाचे कार्य",
+      "heading_printed": "KIDNEY FUNCTION",
+      "page": 3,
+      "values": [
+        {
+          "label": "Serum creatinine",
+          "value": "0.9",
+          "unit": "mg/dL",
+          "ref_range": "0.7 - 1.3",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "व्हिटॅमिन्स",
+      "heading_printed": "VITAMINS",
+      "page": 3,
+      "values": [
+        {
+          "label": "Vitamin D (25-OH)",
+          "value": "18",
+          "unit": "ng/mL",
+          "ref_range": "30 - 100",
+          "flag_printed": "Low",
+          "quote": "Vitamin D (25-OH) 18 ng/mL 30 - 100 Low",
+          "page": 3,
+          "evidence": "matched"
+        }
+      ]
+    }
+  ],
+  "evidence_summary": {
+    "matched": 8,
+    "check_original": 3,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "Green Leaf Diagnostics\nExecutive Health Checkup  ·  14, Lake Road, Anand Nagar  ·  Ph: 080 1111 2222\nPatient\nMr. Prakash N.\nLab No.\nGL-2026-55821\nAge / Sex\n52 Y / M\nSample collected\n10 Oct 2026\nReferred by\nDr. K. Menon\nReport date\n10 Oct 2026\nBLOOD SUGAR\nTest\nResult\nUnit\nReference range\nFlag\nFasting blood sugar\n118\nmg/dL\n70 - 100\nHigh\nHbA1c\n6.1\n%\n4.0 - 5.6\nHigh\nCOMPLETE BLOOD COUNT\nTest\nResult\nUnit\nReference range\nFlag\nHaemoglobin\n14.2\ng/dL\n13.0 - 17.0\nTotal WBC count\n7,200\ncells/cumm\n4,000 - 11,000\nPlatelet count\n2.4\nlakh/cumm\n1.5 - 4.5\nPage 1 of 5\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n\n\nGreen Leaf Diagnostics\nExecutive Health Checkup  ·  14, Lake Road, Anand Nagar  ·  Ph: 080 1111 2222\nPatient\nMr. Prakash N.\nLab No.\nGL-2026-55821\nAge / Sex\n52 Y / M\nSample collected\n10 Oct 2026\nReferred by\nDr. K. Menon\nReport date\n10 Oct 2026\nLIPID PROFILE\nTest\nResult\nUnit\nReference range\nFlag\nTotal cholesterol\n212\nmg/dL\nBelow 200\nHigh\nLDL cholesterol\n138\nmg/dL\nBelow 130\nHigh\nHDL cholesterol\n46\nmg/dL\nAbove 40\nTriglycerides\n145\nmg/dL\nBelow 150\nPage 2 of 5\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n\n\nGreen Leaf Diagnostics\nExecutive Health Checkup  ·  14, Lake Road, Anand Nagar  ·  Ph: 080 1111 2222\nPatient\nMr. Prakash N.\nLab No.\nGL-2026-55821\nAge / Sex\n52 Y / M\nSample collected\n10 Oct 2026\nReferred by\nDr. K. Menon\nReport date\n10 Oct 2026\nTHYROID PROFILE\nTest\nResult\nUnit\nReference range\nFlag\nTSH\n2.8\nmIU/L\n0.4 - 4.0\nKIDNEY FUNCTION\nTest\nResult\nUnit\nReference range\nFlag\nSerum creatinine\n0.9\nmg/dL\n0.7 - 1.3\nVITAMINS\nTest\nResult\nUnit\nReference range\nFlag\nVitamin D (25-OH)\n18\nng/mL\n30 - 100\nLow\nValues outside the reference range are flagged. Please consult your doctor for interpretation.\n--- End of laboratory report ---\nDr. P. Iyer, MD (Pathology)\nPage 3 of 5\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n\n\nGreen Leaf Clinic\nDr. K. Menon, MBBS, MD (Internal Medicine)  ·  Reg. No. 00000 (sample)  ·  Ph: 080 1111 3333\nPatient\nMr. Prakash N.\nDate\n12 Oct 2026\nAge / Sex\n52 Y / M\nVisit\nHealth checkup review\nRx\n 1. Tab. Atorvastatin 10 mg\n 0 - 0 - 1   after food   x 30 days\n2. Cap. Vitamin D3 60,000 IU\n Once a week   after food   x 8 weeks\nReview on 15 Jan 2027 with repeat lipid profile and HbA1c.\nDr. K. Menon\nPage 4 of 5\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n\n\nGreen Leaf Diagnostics\nBill / Receipt  ·  GSTIN: not applicable (sample)\nPatient\nMr. Prakash N.\nBill No.\nGLD/B/2026/3307\nBill date\n10 Oct 2026\nMode\nUPI\nDescription\nAmount (Rs.)\nExecutive health checkup package\n3,499.00\nDoctor consultation\n500.00\nTotal paid\n3,999.00\nReceived with thanks by UPI on 10 Oct 2026. This is a computer generated receipt.\nPage 5 of 5\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "Green Leaf Diagnostics",
+    "Green Leaf Clinic",
+    "Mr. Prakash N.",
+    "Dr. K. Menon",
+    "Dr. P. Iyer",
+    "GL-2026-55821",
+    "GLD/B/2026/3307",
+    "14, Lake Road, Anand Nagar",
+    "080 1111 2222",
+    "080 1111 3333"
+  ]
+}

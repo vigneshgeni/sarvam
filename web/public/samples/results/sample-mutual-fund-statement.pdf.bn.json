@@ -1,0 +1,293 @@
+{
+  "doc_type": "bank",
+  "document_type": "bank",
+  "document_kind": "investment",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "মিউচুয়াল ফান্ড অ্যাকাউন্ট বিবরণী",
+  "report_title": "অ্যাকাউন্ট বিবরণী",
+  "report_date": "30-Sep-2026",
+  "report_date_iso": null,
+  "language": "bn",
+  "letter_date": "2026-09-30",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Suryodaya Mutual Fund বিবরণী দেখাচ্ছে বর্তমান বিনিয়োগ মূল্য Rs. 1,24,300.00।",
+    "key_values": [
+      {
+        "label": "ফোলিও নম্বর",
+        "value": "1234567/89",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "মোট বিনিয়োগ",
+        "value": "Rs. 1,10,000.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "বাজার মূল্য",
+        "value": "Rs. 1,24,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "লাভ",
+        "value": "Rs. 14,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "মোট ইউনিট",
+        "value": "2,200.00",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "পরবর্তী SIP-র তারিখ",
+        "value": "05-Oct-2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "এটি Ms. Meera Iyer-এর জন্য Suryodaya Mutual Fund-এর একটি অ্যাকাউন্ট বিবরণী, যার সময়কাল 01-Apr-2026 থেকে 30-Sep-2026 পর্যন্ত।",
+    "Suryodaya Flexi Cap Fund-এ 2,200.00 ইউনিটে মোট Rs. 1,10,000.00 বিনিয়োগ করা হয়েছে।",
+    "30-Sep-2026 অনুযায়ী মোট বাজার মূল্য হলো Rs. 1,24,300.00, যা Rs. 14,300.00 লাভ দেখাচ্ছে।",
+    "Rs. 10,000-এর পরবর্তী SIP কিস্তি 05-Oct-2026 তারিখে জমা হওয়ার কথা রয়েছে।"
+  ],
+  "spoken_summary": "এটি Meera Iyer-এর জন্য Suryodaya Mutual Fund-এর একটি অ্যাকাউন্ট বিবরণী। Flexi Cap Fund-এ আপনার মোট বিনিয়োগ হলো Rs. 1,10,000.00। 30 সেপ্টেম্বর 2026 অনুযায়ী, এর বাজার মূল্য হলো Rs. 1,24,300.00, যাতে আপনার লাভ হয়েছে Rs. 14,300.00। আপনার পরবর্তী Rs. 10,000-এর SIP 05 অক্টোবর 2026 তারিখে জমা হওয়ার কথা। আপনি যদি এটি বন্ধ বা পরিবর্তন করতে চান, তবে সেই তারিখের অন্তত 10 দিন আগে আবেদন করুন।",
+  "actions": [
+    {
+      "text": "আপনি যদি আপনার SIP বন্ধ বা পরিবর্তন করতে চান, তবে পরবর্তী তারিখের অন্তত 10 দিন আগে আবেদন করুন।",
+      "due_date": "2026-10-10",
+      "deadline_rule": "পরবর্তী তারিখের অন্তত 10 দিন আগে",
+      "deadline_days": 10,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "To stop or change your SIP, apply at least 10 days before the next date.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "মিউচুয়াল ফান্ডে বিনিয়োগ বাজারগত ঝুঁকির সাপেক্ষ, এবং অতীতের ভালো ফল ভবিষ্যতে বজায় নাও থাকতে পারে।",
+      "quote": "Mutual fund investments are subject to market risks. Read all scheme related documents carefully. Past performance may or may not be sustained in future.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "বিনিয়োগকারীর নাম Ms. Meera Iyer।",
+      "quote": "Ms. Meera Iyer",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ফোলিও নম্বর হলো 1234567/89।",
+      "quote": "Folio No. 1234567/89",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "পার্মানেন্ট অ্যাকাউন্ট নম্বর (PAN) হলো ABCPI1234K।",
+      "quote": "PAN ABCPI1234K",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "স্কিমের নাম হলো Suryodaya Flexi Cap Fund - Direct Plan - Growth।",
+      "quote": "Scheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "মাসিক SIP কিস্তি হলো প্রতি মাসের 5 তারিখে Rs. 10,000।",
+      "quote": "SIP: Rs. 10,000 on 5th of every month",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "মোট বিনিয়োগ করা অর্থের পরিমাণ হলো Rs. 1,10,000.00।",
+      "quote": "Total amount invested (cost) Rs. 1,10,000.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-Sep-2026 অনুযায়ী বিনিয়োগের বাজার মূল্য হলো Rs. 1,24,300.00।",
+      "quote": "Market value Rs. 1,24,300.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-Sep-2026 তারিখে নেট অ্যাসেট ভ্যালু (NAV) হলো Rs. 56.50।",
+      "quote": "NAV on 30-Sep-2026 Rs. 56.50",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "বিনিয়োগকারীর ঠিকানা",
+      "address": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "quote": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "বিনিয়োগকারীর ইমেল",
+      "value": "meera.iyer@example.com",
+      "quote": "Email: meera.iyer@example.com",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "বিনিয়োগকারীর মোবাইল নম্বর",
+      "value": "+91 98450 11223",
+      "quote": "Mobile: +91 98450 11223",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "বিনিয়োগকারী সেবা হেল্পলাইন",
+      "value": "1800 000 1111",
+      "quote": "Investor service: 1800 000 1111 (toll free)",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "বিনিয়োগকারী সেবা ইমেল",
+      "value": "service@suryodaya-mf.example",
+      "quote": "service@suryodaya-mf.example",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 9,
+    "check_original": 0,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "Suryodaya Mutual Fund\nAccount Statement  ·  Period: 01-Apr-2026 to 30-Sep-2026\nInvestor\nMs. Meera Iyer\nNo. 21, 4th Main, Malleswaram, Bengaluru 560003\nEmail: meera.iyer@example.com   Mobile: +91 98450 11223\nFolio No.\n1234567/89\nPAN\nABCPI1234K\nScheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth\nNominee: Registered    ·    Mode of holding: Single    ·    SIP: Rs. 10,000 on 5th of every month\nDate\nTransaction\nAmount (Rs.)\nNAV (Rs.)\nUnits\nBalance units\n01-Apr-2026\nOpening balance (cost Rs. 50,000.00)\n1,113.24\n05-Apr-2026\nSIP purchase\n10,000.00\n52.10\n191.94\n1,305.18\n05-May-2026\nSIP purchase\n10,000.00\n53.40\n187.27\n1,492.45\n05-Jun-2026\nSIP purchase\n10,000.00\n55.05\n181.65\n1,674.10\n06-Jul-2026\nSIP purchase\n10,000.00\n56.30\n177.62\n1,851.72\n05-Aug-2026\nSIP purchase\n10,000.00\n57.10\n175.13\n2,026.85\n05-Sep-2026\nSIP purchase\n10,000.00\n57.75\n173.15*\n2,200.00\n* After stamp duty. Units shown up to 2 decimals.\nSummary as on 30-Sep-2026\nTotal amount invested (cost)\nRs. 1,10,000.00\nUnits held\n2,200.00\nNAV on 30-Sep-2026\nRs. 56.50\nMarket value\nRs. 1,24,300.00\nGain (market value - cost)\nRs. 14,300.00\nMutual fund investments are subject to market risks. Read all scheme related documents carefully.\nPast performance may or may not be sustained in future.\nNext SIP instalment: 05-Oct-2026. To stop or change your SIP, apply at least 10 days before the next date.\nInvestor service: 1800 000 1111 (toll free)  ·  service@suryodaya-mf.example  ·  Registrar: Sample Registry Services, Hyderabad\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "Suryodaya Mutual Fund",
+    "Ms. Meera Iyer",
+    "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+    "meera.iyer@example.com",
+    "+91 98450 11223",
+    "1234567/89",
+    "ABCPI1234K",
+    "Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+    "1800 000 1111",
+    "service@suryodaya-mf.example",
+    "Sample Registry Services, Hyderabad"
+  ]
+}

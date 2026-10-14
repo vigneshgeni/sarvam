@@ -1,0 +1,295 @@
+[
+  {
+    "file": "sample-court-summons.pdf",
+    "lang": "bn",
+    "seconds": "8.2"
+  },
+  {
+    "file": "sample-court-summons.pdf",
+    "lang": "or",
+    "seconds": "19.3"
+  },
+  {
+    "file": "sample-echallan.pdf",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 7.1s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-echallan.pdf",
+    "lang": "or",
+    "seconds": "11.1"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "en",
+    "seconds": "43.8",
+    "facts": "match"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "ta",
+    "seconds": "14.5"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "hi",
+    "seconds": "10.2"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "te",
+    "seconds": "11.6"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "ml",
+    "seconds": "12.2"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "kn",
+    "seconds": "8.6"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "mr",
+    "seconds": "8.1"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 10.9s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-health-checkup.pdf",
+    "lang": "or",
+    "seconds": "16.0"
+  },
+  {
+    "file": "sample-insurance-letter.pdf",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 26.4s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-insurance-letter.pdf",
+    "lang": "or",
+    "error": "Error: translate or 422 after 9.0s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-invoice-warranty.pdf",
+    "lang": "ml",
+    "seconds": "8.2"
+  },
+  {
+    "file": "sample-invoice-warranty.pdf",
+    "lang": "kn",
+    "seconds": "9.1"
+  },
+  {
+    "file": "sample-invoice-warranty.pdf",
+    "lang": "mr",
+    "seconds": "6.6"
+  },
+  {
+    "file": "sample-invoice-warranty.pdf",
+    "lang": "bn",
+    "seconds": "6.0"
+  },
+  {
+    "file": "sample-invoice-warranty.pdf",
+    "lang": "or",
+    "seconds": "16.6"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "hi",
+    "error": "Error: translate hi 422 after 29.4s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"अनुवाद सत्यापन विफल रहा. कृपया पुनः प्रयास करें.\"}"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "te",
+    "seconds": "6.5"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "ml",
+    "seconds": "14.0"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "kn",
+    "seconds": "7.9"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "mr",
+    "seconds": "6.5"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "bn",
+    "seconds": "41.3"
+  },
+  {
+    "file": "sample-lab-report.pdf",
+    "lang": "or",
+    "seconds": "9.0"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "te",
+    "seconds": "7.7"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "ml",
+    "seconds": "8.6"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "kn",
+    "seconds": "10.5"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "mr",
+    "seconds": "6.2"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "bn",
+    "seconds": "8.1"
+  },
+  {
+    "file": "sample-mutual-fund-statement.pdf",
+    "lang": "or",
+    "seconds": "10.3"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "hi",
+    "seconds": "4.9"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "te",
+    "seconds": "6.4"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "ml",
+    "seconds": "9.4"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "kn",
+    "seconds": "5.5"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "mr",
+    "seconds": "8.2"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 5.6s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-pension-notice.jpg",
+    "lang": "or",
+    "error": "Error: translate or 422 after 8.5s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "en",
+    "seconds": "43.2",
+    "facts": "match"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "ta",
+    "seconds": "7.7"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "hi",
+    "seconds": "6.7"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "te",
+    "seconds": "7.6"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "ml",
+    "seconds": "15.8"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "kn",
+    "seconds": "7.0"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "mr",
+    "seconds": "6.2"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 30.2s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-prescription.jpg",
+    "lang": "or",
+    "seconds": "8.9"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "en",
+    "seconds": "23.8",
+    "facts": "match"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "ta",
+    "seconds": "18.7"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "hi",
+    "seconds": "11.0"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "te",
+    "seconds": "9.4"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "ml",
+    "seconds": "8.9"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "kn",
+    "seconds": "9.9"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "mr",
+    "seconds": "11.5"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "bn",
+    "error": "Error: translate bn 422 after 11.4s: {\"message\":\"Translation verification failed. Please try again.\",\"message_local\":\"Translation verification failed. Please try again.\"}"
+  },
+  {
+    "file": "sample-property-tax-notice.pdf",
+    "lang": "or",
+    "seconds": "14.0"
+  }
+]

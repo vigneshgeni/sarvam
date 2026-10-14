@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "वृद्धापकाळ निवृत्तीवेतन योजना (Old Age Pension Scheme) पेन्शनधारकांसाठी सूचना",
+  "report_title": "जिल्हा समाजकल्याण अधिकारी कार्यालय (नमुना)\nवृद्धापकाळ निवृत्तीवेतन योजना (Old Age Pension Scheme) — पेन्शनधारकांसाठी सूचना",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "mr",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "पेन्शन थांबणे टाळण्यासाठी 30.11.2026 पर्यंत हयातीचे प्रमाणपत्र जमा करा.",
+    "key_values": [
+      {
+        "label": "पेन्शन आयडी",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "दरमहा पेन्शन रक्कम",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "नाव",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "जमा करण्याची शेवटची तारीख",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "जिल्हा समाजकल्याण अधिकारी कार्यालयाची ही सूचना Smt. Kamala Devi यांना त्यांच्या वृद्धापकाळ निवृत्तीवेतनाबाबत माहिती देते.",
+    "पेन्शनधारकांनी आपले हयातीचे प्रमाणपत्र (Life Certificate) 30.11.2026 रोजी किंवा त्यापूर्वी पेन्शन देणाऱ्या बँकेच्या शाखेत किंवा सामान्य सेवा केंद्रात (CSC) जमा करणे आवश्यक आहे.",
+    "हयातीचे प्रमाणपत्र वेळेत जमा न केल्यास, डिसेंबर 2026 पासून Rs. 1,200 चे पेन्शन देणे थांबवले जाईल."
+  ],
+  "spoken_summary": "हे वृद्धापकाळ निवृत्तीवेतन योजना (Old Age Pension Scheme) पेन्शनधारकांसाठी सूचना याविषयीचे अधिकृत दस्तऐवज आहे. कृपया महत्त्वाचा तपशील तपासा. तुमचे आधार कार्ड आणि पेन्शन पासबुक घेऊन तुमच्या पेन्शन बँक शाखेत किंवा कोणत्याही सामान्य सेवा केंद्रात (CSC) तुमचे हयातीचे प्रमाणपत्र जमा करा आणि 30 नोव्हेंबर 2026 पर्यंत पोचपावती घ्या.",
+  "actions": [
+    {
+      "text": "तुमचे आधार कार्ड आणि पेन्शन पासबुक घेऊन तुमच्या पेन्शन देणाऱ्या बँक शाखेत किंवा कोणत्याही सामान्य सेवा केंद्रात (CSC) तुमचे हयातीचे प्रमाणपत्र जमा करा आणि पोचपावती घ्या.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "हयातीचे प्रमाणपत्र वेळेत जमा न केल्यास डिसेंबर 2026 पासून दरमहा मिळणारे पेन्शन थांबवले जाईल.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "पेन्शन आयडी OAP/BLR/2019/04417 आहे.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "लाभार्थ्याचे नाव Smt. Kamala Devi आहे.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "दरमहा पेन्शनची रक्कम Rs. 1,200 आहे.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

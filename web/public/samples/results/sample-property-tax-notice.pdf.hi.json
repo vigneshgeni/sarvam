@@ -1,0 +1,320 @@
+{
+  "doc_type": "tax_receipt",
+  "document_type": "tax_receipt",
+  "document_kind": "tax_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Amount due",
+        "value": "Rs. 3,840.00",
+        "quote": "Total demand Rs. 3,840.00",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-12-31",
+    "last_date_without_penalty": "2026-12-31",
+    "how_to_pay": [
+      "Online: pay.anandnagarmunicipality.example (use the Property ID).",
+      "Counter: Municipal office, Monday to Friday, 10:00 am to 4:00 pm. Carry this notice."
+    ],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "संपत्ति कर मांग नोटिस",
+  "report_title": "संपत्ति कर मांग नोटिस 2026-27 (दूसरी छमाही)",
+  "report_date": "08 Oct 2026",
+  "report_date_iso": "2026-10-08",
+  "language": "hi",
+  "letter_date": "2026-10-08",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Rs. 3,840.00 का संपत्ति कर मांग नोटिस, अंतिम तारीख 31 दिसंबर 2026।",
+    "key_values": [
+      {
+        "label": "कुल मांग",
+        "value": "Rs. 3,840.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "छूट के बाद देय राशि",
+        "value": "Rs. 3,648.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "छूट की अंतिम तारीख",
+        "value": "30 Nov 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "बिना जुर्माने के अंतिम तारीख",
+        "value": "31 Dec 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "संपत्ति आईडी",
+        "value": "AN/07/0412/0089",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "नोटिस संख्या",
+        "value": "ANM/PT/2026/07741",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "ANAND NAGAR MUNICIPALITY ने 2026-27 की दूसरी छमाही के लिए संपत्ति कर का मांग नोटिस जारी किया है।",
+    "कुल देय राशि Rs. 3,840.00 है, जिसे जुर्माने से बचने के लिए 31 दिसंबर 2026 तक चुकाना होगा।",
+    "यदि 30 नवंबर 2026 को या उससे पहले भुगतान किया जाता है, तो जल्दी भुगतान की छूट मिलेगी और राशि घटकर Rs. 3,648.00 हो जाएगी।",
+    "भुगतान ऑनलाइन या नगरपालिका कार्यालय के काउंटर पर जाकर किया जा सकता है।"
+  ],
+  "spoken_summary": "यह ANAND NAGAR MUNICIPALITY की ओर से Kamala Devi के लिए संपत्ति कर का नोटिस है। 2026-27 की दूसरी छमाही के लिए कुल मांग Rs. 3,840.00 है। छूट पाने के लिए आप 30 नवंबर 2026 से पहले Rs. 3,648.00 का भुगतान कर सकते हैं। बिना जुर्माने के भुगतान करने की अंतिम तारीख 31 दिसंबर 2026 है। आप ऑनलाइन भुगतान कर सकते हैं या नगरपालिका कार्यालय के काउंटर पर जा सकते हैं।",
+  "actions": [
+    {
+      "text": "5% की छूट पाने के लिए 30 नवंबर 2026 तक Rs. 3,648.00 का भुगतान करें।",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "1. Early payment rebate: 5% of the total demand (Rs. 192.00) if paid on or before 30 Nov 2026. Amount payable with rebate: Rs. 3,648.00.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "जुर्माने से बचने के लिए 31 दिसंबर 2026 तक कुल कर मांग Rs. 3,840.00 का भुगतान करें।",
+      "due_date": "2026-12-31",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "2. Last date to pay without penalty: 31 Dec 2026.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "यदि आप कर निर्धारण से सहमत नहीं हैं, तो 30 दिनों के भीतर कर निर्धारक के पास लिखित आपत्ति दर्ज करें।",
+      "due_date": "2026-11-07",
+      "deadline_rule": "इस नोटिस की तारीख से 30 दिनों के भीतर",
+      "deadline_days": 30,
+      "deadline_anchor": "letter_date",
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "4. If you disagree with the assessment, file a written objection with the Assessor within 30 days of the date of this notice.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "31 दिसंबर 2026 के बाद बकाया राशि पर 2% प्रति माह की दर से जुर्माना लगाया जाएगा।",
+      "quote": "3. After 31 Dec 2026 a penalty of 2% per month is charged on the unpaid amount.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "भुगतान न करने पर नगरपालिका के नियमों के अनुसार वसूली की कार्रवाई की जा सकती है।",
+      "quote": "5. Non-payment may lead to recovery action as per municipal rules.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "नोटिस संख्या ANM/PT/2026/07741 है।",
+      "quote": "Notice No ANM/PT/2026/07741",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "वार्ड 7 में संपत्ति आईडी AN/07/0412/0089 है।",
+      "quote": "Property ID AN/07/0412/0089 Ward 7",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "संपत्ति के मालिक का नाम Kamala Devi है।",
+      "quote": "Owner Kamala Devi",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "संपत्ति कर की राशि Rs. 3,200.00 है।",
+      "quote": "Property tax 3,200.00",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "पुस्तकालय उपकर Rs. 160.00 है।",
+      "quote": "Library cess 160.00",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "जल और जल निकासी शुल्क Rs. 480.00 है।",
+      "quote": "Water and drainage charge 480.00",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "कुल मांग Rs. 3,840.00 है।",
+      "quote": "Total demand Rs. 3,840.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "संपत्ति का पता",
+      "address": "No. 31, Temple Street, Anand Nagar",
+      "quote": "Property address No. 31, Temple Street, Anand Nagar",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "भुगतान काउंटर",
+      "address": "Municipal office",
+      "quote": "Counter: Municipal office, Monday to Friday, 10:00 am to 4:00 pm. Carry this notice.",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "हेल्पलाइन",
+      "value": "0422-000-0000",
+      "quote": "Helpline: 0422-000-0000 (working days)",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "ईमेल",
+      "value": "revenue@anandnagarmunicipality.example",
+      "quote": "revenue@anandnagarmunicipality.example",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [
+    "इस दस्तावेज़ में भुगतान की दो अलग-अलग तारीखें (30 नवंबर 2026 और 31 दिसंबर 2026) दी गई हैं — कार्यालय से पता करें।"
+  ],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 5,
+    "check_original": 6,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "ANAND NAGAR MUNICIPALITY\nRevenue Department  |  Demand Notice for Property Tax 2026-27 (Second Half)\nNotice No\nANM/PT/2026/07741\nDate of notice\n08 Oct 2026\nProperty ID\nAN/07/0412/0089\nWard\n7\nOwner\nKamala Devi\nProperty address\nNo. 31, Temple Street, Anand Nagar\nAmount due for the second half of 2026-27\nProperty tax\n3,200.00\nLibrary cess\n160.00\nWater and drainage charge\n480.00\nTotal demand\nRs. 3,840.00\nImportant dates and conditions\n1. Early payment rebate: 5% of the total demand (Rs. 192.00) if paid on or before 30 Nov 2026.\nAmount payable with rebate: Rs. 3,648.00.\n2. Last date to pay without penalty: 31 Dec 2026.\n3. After 31 Dec 2026 a penalty of 2% per month is charged on the unpaid amount.\n4. If you disagree with the assessment, file a written objection with the Assessor within 30\ndays of the date of this notice.\n5. Non-payment may lead to recovery action as per municipal rules.\nHow to pay\nOnline: pay.anandnagarmunicipality.example (use the Property ID).\nCounter: Municipal office, Monday to Friday, 10:00 am to 4:00 pm. Carry this notice.\nHelpline: 0422-000-0000 (working days)  |  revenue@anandnagarmunicipality.example\nSAMPLE DOCUMENT - FICTIONAL. Names, numbers and organisations are invented for demonstration only.\n",
+  "protected_terms": [
+    "Kamala Devi",
+    "ANAND NAGAR MUNICIPALITY",
+    "No. 31, Temple Street, Anand Nagar",
+    "ANM/PT/2026/07741",
+    "AN/07/0412/0089",
+    "0422-000-0000",
+    "revenue@anandnagarmunicipality.example",
+    "pay.anandnagarmunicipality.example"
+  ]
+}

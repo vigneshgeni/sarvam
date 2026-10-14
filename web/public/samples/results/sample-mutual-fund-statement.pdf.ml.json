@@ -1,0 +1,293 @@
+{
+  "doc_type": "bank",
+  "document_type": "bank",
+  "document_kind": "investment",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "മ്യൂച്വൽ ഫണ്ട് അക്കൗണ്ട് സ്റ്റേറ്റ്‌മെന്റ്",
+  "report_title": "അക്കൗണ്ട് സ്റ്റേറ്റ്‌മെന്റ്",
+  "report_date": "30-Sep-2026",
+  "report_date_iso": null,
+  "language": "ml",
+  "letter_date": "2026-09-30",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "നിലവിലെ നിക്ഷേപ മൂല്യം 1,24,300.00 രൂപയാണെന്ന് കാണിക്കുന്ന Suryodaya Mutual Fund സ്റ്റേറ്റ്‌മെന്റ്.",
+    "key_values": [
+      {
+        "label": "ഫോളിയോ നമ്പർ",
+        "value": "1234567/89",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "ആകെ നിക്ഷേപിച്ചത്",
+        "value": "Rs. 1,10,000.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "വിപണി മൂല്യം",
+        "value": "Rs. 1,24,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "ലാഭം",
+        "value": "Rs. 14,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "കൈവശമുള്ള യൂണിറ്റുകൾ",
+        "value": "2,200.00",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "അടുത്ത SIP തീയതി",
+        "value": "05-Oct-2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "ഇത് Ms. Meera Iyer-നായുള്ള Suryodaya Mutual Fund-ൽ നിന്നുള്ള 01-Apr-2026 മുതൽ 30-Sep-2026 വരെയുള്ള കാലയളവിലെ അക്കൗണ്ട് സ്റ്റേറ്റ്‌മെന്റാണ്.",
+    "Suryodaya Flexi Cap Fund-ൽ ആകെ 2,200.00 യൂണിറ്റുകളിലായി 1,10,000.00 രൂപ നിക്ഷേപിച്ചിട്ടുണ്ട്.",
+    "30-Sep-2026 വരെയുള്ള കണക്കനുസരിച്ച് ആകെ വിപണി മൂല്യം 1,24,300.00 രൂപയാണ്, ഇതിൽ 14,300.00 രൂപ ലാഭമാണ്.",
+    "അടുത്ത 10,000 രൂപയുടെ SIP തവണ 05-Oct-2026-ന് നടക്കും."
+  ],
+  "spoken_summary": "ഇത് Meera Iyer-നായുള്ള Suryodaya Mutual Fund അക്കൗണ്ട് സ്റ്റേറ്റ്‌മെന്റാണ്. Flexi Cap Fund-ൽ നിങ്ങളുടെ ആകെ നിക്ഷേപം 1,10,000.00 രൂപയാണ്. 30 സെപ്റ്റംബർ 2026 വരെയുള്ള കണക്കനുസരിച്ച്, ഇതിന്റെ വിപണി മൂല്യം 1,24,300.00 രൂപയാണ്, ഇതിലൂടെ നിങ്ങൾക്ക് 14,300.00 രൂപ ലാഭം ലഭിച്ചു. നിങ്ങളുടെ അടുത്ത 10,000 രൂപയുടെ SIP അടവ് 05 ഒക്ടോബർ 2026-ന് നൽകേണ്ടതാണ്. ഇത് നിർത്താനോ മാറ്റാനോ ആഗ്രഹിക്കുന്നുവെങ്കിൽ, ആ തീയതിക്ക് കുറഞ്ഞത് 10 ദിവസം മുമ്പെങ്കിലും അപേക്ഷിക്കുക.",
+  "actions": [
+    {
+      "text": "നിങ്ങളുടെ SIP നിർത്താനോ മാറ്റാനോ ആഗ്രഹിക്കുന്നുവെങ്കിൽ, അടുത്ത തീയതിക്ക് കുറഞ്ഞത് 10 ദിവസം മുമ്പെങ്കിലും അപേക്ഷിക്കുക.",
+      "due_date": "2026-10-10",
+      "deadline_rule": "അടുത്ത തീയതിക്ക് കുറഞ്ഞത് 10 ദിവസം മുമ്പ്",
+      "deadline_days": 10,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "To stop or change your SIP, apply at least 10 days before the next date.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "മ്യൂച്വൽ ഫണ്ട് നിക്ഷേപങ്ങൾ വിപണിയിലെ നഷ്ടസാധ്യതകൾക്ക് വിധേയമാണ്, മുൻകാല പ്രകടനം ഭാവിയിൽ തുടരണമെന്നില്ല.",
+      "quote": "Mutual fund investments are subject to market risks. Read all scheme related documents carefully. Past performance may or may not be sustained in future.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "നിക്ഷേപകയുടെ പേര് Ms. Meera Iyer എന്നാണ്.",
+      "quote": "Ms. Meera Iyer",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ഫോളിയോ നമ്പർ 1234567/89 ആണ്.",
+      "quote": "Folio No. 1234567/89",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "പെർമനന്റ് അക്കൗണ്ട് നമ്പർ (PAN) ABCPI1234K ആണ്.",
+      "quote": "PAN ABCPI1234K",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "പദ്ധതിയുടെ പേര് Suryodaya Flexi Cap Fund - Direct Plan - Growth എന്നാണ്.",
+      "quote": "Scheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "പ്രതിമാസ SIP തവണ എല്ലാ മാസവും 5-ാം തീയതി 10,000 രൂപയാണ്.",
+      "quote": "SIP: Rs. 10,000 on 5th of every month",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ആകെ നിക്ഷേപിച്ച തുക 1,10,000.00 രൂപയാണ്.",
+      "quote": "Total amount invested (cost) Rs. 1,10,000.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-Sep-2026 വരെയുള്ള കണക്കനുസരിച്ച് നിക്ഷേപത്തിന്റെ വിപണി മൂല്യം 1,24,300.00 രൂപയാണ്.",
+      "quote": "Market value Rs. 1,24,300.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-Sep-2026-ലെ നെറ്റ് അസറ്റ് വാല്യൂ (NAV) 56.50 രൂപയാണ്.",
+      "quote": "NAV on 30-Sep-2026 Rs. 56.50",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "നിക്ഷേപകയുടെ വിലാസം",
+      "address": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "quote": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "നിക്ഷേപകയുടെ ഇമെയിൽ",
+      "value": "meera.iyer@example.com",
+      "quote": "Email: meera.iyer@example.com",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "നിക്ഷേപകയുടെ മൊബൈൽ",
+      "value": "+91 98450 11223",
+      "quote": "Mobile: +91 98450 11223",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "നിക്ഷേപക സേവന ഹെൽപ്പ്‌ലൈൻ",
+      "value": "1800 000 1111",
+      "quote": "Investor service: 1800 000 1111 (toll free)",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "നിക്ഷേപക സേവന ഇമെയിൽ",
+      "value": "service@suryodaya-mf.example",
+      "quote": "service@suryodaya-mf.example",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 9,
+    "check_original": 0,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "Suryodaya Mutual Fund\nAccount Statement  ·  Period: 01-Apr-2026 to 30-Sep-2026\nInvestor\nMs. Meera Iyer\nNo. 21, 4th Main, Malleswaram, Bengaluru 560003\nEmail: meera.iyer@example.com   Mobile: +91 98450 11223\nFolio No.\n1234567/89\nPAN\nABCPI1234K\nScheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth\nNominee: Registered    ·    Mode of holding: Single    ·    SIP: Rs. 10,000 on 5th of every month\nDate\nTransaction\nAmount (Rs.)\nNAV (Rs.)\nUnits\nBalance units\n01-Apr-2026\nOpening balance (cost Rs. 50,000.00)\n1,113.24\n05-Apr-2026\nSIP purchase\n10,000.00\n52.10\n191.94\n1,305.18\n05-May-2026\nSIP purchase\n10,000.00\n53.40\n187.27\n1,492.45\n05-Jun-2026\nSIP purchase\n10,000.00\n55.05\n181.65\n1,674.10\n06-Jul-2026\nSIP purchase\n10,000.00\n56.30\n177.62\n1,851.72\n05-Aug-2026\nSIP purchase\n10,000.00\n57.10\n175.13\n2,026.85\n05-Sep-2026\nSIP purchase\n10,000.00\n57.75\n173.15*\n2,200.00\n* After stamp duty. Units shown up to 2 decimals.\nSummary as on 30-Sep-2026\nTotal amount invested (cost)\nRs. 1,10,000.00\nUnits held\n2,200.00\nNAV on 30-Sep-2026\nRs. 56.50\nMarket value\nRs. 1,24,300.00\nGain (market value - cost)\nRs. 14,300.00\nMutual fund investments are subject to market risks. Read all scheme related documents carefully.\nPast performance may or may not be sustained in future.\nNext SIP instalment: 05-Oct-2026. To stop or change your SIP, apply at least 10 days before the next date.\nInvestor service: 1800 000 1111 (toll free)  ·  service@suryodaya-mf.example  ·  Registrar: Sample Registry Services, Hyderabad\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "Suryodaya Mutual Fund",
+    "Ms. Meera Iyer",
+    "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+    "meera.iyer@example.com",
+    "+91 98450 11223",
+    "1234567/89",
+    "ABCPI1234K",
+    "Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+    "1800 000 1111",
+    "service@suryodaya-mf.example",
+    "Sample Registry Services, Hyderabad"
+  ]
+}
