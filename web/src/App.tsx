@@ -223,9 +223,9 @@ export default function App() {
       }
     },
     onClose: () => {
-      setIsA11yOpen(false)
-      setPasswordState((prev) => ({ ...prev, isOpen: false }))
-      setDeleteConfirm(null)
+      setIsA11yOpen((prev) => (prev ? false : prev))
+      setPasswordState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+      setDeleteConfirm((prev) => (prev ? null : prev))
     },
   })
 
