@@ -119,12 +119,12 @@ export default function ResultScreen({
   useOverlayRestore({
     currentData: result,
     onClose: () => {
-      setIsListenOpen(false)
-      setIsAskOpen(false)
-      setIsShareOpen(false)
-      setIsRemindersOpen(false)
-      setSourceViewer({ isOpen: false })
-      setIsPreviewOpen(false)
+      setIsListenOpen((prev) => (prev ? false : prev))
+      setIsAskOpen((prev) => (prev ? false : prev))
+      setIsShareOpen((prev) => (prev ? false : prev))
+      setIsRemindersOpen((prev) => (prev ? false : prev))
+      setSourceViewer((prev) => (prev.isOpen ? { isOpen: false } : prev))
+      setIsPreviewOpen((prev) => (prev ? false : prev))
     },
   })
 

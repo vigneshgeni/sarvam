@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { restoreActiveOverlay } from './overlayCore'
 
 export interface OverlayRestoreOptions {
@@ -22,22 +22,28 @@ export { restoreActiveOverlay }
 export function useOverlayRestore(options?: OverlayRestoreOptions): OverlayRestoreResult {
   const [data, setData] = useState<any | null>(options?.currentData || null)
   const [isRestored, setIsRestored] = useState<boolean>(false)
+  const optsRef = useRef(options)
+  const dataRef = useRef(data)
+  optsRef.current = options
+  dataRef.current = data
 
   const checkAndRestore = useCallback(() => {
-    const outcome = restoreActiveOverlay(data || options?.currentData, {
+    const options = optsRef.current
+    const current = dataRef.current
+    const outcome = restoreActiveOverlay(current || options?.currentData, {
       onRestore: (saved) => {
         setData(saved)
         setIsRestored(true)
-        options?.onRestore?.(saved)
+        optsRef.current?.onRestore?.(saved)
       },
       onClose: (msg) => {
-        setData(null)
+        setData((prev: any | null) => (prev === null ? prev : null))
         setIsRestored(false)
-        options?.onClose?.(msg)
+        optsRef.current?.onClose?.(msg)
       },
     })
     return outcome.data
-  }, [data, options])
+  }, [])
 
   useEffect(() => {
     // Initial check on mount
