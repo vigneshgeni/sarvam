@@ -74,9 +74,9 @@
   "female": "स्त्री",
   "male": "पुरुष",
   "speed": "गती",
-  "speedNormal": "1.0x",
-  "speedSlow": "0.8x",
-  "speedFast": "1.2x",
+  "speedNormal": "सामान्य",
+  "speedSlow": "हळू",
+  "speedFast": "जलद",
   "playing": "प्ले होत आहे",
   "paused": "थांबवले",
   "stopped": "बंद",
@@ -384,5 +384,8 @@
   "valuesAsPrinted": "छापलेली मूल्ये आणि खुणा तशाच",
   "documentsInUpload": "या अपलोडमधील दस्तऐवज",
   "inThisUpload": "या अपलोडमध्ये",
-  "pageMapLabel": "दस्तऐवजानुसार रंगवलेली पाने"
+  "pageMapLabel": "दस्तऐवजानुसार रंगवलेली पाने",
+  "photosAccessBody": "हे स्पष्टीकरण फोटोंमध्ये ठेवण्यासाठी सर्वम परवानगी मागेल. रंग आणि रचना तशीच राहील. फोटो या फोनवरच राहील.",
+  "photosAllow": "परवानगी द्या आणि पुढे जा",
+  "photosNotNow": "आता नको"
 }

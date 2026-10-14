@@ -303,5 +303,11 @@
   "valuesAsPrinted": "Values and flags exactly as printed",
   "documentsInUpload": "documents in this upload",
   "inThisUpload": "In this upload",
-  "pageMapLabel": "Pages coloured by document"
+  "pageMapLabel": "Pages coloured by document",
+  "photosAccessBody": "Sarvam will ask to add one image to your photo library. The image is this explanation, with its colours and layout. It stays on this phone.",
+  "photosAllow": "Allow and continue",
+  "photosNotNow": "Not now",
+  "speedSlow": "Slow",
+  "speedNormal": "Normal",
+  "speedFast": "Fast"
 }

@@ -51,6 +51,7 @@ import {
 } from './utils/history'
 import { useOverlayRestore } from './hooks/useOverlayRestore'
 import { outputNeedsTranslation } from './utils/languageMatch'
+import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -68,11 +69,15 @@ interface PasswordState {
 export default function App() {
   // Shared language state persisted in localStorage sarvam.lang (defaults to 'auto' for new users per WEB-3)
   const [selectedLang, setSelectedLang] = useState<string>(getStoredLanguage)
-  const [screen, setScreen] = useState<AppScreen>('home')
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    const saved = loadActiveSession()
+    if (!saved?.result) return 'home'
+    return saved.screen === 'reading' ? 'reading' : 'result'
+  })
   const [readingArrived, setReadingArrived] = useState(false)
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
-  const [resultData, setResultData] = useState<ExplainResponse | null>(null)
+  const [resultData, setResultData] = useState<ExplainResponse | null>(() => loadActiveSession()?.result || null)
   const [multiReportsData, setMultiReportsData] = useState<MultiReportCard[] | null>(null)
   const [multiReportProgress, setMultiReportProgress] = useState<{
     ready: number
@@ -111,7 +116,24 @@ export default function App() {
   )
 
   const [libraryOpen, setLibraryOpen] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const saved = loadActiveSession()
+    let seen = false
+    let shared = false
+    try {
+      seen = sessionStorage.getItem('sarvam.onboardingSeen') === '1'
+      const params = new URLSearchParams(window.location.search)
+      shared = params.has('share') || params.has('result') || params.has('fixture')
+    } catch {
+      /* ignore */
+    }
+    return shouldShowOnboarding({
+      seenThisSession: seen,
+      hasRestoredResult: Boolean(saved?.result),
+      hasOpenOverlay: Boolean(saved?.overlay || window.history.state?.overlay),
+      fromSharedLink: shared,
+    })
+  })
 
   // Session refs
   const activeFilesRef = useRef<File[]>([])
@@ -197,16 +219,41 @@ export default function App() {
       }
 
       setScreen('result')
+      setShowOnboarding(false)
       seedResultHistory()
-    } else {
+    } else if (!loadActiveSession()?.result) {
       replaceBrowserHistory({ screen: 'home', overlay: null })
-      try {
-        if (localStorage.getItem('sarvam.onboarded') !== '1') setShowOnboarding(true)
-      } catch {
-        /* ignore */
-      }
     }
   }, [])
+
+  useEffect(() => {
+    const recover = () => {
+      document.body.style.overflow = ''
+      const saved = loadActiveSession()
+      const next = screenAfterReturn({ screen, hasResult: Boolean(resultData) }, saved)
+      if (next.restore && saved?.result) {
+        setResultData(saved.result)
+        originalResultRef.current = saved.originalResult || saved.result
+        currentResultIdRef.current = saved.currentResultId || null
+        if (saved.multiReports) setMultiReportsData(saved.multiReports)
+        if (saved.lang) setSelectedLang(saved.lang)
+        setScreen(next.screen)
+        setShowOnboarding(false)
+        return
+      }
+      if (next.screen !== screen) setScreen(next.screen)
+    }
+    const onShow = () => recover()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') recover()
+    }
+    window.addEventListener('pageshow', onShow)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('pageshow', onShow)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [screen, resultData])
 
 
   // Keep active result session updated
@@ -218,6 +265,8 @@ export default function App() {
         lang: selectedLang,
         originalResult: originalResultRef.current,
         currentResultId: currentResultIdRef.current,
+        screen: 'result',
+        overlay: loadActiveSession()?.overlay || null,
       })
     }
   }, [screen, resultData, multiReportsData, selectedLang])
@@ -263,12 +312,22 @@ export default function App() {
 
       const state = event.state as { screen?: AppScreen; overlay?: string | null } | null
       const targetScreen = state?.screen || 'home'
+      if ((targetScreen === 'result' || targetScreen === 'reading') && !resultData) {
+        const saved = loadActiveSession()
+        const next = screenAfterReturn({ screen: targetScreen, hasResult: false }, saved)
+        if (next.restore && saved?.result) {
+          setResultData(saved.result)
+          setShowOnboarding(false)
+        }
+        setScreen(next.screen)
+        return
+      }
       setScreen(targetScreen)
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [isA11yOpen, passwordState.isOpen, deleteConfirm])
+  }, [isA11yOpen, passwordState.isOpen, deleteConfirm, resultData])
 
   const navigateToScreen = (target: AppScreen) => {
     setScreen(target)
@@ -339,6 +398,7 @@ export default function App() {
     }
 
 
+    setShowOnboarding(false)
     setResultData(item.result)
     setMultiReportsData(item.multiReports && item.multiReports.length > 0 ? item.multiReports : null)
     setCurrentError(null)
@@ -1129,7 +1189,7 @@ export default function App() {
       {/* Main Container */}
       <main className={`w-full max-w-[430px] min-w-0 min-h-[100dvh] flex flex-col relative overflow-x-hidden ${screen === 'home' ? '' : 'p-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] gap-5'}`}>
         {screen === 'home' && showOnboarding && (
-          <Onboarding onDone={() => setShowOnboarding(false)} />
+          <Onboarding onDone={() => { setShowOnboarding(false); setScreen('home') }} />
         )}
         {screen === 'home' && !showOnboarding && (
           <HomeScreen

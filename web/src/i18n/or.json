@@ -74,9 +74,9 @@
   "female": "ମହିଳା",
   "male": "ପୁରୁଷ",
   "speed": "ଗତି",
-  "speedNormal": "1.0x",
-  "speedSlow": "0.8x",
-  "speedFast": "1.2x",
+  "speedNormal": "ସାଧାରଣ",
+  "speedSlow": "ଧୀରେ",
+  "speedFast": "ଶୀଘ୍ର",
   "playing": "ଚାଲିଛି",
   "paused": "ସ୍ଥଗିତ",
   "stopped": "ବନ୍ଦ",
@@ -384,5 +384,8 @@
   "valuesAsPrinted": "ଛପା ମୂଲ୍ୟ ଓ ଚିହ୍ନ ଯେପରି ଅଛି",
   "documentsInUpload": "ଏହି ଅପଲୋଡର ଦଳିଲ",
   "inThisUpload": "ଏହି ଅପଲୋଡରେ",
-  "pageMapLabel": "ଦଳିଲ ଅନୁସାରେ ରଙ୍ଗ ପୃଷ୍ଠା"
+  "pageMapLabel": "ଦଳିଲ ଅନୁସାରେ ରଙ୍ଗ ପୃଷ୍ଠା",
+  "photosAccessBody": "ଏହି ବ୍ୟାଖ୍ୟାର ଛବି ଆପଣଙ୍କ ଫଟୋରେ ରଖିବାକୁ ସର୍ବମ ଅନୁମତି ମାଗିବ। ରଙ୍ଗ ଓ ଡିଜାଇନ ସେହିପରି ରହିବ। ଛବି ଏହି ଫୋନରେ ରହିବ।",
+  "photosAllow": "ଅନୁମତି ଦିଅନ୍ତୁ",
+  "photosNotNow": "ଏବେ ନୁହେଁ"
 }

@@ -41,6 +41,7 @@ import {
 import { buildShare, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
+import { loadActiveSession, saveActiveSession } from '../utils/history'
 
 interface ResultScreenProps {
   result: ExplainResponse
@@ -111,6 +112,13 @@ export default function ResultScreen({
     }
   })
   const [imageStatus, setImageStatus] = useState<string | null>(null)
+  const [photosGranted, setPhotosGranted] = useState(() => {
+    try {
+      return localStorage.getItem('sarvam.photosAccess') === 'granted'
+    } catch {
+      return false
+    }
+  })
   const [isRemindersOpen, setIsRemindersOpen] = useState(false)
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
   const [copyDatesSuccess, setCopyDatesSuccess] = useState(false)
@@ -131,11 +139,43 @@ export default function ResultScreen({
       setIsListenOpen((prev) => (prev ? false : prev))
       setIsAskOpen((prev) => (prev ? false : prev))
       setIsShareOpen((prev) => (prev ? false : prev))
+      setIsSaveImageOpen((prev) => (prev ? false : prev))
       setIsRemindersOpen((prev) => (prev ? false : prev))
       setSourceViewer((prev) => (prev.isOpen ? { isOpen: false } : prev))
       setIsPreviewOpen((prev) => (prev ? false : prev))
     },
   })
+
+  useEffect(() => {
+    const overlay = loadActiveSession()?.overlay
+    if (overlay === 'listen') setIsListenOpen(true)
+    if (overlay === 'ask') setIsAskOpen(true)
+    if (overlay === 'share') setIsShareOpen(true)
+  }, [])
+
+  useEffect(() => {
+    const overlay = isListenOpen
+      ? 'listen'
+      : isAskOpen
+        ? 'ask'
+        : isShareOpen || isSaveImageOpen
+          ? 'share'
+          : isRemindersOpen
+            ? 'reminders'
+            : isPreviewOpen
+              ? 'doc_preview'
+              : sourceViewer.isOpen
+                ? 'source'
+                : null
+    const saved = loadActiveSession()
+    if (!saved?.result && !result) return
+    saveActiveSession({
+      ...(saved || {}),
+      result: saved?.result || result,
+      screen: 'result',
+      overlay,
+    })
+  }, [isListenOpen, isAskOpen, isShareOpen, isSaveImageOpen, isRemindersOpen, isPreviewOpen, sourceViewer.isOpen, result])
 
   const hasDocumentPreview = files && files.length > 0 && files.some((f) => f.size > 0)
   const isPhoto =
@@ -374,15 +414,21 @@ export default function ResultScreen({
     }
   }
 
-  const handleSaveImage = async () => {
+  const handleSaveImage = async (allowed = photosGranted) => {
+    if (!allowed) return
     const source = document.getElementById(snapshotMode === 'summary' ? 'sv-summary' : 'sv-result')
     if (!source) {
       setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
       return
     }
+    const width = Math.max(source.offsetWidth, 360)
     const host = document.createElement('div')
-    host.style.cssText = `position:fixed;left:-10000px;top:0;width:${source.offsetWidth}px;background:#F4F5F2`
+    host.style.cssText = `position:fixed;left:0;top:0;width:${width}px;background:#F4F5F2;z-index:-1;pointer-events:none`
     const node = source.cloneNode(true) as HTMLElement
+    node.style.width = `${width}px`
+    node.style.maxHeight = 'none'
+    node.style.height = 'auto'
+    node.style.overflow = 'visible'
     if (hidePersonal) {
       const terms = result.protected_terms || []
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
@@ -401,28 +447,47 @@ export default function ResultScreen({
     try {
       const { toPng } = await import('html-to-image')
       await document.fonts.ready
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+      const height = Math.max(node.scrollHeight, node.offsetHeight, 200)
       const dataUrl = await toPng(node, {
-        pixelRatio: node.scrollHeight > 8000 ? 1 : 2,
+        pixelRatio: height > 8000 ? 1 : 2,
+        width,
+        height,
+        canvasWidth: width * (height > 8000 ? 1 : 2),
+        canvasHeight: height * (height > 8000 ? 1 : 2),
         backgroundColor: '#F4F5F2',
+        style: { overflow: 'visible', height: `${height}px`, maxHeight: 'none' },
       })
       const blob = await (await fetch(dataUrl)).blob()
       const day = new Date().toISOString().slice(0, 10)
       const type = String(result.doc_type || 'document').replace(/[^a-z0-9]+/gi, '-')
-      const name = `Sarvam-${type}-${day}.png`
+      const name = `Sarvam-${type}-${snapshotMode}-${day}.png`
       const file = new File([blob], name, { type: 'image/png' })
+      const saved = loadActiveSession()
+      if (saved?.result || result) {
+        saveActiveSession({ ...(saved || {}), result: saved?.result || result, screen: 'result', overlay: 'share' })
+      }
       const canFileShare = typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })
       if (canFileShare) await navigator.share({ files: [file], title: shared.title })
       else {
+        const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = dataUrl
+        a.href = url
         a.download = name
+        a.target = '_blank'
+        a.rel = 'noopener'
+        document.body.appendChild(a)
         a.click()
+        a.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 4000)
       }
       setImageStatus(t.imageSaved || 'Image saved')
-    } catch {
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') return
       setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
     } finally {
       host.remove()
+      document.body.style.overflow = ''
     }
   }
 
@@ -1201,7 +1266,9 @@ export default function ResultScreen({
             {t.saveImage || 'Save as image'}<span className="text-[#D9603B]">.</span>
           </h2>
           <p className="m-0 text-[15.5px] leading-[1.45] text-[#3B3E3C]">
-            {t.saveImageBody || 'The whole explanation as one tall image. Keep it in Photos, or send it to family or your doctor.'}
+            {photosGranted
+              ? (t.saveImageBody || 'The whole explanation as one tall image. Keep it in Photos, or send it to family or your doctor.')
+              : (t.photosAccessBody || 'Sarvam will ask to add one image to your photo library. The image is this explanation, with its colours and layout. It stays on this phone.')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {(['page', 'summary'] as const).map((mode) => (
@@ -1219,9 +1286,28 @@ export default function ResultScreen({
               </button>
             ))}
           </div>
-          <button type="button" onClick={handleSaveImage} className="sv-press h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[17px] font-bold">
-            {t.saveToPhotos || 'Save to Photos'}
-          </button>
+          {photosGranted ? (
+            <button type="button" onClick={() => void handleSaveImage()} className="sv-press h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[17px] font-bold">
+              {t.saveToPhotos || 'Save to Photos'}
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.setItem('sarvam.photosAccess', 'granted') } catch { /* ignore */ }
+                  setPhotosGranted(true)
+                  void handleSaveImage(true)
+                }}
+                className="sv-press h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[17px] font-bold"
+              >
+                {t.photosAllow || 'Allow and continue'}
+              </button>
+              <button type="button" onClick={() => setIsSaveImageOpen(false)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent text-[16px] font-bold">
+                {t.photosNotNow || 'Not now'}
+              </button>
+            </div>
+          )}
           {imageStatus && <p className="m-0 text-[14px] font-semibold" role="status">{imageStatus}</p>}
         </div>
       </Sheet>

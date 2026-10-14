@@ -17,7 +17,7 @@ const SHIFTS = [-46, 34, -22, 50, -54, 20, -30, 42, -6]
 
 function finish(onDone: () => void) {
   try {
-    localStorage.setItem('sarvam.onboarded', '1')
+    sessionStorage.setItem('sarvam.onboardingSeen', '1')
   } catch {
     /* ignore */
   }

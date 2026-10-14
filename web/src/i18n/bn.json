@@ -74,9 +74,9 @@
   "female": "মহিলা",
   "male": "পুরুষ",
   "speed": "গতি",
-  "speedNormal": "1.0x",
-  "speedSlow": "0.8x",
-  "speedFast": "1.2x",
+  "speedNormal": "স্বাভাবিক",
+  "speedSlow": "ধীরে",
+  "speedFast": "দ্রুত",
   "playing": "চলছে",
   "paused": "বিরতি দেওয়া হয়েছে",
   "stopped": "বন্ধ",
@@ -384,5 +384,8 @@
   "valuesAsPrinted": "ছাপা মান ও চিহ্ন যেমন আছে তেমন",
   "documentsInUpload": "এই আপলোডের নথি",
   "inThisUpload": "এই আপলোডে",
-  "pageMapLabel": "নথি অনুসারে রঙিন পাতা"
+  "pageMapLabel": "নথি অনুসারে রঙিন পাতা",
+  "photosAccessBody": "এই ব্যাখ্যার ছবি আপনার ফটোতে রাখতে সর্বম অনুমতি চাইবে। রঙ ও নকশা একই থাকবে। ছবি এই ফোনেই থাকবে।",
+  "photosAllow": "অনুমতি দিয়ে এগোন",
+  "photosNotNow": "এখন নয়"
 }
