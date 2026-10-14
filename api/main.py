@@ -1037,6 +1037,17 @@ async def translate(
     for i, m in enumerate(orig.medicines):
         if m.instruction_text:
             strings_to_translate[f"med_{i}_instruction"] = m.instruction_text
+    if orig.profile:
+        for i, field in enumerate(orig.profile.form_fields or []):
+            if field.name:
+                strings_to_translate[f"form_{i}_name"] = field.name
+            if field.instruction:
+                strings_to_translate[f"form_{i}_instruction"] = field.instruction
+    for i, part in enumerate(orig.parts or []):
+        if part.title:
+            strings_to_translate[f"part_{i}_title"] = part.title
+        for j, line in enumerate(part.summary_lines or []):
+            strings_to_translate[f"part_{i}_summary_{j}"] = line
 
     # Legacy payload constructed for mock compatibility
     actions_payload = [
@@ -1466,11 +1477,42 @@ async def translate(
 
     doc_type_val = orig.document_type or orig.doc_type or "other"
 
+    stitched_profile = orig.profile
+    if orig.profile and "translated_dict" in locals() and orig.profile.form_fields:
+        fields = []
+        for i, field in enumerate(orig.profile.form_fields):
+            fields.append(
+                field.model_copy(
+                    update={
+                        "name": translated_dict.get(f"form_{i}_name", field.name),
+                        "instruction": translated_dict.get(f"form_{i}_instruction", field.instruction),
+                    }
+                )
+            )
+        stitched_profile = orig.profile.model_copy(update={"form_fields": fields})
+
+    stitched_parts = orig.parts
+    if orig.parts and "translated_dict" in locals():
+        stitched_parts = []
+        for i, part in enumerate(orig.parts):
+            lines = [
+                translated_dict.get(f"part_{i}_summary_{j}", line)
+                for j, line in enumerate(part.summary_lines or [])
+            ]
+            stitched_parts.append(
+                part.model_copy(
+                    update={
+                        "title": translated_dict.get(f"part_{i}_title", part.title),
+                        "summary_lines": lines or part.summary_lines,
+                    }
+                )
+            )
+
     return ExplainResponse(
         doc_type=doc_type_val,
         document_type=doc_type_val,
         document_kind=orig.document_kind,
-        profile=orig.profile,
+        profile=stitched_profile,
         document_language=orig.document_language,
         source_kind=orig.source_kind,
         title=trans_title,
@@ -1489,7 +1531,7 @@ async def translate(
         contacts=stitched_contacts,
         medicines=stitched_medicines,
         conflicts=trans_conflicts,
-        parts=orig.parts,
+        parts=stitched_parts,
         sections=orig.sections,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,

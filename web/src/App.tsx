@@ -50,6 +50,7 @@ import {
   seedResultHistory,
 } from './utils/history'
 import { useOverlayRestore } from './hooks/useOverlayRestore'
+import { outputNeedsTranslation } from './utils/languageMatch'
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -540,7 +541,14 @@ export default function App() {
     // Single document pipeline
     setMultiReportsData(null)
     try {
-      const result = await explainDocument(filesToExplain, targetLang, controller.signal, password)
+      let result = await explainDocument(filesToExplain, targetLang, controller.signal, password)
+      if (outputNeedsTranslation(result, targetLang)) {
+        try {
+          result = await translateDocument(result, targetLang, controller.signal)
+        } catch {
+          /* keep the first reading if translation is busy */
+        }
+      }
 
       if (readingTimeoutRef.current) {
         clearTimeout(readingTimeoutRef.current)
@@ -671,7 +679,7 @@ export default function App() {
     const file = activeFilesRef.current[index]
 
     try {
-      const res = await explainDocument([file], selectedLang)
+      const res = await explainDocument([file], resolveLang(selectedLang))
       setMultiReportsData((prev) => {
         if (!prev) return null
         const next = [...prev]
@@ -936,7 +944,7 @@ export default function App() {
           try {
             const fallbackResult = await explainDocument(
               activeFilesRef.current,
-              newLang,
+              targetLang,
               controller.signal
             )
             if (controller.signal.aborted) return

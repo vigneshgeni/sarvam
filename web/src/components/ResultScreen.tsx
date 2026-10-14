@@ -621,12 +621,21 @@ export default function ResultScreen({
           </div>
         )}
 
-        {/* Document Language Note if auto detected (WEB-3) */}
-        {lang === 'auto' && result.document_language && result.document_language !== 'en' && (
+        {result.document_language && result.document_language.split('-')[0] !== contentLang && (
           <div className="text-xs text-[#5E636B] bg-[#F0F0EB] px-3 py-1.5 rounded-xl w-fit">
             {(t.docInLanguage || 'Document is in {lang}').replace(
               '{lang}',
-              result.document_language.toUpperCase()
+              ({
+                ta: 'தமிழ்',
+                hi: 'हिंदी',
+                te: 'తెలుగు',
+                ml: 'മലയാളം',
+                kn: 'ಕನ್ನಡ',
+                mr: 'मराठी',
+                bn: 'বাংলা',
+                or: 'ଓଡ଼ିଆ',
+                en: 'English',
+              } as Record<string, string>)[result.document_language.split('-')[0]] || result.document_language
             )}
           </div>
         )}
