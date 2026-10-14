@@ -24,7 +24,8 @@ export default function ReadingArt({ variant, pages }: { variant: ReadingLetter;
   if (variant === 'B') {
     const sheets = Math.min(total, 3)
     return (
-      <div className="h-[300px] bg-[#1A1A1A] rounded-[40px] relative overflow-hidden border-[1.5px] border-[#1A1A1A]">
+      <div className="h-[300px] bg-[#D9603B] rounded-[40px] relative overflow-hidden border-[1.5px] border-[#1A1A1A]">
+        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[240px] w-[240px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed border-[#1A1A1A] opacity-45" />
         {Array.from({ length: sheets }, (_, i) => (
           <div key={i} className="pg" style={{ ['--r0' as string]: `${(i - 1) * 8}deg`, ['--r' as string]: `${(i - 1) * 6}deg`, animationDelay: `${i * 0.5}s` }}>
             <span /><span style={{ width: '70%' }} /><span />

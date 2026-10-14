@@ -103,6 +103,16 @@ export const HEALTH_SAMPLE = 'sample-health-checkup.pdf'
 
 export type ReadingLetter = 'A' | 'B' | 'C' | 'D'
 
+const READING_ORDER: ReadingLetter[] = ['A', 'B', 'C', 'D']
+
+function storedReading(): string | null {
+  try {
+    return localStorage.getItem('sarvam.readingVariant')
+  } catch {
+    return null
+  }
+}
+
 function rememberReading(pick: ReadingLetter): ReadingLetter {
   try {
     localStorage.setItem('sarvam.readingVariant', pick)
@@ -112,20 +122,32 @@ function rememberReading(pick: ReadingLetter): ReadingLetter {
   return pick
 }
 
+function forcedReading(explicit?: string | null): ReadingLetter | null {
+  const fromQuery =
+    explicit ??
+    (typeof window !== 'undefined' && import.meta.env?.DEV
+      ? new URLSearchParams(window.location.search).get('reading')
+      : null)
+  const letter = (fromQuery || '').toUpperCase()
+  return letter === 'A' || letter === 'B' || letter === 'C' || letter === 'D' ? letter : null
+}
+
 export function pickReadingVariant(opts: {
   photo: boolean
   fileCount: number
   language: string
+  force?: string | null
 }): ReadingLetter {
-  if (opts.photo || opts.fileCount > 1) return rememberReading('B')
-  if (opts.language && opts.language !== 'en' && opts.language !== 'auto') return rememberReading('C')
-  let last: string | null = null
-  try {
-    last = localStorage.getItem('sarvam.readingVariant')
-  } catch {
-    last = null
+  const forced = forcedReading(opts.force)
+  if (forced) return rememberReading(forced)
+  let pick: ReadingLetter
+  if (opts.photo || opts.fileCount > 1) pick = 'B'
+  else if (opts.language && opts.language !== 'en' && opts.language !== 'auto') pick = 'C'
+  else pick = storedReading() === 'A' ? 'D' : 'A'
+  if (storedReading() === pick) {
+    pick = READING_ORDER[(READING_ORDER.indexOf(pick) + 1) % READING_ORDER.length]
   }
-  return rememberReading(last === 'A' ? 'D' : 'A')
+  return rememberReading(pick)
 }
 
 function amountNumber(value: string): number | null {
