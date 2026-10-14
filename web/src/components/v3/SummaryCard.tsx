@@ -112,8 +112,7 @@ export default function SummaryCard({
       {kind === 'A' && <SplitAmounts amounts={amounts} t={t} allMatched={allMatched} />}
       {kind === 'B' && <AmountToPay result={result} amounts={amounts} t={t} lang={lang} />}
       {kind === 'C' && <Deadline result={result} t={t} lang={lang} />}
-      {kind === 'D' && <ValueTiles result={result} kvs={kvs} t={t} allMatched={allMatched} />}
-      {kind === 'Dplus' && <SectionedValues sections={result.sections || []} t={t} />}
+      {kind === 'D' && !(result.sections && result.sections.length) && <ValueTiles result={result} kvs={kvs} t={t} allMatched={allMatched} />}
       {kind === 'F' && <AmountStrip amounts={amounts} t={t} allMatched={allMatched} />}
       {kind === 'multi' && <PageMap result={result} t={t} />}
     </section>
@@ -237,10 +236,8 @@ function ValueTiles({
                 {v.value} {v.unit && <span className="text-[16px]">{v.unit}</span>}
               </span>
               {v.ref_range && <span className="text-[12px] text-[#575B58]">{v.ref_range}</span>}
-              {v.flag_printed === 'High' || v.flag_printed === 'Low' ? (
-                <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${v.flag_printed === 'High' ? 'bg-[#D9603B]' : 'bg-[#F8D9CB]'}`}>{v.flag_printed}</span>
-              ) : v.ref_range ? (
-                <span className="self-start text-[12px] font-bold px-2 py-0.5 rounded-full bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A]">{t.inRange || 'In range'}</span>
+              {v.flag_printed ? (
+                <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${v.flag_printed === 'High' ? 'bg-[#D9603B]' : v.flag_printed === 'Low' ? 'bg-[#F8D9CB]' : 'bg-[#CFE5E0]'}`}>{v.flag_printed}</span>
               ) : null}
             </div>
           ))}
@@ -261,17 +258,29 @@ function ValueTiles({
   )
 }
 
+function printedFlag(flag?: string | null): 'High' | 'Low' | 'In range' | null {
+  if (flag === 'High' || flag === 'Low' || flag === 'In range') return flag
+  return null
+}
+
+export function LabValues({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
+  const sections = result.sections || []
+  const count = sections.reduce((n, s) => n + (s.values?.length || 0), 0)
+  if (count > 4) return <SectionedValues sections={sections} t={t} />
+  return <ValueTiles result={result} kvs={[]} t={t} allMatched={sections.every((s) => s.values.every((v) => v.evidence === 'matched'))} />
+}
+
 export function SectionedValues({ sections, t }: { sections: Section[]; t: Record<string, string> }) {
-  const ranked = [...sections].sort((a, b) => {
-    const fa = a.values.some((v) => v.flag_printed) ? 0 : 1
-    const fb = b.values.some((v) => v.flag_printed) ? 0 : 1
-    return fa - fb
-  })
-  const flagged = sections.flatMap((s) => s.values.filter((v) => v.flag_printed).map((v) => ({ ...v, heading: s.heading, page: s.page }))).slice(0, 6)
+  const ordered = sections
+  const flagged = ordered.flatMap((s) =>
+    s.values
+      .filter((v) => printedFlag(v.flag_printed) === 'High' || printedFlag(v.flag_printed) === 'Low')
+      .map((v) => ({ ...v, heading: s.heading, page: s.page }))
+  )
   const [open, setOpen] = useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {}
-    ranked.forEach((s, i) => {
-      if (s.values.some((v) => v.flag_printed)) init[i] = true
+    ordered.forEach((s, i) => {
+      if (s.values.some((v) => printedFlag(v.flag_printed) === 'High' || printedFlag(v.flag_printed) === 'Low')) init[i] = true
     })
     return init
   })
@@ -291,8 +300,15 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
           ))}
         </div>
       )}
-      {ranked.map((s, i) => {
-        const outside = s.values.filter((v) => v.flag_printed).length
+      <p className="m-0 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#034F46]">
+        {t.valuesAsPrinted || 'Values and flags exactly as printed'}
+      </p>
+      {ordered.map((s, i) => {
+        const outside = s.values.filter((v) => {
+          const flag = printedFlag(v.flag_printed)
+          return flag === 'High' || flag === 'Low'
+        }).length
+        const allPrintedInRange = s.values.length > 0 && s.values.every((v) => printedFlag(v.flag_printed) === 'In range')
         return (
           <div key={s.heading + i} className="rounded-[28px] border-[1.5px] border-[#1A1A1A] overflow-hidden">
             <button type="button" className="w-full text-left p-3.5 flex items-center gap-3" aria-expanded={!!open[i]} onClick={() => setOpen((o) => ({ ...o, [i]: !o[i] }))}>
@@ -300,16 +316,26 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
                 <span className="block text-[16px] font-bold">{s.heading}</span>
                 <span className="block text-[13px] text-[#575B58]">{s.values.length} values · page {s.page}</span>
               </span>
-              <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : 'bg-[#CFE5E0]'}`}>
-                {outside ? (t.nOutside || '{n} outside').replace('{n}', String(outside)) : (t.allInRange || 'All in range')}
+              <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : allPrintedInRange ? 'bg-[#CFE5E0]' : 'bg-[#F4F5F2]'}`}>
+                {outside
+                  ? (t.nOutside || '{n} outside').replace('{n}', String(outside))
+                  : allPrintedInRange
+                    ? (t.allInRange || 'All in range')
+                    : (t.nValues || '{n} values').replace('{n}', String(s.values.length))}
               </span>
             </button>
             {open[i] && (
               <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
                 {s.values.map((v, j) => (
-                  <div key={v.label + j} className="rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3">
+                  <div key={v.label + j} className="rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3 flex flex-col gap-1">
                     <span className="block text-[12px] font-semibold text-[#575B58]">{v.label}</span>
                     <span className="sv-display text-[22px] leading-none">{v.value} {v.unit}</span>
+                    {(v.ref_range || v.range) && <span className="text-[12px] text-[#575B58]">{v.ref_range || v.range}</span>}
+                    {printedFlag(v.flag_printed) && (
+                      <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${v.flag_printed === 'High' ? 'bg-[#D9603B]' : v.flag_printed === 'Low' ? 'bg-[#F8D9CB]' : 'bg-[#CFE5E0]'}`}>
+                        {printedFlag(v.flag_printed)}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

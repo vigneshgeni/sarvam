@@ -17,7 +17,7 @@ import {
   WaysToPayBlock,
 } from './blocks/KindBlocks'
 import MedicineCard from '../components/MedicineCard'
-import { SectionedValues } from '../components/v3/SummaryCard'
+import { LabValues } from '../components/v3/SummaryCard'
 
 function Specific({
   id,
@@ -41,7 +41,7 @@ function Specific({
     case 'warranty':
       return <WarrantyBlock result={result} t={t} />
     case 'sections':
-      return result.sections?.length ? <SectionedValues sections={result.sections} t={t} /> : null
+      return result.sections?.length ? <LabValues result={result} t={t} /> : null
     case 'notADiagnosis':
       return <NotADiagnosisBlock t={t} />
     case 'medicines':
