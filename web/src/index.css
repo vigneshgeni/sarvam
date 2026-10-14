@@ -79,9 +79,9 @@ html[data-reduce-motion="true"] *::after {
 @layer base {
   body {
     margin: 0;
-    background-color: #F6F6F3;
-    color: #15171A;
-    font-family: 'Figtree', 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Telugu', 'Noto Sans Bengali', 'Noto Sans Oriya', sans-serif;
+    background-color: #F4F5F2;
+    color: #1A1A1A;
+    font-family: 'DM Sans', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -129,7 +129,7 @@ select {
 
 /* Button active press scale */
 .btn-press {
-  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 120ms ease-out;
 }
 .btn-press:active {
   transform: scale(0.97);
@@ -137,7 +137,7 @@ select {
 
 /* Visible focus ring */
 .focus-ring:focus-visible {
-  outline: 2px solid #5B52D6;
+  outline: 2px solid #1A1A1A;
   outline-offset: 2px;
 }
 

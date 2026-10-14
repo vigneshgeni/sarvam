@@ -193,6 +193,8 @@ export interface A11ySettings {
   highContrast: boolean
   reduceMotion: boolean
   largerTapTargets: boolean
+  readAloud?: boolean
+  slowVoice?: boolean
 }
 
 export interface ErrorResponse {

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { getDictionary, SUPPORTED_LANGS } from '../i18n'
 import type { AppErrorInfo } from '../types'
+import { pickReadingVariant, type ReadingLetter } from '../design/catalog'
+import { useOverlayRestore } from '../design/contracts'
+import ReadingArt from './v3/ReadingArt'
 
 interface ReadingScreenProps {
   files: File[]
@@ -97,7 +100,7 @@ function ErrorView({
           type="button"
           onClick={onRetry}
           disabled={secondsLeft > 0}
-          className="btn-press w-full py-3.5 rounded-full bg-brand text-white font-semibold text-[15px] hover:bg-[#0E5B37] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center gap-2"
+          className="sv-press w-full h-14 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] font-bold text-[17px] disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <svg
             width="18"
@@ -135,6 +138,14 @@ export default function ReadingScreen({
   onCancel,
   multiReportProgress,
 }: ReadingScreenProps) {
+  useOverlayRestore()
+  const [variant] = useState<ReadingLetter>(() =>
+    pickReadingVariant({
+      photo: files.some((f) => f.type.startsWith('image/')),
+      fileCount: files.length,
+      language: lang,
+    })
+  )
   const [step, setStep] = useState<number>(0)
   const [takingLonger, setTakingLonger] = useState<boolean>(false)
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
@@ -238,32 +249,28 @@ export default function ReadingScreen({
     )
   })()
 
+  const pageCount = Math.max(files.length, 1)
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 gap-7 animate-card-in">
-      {/* Animated Document Scanner Mockup (only when active, not in error state) */}
+    <div className="sv-screen-in flex-1 flex flex-col gap-6 px-5 pt-5 pb-7 min-h-[80vh] justify-between">
       {!error && (
-        <div className="relative w-44 h-52">
-          <div className="absolute left-5 top-3 w-36 h-44 bg-soft rounded-xl transform rotate-6" />
-          <div className="absolute left-2 top-1.5 w-36 h-48 bg-surface border border-line rounded-xl p-5 flex flex-col gap-2.5 overflow-hidden shadow-sm">
-            <div className="h-2.5 w-3/5 bg-ink rounded" />
-            <div className="h-1.5 bg-line rounded mt-2.5" />
-            <div className="h-1.5 w-4/5 bg-line rounded" />
-            <div className="h-1.5 bg-brand-soft rounded" />
-            <div className="h-1.5 w-3/4 bg-line rounded" />
-            <div className="h-1.5 bg-line rounded" />
-            <div className="h-1.5 w-3/5 bg-brand-soft rounded" />
-            <div className="sv-scan bg-brand" />
-          </div>
+        <div className="flex items-center justify-between">
+          <button type="button" aria-label="Back" onClick={onCancel} className="sv-press w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0] text-[13px] font-bold">
+            {t.processingSecurely || 'Processing securely'}
+          </span>
         </div>
       )}
+      {!error && <ReadingArt variant={variant} pages={pageCount} />}
 
       {/* Title & Document Count */}
       {!error && (
-        <div className="text-center flex flex-col gap-1.5 max-w-[340px]">
-          <h2 className="font-heading font-bold text-[22px] sm:text-[24px] text-ink leading-tight truncate">
-            {docTitle}
+        <div className="text-center flex flex-col gap-1">
+          <h2 className="sv-display m-0 text-[32px] tracking-[-0.3px] text-[#1A1A1A] leading-tight truncate">
+            {files.length > 1 ? `${files.length} photos` : docTitle}
           </h2>
-          <p className="text-[14px] text-muted">{fileLabel}</p>
+          <p className="m-0 text-[15px] text-[#575B58]">{fileLabel}</p>
           {multiReportProgress && (
             <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-brand-soft text-brand font-semibold text-[13px] rounded-full mx-auto mt-1">
               <span>
@@ -278,7 +285,7 @@ export default function ReadingScreen({
 
       {/* Stepper Card */}
       {!error && (
-        <div className="w-full bg-surface border border-line rounded-card px-5 py-2 divide-y divide-line shadow-sm">
+        <div className="w-full border-[1.5px] border-[#1A1A1A] rounded-[32px] px-[18px] pt-1.5 pb-4">
           {steps.map((st, i) => {
             const isDone = step > i
             const isActive = step === i
@@ -291,7 +298,7 @@ export default function ReadingScreen({
               >
                 <span className="w-7 h-7 shrink-0 flex items-center justify-center">
                   {isDone && (
-                    <span className="w-7 h-7 rounded-full bg-brand flex items-center justify-center">
+                    <span className="w-[30px] h-[30px] rounded-full bg-[#034F46] flex items-center justify-center">
                       <svg
                         width="15"
                         height="15"
@@ -307,10 +314,10 @@ export default function ReadingScreen({
                     </span>
                   )}
                   {isActive && (
-                    <span className="sv-spin w-6 h-6 rounded-full border-[3px] border-brand-soft border-t-brand" />
+                    <span className="spin w-[30px] h-[30px] box-border rounded-full border-[3.5px] border-[#F8D9CB] border-t-[#D9603B] border-r-[#D9603B]" />
                   )}
                   {isPending && (
-                    <span className="w-5 h-5 rounded-full border-2 border-line" />
+                    <span className="w-[30px] h-[30px] box-border rounded-full border-2 border-dashed border-[#A4A9A4]" />
                   )}
                 </span>
                 <span
@@ -360,7 +367,7 @@ export default function ReadingScreen({
           <button
             type="button"
             onClick={onCancel}
-            className="btn-press min-h-[44px] px-6 py-2.5 rounded-full border border-line bg-surface text-muted hover:text-ink font-semibold text-[14px] transition-colors shadow-xs flex items-center justify-center"
+            className="sv-press h-12 px-7 rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent text-[#1A1A1A] font-bold text-[16px] flex items-center justify-center"
             aria-label={t.cancel || t.goBack || 'Cancel'}
           >
             {t.cancel || t.goBack || 'Cancel'}

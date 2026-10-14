@@ -120,7 +120,8 @@ export default function Sheet({
     >
       {/* Scrim (backdrop) with fade */}
       <div
-        className="fixed inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 scrim-enter"
+        className="fixed inset-0 transition-opacity duration-200 scrim-enter"
+        style={{ background: '#8A8F8C' }}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -129,7 +130,7 @@ export default function Sheet({
       <div
         ref={sheetRef}
         tabIndex={-1}
-        className={`relative z-10 w-full max-w-[430px] mx-auto bg-white rounded-t-[28px] shadow-2xl flex flex-col overflow-hidden outline-none ${maxHeight} sheet-enter`}
+        className={`relative z-10 w-full max-w-[430px] mx-auto bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] flex flex-col overflow-hidden outline-none ${maxHeight} sheet-enter`}
         style={{
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
           transition: dragOffset > 0 ? 'none' : undefined,
@@ -140,7 +141,7 @@ export default function Sheet({
       >
         {/* Drag handle */}
         <div className="w-full pt-3 pb-2 flex justify-center items-center cursor-grab active:cursor-grabbing">
-          <div className="w-10 h-1 bg-[#D8D8D2] rounded-full" />
+          <div className="w-11 h-[5px] rounded-[3px] bg-[#1A1A1A] opacity-25" />
         </div>
 
         {/* Content wrapper */}

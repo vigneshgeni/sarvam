@@ -1,5 +1,6 @@
 /**
- * Shared contracts interface file between Antigravity (logic) and Cursor (design).
+ * Shared contracts between the explanation logic and the design screens.
+ * The real implementations live in share.ts and the overlay / reading hooks.
  */
 export { buildShare, redactResult } from '../utils/share'
 export { useOverlayRestore } from '../hooks/useOverlayRestore'

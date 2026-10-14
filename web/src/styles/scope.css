@@ -1,0 +1,67 @@
+/* Combined screen-styles.css redefines .ln and .chip. Restore each reading scene. */
+.sv-scan-a .ln {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: #E2E5E0;
+  animation: glow 2.6s ease-in-out infinite;
+}
+.sv-scan-d .chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 17px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  animation: pop 4.4s ease-out infinite;
+}
+.sv-app {
+  background: #F4F5F2;
+  color: #1A1A1A;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.sv-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 400;
+}
+.sv-indic {
+  font-family: var(--sv-indic-family, 'DM Sans'), 'DM Sans', sans-serif;
+  line-height: 1.68;
+}
+.sv-card-in {
+  animation: sv-fade-up 320ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.sv-screen-in {
+  animation: sv-push-in 280ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.sv-grow {
+  transform-origin: left center;
+  animation: sv-grow-x 700ms cubic-bezier(.2, .8, .2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-card-in, .sv-screen-in, .sv-grow, .pill, .scanline, .bob, .spin, .drift, .blink, .eq, .shot, .wiggle, .ring, .rise {
+    animation: none !important;
+  }
+}
+html[data-reduce-motion='true'] .sv-card-in,
+html[data-reduce-motion='true'] .sv-screen-in,
+html[data-reduce-motion='true'] .sv-grow,
+html[data-reduce-motion='true'] .pill,
+html[data-reduce-motion='true'] .scanline,
+html[data-reduce-motion='true'] .bob,
+html[data-reduce-motion='true'] .spin,
+html[data-reduce-motion='true'] .drift,
+html[data-reduce-motion='true'] .blink,
+html[data-reduce-motion='true'] .eq,
+html[data-reduce-motion='true'] .shot,
+html[data-reduce-motion='true'] .wiggle,
+html[data-reduce-motion='true'] .ring,
+html[data-reduce-motion='true'] .rise {
+  animation: none !important;
+}

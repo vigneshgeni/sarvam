@@ -65,8 +65,16 @@ export default function ListenSheet({
   const [duration, setDuration] = useState(0)
   const [playbackProgress, setPlaybackProgress] = useState(0)
   const [seekPreview, setSeekPreview] = useState<number | null>(null)
-  const [speed, setSpeed] = useState<number>(1.0)
-  const selectedSpeedRef = useRef(1.0)
+  const [speed, setSpeed] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('sarvam.a11y')
+      if (raw && JSON.parse(raw).slowVoice) return 0.9
+    } catch {
+      /* ignore */
+    }
+    return 1.0
+  })
+  const selectedSpeedRef = useRef(speed)
   const [gender, setGender] = useState<'female' | 'male'>(() => {
     try {
       return (localStorage.getItem('sarvam.voice') as 'female' | 'male') || 'female'

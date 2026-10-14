@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { SUPPORTED_LANGS, getDictionary, getLocalisedDocType, resolveLang, LANG_LABELS } from '../i18n'
+import { SUPPORTED_LANGS, getDictionary, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
 import { formatDate, isDatePassed } from '../utils/date'
 import { presentActionDate } from '../utils/actionChips.mjs'
@@ -13,14 +13,13 @@ import {
   ShareIcon,
   PlayIcon,
   MessageSquareIcon,
-  A11ySlidersIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CloseIcon,
   CopyIcon,
 } from './icons'
 import Sheet from './Sheet'
-import GlanceCard from './GlanceCard'
+import SummaryCard from './v3/SummaryCard'
 import PlacesContactsCard from './PlacesContactsCard'
 import MedicineCard from './MedicineCard'
 import DocumentPreviewModal, { type PreviewFileItem } from './DocumentPreviewModal'
@@ -102,6 +101,15 @@ export default function ResultScreen({
   const [isListenOpen, setIsListenOpen] = useState(false)
   const [isAskOpen, setIsAskOpen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isSaveImageOpen, setIsSaveImageOpen] = useState(false)
+  const [snapshotMode, setSnapshotMode] = useState<'page' | 'summary'>(() => {
+    try {
+      return localStorage.getItem('sarvam.snapshotMode') === 'summary' ? 'summary' : 'page'
+    } catch {
+      return 'page'
+    }
+  })
+  const [imageStatus, setImageStatus] = useState<string | null>(null)
   const [isRemindersOpen, setIsRemindersOpen] = useState(false)
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
   const [copyDatesSuccess, setCopyDatesSuccess] = useState(false)
@@ -354,14 +362,46 @@ export default function ResultScreen({
     }
   }
 
-  const sharePayload = buildShare(result, { hidePersonal, lang: contentLang })
-  const sharedText = sharePayload.text
+  const shared = buildShare(result, { hidePersonal, lang: contentLang })
+  const sharedText = shared.text
 
   const handleCopyShared = async () => {
     const ok = await copyToClipboard(sharedText)
     if (ok) {
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
+    }
+  }
+
+  const handleSaveImage = async () => {
+    const node = document.getElementById('sv-result')
+    if (!node) {
+      setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
+      return
+    }
+    try {
+      const { toPng } = await import('html-to-image')
+      await document.fonts.ready
+      const dataUrl = await toPng(node, {
+        pixelRatio: node.scrollHeight > 8000 ? 1 : 2,
+        backgroundColor: '#F4F5F2',
+      })
+      const blob = await (await fetch(dataUrl)).blob()
+      const day = new Date().toISOString().slice(0, 10)
+      const type = String(result.doc_type || 'document').replace(/[^a-z0-9]+/gi, '-')
+      const name = `Sarvam-${type}-${day}.png`
+      const file = new File([blob], name, { type: 'image/png' })
+      const canFileShare = typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })
+      if (canFileShare) await navigator.share({ files: [file], title: shared.title })
+      else {
+        const a = document.createElement('a')
+        a.href = dataUrl
+        a.download = name
+        a.click()
+      }
+      setImageStatus(t.imageSaved || 'Image saved')
+    } catch {
+      setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
     }
   }
 
@@ -440,21 +480,21 @@ export default function ResultScreen({
     <div className="flex-1 flex flex-col justify-between pb-[max(7rem,calc(5rem+env(safe-area-inset-bottom)))]">
       {/* Translucent Sticky Top Bar with Backdrop Blur & Scroll Hairline (WEB-5) */}
       <div
-        className={`sticky top-0 z-40 bg-white/85 backdrop-blur-md -mx-5 -mt-5 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 transition-shadow ${
-          isScrolled ? 'border-b border-[#E6E6E1] shadow-xs' : ''
+        className={`sticky top-0 z-40 -mx-5 -mt-5 px-4 py-3 flex items-center gap-2.5 ${
+          isScrolled ? 'bg-[#F4F5F2]/90 backdrop-blur-md' : 'bg-transparent'
         }`}
       >
         <button
           type="button"
           onClick={onGoHome}
           aria-label="Back"
-          className="hit-44 btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+          className="sv-press w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent text-[#1A1A1A] flex items-center justify-center shrink-0"
         >
           <ChevronRightIcon className="w-5 h-5 rotate-180" />
         </button>
 
         {/* Language selector dropdown */}
-        <label className="hit-44 flex-1 max-w-[200px] relative h-10 rounded-full border border-[#E6E6E1] bg-white flex items-center gap-1.5 px-3 pr-7 text-xs font-semibold text-[#15171A] min-w-0 cursor-pointer hover:border-[#5B52D6] transition-colors">
+        <label className="flex-1 relative h-12 rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center gap-2 px-3 text-[15px] font-semibold text-[#1A1A1A] min-w-0 cursor-pointer" style={{ background: contentLang !== 'en' ? '#E9B44C' : 'transparent' }}>
           <span className="truncate">
             {lang === 'auto'
               ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
@@ -483,13 +523,13 @@ export default function ResultScreen({
           type="button"
           onClick={onA11yClick}
           aria-label={t.makeEasierToRead || 'Make it easier to read'}
-          className="hit-44 btn-press w-10 h-10 rounded-full border border-[#E6E6E1] bg-white text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0"
+          className="sv-press w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent text-[#1A1A1A] flex items-center justify-center shrink-0"
         >
-          <A11ySlidersIcon className="w-5 h-5" />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M4 9h16" /><path d="M4 15h10" /></svg>
         </button>
       </div>
 
-      <div className="flex flex-col gap-5 pt-3 w-full">
+      <div id="sv-result" className="flex flex-col gap-5 pt-3 w-full">
         {/* Back to all reports button if viewing a report from multi-report set */}
         {multiReports && multiReports.length > 1 && (
           <button
@@ -570,56 +610,13 @@ export default function ResultScreen({
           </div>
         )}
 
-        {/* WEB-6: AT A GLANCE CARD */}
-        {result.glance && (
-          <GlanceCard
-            glance={result.glance}
-            docType={result.doc_type || (result.document_type as string)}
-            reportDateIso={result.report_date_iso}
-            lang={contentLang}
-            t={t}
-            onCheckOriginal={handleCheckOriginal}
-            hasDocumentPreview={hasDocumentPreview}
-            onOpenDocumentPreview={handleOpenPreview}
-            isPhoto={isPhoto}
-          />
-        )}
-
-        {/* Document Title Header if no glance card */}
-        {!result.glance && (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              {hasDocumentPreview ? (
-                <button
-                  type="button"
-                  onClick={handleOpenPreview}
-                  className="hit-44 btn-press inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F0F0EB] text-[#15171A] hover:bg-[#E4E4DE] transition-colors cursor-pointer"
-                  aria-label={t.viewDocument || 'View document'}
-                >
-                  <span>{getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}</span>
-                  <EyeIcon className="w-3.5 h-3.5 text-[#5E636B]" />
-                </button>
-              ) : (
-                <span className="text-xs font-bold uppercase tracking-wider text-[#146B4E]">
-                  {getLocalisedDocType(contentLang, result.doc_type || (result.document_type as string))}
-                </span>
-              )}
-              {hasDocumentPreview && (
-                <button
-                  type="button"
-                  onClick={handleOpenPreview}
-                  className="hit-44 btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
-                >
-                  <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
-                  <span>{t.viewDocument || 'View document'}</span>
-                </button>
-              )}
-            </div>
-            <h1 className="font-heading font-bold text-2xl text-[#15171A] leading-tight">
-              {result.title}
-            </h1>
-          </div>
-        )}
+        <SummaryCard
+          result={result}
+          t={t}
+          lang={contentLang}
+          hasDocumentPreview={hasDocumentPreview}
+          onOpenDocumentPreview={handleOpenPreview}
+        />
 
 
         {/* WEB-7: PLACES AND CONTACTS CARD */}
@@ -644,20 +641,14 @@ export default function ResultScreen({
 
         {/* 1. WHAT YOU NEED TO DO */}
         {result.actions && result.actions.length > 0 && (
-          <section className="bg-white border border-[#E6E6E1] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-1">
+          <section className="sv-card-in bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3.5">
             {/* Header with 28px icon tile & Progress Ring (WEB-5) */}
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#ECEBFA] text-[#5B52D6] flex items-center justify-center shrink-0">
-                  <CheckIcon className="w-4 h-4" />
-                </div>
-                <h2 className="text-sm font-bold text-[#15171A]">
-                  {t.actionsTitle || 'What you need to do'}
-                </h2>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="sv-display text-[25px] text-[#1A1A1A] m-0 whitespace-nowrap">
+                {t.actionsTitle || 'What you need to do'}<span className="text-[#D9603B]">.</span>
+              </h2>
 
-              {/* Progress Ring ("1 of 2 done") */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] bg-[#ECEBFA] px-2.5 py-1 rounded-full">
+              <div className="text-[12px] font-bold px-2.5 py-1 rounded-xl border-[1.5px] border-[#1A1A1A]">
                 <span>
                   {(t.actionsDoneCount || '{done} of {total} done')
                     .replace('{done}', String(completedActionsCount))
@@ -822,13 +813,13 @@ export default function ResultScreen({
 
         {/* 2. IN SIMPLE WORDS (Indigo Tint per WEB-5) */}
         {result.summary && result.summary.length > 0 && (
-          <section className="bg-[#ECEBFA] border border-[#D8D4EF] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#5B52D6] text-white flex items-center justify-center shrink-0">
-                <SparklesIcon className="w-4 h-4" />
+          <section className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
+                <SparklesIcon className="w-5 h-5 text-[#E9B44C]" />
               </div>
-              <h2 className="text-sm font-bold text-[#1E1838]">
-                {t.summaryTitle || 'In simple words'}
+              <h2 className="sv-display text-[28px] text-[#1A1A1A] m-0">
+                {t.summaryTitle || 'In simple words'}<span className="text-[#D9603B]">.</span>
               </h2>
             </div>
 
@@ -844,12 +835,12 @@ export default function ResultScreen({
 
         {/* 3. WATCH OUT (Left accent bar with light amber tint per WEB-5) */}
         {result.warnings && result.warnings.length > 0 && (
-          <section className="bg-[#FFF4DE] border-l-4 border-[#C2410C] rounded-r-[22px] rounded-l-md p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#C2410C]/20 text-[#C2410C] flex items-center justify-center shrink-0">
-                <AlertTriangleIcon className="w-4 h-4" />
+          <section className="sv-card-in bg-[#D9603B] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3 text-[#1A1A1A]">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
+                <AlertTriangleIcon className="w-5 h-5 text-[#D9603B]" />
               </div>
-              <h2 className="text-sm font-bold text-[#5A3500]">
+              <h2 className="text-[16px] font-bold text-[#1A1A1A] m-0">
                 {t.riskTitle || 'Watch out'}
               </h2>
             </div>
@@ -859,7 +850,7 @@ export default function ResultScreen({
                 const isQuoteOpen = !!openWarningQuotes[i]
                 return (
                   <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
-                    <p className="text-base font-medium text-[#5A3500] leading-relaxed">
+                    <p className="text-[15.5px] leading-[1.45] text-[#1A1A1A]">
                       {formatAmountsInText(warn.text)}
                     </p>
 
@@ -901,15 +892,10 @@ export default function ResultScreen({
 
         {/* 4. KEY FACTS (First 5 + Show all disclosure per WEB-5) */}
         {result.facts && result.facts.length > 0 && (
-          <section className="bg-white border border-[#E6E6E1] rounded-[22px] p-5 flex flex-col gap-3 shadow-sm animate-card-in stagger-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#F0F0EB] text-[#15171A] flex items-center justify-center shrink-0">
-                <SparklesIcon className="w-4 h-4" />
-              </div>
-              <h2 className="text-sm font-bold text-[#15171A]">
-                {t.factsTitle || 'Key facts'}
-              </h2>
-            </div>
+          <section className="sv-card-in bg-[#1A1A1A] text-[#F4F5F2] rounded-[40px] p-5 flex flex-col gap-1">
+            <h2 className="sv-display text-[28px] text-[#F4F5F2] m-0 mb-2">
+              {t.factsTitle || 'Key facts'}<span className="text-[#D9603B]">.</span>
+            </h2>
 
             {isPhoto && (
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#F8F8F6] border border-[#E8E8E2] text-xs text-[#52525B] leading-relaxed">
@@ -921,18 +907,18 @@ export default function ResultScreen({
               </div>
             )}
 
-            <div className="flex flex-col divide-y divide-[#F0F0EB]">
+            <div className="flex flex-col">
               {factsToDisplay.map((fact, i) => {
                 const isQuoteOpen = !!openFactQuotes[i]
 
                 return (
-                  <div key={i} className="py-2.5 first:pt-1 last:pb-1 flex flex-col gap-1.5">
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-6 h-6 rounded-md bg-[#FBF7EF] border border-[#F1EBDD] text-[#9A6700] flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-[11px] font-mono font-bold">{i + 1}</span>
+                  <div key={i} className="py-3 border-t border-[#383B39] flex flex-col gap-1.5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-[#D9603B] text-[#1A1A1A] flex items-center justify-center shrink-0">
+                        <span className="text-[13px] font-bold">{i + 1}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-base text-[#15171A] leading-relaxed">
+                        <p className="text-[15.5px] leading-[1.45] text-[#E4E7E3]">
                           {formatAmountsInText(fact.text)}
                         </p>
                         {fact.evidence === 'matched' ? (
@@ -1008,7 +994,7 @@ export default function ResultScreen({
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#E6E6E1] pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg flex flex-col items-center justify-center">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-[#F4F5F2] border-t-[1.5px] border-[#1A1A1A] pt-3.5 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center">
         <div className="w-full max-w-[430px] flex items-center gap-3">
           {/* Listen Button (Primary Filled Indigo) */}
           <button
@@ -1019,7 +1005,7 @@ export default function ResultScreen({
             }}
             title={contentLang === 'or' ? (t.odiaAudioUnavailable || 'Audio playback is not available for Odia yet') : undefined}
             aria-disabled={contentLang === 'or'}
-            className={`btn-press flex-1 min-h-[48px] h-12 bg-[#1E1838] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#2F2656] shadow-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`sv-press flex-[1.2] h-14 bg-[#1A1A1A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-full font-bold text-[17px] flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1036,7 +1022,7 @@ export default function ResultScreen({
             type="button"
             disabled={isTranslating}
             onClick={() => openOverlay('ask')}
-            className={`btn-press flex-1 min-h-[48px] h-12 bg-white border-2 border-[#1E1838] text-[#1E1838] rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#F0F0EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`sv-press flex-1 h-14 bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] rounded-full font-bold text-[17px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1050,7 +1036,7 @@ export default function ResultScreen({
             disabled={isTranslating}
             onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
-            className={`btn-press w-12 h-12 min-h-[48px] bg-white border border-[#E6E6E1] rounded-full text-[#15171A] flex items-center justify-center hover:bg-[#F0F0EB] transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`sv-press w-14 h-14 box-border bg-transparent border-[1.5px] border-[#1A1A1A] rounded-full text-[#1A1A1A] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1096,8 +1082,8 @@ export default function ResultScreen({
       >
         <div className="flex flex-col gap-4 pt-1">
           <div className="flex items-center justify-between pb-1">
-            <h2 className="text-base font-bold text-[#15171A]">
-              {t.shareTitle || 'Share or save'}
+            <h2 className="sv-display text-[36px] leading-none text-[#1A1A1A] m-0">
+              {t.shareTitle || 'Share or save'}<span className="text-[#D9603B]">.</span>
             </h2>
             <button
               type="button"
@@ -1109,67 +1095,106 @@ export default function ResultScreen({
           </div>
 
           {/* Hide personal details toggle */}
-          <label className="flex items-center justify-between p-3.5 bg-[#FBF7EF] border border-[#F1EBDD] rounded-2xl cursor-pointer">
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-[#15171A]">
+          <label className="flex items-center justify-between gap-3 p-3.5 bg-[#034F46] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[28px] cursor-pointer">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-[15px] font-bold">
                 {t.hidePersonalDetails || 'Hide personal details'}
               </span>
-              <span className="text-[11px] text-[#5E636B]">
-                {hidePersonal
-                  ? 'Names, numbers and IDs redacted'
-                  : 'Showing full details'}
+              <span className="text-[13px] text-[#CFE5E0]">
+                {t.hidePersonalSub || 'Names, numbers and IDs are masked'}
               </span>
-            </div>
+            </span>
             <input
               type="checkbox"
               checked={hidePersonal}
               onChange={(e) => setHidePersonal(e.target.checked)}
-              className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
+              className="w-6 h-6 accent-[#E9B44C]"
             />
           </label>
 
-          {/* Live Preview */}
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold uppercase text-[#5E636B]">
-              {t.sharePreview || 'Preview of shared text'}
+          <div className="flex flex-col gap-2">
+            <span className="text-[12px] font-bold tracking-[1.2px] text-[#575B58]">
+              {t.whatWillBeShared || 'WHAT WILL BE SHARED'}
             </span>
-            <pre className="max-h-36 overflow-y-auto p-3 bg-neutral-50 border border-[#E6E6E1] rounded-xl text-xs font-mono leading-relaxed text-[#15171A] whitespace-pre-wrap select-all">
-              {sharedText}
-            </pre>
+            <div className="rounded-[24px] border-[1.5px] border-[#1A1A1A] p-3.5 text-[14px] leading-relaxed whitespace-pre-wrap">
+              {shared.segments.map((seg, i) =>
+                seg.masked ? (
+                  <span key={i} className="inline-block mx-0.5 px-2 py-0.5 rounded-md border border-dashed border-[#1A1A1A] bg-[rgba(233,180,76,.22)] font-mono text-[13px]">
+                    {seg.text}
+                  </span>
+                ) : (
+                  <span key={i}>{seg.text}</span>
+                )
+              )}
+            </div>
           </div>
 
-          {/* Share Action Buttons */}
-          <div className="flex flex-col gap-2 pt-1">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => shareToWhatsApp(sharedText)}
-                className="btn-press h-11 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#20ba5a]"
-              >
-                {t.shareViaWhatsApp || 'WhatsApp'}
-              </button>
-              <button
-                type="button"
-                onClick={() => shareToEmail(sharePayload.title, sharedText)}
-                className="btn-press h-11 rounded-xl border border-[#E6E6E1] bg-white text-[#15171A] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#F0F0EB]"
-              >
-                {t.shareViaEmail || 'Email'}
-              </button>
-            </div>
-
+          <div className="grid grid-cols-5 gap-2 pt-1">
+            <button type="button" onClick={() => shareToWhatsApp(sharedText)} className="sv-press flex flex-col items-center gap-1.5">
+              <span className="w-14 h-14 rounded-full bg-[#25D366] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-white">
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                  <path fill="currentColor" d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.44 1.34 4.94L2 22l5.39-1.41a10 10 0 0 0 4.65 1.18h.01c5.46 0 9.89-4.4 9.89-9.83C21.94 6.4 17.5 2 12.04 2zm5.76 13.87c-.24.68-1.4 1.25-1.94 1.33-.5.08-1.12.11-1.81-.11-.41-.14-.95-.31-1.63-.61-2.87-1.24-4.74-4.13-4.88-4.32-.14-.19-1.15-1.53-1.15-2.92s.73-2.07 1-2.35c.24-.28.64-.41 1.02-.41.12 0 .23 0 .33.01.3.01.44.03.64.49.24.57.82 1.98.89 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.28.71 1.17 1.52 1.89 1.05.93 1.93 1.22 2.2 1.36.28.14.44.12.6-.07.16-.19.69-.8.87-1.08.19-.28.37-.23.62-.14.26.09 1.63.77 1.91.91.28.14.46.21.53.33.07.12.07.68-.17 1.36z"/>
+                </svg>
+              </span>
+              <span className="text-[12px] font-semibold">{t.shareViaWhatsApp || 'WhatsApp'}</span>
+            </button>
+            <button type="button" onClick={() => shareToEmail(shared.title, sharedText)} className="sv-press flex flex-col items-center gap-1.5">
+              <span className="w-14 h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">@</span>
+              <span className="text-[12px] font-semibold">{t.shareViaEmail || 'Email'}</span>
+            </button>
+            <button type="button" onClick={handleCopyShared} className="sv-press flex flex-col items-center gap-1.5">
+              <span className="w-14 h-14 rounded-full bg-[#D9603B] border-[1.5px] border-[#1A1A1A] flex items-center justify-center">
+                <CopyIcon className="w-5 h-5 text-[#1A1A1A]" />
+              </span>
+              <span className="text-[12px] font-semibold">{copySuccess ? t.copied || 'Copied' : t.copyText || 'Copy text'}</span>
+            </button>
+            <button type="button" onClick={() => setIsSaveImageOpen(true)} className="sv-press flex flex-col items-center gap-1.5">
+              <span className="w-14 h-14 rounded-full bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">IMG</span>
+              <span className="text-[12px] font-semibold">{t.saveImage || 'Save image'}</span>
+            </button>
             <button
               type="button"
-              onClick={handleCopyShared}
-              className={`btn-press w-full h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
-                copySuccess
-                  ? 'bg-[#146B4E] text-white'
-                  : 'bg-white border border-[#E6E6E1] text-[#15171A] hover:bg-[#F0F0EB]'
-              }`}
+              onClick={() => {
+                if (navigator.share) void navigator.share({ title: shared.title, text: sharedText })
+                else handleCopyShared()
+              }}
+              className="sv-press flex flex-col items-center gap-1.5"
             >
-              <CopyIcon className="w-4 h-4" />
-              <span>{copySuccess ? t.copied || 'Copied!' : t.copyText || 'Copy text'}</span>
+              <span className="w-14 h-14 rounded-full bg-[#1A1A1A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">···</span>
+              <span className="text-[12px] font-semibold">{t.more || 'More'}</span>
             </button>
           </div>
+        </div>
+      </Sheet>
+
+      <Sheet isOpen={isSaveImageOpen} onClose={() => setIsSaveImageOpen(false)} title={t.saveImage || 'Save as image'}>
+        <div className="flex flex-col gap-4 pt-1">
+          <h2 className="sv-display text-[36px] leading-none m-0">
+            {t.saveImage || 'Save as image'}<span className="text-[#D9603B]">.</span>
+          </h2>
+          <p className="m-0 text-[15.5px] leading-[1.45] text-[#3B3E3C]">
+            {t.saveImageBody || 'The whole explanation as one tall image. Keep it in Photos, or send it to family or your doctor.'}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(['page', 'summary'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setSnapshotMode(mode)
+                  try { localStorage.setItem('sarvam.snapshotMode', mode) } catch { /* ignore */ }
+                }}
+                className="h-12 rounded-full border-[1.5px] border-[#1A1A1A] text-[15px] font-bold"
+                style={{ background: snapshotMode === mode ? '#E9B44C' : 'transparent' }}
+              >
+                {mode === 'page' ? (t.wholePage || 'Whole page') : (t.summaryOnly || 'Summary only')}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={handleSaveImage} className="sv-press h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[17px] font-bold">
+            {t.saveToPhotos || 'Save to Photos'}
+          </button>
+          {imageStatus && <p className="m-0 text-[14px] font-semibold" role="status">{imageStatus}</p>}
         </div>
       </Sheet>
 

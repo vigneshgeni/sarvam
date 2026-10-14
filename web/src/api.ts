@@ -2,7 +2,9 @@ import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from '.
 import { explainQueue } from './utils/queue'
 import { getLocalFallbackError } from './i18n'
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+const API_BASE = import.meta.env.DEV
+  ? ''
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
 export class ExplainApiError extends Error {
   messageLocal: string

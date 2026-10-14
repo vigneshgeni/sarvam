@@ -7,6 +7,7 @@ interface A11ySheetProps {
   isOpen: boolean
   onClose: () => void
   t: Record<string, string>
+  lang?: string
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -16,6 +17,8 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   highContrast: false,
   reduceMotion: false,
   largerTapTargets: false,
+  readAloud: false,
+  slowVoice: false,
 }
 
 export function getStoredA11ySettings(): A11ySettings {
@@ -40,13 +43,15 @@ export function applyA11ySettings(settings: A11ySettings): void {
   html.setAttribute('data-high-contrast', String(settings.highContrast))
   html.setAttribute('data-reduce-motion', String(settings.reduceMotion))
   html.setAttribute('data-larger-targets', String(settings.largerTapTargets))
+  html.setAttribute('data-read-aloud', String(!!settings.readAloud))
+  html.setAttribute('data-slow-voice', String(!!settings.slowVoice))
 
   try {
     localStorage.setItem('sarvam.a11y', JSON.stringify(settings))
   } catch {}
 }
 
-export default function A11ySheet({ isOpen, onClose, t }: A11ySheetProps) {
+export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheetProps) {
   const [settings, setSettings] = useState<A11ySettings>(getStoredA11ySettings)
 
   useEffect(() => {
@@ -66,188 +71,177 @@ export default function A11ySheet({ isOpen, onClose, t }: A11ySheetProps) {
     applyA11ySettings(DEFAULT_A11Y_SETTINGS)
   }
 
+  const myLanguage = lang !== 'en' && lang !== 'auto'
+  const largerOn = settings.textSize > 100
+  const sizeIndex = settings.textSize >= 150 ? 2 : settings.textSize >= 115 ? 1 : 0
+  const previewPx = [16, 20, 26][sizeIndex]
+
+  const tiles: {
+    id: string
+    label: string
+    on: boolean
+    bg: string
+    ink: string
+    glyph?: string
+    toggle: () => void
+  }[] = [
+    {
+      id: 'big',
+      label: t.largerText || 'Larger text',
+      on: largerOn,
+      bg: '#D9603B',
+      ink: '#1A1A1A',
+      glyph: 'Aa',
+      toggle: () => handleUpdate('textSize', largerOn ? 100 : 130),
+    },
+    {
+      id: 'speak',
+      label: t.readAloud || 'Read aloud',
+      on: !!settings.readAloud,
+      bg: '#034F46',
+      ink: '#F4F5F2',
+      toggle: () => handleUpdate('readAloud', !settings.readAloud),
+    },
+    {
+      id: 'contrast',
+      label: t.highContrast || 'High contrast',
+      on: settings.highContrast,
+      bg: '#1A1A1A',
+      ink: '#F4F5F2',
+      toggle: () => handleUpdate('highContrast', !settings.highContrast),
+    },
+    {
+      id: 'simple',
+      label: t.simpleWords || 'Simple words',
+      on: settings.easyRead,
+      bg: '#E9B44C',
+      ink: '#1A1A1A',
+      toggle: () => handleUpdate('easyRead', !settings.easyRead),
+    },
+    {
+      id: 'slow',
+      label: t.slowerVoice || 'Slower voice',
+      on: !!settings.slowVoice,
+      bg: '#D9603B',
+      ink: '#FFFFFF',
+      toggle: () => handleUpdate('slowVoice', !settings.slowVoice),
+    },
+    {
+      id: 'lang',
+      label: t.myLanguage || 'My language',
+      on: myLanguage,
+      bg: '#CFE5E0',
+      ink: '#1A1A1A',
+      glyph: 'அ',
+      toggle: () => undefined,
+    },
+  ]
+
   return (
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
-      title={t.makeEasierToRead || 'Make it easier to read'}
+      title={t.a11yTitle || 'Make Sarvam easier'}
       maxHeight="max-h-[92vh]"
     >
-      <div className="flex flex-col gap-5 pt-1">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#15171A]">
-            {t.makeEasierToRead || 'Make it easier to read'}
-          </h2>
+      <div className="flex flex-col gap-[18px] pt-1 pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-11 h-11 box-border rounded-full border-[3px] border-[#FADCD1] bg-[#D9603B] flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="4.6" r="1.7" fill="#FFFFFF" stroke="none" />
+                <path d="M5 8.6c2.4.8 4.6 1.1 7 1.1s4.6-.3 7-1.1" />
+                <path d="M12 9.8v4.4" />
+                <path d="M12 14.2l-3.4 6" />
+                <path d="M12 14.2l3.4 6" />
+              </svg>
+            </span>
+            <h2 className="sv-display m-0 text-[28px] leading-none text-[#1A1A1A]">
+              {t.a11yTitle || 'Make Sarvam easier'}<span className="text-[#D9603B]">.</span>
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-[#5E636B] hover:text-[#15171A] rounded-full hover:bg-[#F0F0EB] transition-colors"
+            className="sv-press w-11 h-11 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center shrink-0"
             aria-label={t.close || 'Close'}
           >
-            <CloseIcon className="w-5 h-5" />
+            <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
 
-        {/* Live Preview Card */}
-        <div className="bg-[#FBF7EF] border border-[#F1EBDD] rounded-2xl p-4 flex flex-col gap-1.5 shadow-inner">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5E636B]">
-            {t.preview || 'Preview'}
-          </span>
-          <p
-            className="text-base text-[#15171A]"
-            style={{
-              fontSize: `${(settings.textSize / 100) * 16}px`,
-              lineHeight: settings.lineSpacing === 'relaxed' ? 1.9 : 1.5,
-              letterSpacing: settings.easyRead ? '0.04em' : 'normal',
-              fontFamily: settings.easyRead
-                ? '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                : undefined,
-            }}
-          >
-            Your health insurance renewal premium of ₹14,500 is due by 15 November 2026.
-          </p>
+        <div className="grid grid-cols-3 gap-2.5">
+          {tiles.map((tile) => (
+            <button
+              key={tile.id}
+              type="button"
+              aria-pressed={tile.on}
+              onClick={tile.toggle}
+              className="sv-press flex flex-col items-center gap-2 px-1.5 pt-3.5 pb-3 rounded-[22px] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A]"
+              style={{ background: tile.on ? '#E9B44C' : 'transparent' }}
+            >
+              <span className="w-[52px] h-[52px] box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center" style={{ background: tile.bg, color: tile.ink }}>
+                {tile.id === 'big' || tile.id === 'lang' ? (
+                  <span className="text-[20px] font-extrabold" style={{ color: tile.ink }}>{tile.glyph}</span>
+                ) : tile.id === 'speak' ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={tile.ink} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5z" /><path d="M15.5 9a4 4 0 0 1 0 6" /><path d="M18 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+                ) : tile.id === 'contrast' ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke={tile.ink} strokeWidth="2.2" /><path d="M12 4a8 8 0 0 1 0 16z" fill={tile.ink} /></svg>
+                ) : tile.id === 'simple' ? (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={tile.ink} strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M5 7h14M5 12h10M5 17h6" /></svg>
+                ) : (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={tile.ink} strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="13" r="7.5" /><path d="M12 9v4l2.5 2" /><path d="M10 3h4" /></svg>
+                )}
+              </span>
+              <span className="text-[13.5px] font-semibold leading-[1.2] text-center">{tile.label}</span>
+              <span className="text-[12px] font-bold px-2.5 py-0.5 rounded-[10px]" style={tile.on ? { background: '#1A1A1A', color: '#F4F5F2' } : { border: '1.5px solid #1A1A1A' }}>
+                {tile.on ? (t.onWord || 'On') : (t.offWord || 'Off')}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {/* Options List */}
-        <div className="flex flex-col gap-4">
-          {/* 1. Text Size Chips */}
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-[#15171A]">
-              {t.textSize || 'Text size'}
-            </span>
-            <div className="grid grid-cols-4 gap-2">
-              {[100, 115, 130, 150].map((size) => (
+        <div className="flex flex-col gap-2.5">
+          <span className="text-[12.5px] font-bold tracking-[1.2px] text-[#575B58]">{(t.textSize || 'TEXT SIZE').toUpperCase()}</span>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: t.normalText || 'Normal text', size: 100 as const, px: 16 },
+              { label: t.largeText || 'Large text', size: 130 as const, px: 20 },
+              { label: t.extraLargeText || 'Extra large text', size: 150 as const, px: 26 },
+            ].map((z) => {
+              const selected = (z.size === 100 && sizeIndex === 0) || (z.size === 130 && sizeIndex === 1) || (z.size === 150 && sizeIndex === 2)
+              return (
                 <button
-                  key={size}
+                  key={z.size}
                   type="button"
-                  onClick={() => handleUpdate('textSize', size as any)}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    settings.textSize === size
-                      ? 'bg-[#1E1838] text-white shadow-sm'
-                      : 'bg-[#F0F0EB] text-[#5E636B] hover:text-[#15171A]'
-                  }`}
+                  aria-pressed={selected}
+                  aria-label={z.label}
+                  onClick={() => handleUpdate('textSize', z.size)}
+                  className="sv-press h-12 rounded-2xl border-[1.5px] border-[#1A1A1A] font-extrabold text-[#1A1A1A]"
+                  style={{ background: selected ? '#E9B44C' : 'transparent', fontSize: z.px }}
                 >
-                  {size}%
+                  A
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. Line Spacing */}
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-[#15171A]">
-              {t.lineSpacing || 'Line spacing'}
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleUpdate('lineSpacing', 'normal')}
-                className={`py-2 rounded-xl text-xs font-semibold transition-all ${
-                  settings.lineSpacing === 'normal'
-                    ? 'bg-[#1E1838] text-white shadow-sm'
-                    : 'bg-[#F0F0EB] text-[#5E636B] hover:text-[#15171A]'
-                }`}
-              >
-                {t.lineSpacingNormal || 'Normal'}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdate('lineSpacing', 'relaxed')}
-                className={`py-2 rounded-xl text-xs font-semibold transition-all ${
-                  settings.lineSpacing === 'relaxed'
-                    ? 'bg-[#1E1838] text-white shadow-sm'
-                    : 'bg-[#F0F0EB] text-[#5E636B] hover:text-[#15171A]'
-                }`}
-              >
-                {t.lineSpacingRelaxed || 'Relaxed'}
-              </button>
-            </div>
-          </div>
-
-          {/* 3. Toggles */}
-          <div className="divide-y divide-[#F0F0EB]">
-            {/* Easier to Read Mode */}
-            <label className="py-3 flex items-center justify-between cursor-pointer">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-[#15171A]">
-                  {t.easyReadMode || 'Easier-to-read mode'}
-                </span>
-                <span className="text-xs text-[#5E636B]">
-                  System font stack, wider letter spacing
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.easyRead}
-                onChange={(e) => handleUpdate('easyRead', e.target.checked)}
-                className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
-              />
-            </label>
-
-            {/* High Contrast */}
-            <label className="py-3 flex items-center justify-between cursor-pointer">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-[#15171A]">
-                  {t.highContrast || 'High contrast'}
-                </span>
-                <span className="text-xs text-[#5E636B]">
-                  Higher visual distinction and crisp edges
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.highContrast}
-                onChange={(e) => handleUpdate('highContrast', e.target.checked)}
-                className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
-              />
-            </label>
-
-            {/* Reduce Motion */}
-            <label className="py-3 flex items-center justify-between cursor-pointer">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-[#15171A]">
-                  {t.reduceMotion || 'Reduce motion'}
-                </span>
-                <span className="text-xs text-[#5E636B]">
-                  Turns off card slide-ins and visual waveforms
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.reduceMotion}
-                onChange={(e) => handleUpdate('reduceMotion', e.target.checked)}
-                className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
-              />
-            </label>
-
-            {/* Larger Tap Targets */}
-            <label className="py-3 flex items-center justify-between cursor-pointer">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-[#15171A]">
-                  {t.largerTapTargets || 'Larger tap targets'}
-                </span>
-                <span className="text-xs text-[#5E636B]">
-                  Increases interactive button padding to min 52px
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.largerTapTargets}
-                onChange={(e) => handleUpdate('largerTapTargets', e.target.checked)}
-                className="w-5 h-5 rounded text-[#5B52D6] focus:ring-0"
-              />
-            </label>
+              )
+            })}
           </div>
         </div>
 
-        {/* Reset button */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="w-full py-2.5 bg-[#F0F0EB] text-[#15171A] hover:bg-[#E6E6E1] text-xs font-bold rounded-xl transition-colors"
-          >
+        <p className="m-0 text-[15px] leading-[1.5] text-[#3B3E3C] border-[1.5px] border-[#1A1A1A] rounded-[28px] px-4 py-3.5">
+          {t.preview || 'Preview'}:{' '}
+          <span style={{ fontSize: previewPx, fontWeight: 700, background: settings.highContrast ? '#1A1A1A' : 'transparent', color: settings.highContrast ? '#F4F5F2' : '#1A1A1A', padding: settings.highContrast ? '2px 4px' : undefined }}>
+            {t.a11yPreview || 'Your claim of ₹31,200 is approved.'}
+          </span>
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <button type="button" onClick={() => handleUpdate('reduceMotion', !settings.reduceMotion)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.reduceMotion ? '#E9B44C' : 'transparent' }}>
+            {t.reduceMotion || 'Reduce motion'}
+          </button>
+          <button type="button" onClick={() => handleUpdate('largerTapTargets', !settings.largerTapTargets)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.largerTapTargets ? '#E9B44C' : 'transparent' }}>
+            {t.largerTapTargets || 'Larger tap targets'}
+          </button>
+          <button type="button" onClick={handleReset} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] text-[15px] font-semibold">
             {t.reset || 'Reset all to defaults'}
           </button>
         </div>
