@@ -50,7 +50,7 @@ TRANSLATE_THINKING: int = 0
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
 EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 55.0))
 EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 55.0))
-LONG_DOCUMENT_PAGES: int = 6
+LONG_DOCUMENT_PAGES: int = 4
 LONG_REQUEST_DEADLINE: float = 140.0
 
 FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
@@ -196,6 +196,7 @@ Rules:
    other (other): anything else.
    Examples, described only, never copy these words as values: a page of test rows with a reference range is a lab_report; a page that starts with Rx and BD is a prescription; a letter that states an EMI and an interest rate is a loan; a page of empty labelled boxes is a form.
    Fill `profile` with only the fields that are printed for that kind. Copy values verbatim. Leave every other profile string empty, and leave emi_day_of_month at 0 when the page does not print the day. Each amount, id and name needs its quote and page when the field has them.
+   When the page prints an amount still to be paid (a bill, challan, tax notice, invoice balance, loan EMI, or insurance premium), add one profile.amounts entry labelled "Amount due" or "Total payable", and set profile.due_date to the printed due date in YYYY-MM-DD. A loan also fills emi_amount. Insurance fills premium. The first action is "Pay ₹{amount} by {date}" using that printed amount and date. Do not leave the amount out when it is printed.
 4. Glance (`glance`):
    - headline: <= 12 words summarizing the essence of the document.
    - key_values: up to 6 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document. Use kind "amount" only for money. Lab readings, sample IDs and reference numbers are kind "text" or "date".

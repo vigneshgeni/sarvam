@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ExplainResponse, GlanceKeyValue, Part, Section } from '../../types'
 import { getLocalisedDocType } from '../../i18n'
-import { isMoneyValue, pickGlance, visualForDocument, type GlanceKind } from '../../design/catalog'
+import { amountDue, isMoneyValue, pickGlance, visualForDocument, type GlanceKind } from '../../design/catalog'
 import { DocIcon } from '../../ui/icons'
 import { formatAmountValue } from '../../utils/currency'
 
@@ -171,14 +171,16 @@ function AmountToPay({
   t: Record<string, string>
   lang: string
 }) {
-  const due = result.actions?.find((a) => a.due_date && a.date_status !== 'passed')
-  const left = daysUntil(due?.due_date)
-  const date = due?.due_date ? formatChipDate(due.due_date, lang) : null
+  const payable = amountDue(result)
+  const dueIso = payable.due || result.actions?.find((a) => a.due_date)?.due_date
+  const left = daysUntil(dueIso)
+  const date = dueIso ? formatChipDate(dueIso, lang) : null
+  const figure = formatAmountValue(payable.value || amounts[0]?.value || '')
   return (
     <div className="flex gap-3">
       <div className="flex-1 min-w-0 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
         <span className="text-[12px] font-bold tracking-[1.2px]">{t.toPay || 'TO PAY'}</span>
-        <span className="sv-display text-[44px] leading-none tabular-nums">{formatAmountValue(amounts[0]?.value || '')}</span>
+        <span className="sv-display text-[44px] leading-none tabular-nums">{figure}</span>
         {date && (
           <span className="text-[14px] font-semibold">
             {(t.byDate || 'by {date}').replace('{date}', date)}
@@ -186,7 +188,7 @@ function AmountToPay({
           </span>
         )}
       </div>
-      {due?.due_date && <DateTile iso={due.due_date} />}
+      {dueIso && <DateTile iso={dueIso} />}
     </div>
   )
 }

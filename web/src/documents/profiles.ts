@@ -1,5 +1,5 @@
 import type { DocIconName, DocVisual, GlanceKind } from '../design/catalog'
-import { isMoneyValue, pickGlance, visualForDocument } from '../design/catalog'
+import { amountDue, isMoneyValue, pickGlance, visualForDocument } from '../design/catalog'
 import type { ExplainResponse } from '../types'
 import { inferKind, type DocumentKind, type KindSource } from './kinds'
 
@@ -155,14 +155,22 @@ function layoutFor(kind: DocumentKind, source: ExplainResponse): GlanceKind {
       return 'E'
     case 'discharge_summary':
       return source.profile?.follow_up ? 'C' : 'E'
-    case 'invoice':
     case 'hospital_bill':
     case 'investment':
-    case 'loan':
     case 'salary_slip':
     case 'bank_statement':
       return 'F'
+    case 'loan':
+      return source.profile?.emi_amount || source.profile?.next_emi_date ? 'B' : 'F'
+    case 'invoice':
+      return amountDue(source).value && (source.profile?.paid_or_due || source.profile?.amounts?.some((item) => /due|payable|balance/i.test(item.label || '')))
+        ? 'B'
+        : 'F'
+    case 'insurance':
+      return source.profile?.premium ? 'B' : fallback === 'A' ? 'A' : 'F'
     case 'challan':
+    case 'tax_notice':
+      return 'B'
     case 'school':
       return source.actions?.some((a) => a.due_date) && !(source.glance?.key_values || []).some((k) => isMoneyValue(k.kind, k.value))
         ? 'C'
@@ -172,9 +180,6 @@ function layoutFor(kind: DocumentKind, source: ExplainResponse): GlanceKind {
       return 'C'
     case 'government_notice':
       return source.actions?.some((a) => a.due_date) ? 'C' : 'E'
-    case 'insurance':
-      return fallback === 'A' ? 'A' : 'F'
-    case 'tax_notice':
     case 'utility_bill':
       return fallback === 'A' ? 'A' : 'B'
     case 'receipt':

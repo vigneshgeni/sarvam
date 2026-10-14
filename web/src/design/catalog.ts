@@ -103,40 +103,29 @@ export const HEALTH_SAMPLE = 'sample-health-checkup.pdf'
 
 export type ReadingLetter = 'A' | 'B' | 'C' | 'D'
 
-const ORDER: ReadingLetter[] = ['A', 'B', 'C', 'D']
-
-export function pickReadingVariant(opts: {
-  photo: boolean
-  fileCount: number
-  language: string
-}): ReadingLetter {
-  let pick: ReadingLetter
-  if (opts.photo || opts.fileCount > 1) pick = 'B'
-  else if (opts.language && opts.language !== 'en') pick = 'C'
-  else {
-    let last: string | null = null
-    try {
-      last = localStorage.getItem('sarvam.readingVariant')
-    } catch {
-      last = null
-    }
-    pick = last === 'A' ? 'D' : 'A'
-  }
-  let stored: string | null = null
-  try {
-    stored = localStorage.getItem('sarvam.readingVariant')
-  } catch {
-    stored = null
-  }
-  if (stored === pick) {
-    pick = ORDER[(ORDER.indexOf(pick) + 1) % 4]
-  }
+function rememberReading(pick: ReadingLetter): ReadingLetter {
   try {
     localStorage.setItem('sarvam.readingVariant', pick)
   } catch {
     /* ignore */
   }
   return pick
+}
+
+export function pickReadingVariant(opts: {
+  photo: boolean
+  fileCount: number
+  language: string
+}): ReadingLetter {
+  if (opts.photo || opts.fileCount > 1) return rememberReading('B')
+  if (opts.language && opts.language !== 'en' && opts.language !== 'auto') return rememberReading('C')
+  let last: string | null = null
+  try {
+    last = localStorage.getItem('sarvam.readingVariant')
+  } catch {
+    last = null
+  }
+  return rememberReading(last === 'A' ? 'D' : 'A')
 }
 
 function amountNumber(value: string): number | null {
@@ -158,6 +147,30 @@ export function isMoneyValue(kind: string, value: string): boolean {
 export type GlanceKind = 'A' | 'B' | 'C' | 'D' | 'Dplus' | 'F' | 'E' | 'multi'
 
 const SPLIT_TYPES = new Set(['insurance', 'utility_bill', 'telecom_bill', 'tax_receipt', 'receipt'])
+
+function dueLabel(label: string): boolean {
+  return /amount due|total payable|to pay|premium|emi|fine|balance/i.test(label)
+}
+
+/** The figure and date for the TO PAY glance. Empty when the page did not print one. */
+export function amountDue(result: ExplainResponse): { value: string; due: string } {
+  const profile = result.profile
+  const kvs = result.glance?.key_values || []
+  const labeled = kvs.find((item) => dueLabel(item.label) && isMoneyValue(item.kind, item.value))
+  const quoted = profile?.amounts?.find((item) => item.value && dueLabel(item.label || ''))
+  const value =
+    profile?.emi_amount ||
+    profile?.premium ||
+    profile?.paid_or_due ||
+    quoted?.value ||
+    labeled?.value ||
+    profile?.total ||
+    kvs.find((item) => isMoneyValue(item.kind, item.value))?.value ||
+    ''
+  const actionDue = (result.actions || []).find((action) => action.due_date && action.date_status !== 'passed')?.due_date
+  const due = profile?.due_date || profile?.next_emi_date || actionDue || ''
+  return { value, due }
+}
 
 export function pickGlance(result: ExplainResponse): GlanceKind {
   if (result.parts && result.parts.length > 1) return 'multi'

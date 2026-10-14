@@ -29,6 +29,7 @@ emit('src/documents/reminders.ts', 'reminders.mjs')
 
 const { inferKind } = await import(pathToFileURL(join(dir, 'kinds.mjs')).href)
 const { resolveProfile } = await import(pathToFileURL(join(dir, 'profiles.mjs')).href)
+const { amountDue } = await import(pathToFileURL(join(dir, 'catalog.mjs')).href)
 const { noticeByDate } = await import(pathToFileURL(join(dir, 'reminders.mjs')).href)
 
 const base = {
@@ -202,7 +203,7 @@ const rows = [
   ['lab 18 values', lab, 'lab_report', 'Dplus', ['sections', 'notADiagnosis']],
   ['prescription', rx, 'prescription', 'E', ['medicines']],
   ['discharge', discharge, 'discharge_summary', 'C', ['diagnosis', 'medicines', 'advice']],
-  ['loan', loan, 'loan', 'F', ['nextEmi', 'loanTerms']],
+  ['loan', loan, 'loan', 'B', ['nextEmi', 'loanTerms']],
   ['agreement', agreement, 'agreement', 'E', ['keyTerms', 'timeline']],
   ['invoice', invoice, 'invoice', 'F', ['items', 'warranty']],
   ['bill with rebate', billRebate, 'utility_bill', 'A', []],
@@ -214,6 +215,42 @@ const rows = [
   ['account form', form, 'form', 'E', ['formSteps']],
   ['three documents', bundle, 'other', 'multi', []],
 ]
+
+test('a payable document uses the amount due and the due date', () => {
+  const challan = doc({
+    title: 'Traffic challan',
+    document_kind: 'challan',
+    document_type: 'challan',
+    profile: { amounts: [{ label: 'Amount due', value: '₹ 1,000' }], due_date: '2026-12-05' },
+    glance: { key_values: [{ label: 'Fine', value: '₹ 1,000', kind: 'amount' }] },
+  })
+  const tax = doc({
+    title: 'Property tax',
+    document_kind: 'tax_notice',
+    document_type: 'tax_receipt',
+    profile: { amounts: [{ label: 'Total payable', value: '₹ 2,450' }], due_date: '2026-11-30' },
+  })
+  const premium = doc({
+    title: 'Policy',
+    document_kind: 'insurance',
+    document_type: 'insurance',
+    profile: { premium: '₹ 8,200', due_date: '2026-12-01' },
+  })
+  const balance = doc({
+    title: 'Invoice',
+    document_kind: 'invoice',
+    document_type: 'receipt',
+    profile: { paid_or_due: '₹ 500', amounts: [{ label: 'Amount due', value: '₹ 500' }], due_date: '2026-11-01' },
+  })
+  assert.equal(resolveProfile(challan).glanceLayout, 'B')
+  assert.equal(resolveProfile(tax).glanceLayout, 'B')
+  assert.equal(resolveProfile(billPlain).glanceLayout, 'B')
+  assert.equal(resolveProfile(premium).glanceLayout, 'B')
+  assert.equal(resolveProfile(balance).glanceLayout, 'B')
+  assert.equal(amountDue(loan).value, '₹ 18,400')
+  assert.equal(amountDue(tax).due, '2026-11-30')
+  assert.equal(amountDue(challan).value, '₹ 1,000')
+})
 
 test('new fictional documents get their kind and layout', () => {
   const mismatches = []
