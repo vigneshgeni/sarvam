@@ -1397,36 +1397,34 @@ export default function App() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-[430px] bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] p-6 flex flex-col gap-4"
+            className="w-full max-w-[430px] bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] px-5 pt-3 pb-7 flex flex-col gap-[18px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div>
-              <h2 className="text-lg font-bold text-[#15171A]">
+            <span aria-hidden="true" className="w-11 h-[5px] rounded-[3px] bg-[#1A1A1A] opacity-25 self-center" />
+            <span aria-hidden="true" className="w-16 h-16 box-border border-[1.5px] border-[#1A1A1A] rounded-full bg-[#F8D9CB] flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <h2 className="sv-display m-0 text-[34px] leading-[1.02] text-[#1A1A1A]">
                 {deleteConfirm.type === 'single'
-                  ? t.deleteSingleConfirmTitle || 'Delete this report?'
-                  : t.deleteAllConfirmTitle || 'Delete all recent reports?'}
+                  ? t.deleteSingleConfirmTitle || 'Delete this result?'
+                  : t.deleteAllConfirmTitle || 'Delete all results?'}
               </h2>
-              <p className="text-xs text-[#5E636B] mt-1 leading-relaxed">
+              <p className="m-0 text-[15.5px] leading-[1.4] text-[#3B3E3C]">
                 {deleteConfirm.type === 'single'
-                  ? t.deleteSingleConfirmDesc ||
-                    'This will remove the saved result from this phone.'
-                  : t.deleteAllConfirmDesc ||
-                    'This will remove all saved results from this phone.'}
+                  ? (t.deleteSingleConfirmDesc || '“{name}” will be removed from this phone. Reminders already in your calendar stay there.').replace('{name}', deleteConfirm.title || '')
+                  : t.deleteAllConfirmDesc || 'Every saved result will be removed from this phone. Reminders already in your calendar stay there.'}
               </p>
             </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="btn-press flex-1 py-3 rounded-xl border border-[#E6E6E1] bg-white text-[#15171A] font-semibold text-xs hover:bg-[#F0F0EB] transition-colors"
-              >
-                {t.keep || 'Keep'}
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setDeleteConfirm(null)} className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[16px]">
+                {t.keepIt || 'Keep it'}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="sv-press flex-1 h-12 rounded-full bg-[#B3361A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] font-bold text-[15px]"
+                className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] font-bold text-[16px] text-[#F4F5F2]"
+                style={{ background: deleteConfirm.type === 'all' ? '#B3361A' : '#1A1A1A' }}
               >
                 {t.delete || 'Delete'}
               </button>

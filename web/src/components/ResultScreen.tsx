@@ -38,6 +38,13 @@ import {
   getGoogleCalendarUrl,
   type CalendarEventInput,
 } from '../utils/ics'
+
+function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
+  if (choice === '1d') return '-P1D'
+  if (choice === '3d') return '-P3D'
+  if (choice === '1w') return '-P1W'
+  return 'PT9H'
+}
 import { buildShare, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
@@ -120,6 +127,8 @@ export default function ResultScreen({
     }
   })
   const [isRemindersOpen, setIsRemindersOpen] = useState(false)
+  const [pickedDates, setPickedDates] = useState<Record<number, boolean>>({})
+  const [alertChoice, setAlertChoice] = useState<'day' | '1d' | '3d' | '1w'>('1d')
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
   const [copyDatesSuccess, setCopyDatesSuccess] = useState(false)
   const [sourceViewer, setSourceViewer] = useState<{
@@ -328,7 +337,7 @@ export default function ResultScreen({
         startDate: startDate,
         isAllDay: true,
         rrule: isRecurring ? 'FREQ=MONTHLY' : undefined,
-        alarmTrigger: 'PT9H',
+        alarmTrigger: alertTrigger(alertChoice),
       },
     ]
 
@@ -336,10 +345,10 @@ export default function ResultScreen({
     downloadIcs(`action-${idx + 1}.ics`, ics)
   }
 
-  const handleAddAllDates = async () => {
+  const handleAddAllDates = async (onlyPicked = false) => {
     if (!result.actions) return
     const validActions = result.actions.filter(
-      (a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence)
+      (a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && (!onlyPicked || pickedDates[idx] !== false)
     )
     if (validActions.length === 0) return
 
@@ -352,7 +361,7 @@ export default function ResultScreen({
         description: act.date_status === 'calculated' ? 'Calculated date.' : undefined,
         startDate: startDate,
         isAllDay: true,
-        alarmTrigger: 'PT9H',
+        alarmTrigger: alertTrigger(alertChoice),
       }
     })
 
@@ -782,7 +791,10 @@ export default function ResultScreen({
                           {formatAmountsInText(act.text)}
                         </span>
                         {(result.parts?.length || 0) > 1 && act.part_id && result.parts?.find((part) => part.part_id === act.part_id)?.title && (
-                          <span className="self-start text-[12px] font-bold px-2 py-0.5 rounded-[10px] border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0]">
+                          <span
+                            className="self-start text-[11.5px] font-bold px-[9px] py-[3px] rounded-[10px] border-[1.5px] border-[#1A1A1A]"
+                            style={{ background: ['#CFE5E0', '#F8D9CB', '#FBEBC4'][Math.max(0, result.parts.findIndex((part) => part.part_id === act.part_id)) % 3] }}
+                          >
                             {(t.fromDocument || 'From: {name}').replace(
                               '{name}',
                               result.parts?.find((part) => part.part_id === act.part_id)?.title || ''
@@ -872,7 +884,7 @@ export default function ResultScreen({
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={handleAddAllDates}
+                  onClick={() => void handleAddAllDates()}
                   className="hit-44 btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
                 >
                   <CalendarIcon className="w-4 h-4" />
@@ -1341,60 +1353,70 @@ export default function ResultScreen({
         title={t.upcomingDates || 'Upcoming dates & reminders'}
         maxHeight="max-h-[85vh]"
       >
-        <div className="flex flex-col gap-4 py-2">
-          <p className="text-xs text-[#5E636B] leading-relaxed">
-            {t.calendarDirectNotice ||
-              'Add dates to Google Calendar or copy all dates to your clipboard.'}
-          </p>
-
-          <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="sv-display m-0 text-[32px] leading-none">
+              {t.upcomingDates || 'Add to calendar'}<span className="text-[#D9603B]">.</span>
+            </h2>
+          </div>
+          <div className="border-[1.5px] border-[#1A1A1A] rounded-[28px] px-4">
             {result.actions
-              ?.filter((a) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence))
-              .map((act, i) => {
+              ?.map((act, idx) => ({ act, idx }))
+              .filter(({ act }) => !isDatePassed(act.due_date) && act.date_status !== 'passed' && (act.due_date || act.recurrence))
+              .map(({ act, idx }, i, list) => {
                 const todayStr = new Date().toISOString().slice(0, 10)
                 const targetDate = act.due_date || todayStr
-                const gcalUrl = getGoogleCalendarUrl(act.text, targetDate, act.quote)
+                const when = new Date(`${targetDate}T00:00:00`)
+                const month = when.toLocaleString(contentLang, { month: 'short' }).toUpperCase()
+                const checked = pickedDates[idx] !== false
                 return (
-                  <div
-                    key={i}
-                    className="flex flex-col gap-2 p-3.5 rounded-[24px] bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A]"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-semibold text-[#15171A] leading-snug">
-                        {act.text}
-                      </span>
-                      <span className="text-xs font-bold text-[#1E1838] shrink-0 bg-white px-2 py-0.5 rounded-md border border-[#E6E6E1]">
-                        {formatDate(targetDate, contentLang)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <a
-                        href={gcalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-press inline-flex items-center gap-1.5 text-xs font-bold text-[#1D5FA8] bg-[#E8F1FB] hover:bg-[#D5E5F7] px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        {t.addToGoogleCalendar || 'Add to Google Calendar'}
-                      </a>
-                    </div>
-                  </div>
+                  <label key={idx} className={`flex items-center gap-3 py-3 ${i < list.length - 1 ? 'border-b-[1.5px] border-[#E2E5E0]' : ''}`}>
+                    <input type="checkbox" checked={checked} onChange={() => setPickedDates((prev) => ({ ...prev, [idx]: !checked }))} className="w-6 h-6 m-0 accent-[#034F46] shrink-0" />
+                    <span className="w-[46px] shrink-0 box-border border-[1.5px] border-[#1A1A1A] rounded-xl overflow-hidden text-center">
+                      <span className={`block border-b-[1.5px] border-[#1A1A1A] text-[10px] font-bold tracking-[1px] py-0.5 ${act.recurrence ? 'bg-[#034F46] text-[#F4F5F2]' : 'bg-[#D9603B]'}`}>{month}</span>
+                      <span className="sv-display block text-[20px] leading-[1.2]">{when.getDate()}</span>
+                    </span>
+                    <span className="min-w-0 flex-1 flex flex-col">
+                      <span className="text-[15.5px] font-semibold leading-snug">{act.text}</span>
+                      <span className="text-[13px] text-[#575B58]">{act.recurrence ? (t.repeats || 'Repeats') : (t.allDay || 'All day')}</span>
+                    </span>
+                  </label>
                 )
               })}
           </div>
-
-          <div className="pt-2">
+          <div className="flex flex-col gap-2">
+            <span className="text-[12.5px] font-bold tracking-[1.2px] text-[#575B58]">{t.alertMe || 'ALERT ME'}</span>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ['day', t.alertOnDay || 'On the day, 9 AM'],
+                ['1d', t.alertDayBefore || '1 day before'],
+                ['3d', t.alert3Days || '3 days before'],
+                ['1w', t.alertWeek || '1 week before'],
+              ] as const).map(([id, label]) => (
+                <button key={id} type="button" aria-pressed={alertChoice === id} onClick={() => setAlertChoice(id)} className={`sv-press h-11 rounded-[22px] border-[1.5px] border-[#1A1A1A] text-[14px] ${alertChoice === id ? 'bg-[#E9B44C] font-bold' : 'bg-transparent font-semibold'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <button type="button" onClick={() => void handleAddAllDates(true)} className="sv-press h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] font-bold text-[17px]">
+              {(t.addNToCalendar || 'Add {n} to my calendar').replace('{n}', String(result.actions?.filter((a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && pickedDates[idx] !== false).length || 0))}
+            </button>
             <button
               type="button"
-              onClick={handleCopyAllDatesText}
-              className={`btn-press w-full h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
-                copyDatesSuccess
-                  ? 'bg-[#146B4E] text-white'
-                  : 'bg-white border border-[#E6E6E1] text-[#15171A] hover:bg-[#F0F0EB]'
-              }`}
+              onClick={() => {
+                const first = result.actions?.find((a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && pickedDates[idx] !== false)
+                if (!first) return
+                const todayStr = new Date().toISOString().slice(0, 10)
+                window.open(getGoogleCalendarUrl(first.text, first.due_date || todayStr, first.quote), '_blank', 'noopener,noreferrer')
+              }}
+              className="sv-press h-[50px] rounded-[25px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[15px]"
             >
-              <CopyIcon className="w-4 h-4" />
-              <span>{copyDatesSuccess ? t.copied || 'Copied!' : t.copyAllDates || 'Copy all dates'}</span>
+              {t.openInGoogleCalendar || 'Open in Google Calendar'}
+            </button>
+            <button type="button" onClick={() => void handleCopyAllDatesText()} className="text-[14px] font-semibold text-[#034F46] underline-offset-2">
+              {copyDatesSuccess ? (t.copied || 'Copied') : (t.copyAllDates || 'Copy all dates')}
             </button>
           </div>
         </div>

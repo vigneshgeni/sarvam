@@ -188,7 +188,9 @@ export default function MultiDocument({
               </span>
               <span className="min-w-0 flex flex-col">
                 <span className="text-[11.5px] font-bold tracking-[1.2px] text-[#575B58]">
-                  {(t.documentNofM || 'DOCUMENT {n} OF {m} · PAGES {pages}')
+                  {(start === end
+                    ? (t.documentOnePage || 'DOCUMENT {n} OF {m} · PAGE {pages}')
+                    : (t.documentNofM || 'DOCUMENT {n} OF {m} · PAGES {pages}'))
                     .replace('{n}', String(index + 1))
                     .replace('{m}', String(parts.length))
                     .replace('{pages}', pageLabel)}

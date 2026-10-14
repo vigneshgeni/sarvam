@@ -8,7 +8,6 @@ import {
   CloseIcon,
   PlayIcon,
   CheckIcon,
-  EyeIcon,
   AlertTriangleIcon,
 } from './icons'
 import { askDocument } from '../api'
@@ -199,28 +198,19 @@ export default function AskSheet({
     >
       <div className="flex flex-col gap-4 pt-1">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-[#15171A]">
-              {t.askBtnLabel || 'Ask'}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="sv-display m-0 text-[36px] leading-none text-[#1A1A1A]">
+              {t.askBtnLabel || 'Ask'}<span className="text-[#D9603B]">.</span>
             </h2>
-            <p className="text-xs text-[#5E636B]">
-              Ask anything about this document in {lang.toUpperCase()}
-            </p>
+            <span className="text-[14px] text-[#575B58]">{t.askHint || 'Type or speak, in any of 9 languages'}</span>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-[#5E636B] hover:text-[#15171A] rounded-full hover:bg-[#F0F0EB] transition-colors"
-            aria-label={t.close || 'Close'}
-          >
-            <CloseIcon className="w-5 h-5" />
+          <button type="button" onClick={onClose} className="sv-press w-11 h-11 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center" aria-label={t.close || 'Close'}>
+            <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
 
-        {/* Suggestion Chips */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {suggestionChips.map((chip, idx) => (
             <button
               key={idx}
@@ -229,7 +219,7 @@ export default function AskSheet({
                 setQuestion(chip)
                 handleAskSubmit(chip)
               }}
-              className="btn-press px-3 py-1.5 bg-[#F0F0EB] hover:bg-[#E6E6E1] text-[#15171A] text-xs font-medium rounded-full transition-colors text-left"
+              className="sv-press h-10 px-3.5 rounded-[20px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[14px] text-[#1A1A1A]"
             >
               {chip}
             </button>
@@ -250,36 +240,26 @@ export default function AskSheet({
                   handleAskSubmit()
                 }
               }}
-              placeholder={t.askPlaceholder || 'Ask anything about this document...'}
-              className="w-full bg-[#F6F6F3] border border-[#E6E6E1] rounded-2xl pl-3.5 pr-20 py-3 text-sm text-[#15171A] placeholder-[#5E636B] focus:outline-none focus:border-[#5B52D6]"
+              placeholder={t.askPlaceholder || 'Type your question…'}
+              aria-label={t.askPlaceholder || 'Your question'}
+              className="w-full bg-transparent border-[1.5px] border-[#1A1A1A] rounded-[32px] pl-[18px] pr-[116px] h-14 text-[15.5px] font-medium text-[#1A1A1A] placeholder-[#575B58] outline-none"
             />
 
-            <div className="absolute right-2 flex items-center gap-1">
-              {/* Mic Button */}
+            <div className="absolute right-1.5 flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleToggleMic}
-                className={`p-2 rounded-xl transition-all ${
-                  isListening
-                    ? 'bg-[#C2410C] text-white animate-pulse'
-                    : 'text-[#5E636B] hover:text-[#15171A] hover:bg-neutral-200'
-                }`}
-                aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+                className={`w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#1A1A1A] text-[#F4F5F2]' : 'bg-[#D9603B] text-[#1A1A1A]'}`}
+                aria-label={isListening ? 'Stop listening' : 'Speak your question'}
               >
-                {isListening ? (
-                  <MicOffIcon className="w-4 h-4" />
-                ) : (
-                  <MicIcon className="w-4 h-4" />
-                )}
+                {isListening ? <MicOffIcon className="w-5 h-5" /> : <MicIcon className="w-5 h-5" />}
               </button>
-
-              {/* Submit Button */}
               <button
                 type="button"
                 disabled={!question.trim() || isLoading}
                 onClick={() => handleAskSubmit()}
-                className="sv-press p-2 bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] rounded-full"
-                aria-label="Send question"
+                className="sv-press w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"
+                aria-label="Send"
               >
                 {isLoading ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -312,74 +292,39 @@ export default function AskSheet({
 
         {/* Answer Display Card (never displayed if error is present) */}
         {!askError && answerData && (
-          <div className="bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] rounded-[24px] p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#5B52D6] uppercase tracking-wider">
-                Answer
-              </span>
-              <button
-                type="button"
-                onClick={() => setAnswerData(null)}
-                className="text-xs text-[#5E636B] hover:text-[#15171A]"
-              >
-                Clear
-              </button>
-            </div>
-
-            {/* If answered_from === 'summary' */}
-            {answerData.answered_from === 'summary' && (
-              <span className="text-[11px] font-medium text-[#5E636B] bg-[#F0F0EB] px-2 py-0.5 rounded w-fit">
-                {t.askAnsweredFromSummary || 'Answering from the summary'}
-              </span>
-            )}
-
-            {answerData.not_found ? (
-              <div className="text-sm font-medium text-[#5E636B] italic">
-                {t.askNotFound || "This document doesn't say"}
+          <div className="flex flex-col gap-3">
+            {question.trim() && (
+              <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35]">
+                {question}
               </div>
-            ) : (
-              <p className="text-base font-semibold text-[#15171A] leading-relaxed">
-                {answerData.answer}
-              </p>
             )}
-
-            {/* Quote Block if present */}
-            {answerData.quote && (
-              <div className="bg-[#FBF7EF] border-l-2 border-[#5B52D6] p-2.5 rounded-r-xl flex flex-col gap-1 text-xs">
-                <span className="font-semibold text-[#5E636B]">
-                  From your document{answerData.page ? `, page ${answerData.page}` : ''}:
+            <div className="self-start flex gap-2.5 max-w-[94%]">
+              <span aria-hidden="true" className="w-[34px] h-[34px] shrink-0 box-border rounded-full bg-[#034F46] border-[1.5px] border-[#1A1A1A] text-[#F4F5F2] flex items-center justify-center text-[15px] font-bold">S<span className="text-[#D9603B]">.</span></span>
+              <div className="flex flex-col gap-2.5 bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] px-4 py-3 rounded-[6px_24px_24px_24px]">
+                {answerData.answered_from === 'summary' && (
+                  <span className="text-[12px] font-semibold text-[#575B58]">{t.askAnsweredFromSummary || 'Answering from the summary'}</span>
+                )}
+                <p className="m-0 text-[15.5px] leading-[1.45] text-[#1A1A1A]">
+                  {answerData.not_found ? (t.askNotFound || "This document doesn't say") : answerData.answer}
+                </p>
+                {answerData.quote && (
+                  <p className="m-0 text-[13px] text-[#3B3E3C]">“{answerData.quote}”{answerData.page ? ` · ${answerData.page}` : ''}</p>
+                )}
+                <span className="flex gap-2 flex-wrap items-center">
+                  <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold">
+                    <CheckIcon className="w-3.5 h-3.5 text-[#034F46]" />
+                    {answerData.evidence === 'check_original'
+                      ? (t.checkAgainstOriginal || 'Check against original')
+                      : (t.fromYourDocument || 'From your document')}
+                  </span>
+                  {!answerData.not_found && onSpeakAnswer && (
+                    <button type="button" onClick={() => onSpeakAnswer(answerData.answer)} className="sv-press inline-flex items-center gap-1 h-[30px] px-2.5 rounded-[15px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]">
+                      <PlayIcon className="w-3 h-3" />
+                      {t.play || 'Play'}
+                    </button>
+                  )}
                 </span>
-                <p className="text-[#15171A] italic">“{answerData.quote}”</p>
               </div>
-            )}
-
-            {/* Evidence Chip & Speak Button */}
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                {answerData.evidence === 'matched' && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#0E5B37] bg-[#E4F3EC] px-2 py-0.5 rounded-md">
-                    <CheckIcon className="w-3 h-3 text-[#0E5B37]" />
-                    {t.foundInDoc || 'Found in your document'}
-                  </span>
-                )}
-                {answerData.evidence === 'check_original' && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#475A7A] bg-[#EAEFF7] px-2 py-0.5 rounded-md">
-                    <EyeIcon className="w-3 h-3 text-[#475A7A]" />
-                    {t.checkAgainstOriginal || 'Check against original'}
-                  </span>
-                )}
-              </div>
-
-              {!answerData.not_found && onSpeakAnswer && (
-                <button
-                  type="button"
-                  onClick={() => onSpeakAnswer(answerData.answer)}
-                  className="btn-press inline-flex items-center gap-1 px-3 py-1 bg-[#ECEBFA] text-[#5B52D6] rounded-lg text-xs font-semibold hover:bg-[#D8D4EF] transition-colors"
-                >
-                  <PlayIcon className="w-3.5 h-3.5" />
-                  {t.listenBtnLabel || 'Listen'}
-                </button>
-              )}
             </div>
           </div>
         )}
