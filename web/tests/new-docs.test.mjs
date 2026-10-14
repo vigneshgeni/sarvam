@@ -27,7 +27,7 @@ emit('src/documents/kinds.ts', 'kinds.mjs')
 emit('src/documents/profiles.ts', 'profiles.mjs')
 emit('src/documents/reminders.ts', 'reminders.mjs')
 
-const { inferKind } = await import(pathToFileURL(join(dir, 'kinds.mjs')).href)
+const { inferKind, partAsResult } = await import(pathToFileURL(join(dir, 'kinds.mjs')).href)
 const { resolveProfile } = await import(pathToFileURL(join(dir, 'profiles.mjs')).href)
 const { amountDue } = await import(pathToFileURL(join(dir, 'catalog.mjs')).href)
 const { noticeByDate } = await import(pathToFileURL(join(dir, 'reminders.mjs')).href)
@@ -271,6 +271,23 @@ test('a file name does not choose the kind', () => {
 
 test('a rental agreement counts the notice-by date', () => {
   assert.equal(noticeByDate(agreement.profile.end_date, agreement.profile.notice_period), '2027-07-01')
+})
+
+test('a lab report inside a packet uses the full lab layout', () => {
+  const part = {
+    part_id: 'part-1',
+    title: 'Lab report',
+    document_type: 'medical',
+    document_kind: 'lab_report',
+    pages: [1, 3],
+    sections: lab.sections,
+  }
+  assert.equal(resolveProfile(partAsResult(part, bundle)).glanceLayout, 'Dplus')
+  const shortPart = {
+    ...part,
+    sections: [{ heading: 'Blood', values: labValues.slice(0, 3) }],
+  }
+  assert.equal(resolveProfile(partAsResult(shortPart)).glanceLayout, 'D')
 })
 
 test('each part of a bundle keeps its own kind', () => {

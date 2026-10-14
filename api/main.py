@@ -37,6 +37,7 @@ from evidence import (
     filter_protected_terms,
     inspect_and_decrypt_pdf,
     is_personal_field,
+    match_lab_row,
     process_contacts,
     process_places,
     verify_evidence,
@@ -77,8 +78,6 @@ from reader import (
     EXPLAIN_TIMEOUT,
     GeminiServiceError,
     GeminiTimeoutError,
-    LONG_DOCUMENT_PAGES,
-    LONG_REQUEST_DEADLINE,
     REQUEST_DEADLINE,
     TRANSLATE_TIMEOUT,
     ask_document,
@@ -453,14 +452,8 @@ async def explain(
         ]
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
 
-    pages = reader.pdf_page_count(file_data_list)
-    if pages >= LONG_DOCUMENT_PAGES:
-        deadline = start_time + LONG_REQUEST_DEADLINE
-        logger.info(
-            "explain_long_document: pages=%d, deadline_seconds=%.0f",
-            pages,
-            LONG_REQUEST_DEADLINE,
-        )
+    # A long PDF is split into 5-page calls inside read_document. The request
+    # keeps the normal deadline so one document never waits on a 140 second call.
 
     # Check remaining deadline before semaphore wait
     remaining = deadline - time.time()
@@ -841,10 +834,7 @@ async def explain(
         for s in reader_result.sections:
             sec_vals = []
             for v in s.values:
-                val_ev = "check_original"
-                if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
-                    if v.value in pdf_pages_text[s.page - 1]:
-                        val_ev = "matched"
+                val_ev = match_lab_row(v.label, v.value, getattr(v, "quote", "") or "", getattr(v, "page", 0) or s.page, pdf_pages_text)
                 sec_vals.append(
                     ExplainSectionValue(
                         label=v.label,
@@ -852,6 +842,8 @@ async def explain(
                         unit=v.unit,
                         ref_range=v.ref_range,
                         flag_printed=v.flag_printed,
+                        quote=getattr(v, "quote", "") or "",
+                        page=getattr(v, "page", 0) or 0,
                         evidence=val_ev,
                     )
                 )
@@ -874,10 +866,7 @@ async def explain(
                 for s in p.sections:
                     sec_vals = []
                     for v in s.values:
-                        val_ev = "check_original"
-                        if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
-                            if v.value in pdf_pages_text[s.page - 1]:
-                                val_ev = "matched"
+                        val_ev = match_lab_row(v.label, v.value, getattr(v, "quote", "") or "", getattr(v, "page", 0) or s.page, pdf_pages_text)
                         sec_vals.append(
                             ExplainSectionValue(
                                 label=v.label,
@@ -885,6 +874,8 @@ async def explain(
                                 unit=v.unit,
                                 ref_range=v.ref_range,
                                 flag_printed=v.flag_printed,
+                                quote=getattr(v, "quote", "") or "",
+                                page=getattr(v, "page", 0) or 0,
                                 evidence=val_ev,
                             )
                         )

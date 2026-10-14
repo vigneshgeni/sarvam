@@ -801,6 +801,31 @@ def normalize_text_for_evidence(text: str) -> str:
     return collapse_whitespace(t).lower()
 
 
+def match_lab_row(
+    label: str,
+    value: str,
+    quote: str,
+    page: int,
+    pages_text: Optional[List[str]],
+) -> str:
+    """Match a printed lab row. A High/Low row uses its quote. Any other row matches when both its label and value are on the page."""
+    if not pages_text:
+        return "check_original"
+    if quote and quote.strip():
+        return verify_evidence(quote, value or "", page or 1, pages_text)
+    chosen = pages_text
+    if page and 1 <= page <= len(pages_text):
+        chosen = [pages_text[page - 1]]
+    label_text = (label or "").strip().lower()
+    value_text = (value or "").strip()
+    if not label_text or not value_text:
+        return "check_original"
+    for text in chosen:
+        if value_text in text and label_text in text.lower():
+            return "matched"
+    return "check_original"
+
+
 def verify_evidence(
     quote: str,
     item_text: str,

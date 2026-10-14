@@ -370,6 +370,8 @@ class ReaderSectionValue(BaseModel):
         default=None,
         description="'High' | 'Low' only when document prints High/Low or H/L or arrows, else null. Never invent.",
     )
+    quote: str = Field(default="", description="Verbatim quote only when flag_printed is High or Low. Empty otherwise.")
+    page: int = Field(default=0, description="Original page of a High or Low row. 0 when the row has no quote.")
 
 
 class ReaderSection(BaseModel):
@@ -629,6 +631,8 @@ class ExplainSectionValue(BaseModel):
     unit: Optional[str] = None
     ref_range: Optional[str] = None
     flag_printed: Optional[str] = None  # 'High' | 'Low' | None
+    quote: str = ""
+    page: int = 0
     evidence: str = "check_original"
 
 

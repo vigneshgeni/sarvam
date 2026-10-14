@@ -1,9 +1,11 @@
 import asyncio
+import io
 import json
 import logging
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -50,8 +52,8 @@ TRANSLATE_THINKING: int = 0
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
 EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 55.0))
 EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 55.0))
-LONG_DOCUMENT_PAGES: int = 4
-LONG_REQUEST_DEADLINE: float = 140.0
+LONG_DOCUMENT_PAGES: int = 5
+PAGE_CHUNK: int = 5
 
 FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
 FALLBACK_TIMEOUT: float = float(os.environ.get("FALLBACK_TIMEOUT", 35.0))
@@ -264,13 +266,14 @@ Rules:
       * `unit`: printed unit (e.g. mg/dL, %)
       * `ref_range`: printed reference range (e.g. 70 – 100, Below 200)
       * `flag_printed`: 'High' or 'Low' ONLY when the document explicitly prints High/Low (or H/L, ↑/↓) for that row, else null. Sarvam never decides High/Low; never invent.
-    Also keep the most important rows in `glance`. Never leave `sections` empty when the page prints test rows.
+      * `quote` and `page`: include them ONLY for a row whose flag_printed is High or Low. Leave quote empty for every in-range row.
+    Return every printed row. Do not drop in-range rows. Also keep the most important rows in `glance`. Never leave `sections` empty when the page prints test rows.
 19. Action and Fact tagging:
     When `parts` are present, tag each action and fact with `part_id` corresponding to which part it belongs to.
 """
 
-LONG_DOCUMENT_NOTE = """
-20. Long document: this upload has many pages and several tables. It is still one document unless the letterhead, issuer or title changes. Do not copy every table row. For each table keep the heading, the total, the amount due, and any row the page itself marks High or Low. Cap sections at 12 and values at 40. Finish the JSON in this call. A complete shorter reading is required.
+CHUNK_NOTE = """
+20. This file is pages {START}–{END} of a longer document. Page 1 here is original page {START}. Write every page number as the original page. Return every printed lab row (label, value, unit, ref_range, flag_printed). Include quote and page only when flag_printed is High or Low.
 """
 
 KEYED_TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate the following user-facing text strings into {LANG}.
@@ -635,16 +638,15 @@ def read_document_single_attempt(
     deadline: Optional[float] = None,
     timeout: Optional[float] = None,
     attempt_idx: int = 1,
+    page_start: int = 1,
+    page_end: int = 0,
 ) -> ReaderResponse:
     target_lang = "auto" if lang == "auto" else resolve_language_name(lang)
     prompt = READER_PROMPT_TEMPLATE.format(LANG=target_lang)
+    if page_end and page_start > 1:
+        prompt += CHUNK_NOTE.format(START=page_start, END=page_end)
 
     client = get_client()
-
-    pages = pdf_page_count(files_data)
-    if pages >= LONG_DOCUMENT_PAGES:
-        prompt += LONG_DOCUMENT_NOTE
-        logger.info("explain_long_document: pages=%d", pages)
 
     contents = []
     for data, mime_type in files_data:
@@ -655,10 +657,6 @@ def read_document_single_attempt(
     timeout_sec = timeout if timeout is not None else (
         EXPLAIN_LARGE_TIMEOUT if len(files_data) > 3 else EXPLAIN_TIMEOUT
     )
-    if pages >= LONG_DOCUMENT_PAGES and deadline is not None:
-        # One attempt for the whole remaining budget. A fallback start after
-        # 55s cannot finish a long table document and the user only sees "busy".
-        timeout_sec = max(timeout_sec, max(1.0, deadline - time.time() - SAFETY_MARGIN))
 
     config = types.GenerateContentConfig(
         temperature=0.2,
@@ -668,8 +666,6 @@ def read_document_single_attempt(
         thinking_config=types.ThinkingConfig(thinking_budget=EXPLAIN_THINKING),
     )
 
-    long_budget = max(TOTAL_RETRY_BUDGET, timeout_sec) if pages >= LONG_DOCUMENT_PAGES else None
-
     response = call_gemini_with_retry(
         client=client,
         model=MODEL_ID,
@@ -678,7 +674,6 @@ def read_document_single_attempt(
         endpoint="explain",
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
-        retry_budget=long_budget,
     )
 
     if isinstance(response.parsed, GeminiReaderResponse):
@@ -717,7 +712,6 @@ def read_document_single_attempt(
                 endpoint="explain",
                 deadline=deadline,
                 attempt_timeout_sec=timeout_sec,
-                retry_budget=long_budget,
             )
             if isinstance(retry_resp.parsed, GeminiReaderResponse):
                 result = lift_reader_result(retry_resp.parsed)
@@ -750,12 +744,98 @@ def read_document_single_attempt(
     return result
 
 
+def pdf_page_chunks(data: bytes) -> List[Tuple[bytes, int, int]]:
+    """Split a PDF into groups of PAGE_CHUNK pages. Each item is (bytes, start, end), 1-indexed."""
+    import pypdf
+
+    reader = pypdf.PdfReader(io.BytesIO(data))
+    count = len(reader.pages)
+    if count <= PAGE_CHUNK:
+        return [(data, 1, count)]
+    chunks: List[Tuple[bytes, int, int]] = []
+    for start in range(0, count, PAGE_CHUNK):
+        writer = pypdf.PdfWriter()
+        end = min(start + PAGE_CHUNK, count)
+        for index in range(start, end):
+            writer.add_page(reader.pages[index])
+        buf = io.BytesIO()
+        writer.write(buf)
+        chunks.append((buf.getvalue(), start + 1, end))
+    return chunks
+
+
+def _shift_page(number: Optional[int], start: int, length: int) -> Optional[int]:
+    if not number or number <= 0 or start <= 1:
+        return number
+    if number <= length:
+        return number + start - 1
+    return number
+
+
+def _shift_result_pages(result: ReaderResponse, start: int, end: int) -> ReaderResponse:
+    length = max(1, end - start + 1)
+
+    def walk(item: Any) -> None:
+        if item is None:
+            return
+        if isinstance(item, list):
+            for child in item:
+                walk(child)
+            return
+        page = getattr(item, "page", None)
+        if isinstance(page, int):
+            shifted = _shift_page(page, start, length)
+            if shifted:
+                item.page = shifted
+        pages = getattr(item, "pages", None)
+        if isinstance(pages, list):
+            item.pages = [(_shift_page(n, start, length) or n) for n in pages]
+        for name in ("sections", "values", "actions", "facts", "warnings", "medicines", "parts"):
+            walk(getattr(item, name, None))
+
+    walk(result)
+    return result
+
+
+def _merge_chunk_results(results: List[ReaderResponse]) -> ReaderResponse:
+    base = results[0].model_copy(deep=True)
+    sections = []
+    parts = []
+    for item in results:
+        sections.extend(item.sections or [])
+        if item.parts:
+            parts.extend(item.parts)
+    base.sections = sorted(sections, key=lambda section: section.page or 0)
+    base.parts = parts if len(parts) >= 2 else None
+    return base
+
+
 def read_document(
     files_data: List[Tuple[bytes, str]],
     lang: str,
     deadline: Optional[float] = None,
 ) -> ReaderResponse:
     """Synchronous entrypoint for read_document."""
+    if len(files_data) == 1 and "pdf" in (files_data[0][1] or "").lower():
+        chunks = pdf_page_chunks(files_data[0][0])
+        if len(chunks) > 1:
+            mime = files_data[0][1]
+            logger.info("explain_split: chunks=%d", len(chunks))
+
+            def one(chunk: Tuple[bytes, int, int]) -> ReaderResponse:
+                data, start, end = chunk
+                result = read_document_single_attempt(
+                    [(data, mime)],
+                    lang,
+                    deadline=deadline,
+                    page_start=start,
+                    page_end=end,
+                )
+                return _shift_result_pages(result, start, end)
+
+            with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
+                results = list(pool.map(one, chunks))
+            return _merge_chunk_results(results)
     return read_document_single_attempt(files_data, lang, deadline=deadline)
 
 

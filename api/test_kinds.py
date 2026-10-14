@@ -63,25 +63,29 @@ class KindMappingTests(unittest.TestCase):
         self.assertEqual(body.document_type, "insurance")
         self.assertIsNone(body.document_kind)
 
-    def test_a_long_pdf_keeps_a_longer_budget(self):
+    def test_a_long_pdf_splits_into_five_page_calls(self):
         import io
         import pypdf
-        from reader import (
-            LONG_DOCUMENT_PAGES,
-            LONG_REQUEST_DEADLINE,
-            REQUEST_DEADLINE,
-            pdf_page_count,
-        )
+        from reader import PAGE_CHUNK, pdf_page_chunks, pdf_page_count
 
         writer = pypdf.PdfWriter()
-        for _ in range(8):
+        for _ in range(10):
             writer.add_blank_page(width=72, height=72)
         buf = io.BytesIO()
         writer.write(buf)
-        self.assertEqual(pdf_page_count([(buf.getvalue(), "application/pdf")]), 8)
-        self.assertGreaterEqual(8, LONG_DOCUMENT_PAGES)
+        data = buf.getvalue()
+        self.assertEqual(pdf_page_count([(data, "application/pdf")]), 10)
+        chunks = pdf_page_chunks(data)
+        self.assertEqual([(start, end) for _, start, end in chunks], [(1, 5), (6, 10)])
+        self.assertEqual(PAGE_CHUNK, 5)
         self.assertEqual(pdf_page_count([(b"jpg", "image/jpeg")]), 0)
-        self.assertGreater(LONG_REQUEST_DEADLINE, REQUEST_DEADLINE)
+
+    def test_an_in_range_lab_row_matches_by_label_and_value(self):
+        from evidence import match_lab_row
+
+        pages = ["Haemoglobin 13.2 g/dL 12.0 – 15.0"]
+        self.assertEqual(match_lab_row("Haemoglobin", "13.2", "", 1, pages), "matched")
+        self.assertEqual(match_lab_row("Haemoglobin", "99", "", 1, pages), "check_original")
 
 
 if __name__ == "__main__":
