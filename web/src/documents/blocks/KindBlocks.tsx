@@ -1,5 +1,22 @@
+import { useState } from 'react'
 import type { ExplainResponse } from '../../types'
+import { downloadIcs, generateIcs, hashString } from '../../utils/ics'
+import { emiRrule, isUpcoming, noticeByDate } from '../reminders'
 import OutlineList from './OutlineList'
+
+function saveReminder(title: string, date: string, rrule?: string, alarm = '-P1D') {
+  const ics = generateIcs([
+    {
+      uid: hashString(`${title}-${date}-${rrule || 'once'}`),
+      title,
+      startDate: date,
+      isAllDay: true,
+      rrule,
+      alarmTrigger: alarm,
+    },
+  ])
+  downloadIcs('sarvam-reminder.ics', ics)
+}
 
 export function DirectionsBlock({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
   return <OutlineList title={t.directionsTitle || 'What the notice says'} lines={result.profile?.directions || []} />
@@ -11,8 +28,9 @@ export function WaysToPayBlock({ result, t }: { result: ExplainResponse; t: Reco
 
 export function ItemsBlock({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
   const items = result.profile?.line_items || []
+  const [open, setOpen] = useState(false)
   if (!items.length) return null
-  const shown = items.slice(0, 5)
+  const shown = open ? items : items.slice(0, 5)
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] p-5 flex flex-col gap-2">
       <h2 className="sv-display text-[26px] leading-none m-0">
@@ -27,8 +45,10 @@ export function ItemsBlock({ result, t }: { result: ExplainResponse; t: Record<s
           {item.amount && <span className="sv-display text-[18px] shrink-0">{item.amount}</span>}
         </div>
       ))}
-      {items.length > 5 && (
-        <p className="m-0 text-[13px] text-[#575B58]">{(t.showAllItems || 'Show all {n}').replace('{n}', String(items.length))}</p>
+      {items.length > 5 && !open && (
+        <button type="button" className="sv-press self-start text-[14px] font-bold underline" onClick={() => setOpen(true)}>
+          {(t.showAllItems || 'Show all {n}').replace('{n}', String(items.length))}
+        </button>
       )}
     </section>
   )
@@ -42,6 +62,15 @@ export function WarrantyBlock({ result, t }: { result: ExplainResponse; t: Recor
       <h2 className="sv-display text-[26px] leading-none m-0">
         {(t.warrantyUntil || 'Warranty until {date}').replace('{date}', until)}<span className="text-[#D9603B]">.</span>
       </h2>
+      {isUpcoming(until) && (
+        <button
+          type="button"
+          className="sv-press mt-3 h-11 px-4 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[14px] font-bold"
+          onClick={() => saveReminder(t.warrantyReminder || 'Warranty ends', until, undefined, '-P7D')}
+        >
+          {t.remindMe || 'Remind me'}
+        </button>
+      )}
     </section>
   )
 }
@@ -108,6 +137,15 @@ export function NextEmiBlock({ result, t }: { result: ExplainResponse; t: Record
       <p className="m-0 text-[13px] font-bold tracking-[1px]">{t.nextEmi || 'NEXT EMI'}</p>
       <h2 className="sv-display text-[32px] leading-none m-0 mt-2">{amount || when}</h2>
       {when && amount && <p className="m-0 mt-2 text-[15px]">{when}</p>}
+      {when && (
+        <button
+          type="button"
+          className="sv-press mt-3 h-11 px-4 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[14px] font-bold"
+          onClick={() => saveReminder(t.emiReminder || 'EMI', when, emiRrule(result.profile))}
+        >
+          {t.emiReminder || 'EMI reminder'}
+        </button>
+      )}
     </section>
   )
 }
@@ -134,15 +172,29 @@ export function KeyTermsBlock({ result, t }: { result: ExplainResponse; t: Recor
   )
 }
 
-export function TimelineBlock({ result }: { result: ExplainResponse }) {
+export function TimelineBlock({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
   const start = result.profile?.start_date
   const end = result.profile?.end_date
   if (!start && !end) return null
+  const today = new Date().toISOString().slice(0, 10)
+  const noticeBy = noticeByDate(end, result.profile?.notice_period)
   return (
-    <section className="rounded-[28px] border-[1.5px] border-[#1A1A1A] p-4 flex items-center justify-between gap-3">
-      <span className="text-[14px] font-semibold">{start || '—'}</span>
-      <span className="flex-1 h-[3px] bg-[#1A1A1A]" />
-      <span className="text-[14px] font-semibold">{end || '—'}</span>
+    <section className="rounded-[28px] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[14px] font-semibold">{start || '—'}</span>
+        <span className="relative flex-1 h-[3px] bg-[#1A1A1A]">
+          {start && end && today >= start && today <= end && (
+            <span className="absolute left-1/2 -top-1 w-3 h-3 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A]" aria-label={t.today || 'Today'} />
+          )}
+        </span>
+        <span className="text-[14px] font-semibold">{end || '—'}</span>
+      </div>
+      {noticeBy && (
+        <p className="m-0 text-[14px]">
+          {(t.noticeBy || 'Give notice by {date}').replace('{date}', noticeBy)}
+          <span className="ml-2 text-[12px] font-bold px-2 py-0.5 rounded-full bg-[#FBEBC4]">{t.calculatedChip || 'Calculated'}</span>
+        </p>
+      )}
     </section>
   )
 }

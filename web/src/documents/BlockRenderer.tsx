@@ -59,7 +59,7 @@ function Specific({
     case 'keyTerms':
       return <KeyTermsBlock result={result} t={t} />
     case 'timeline':
-      return <TimelineBlock result={result} />
+      return <TimelineBlock result={result} t={t} />
     case 'formSteps':
       return <FormStepsBlock result={result} t={t} />
     default:
