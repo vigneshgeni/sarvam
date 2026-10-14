@@ -278,7 +278,7 @@ export default function AskSheet({
                 type="button"
                 disabled={!question.trim() || isLoading}
                 onClick={() => handleAskSubmit()}
-                className="btn-press p-2 bg-[#5B52D6] disabled:opacity-40 text-white rounded-xl shadow-sm hover:bg-[#483EB8] transition-colors"
+                className="sv-press p-2 bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] rounded-full"
                 aria-label="Send question"
               >
                 {isLoading ? (
@@ -312,7 +312,7 @@ export default function AskSheet({
 
         {/* Answer Display Card (never displayed if error is present) */}
         {!askError && answerData && (
-          <div className="bg-[#FFFFFF] border border-[#E6E6E1] rounded-2xl p-4 flex flex-col gap-3 shadow-sm animate-card-in">
+          <div className="bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] rounded-[24px] p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[#5B52D6] uppercase tracking-wider">
                 Answer

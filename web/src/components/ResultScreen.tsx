@@ -1254,7 +1254,7 @@ export default function ResultScreen({
                 return (
                   <div
                     key={i}
-                    className="flex flex-col gap-2 p-3 rounded-xl bg-[#F6F6F3] border border-[#ECECE8]"
+                    className="flex flex-col gap-2 p-3.5 rounded-[24px] bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A]"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-sm font-semibold text-[#15171A] leading-snug">

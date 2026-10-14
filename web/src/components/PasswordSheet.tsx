@@ -107,7 +107,7 @@ export default function PasswordSheet({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck="false"
-              className="w-full bg-[#F6F6F3] border border-[#E6E6E1] rounded-xl px-3.5 py-3 pr-10 text-sm text-[#15171A] placeholder-[#5E636B] focus:outline-none focus:border-[#5B52D6]"
+              className="w-full bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-2xl px-3.5 py-3 pr-10 text-sm text-[#1A1A1A] placeholder-[#575B58] focus:outline-none"
             />
             <button
               type="button"
@@ -139,7 +139,7 @@ export default function PasswordSheet({
           <button
             type="submit"
             disabled={!password.trim()}
-            className="btn-press flex-1 py-3 bg-[#5B52D6] disabled:opacity-50 text-white font-semibold text-xs rounded-xl hover:bg-[#483EB8] transition-colors shadow-sm"
+            className="sv-press flex-1 h-12 bg-[#E9B44C] disabled:opacity-50 text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] font-bold text-[15px] rounded-full"
           >
             {t.unlock || 'Unlock'}
           </button>

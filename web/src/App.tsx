@@ -1205,14 +1205,14 @@ export default function App() {
       {/* Delete Confirmation Sheet */}
       {deleteConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[2px] p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#8A8F8C] p-0"
           onClick={() => setDeleteConfirm(null)}
           role="presentation"
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-[400px] bg-white rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-card-in"
+            className="w-full max-w-[430px] bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] p-6 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
@@ -1241,7 +1241,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="btn-press flex-1 py-3 rounded-xl bg-[#B42318] text-white font-semibold text-xs hover:bg-[#911d13] transition-colors shadow-sm"
+                className="sv-press flex-1 h-12 rounded-full bg-[#B3361A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] font-bold text-[15px]"
               >
                 {t.delete || 'Delete'}
               </button>

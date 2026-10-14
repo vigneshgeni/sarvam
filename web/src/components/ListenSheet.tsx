@@ -798,7 +798,7 @@ export default function ListenSheet({
                 className="h-full rounded-full"
                 style={{
                   width: `${Math.min(100, Math.max(0, visibleProgress * 100))}%`,
-                  backgroundColor: 'var(--color-violet-text, #6D45C9)',
+                  backgroundColor: '#034F46',
                 }}
               />
             </div>
@@ -904,7 +904,7 @@ export default function ListenSheet({
                     onClick={() => handleGenderToggle(choice)}
                     aria-pressed={gender === choice}
                     className={`focus-ring rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      gender === choice ? 'bg-white text-[#1E1838] shadow-sm' : 'text-[#656077]'
+                      gender === choice ? 'bg-[#E9B44C] text-[#1A1A1A] border-[1.5px] border-[#1A1A1A]' : 'text-[#575B58]'
                     }`}
                   >
                     {choice === 'female' ? t.voiceFemale || 'Female' : t.voiceMale || 'Male'}
@@ -922,7 +922,7 @@ export default function ListenSheet({
                     onClick={() => handleSpeedSelect(value)}
                     aria-pressed={speed === value}
                     className={`focus-ring rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                      speed === value ? 'bg-white text-[#1E1838] shadow-sm' : 'text-[#656077]'
+                      speed === value ? 'bg-[#1A1A1A] text-[#F4F5F2]' : 'text-[#575B58]'
                     }`}
                   >
                     {value}x
