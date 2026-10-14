@@ -1,0 +1,265 @@
+{
+  "doc_type": "court_legal",
+  "document_type": "court_legal",
+  "document_kind": "court_legal",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "O.S. No. 4417 / 2026",
+    "hearing_or_deadline": "12th November 2026 at 10:30 AM",
+    "directions": [
+      "appear in this Court in person or by a pleader duly instructed",
+      "file your written statement on or before the said date",
+      "produce all documents in your possession on which you intend to rely, including the rent agreement"
+    ],
+    "consequence": "in default of your appearance on the day mentioned above, the suit will be heard and determined in your absence.",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "സിവിൽ കേസിൽ പ്രതിക്കുള്ള സമൻസ്",
+  "report_title": "പ്രതിക്കുള്ള സമൻസ്",
+  "report_date": "10th day of October 2026",
+  "report_date_iso": null,
+  "language": "ml",
+  "letter_date": "2026-10-10",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "2026 നവംബർ 12-നകം ഹാജരാകാനും രേഖാമൂലമുള്ള മറുപടി സമർപ്പിക്കാനുമുള്ള കോടതി സമൻസ്",
+    "key_values": [
+      {
+        "label": "കേസ് നമ്പർ",
+        "value": "O.S. No. 4417 / 2026",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "വിചാരണ തീയതി",
+        "value": "12th November 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "സമയം",
+        "value": "10:30 AM",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "കോടതി ഹാൾ",
+        "value": "Court Hall No. 4",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "നൽകാത്ത വാടക ഈടാക്കുന്നതിനും കെട്ടിടം തിരികെ ലഭിക്കുന്നതിനുമായി Shri Anand Rao, Shri Karthik S. എന്നയാൾക്കെതിരെ ഒരു സിവിൽ കേസ് ഫയൽ ചെയ്തിട്ടുണ്ട്.",
+    "പ്രതി 2026 നവംബർ 12-ന് രാവിലെ 10:30-ന് Court Hall No. 4, City Civil Court Complex, Bengaluru-ൽ നേരിട്ടോ ഒരു അഭിഭാഷകൻ മുഖേനയോ ഹാജരാകാൻ സമൻസ് അയച്ചിരിക്കുന്നു.",
+    "കേസ് പരിഗണിക്കുന്ന തീയതിയിലോ അതിനുമുമ്പോ പ്രതി രേഖാമൂലമുള്ള മറുപടിയും വാടകക്കരാർ ഉൾപ്പെടെയുള്ള എല്ലാ രേഖകളും സമർപ്പിക്കണം. പ്രതി ഹാജരായില്ലെങ്കിൽ, അവരുടെ അസാന്നിധ്യത്തിൽ കേസിൽ തീരുമാനമെടുക്കും."
+  ],
+  "spoken_summary": "This is a court summons from the City Civil Court Bengaluru for Shri Karthik S. Shri Anand Rao has filed a case against you for unpaid rent and possession of premises. You must appear in Court Hall Number 4 on 12th November 2026 at 10:30 AM in person or through a lawyer. You also need to file your written reply and bring your documents, including the rent agreement, by that date.",
+  "actions": [
+    {
+      "text": "2026 നവംബർ 12-ന് രാവിലെ 10:30-ന് കോടതിയിൽ നേരിട്ടോ ചുമതലപ്പെടുത്തിയ അഭിഭാഷകൻ വഴിയോ ഹാജരാകുക",
+      "due_date": "2026-11-12",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "you are hereby summoned to appear in this Court in person or by a pleader duly instructed, on 12th November 2026 at 10:30 AM in Court Hall No. 4, City Civil Court Complex, K.G. Road, Bengaluru 560009, to answer the claim.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "നിങ്ങളുടെ രേഖാമൂലമുള്ള മറുപടി നൽകുകയും വാടകക്കരാർ ഉൾപ്പെടെയുള്ള തെളിവുരേഖകൾ 2026 നവംബർ 12-നോ അതിനുമുമ്പോ സമർപ്പിക്കുകയും ചെയ്യുക",
+      "due_date": "2026-11-12",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "You are also directed to file your written statement on or before the said date, and to produce all documents in your possession on which you intend to rely, including the rent agreement.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "നിശ്ചിത തീയതിയിൽ നിങ്ങൾ ഹാജരായില്ലെങ്കിൽ, കോടതി നിങ്ങളുടെ അസാന്നിധ്യത്തിൽ കേസ് കേൾക്കുകയും വിധി പറയുകയും ചെയ്യും.",
+      "quote": "TAKE NOTICE that, in default of your appearance on the day mentioned above, the suit will be heard and determined in your absence.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "കേസ് നമ്പർ O.S. No. 4417 / 2026 ആണ്",
+      "quote": "O.S. No. 4417 / 2026",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "വാദി: 58 വയസ്സുള്ള Shri Anand Rao, താമസിക്കുന്നത്: No. 9, 2nd Cross, Jayanagar, Bengaluru 560011",
+      "quote": "Plaintiff: Shri Anand Rao, aged 58, No. 9, 2nd Cross, Jayanagar, Bengaluru 560011",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "പ്രതി: 34 വയസ്സുള്ള Shri Karthik S., താമസിക്കുന്നത്: Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038",
+      "quote": "Defendant: Shri Karthik S., aged 34, Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "കേസിന്റെ സ്വഭാവം: നൽകാത്ത വാടക ഈടാക്കലും കെട്ടിടം തിരികെ ലഭിക്കലും",
+      "quote": "Nature of suit: Recovery of unpaid rent and possession of premises",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "കോടതിയുടെ സ്ഥലം",
+      "address": "Court Hall No. 4, City Civil Court Complex, K.G. Road, Bengaluru 560009",
+      "quote": "Court Hall No. 4, City Civil Court Complex, K.G. Road, Bengaluru 560009",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "വാദിയുടെ വിലാസം",
+      "address": "No. 9, 2nd Cross, Jayanagar, Bengaluru 560011",
+      "quote": "No. 9, 2nd Cross, Jayanagar, Bengaluru 560011",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "പ്രതിയുടെ വിലാസം",
+      "address": "Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038",
+      "quote": "Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "വാദിയുടെ അഭിഭാഷകന്റെ ഫോൺ നമ്പർ",
+      "value": "080 4000 5566",
+      "quote": "Advocate for Plaintiff: Smt. R. Lakshmi, Advocate, Ph: 080 4000 5566",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "വാദിയുടെ അഭിഭാഷകന്റെ ഇമെയിൽ",
+      "value": "lakshmi.adv@example.com",
+      "quote": "lakshmi.adv@example.com",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 5,
+    "check_original": 2,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "IN THE COURT OF THE CITY CIVIL JUDGE, BENGALURU (FICTIONAL)\n O.S. No. 4417 / 2026\nSUMMONS TO DEFENDANT\n(Order V, Rule 1 and 5, Code of Civil Procedure)\nPlaintiff:\nShri Anand Rao, aged 58, No. 9, 2nd Cross, Jayanagar, Bengaluru 560011\nDefendant:\nShri Karthik S., aged 34, Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038\nNature of suit:\nRecovery of unpaid rent and possession of premises\nWHEREAS the above-named Plaintiff has instituted a suit against you for the relief mentioned above,\nyou are hereby summoned to appear in this Court in person or by a pleader duly instructed,\non 12th November 2026 at 10:30 AM in Court Hall No. 4, City Civil Court Complex,\nK.G. Road, Bengaluru 560009, to answer the claim.\nYou are also directed to file your written statement on or before the said date, and to produce\nall documents in your possession on which you intend to rely, including the rent agreement.\nTAKE NOTICE that, in default of your appearance on the day mentioned above, the suit will be\nheard and determined in your absence.\nGiven under my hand and the seal of the Court, this 10th day of October 2026.\nCOURT SEAL\n (SAMPLE)\nBy Order of the Court\nChief Ministerial Officer\nAdvocate for Plaintiff: Smt. R. Lakshmi, Advocate, Ph: 080 4000 5566, lakshmi.adv@example.com\nNote: Free legal aid is available from the District Legal Services Authority, Bengaluru. Helpline 15100.\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "Shri Anand Rao",
+    "Shri Karthik S.",
+    "Smt. R. Lakshmi",
+    "No. 9, 2nd Cross, Jayanagar, Bengaluru 560011",
+    "Flat 3B, Lake View Apartments, Indiranagar, Bengaluru 560038",
+    "Court Hall No. 4, City Civil Court Complex, K.G. Road, Bengaluru 560009",
+    "District Legal Services Authority, Bengaluru",
+    "O.S. No. 4417 / 2026",
+    "080 4000 5566",
+    "lakshmi.adv@example.com",
+    "15100"
+  ]
+}

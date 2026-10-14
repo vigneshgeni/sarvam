@@ -309,5 +309,19 @@
   "photosNotNow": "ಈಗ ಬೇಡ",
   "speedSlow": "ನಿಧಾನ",
   "speedNormal": "ಸಾಮಾನ್ಯ",
-  "speedFast": "ವೇಗ"
+  "speedFast": "ವೇಗ",
+  "howToFill": "ನೀವು ಮಾಡಬೇಕಾದದ್ದು",
+  "toPay": "ಪಾವತಿ",
+  "byDate": "{date} ಒಳಗೆ",
+  "daysLeft": "{n} ದಿನ ಬಾಕಿ",
+  "waysToPay": "ಪಾವತಿ ಮಾರ್ಗಗಳು",
+  "directionsTitle": "ಸೂಚನೆ ಹೇಳುವುದು",
+  "itemsTitle": "ವಸ್ತುಗಳು",
+  "notADiagnosis": "ಇದು ರೋಗನಿರ್ಣಯವಲ್ಲ.",
+  "notADiagnosisBody": "ಮುದ್ರಿತದ್ದನ್ನು ಸರ್ವಂ ವಿವರಿಸುತ್ತದೆ. ಅದು ನಿಮಗೆ ಏನು ಎಂದು ವೈದ್ಯರೇ ಹೇಳಬಲ್ಲರು.",
+  "wholePage": "ಪೂರ್ಣ ಪುಟ",
+  "summaryOnly": "ಸಾರಾಂಶ ಮಾತ್ರ",
+  "saveToPhotos": "ಫೋಟೋಗಳಲ್ಲಿ ಉಳಿಸಿ",
+  "nextEmi": "ಮುಂದಿನ ಕಂತು",
+  "loanTerms": "ಸಾಲದ ನಿಯಮಗಳು"
 }

@@ -309,5 +309,19 @@
   "photosNotNow": "अभी नहीं",
   "speedSlow": "धीमी",
   "speedNormal": "सामान्य",
-  "speedFast": "तेज़"
+  "speedFast": "तेज़",
+  "howToFill": "क्या करना है",
+  "toPay": "भुगतान",
+  "byDate": "{date} तक",
+  "daysLeft": "{n} दिन बाकी",
+  "waysToPay": "भुगतान के तरीके",
+  "directionsTitle": "नोटिस क्या कहता है",
+  "itemsTitle": "वस्तुएँ",
+  "notADiagnosis": "यह निदान नहीं है।",
+  "notADiagnosisBody": "सर्वम छपा हुआ समझाता है। आपके लिए इसका मतलब आपके डॉक्टर ही बता सकते हैं।",
+  "wholePage": "पूरा पेज",
+  "summaryOnly": "सिर्फ सार",
+  "saveToPhotos": "फ़ोटो में सहेजें",
+  "nextEmi": "अगली किस्त",
+  "loanTerms": "ऋण की शर्तें"
 }

@@ -241,6 +241,7 @@ export interface SectionValue {
 
 export interface Section {
   heading: string
+  heading_printed?: string
   title?: string
   page: number
   values: SectionValue[]

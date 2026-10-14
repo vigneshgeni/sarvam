@@ -316,6 +316,9 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
             <button type="button" className="w-full text-left p-3.5 flex items-center gap-3" aria-expanded={!!open[i]} onClick={() => setOpen((o) => ({ ...o, [i]: !o[i] }))}>
               <span className="flex-1 min-w-0">
                 <span className="block text-[16px] font-bold">{s.heading}</span>
+                {s.heading_printed && s.heading_printed !== s.heading && (
+                  <span className="block text-[12px] text-[#575B58]">{s.heading_printed}</span>
+                )}
                 <span className="block text-[13px] text-[#575B58]">{s.values.length} values · page {s.page}</span>
               </span>
               <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : allPrintedInRange ? 'bg-[#CFE5E0]' : 'bg-[#F4F5F2]'}`}>

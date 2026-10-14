@@ -1039,6 +1039,12 @@ async def translate(
             strings_to_translate[f"part_{i}_title"] = part.title
         for j, line in enumerate(part.summary_lines or []):
             strings_to_translate[f"part_{i}_summary_{j}"] = line
+        for j, section in enumerate(part.sections or []):
+            if section.heading:
+                strings_to_translate[f"part_{i}_section_{j}"] = section.heading
+    for i, section in enumerate(orig.sections or []):
+        if section.heading:
+            strings_to_translate[f"section_{i}_heading"] = section.heading
 
     # Legacy payload constructed for mock compatibility
     actions_payload = [
@@ -1482,6 +1488,20 @@ async def translate(
             )
         stitched_profile = orig.profile.model_copy(update={"form_fields": fields})
 
+    stitched_sections = orig.sections
+    if orig.sections and "translated_dict" in locals():
+        stitched_sections = []
+        for i, section in enumerate(orig.sections):
+            printed = getattr(section, "heading_printed", "") or section.heading
+            stitched_sections.append(
+                section.model_copy(
+                    update={
+                        "heading": translated_dict.get(f"section_{i}_heading", section.heading),
+                        "heading_printed": printed,
+                    }
+                )
+            )
+
     stitched_parts = orig.parts
     if orig.parts and "translated_dict" in locals():
         stitched_parts = []
@@ -1490,11 +1510,25 @@ async def translate(
                 translated_dict.get(f"part_{i}_summary_{j}", line)
                 for j, line in enumerate(part.summary_lines or [])
             ]
+            part_sections = part.sections
+            if part.sections:
+                part_sections = []
+                for j, section in enumerate(part.sections):
+                    printed = getattr(section, "heading_printed", "") or section.heading
+                    part_sections.append(
+                        section.model_copy(
+                            update={
+                                "heading": translated_dict.get(f"part_{i}_section_{j}", section.heading),
+                                "heading_printed": printed,
+                            }
+                        )
+                    )
             stitched_parts.append(
                 part.model_copy(
                     update={
                         "title": translated_dict.get(f"part_{i}_title", part.title),
                         "summary_lines": lines or part.summary_lines,
+                        "sections": part_sections,
                     }
                 )
             )
@@ -1523,7 +1557,7 @@ async def translate(
         medicines=stitched_medicines,
         conflicts=trans_conflicts,
         parts=stitched_parts,
-        sections=orig.sections,
+        sections=stitched_sections,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,

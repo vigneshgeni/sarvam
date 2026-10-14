@@ -387,5 +387,19 @@
   "pageMapLabel": "নথি অনুসারে রঙিন পাতা",
   "photosAccessBody": "এই ব্যাখ্যার ছবি আপনার ফটোতে রাখতে সর্বম অনুমতি চাইবে। রঙ ও নকশা একই থাকবে। ছবি এই ফোনেই থাকবে।",
   "photosAllow": "অনুমতি দিয়ে এগোন",
-  "photosNotNow": "এখন নয়"
+  "photosNotNow": "এখন নয়",
+  "howToFill": "আপনাকে যা করতে হবে",
+  "toPay": "পরিশোধ",
+  "byDate": "{date} এর মধ্যে",
+  "daysLeft": "{n} দিন বাকি",
+  "waysToPay": "পরিশোধের উপায়",
+  "directionsTitle": "নোটিস যা বলে",
+  "itemsTitle": "জিনিস",
+  "notADiagnosis": "এটা রোগনির্ণয় নয়।",
+  "notADiagnosisBody": "ছাপা কথা সর্বম বোঝায়। আপনার জন্য এর মানে ডাক্তারই বলতে পারেন।",
+  "wholePage": "পুরো পাতা",
+  "summaryOnly": "শুধু সারাংশ",
+  "saveToPhotos": "ফটোতে সেভ করুন",
+  "nextEmi": "পরের কিস্তি",
+  "loanTerms": "ঋণের শর্ত"
 }

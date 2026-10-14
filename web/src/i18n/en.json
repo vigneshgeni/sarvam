@@ -309,5 +309,19 @@
   "photosNotNow": "Not now",
   "speedSlow": "Slow",
   "speedNormal": "Normal",
-  "speedFast": "Fast"
+  "speedFast": "Fast",
+  "howToFill": "What you need to do",
+  "toPay": "TO PAY",
+  "byDate": "by {date}",
+  "daysLeft": "{n} days left",
+  "waysToPay": "Ways to pay",
+  "directionsTitle": "What the notice says",
+  "itemsTitle": "Items",
+  "notADiagnosis": "Not a diagnosis.",
+  "notADiagnosisBody": "Sarvam explains what is printed. Only your doctor can say what it means for you.",
+  "wholePage": "Whole page",
+  "summaryOnly": "Summary only",
+  "saveToPhotos": "Save to Photos",
+  "nextEmi": "NEXT EMI",
+  "loanTerms": "Loan terms"
 }

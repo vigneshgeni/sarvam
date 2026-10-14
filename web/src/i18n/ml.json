@@ -309,5 +309,19 @@
   "photosNotNow": "ഇപ്പോൾ വേണ്ട",
   "speedSlow": "പതുക്കെ",
   "speedNormal": "സാധാരണം",
-  "speedFast": "വേഗം"
+  "speedFast": "വേഗം",
+  "howToFill": "എന്ത് ചെയ്യണം",
+  "toPay": "അടയ്ക്കേണ്ടത്",
+  "byDate": "{date} നകം",
+  "daysLeft": "{n} ദിവസം ബാക്കി",
+  "waysToPay": "അടയ്ക്കാനുള്ള വഴികൾ",
+  "directionsTitle": "അറിയിപ്പ് പറയുന്നത്",
+  "itemsTitle": "ഇനങ്ങൾ",
+  "notADiagnosis": "ഇത് രോഗനിർണയമല്ല.",
+  "notADiagnosisBody": "അച്ചടിച്ചത് സർവം വിശദീകരിക്കുന്നു. അത് നിങ്ങൾക്ക് എന്താണെന്ന് ഡോക്ടർക്കേ പറയാനാവൂ.",
+  "wholePage": "മുഴുവൻ പേജ്",
+  "summaryOnly": "സംഗ്രഹം മാത്രം",
+  "saveToPhotos": "ഫോട്ടോകളിൽ സേവ് ചെയ്യുക",
+  "nextEmi": "അടുത്ത തവണ",
+  "loanTerms": "വായ്പാ നിബന്ധനകൾ"
 }

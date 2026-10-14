@@ -1,0 +1,247 @@
+{
+  "doc_type": "insurance",
+  "document_type": "insurance",
+  "document_kind": "insurance",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "Rs. 48,500",
+    "approved": "Rs. 31,200",
+    "deducted": "Rs. 17,300",
+    "deduction_reasons": [
+      "Room rent exceeds eligible limit (1% of Sum Insured)"
+    ],
+    "policy_no": "SH/IND/22/559102",
+    "sum_insured": "Rs. 5,00,000",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "30 days",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "Settlement of your hospitalisation claim",
+    "start_date": "2026-09-12",
+    "end_date": "2026-09-16",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "CLM-2026-0884",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "Requests received after this period will not be considered.",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "காப்பீட்டு கோரிக்கை தீர்வு கடிதம்",
+  "report_title": null,
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "ta",
+  "letter_date": "2026-10-01",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Sunrise Hospital-இல் நீங்கள் அனுமதிக்கப்பட்டதற்கான காப்பீட்டுக் கோரிக்கை தீர்க்கப்பட்டது.",
+    "key_values": [
+      {
+        "label": "கோரப்பட்ட மொத்தத் தொகை",
+        "value": "Rs. 48,500",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "வழங்க ஒப்புதல் அளிக்கப்பட்ட தொகை",
+        "value": "Rs. 31,200",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "கழிக்கப்பட்ட தொகை",
+        "value": "Rs. 17,300",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "பாலிசி எண்",
+        "value": "SH/IND/22/559102",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "கோரிக்கை குறிப்பு எண்",
+        "value": "CLM-2026-0884",
+        "kind": "text",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "Sunrise Hospital, Jayanagar-இல் நீங்கள் பெற்ற மருத்துவ சிகிச்சைக்கான காப்பீட்டுத் தொகை வழங்கப்பட்டது பற்றி Shield Health Insurance நிறுவனத்திடமிருந்து இந்தக் கடிதம் வந்துள்ளது.",
+    "நீங்கள் கோரிய ரூ. 48,500 தொகையில், ரூ. 31,200 வழங்க ஒப்புதல் அளிக்கப்பட்டு உள்ளது. அறை வாடகை வரம்பை விட அதிகமாக இருந்ததால் ரூ. 17,300 குறைக்கப்பட்டுள்ளது.",
+    "ஒப்புதல் அளிக்கப்பட்ட தொகை 7 வேலை நாட்களுக்குள் உங்கள் வங்கிக் கணக்கில் வரவு வைக்கப்படும்.",
+    "இந்த முடிவில் உங்களுக்கு உடன்பாடு இல்லை என்றால், கடிதத் தேதியிலிருந்து 30 நாட்களுக்குள் மறுபரிசீலனை செய்யக் கோரலாம்."
+  ],
+  "spoken_summary": "இது மருத்துவமனைக் கோரிக்கை குறித்து Shield Health Insurance அனுப்பிய கடிதம். நீங்கள் கேட்ட ரூ. 48,500 தொகையில் ரூ. 31,200 ஒப்புதல் செய்யப்பட்டுள்ளது. அறை வாடகை அதிகமாக இருந்ததால் ரூ. 17,300 கழிக்கப்பட்டுள்ளது. இந்தத் தொகை 7 வேலை நாட்களுக்குள் உங்கள் வங்கிக் கணக்கிற்கு அனுப்பப்படும். இதில் உடன்பாடு இல்லை என்றால், 1 அக்டோபர் 2026 தேதியிலிருந்து 30 நாட்களுக்குள் நீங்கள் மறுபரிசீலனை செய்யக் கேட்க வேண்டும்.",
+  "actions": [
+    {
+      "text": "இந்த முடிவில் உடன்பாடு இல்லை என்றால், மருத்துவமனை அறை கட்டண விவரம் மற்றும் டிஸ்சார்ஜ் சம்மரியை இணைத்து குறைதீர்ப்புக் பிரிவுக்கு (Grievance Cell) எழுதி மறுபரிசீலனை செய்யக் கோரவும்.",
+      "due_date": "2026-10-31",
+      "deadline_rule": "இந்தக் கடிதம் வந்த 30 நாட்களுக்குள்",
+      "deadline_days": 30,
+      "deadline_anchor": "letter_date",
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "If you disagree with this decision, you may request a review within 30 days of this letter by writing to the Grievance Cell with the hospital room tariff and discharge summary. Requests received after this period will not be considered.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [],
+  "facts": [
+    {
+      "text": "மருத்துவமனையில் அனுமதிக்கப்பட்டதற்காக கோரப்பட்ட மொத்தத் தொகை ரூ. 48,500 ஆகும்.",
+      "quote": "Total amount claimed: Rs. 48,500",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "வழங்குவதற்கு ஒப்புதல் அளிக்கப்பட்ட தொகை ரூ. 31,200 ஆகும்.",
+      "quote": "Amount approved for payment: Rs. 31,200",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "அறை வாடகை அனுமதிக்கப்பட்ட வரம்பை விட அதிகமாக இருந்ததால் ரூ. 17,300 கழிக்கப்பட்டது.",
+      "quote": "Deduction: Room rent exceeds eligible limit (1% of Sum Insured): Rs. 17,300",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "காப்பீட்டுத் தொகையான ரூ. 5,00,000-ல் 1% வரை மட்டுமே அறை வாடகையாக வழங்கப்படும், அதாவது ஒரு நாளைக்கு ரூ. 5,000 ஆகும்.",
+      "quote": "As per Clause 4.2 of your policy, room rent is payable up to 1% of the Sum Insured (Rs. 5,00,000) per day, i.e. Rs. 5,000 per day.",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "நீங்கள் ஒரு நாளைக்கு ரூ. 8,500 கட்டணமுள்ள அறையைப் பயன்படுத்தியுள்ளீர்கள்.",
+      "quote": "You occupied a room at Rs. 8,500 per day; associated expenses have been deducted proportionately.",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ஒப்புதல் அளிக்கப்பட்ட தொகை 7 வேலை நாட்களுக்குள் உங்கள் பதிவு செய்யப்பட்ட வங்கிக் கணக்கில் வரவு வைக்கப்படும்.",
+      "quote": "The approved amount will be credited to your registered bank account within 7 working days.",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "பெறுநர் முகவரி",
+      "address": "No. 14, 3rd Cross, Jayanagar, Bengaluru 560041",
+      "quote": "No. 14, 3rd Cross, Jayanagar, Bengaluru 560041",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "கோரிக்கைகள் துறை கட்டணமில்லா எண்",
+      "value": "1800 000 0000",
+      "quote": "Toll-free 1800 000 0000",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "கோரிக்கைகள் துறை மின்னஞ்சல்",
+      "value": "claims@example.com",
+      "quote": "claims@example.com",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 6,
+    "check_original": 0,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "SHIELD HEALTH INSURANCE CO. LTD. (SAMPLE)\nClaims Department · Toll-free 1800 000 0000 · claims@example.com\nDate: 01 October 2026\nRef: CLM-2026-0884 · Policy No: SH/IND/22/559102\nTo,\nMr. Ravi Kumar\nNo. 14, 3rd Cross, Jayanagar, Bengaluru 560041\nSubject: Settlement of your hospitalisation claim — Sunrise Hospital, Jayanagar\nDear Policyholder,\nWe have processed your claim for hospitalisation from 12-09-2026 to 16-09-2026. The settlement details are as follows:\nTotal amount claimed: Rs. 48,500\nAmount approved for payment: Rs. 31,200\nDeduction: Room rent exceeds eligible limit (1% of Sum Insured): Rs. 17,300\nAs per Clause 4.2 of your policy, room rent is payable up to 1% of the Sum Insured (Rs. 5,00,000) per day, i.e. Rs. 5,000 per day. You\noccupied a room at Rs. 8,500 per day; associated expenses have been deducted proportionately.\nThe approved amount will be credited to your registered bank account within 7 working days.\nIf you disagree with this decision, you may request a review within 30 days of this letter by writing to the Grievance Cell with the hospital\nroom tariff and discharge summary. Requests received after this period will not be considered.\nYours faithfully,\nClaims Manager\nSAMPLE DOCUMENT FOR SOFTWARE TESTING ONLY. All names, numbers and amounts are fictional.",
+  "protected_terms": [
+    "SHIELD HEALTH INSURANCE CO. LTD. (SAMPLE)",
+    "Mr. Ravi Kumar",
+    "Sunrise Hospital, Jayanagar",
+    "CLM-2026-0884",
+    "SH/IND/22/559102",
+    "No. 14, 3rd Cross, Jayanagar, Bengaluru 560041",
+    "claims@example.com"
+  ]
+}

@@ -387,5 +387,19 @@
   "pageMapLabel": "ଦଳିଲ ଅନୁସାରେ ରଙ୍ଗ ପୃଷ୍ଠା",
   "photosAccessBody": "ଏହି ବ୍ୟାଖ୍ୟାର ଛବି ଆପଣଙ୍କ ଫଟୋରେ ରଖିବାକୁ ସର୍ବମ ଅନୁମତି ମାଗିବ। ରଙ୍ଗ ଓ ଡିଜାଇନ ସେହିପରି ରହିବ। ଛବି ଏହି ଫୋନରେ ରହିବ।",
   "photosAllow": "ଅନୁମତି ଦିଅନ୍ତୁ",
-  "photosNotNow": "ଏବେ ନୁହେଁ"
+  "photosNotNow": "ଏବେ ନୁହେଁ",
+  "howToFill": "ଆପଣ କଣ କରିବେ",
+  "toPay": "ଦେବାକୁ",
+  "byDate": "{date} ସୁଦ୍ଧା",
+  "daysLeft": "{n} ଦିନ ବାକି",
+  "waysToPay": "ଦେବାର ଉପାୟ",
+  "directionsTitle": "ନୋଟିସ କଣ କହେ",
+  "itemsTitle": "ଜିନିଷ",
+  "notADiagnosis": "ଏହା ରୋଗ ନିର୍ଣ୍ଣୟ ନୁହେଁ।",
+  "notADiagnosisBody": "ଛପା କଥା ସର୍ବମ ବୁଝାଏ। ଆପଣଙ୍କ ପାଇଁ ଏହା କଣ ଡାକ୍ତର କହିପାରିବେ।",
+  "wholePage": "ପୂରା ପୃଷ୍ଠା",
+  "summaryOnly": "କେବଳ ସାରାଂଶ",
+  "saveToPhotos": "ଫଟୋରେ ସେଭ କରନ୍ତୁ",
+  "nextEmi": "ପରବର୍ତ୍ତୀ କିସ୍ତି",
+  "loanTerms": "ଋଣ ସର୍ତ୍ତ"
 }

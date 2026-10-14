@@ -16,7 +16,6 @@ import type {
   MultiReportCard,
 } from './types'
 import {
-  shrinkImage,
   isHeicFile,
   processPhotosSequentially,
 } from './utils/image'
@@ -51,6 +50,8 @@ import {
 } from './utils/history'
 import { useOverlayRestore } from './hooks/useOverlayRestore'
 import { outputNeedsTranslation } from './utils/languageMatch'
+import { forgetReadMemory, forgetReadResult, recallRead, rememberRead, sha256Files } from './utils/readCache'
+import { fetchSampleResult, isSampleFile } from './samples/loadSample'
 import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 
 interface DeleteConfirmState {
@@ -139,6 +140,7 @@ export default function App() {
   const activeFilesRef = useRef<File[]>([])
   const retryActionRef = useRef<(() => void) | null>(null)
   const currentResultIdRef = useRef<string | null>(null)
+  const fileHashRef = useRef<string>('')
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
   const activeTranslateControllerRef = useRef<AbortController | null>(null)
@@ -429,12 +431,14 @@ export default function App() {
     if (!deleteConfirm) return
     if (deleteConfirm.type === 'single' && deleteConfirm.id) {
       await deleteRecentResult(deleteConfirm.id)
+      forgetReadResult(deleteConfirm.id)
       const active = loadActiveSession()
       if (active?.currentResultId === deleteConfirm.id) {
         clearActiveSession()
       }
     } else if (deleteConfirm.type === 'all') {
       await clearAllRecentResults()
+      forgetReadMemory()
       clearActiveSession()
     }
     setDeleteConfirm(null)
@@ -455,6 +459,26 @@ export default function App() {
     if (!filesToExplain || filesToExplain.length === 0) return
 
     const targetLang = resolveLang(lang)
+    try {
+      fileHashRef.current = await sha256Files(filesToExplain)
+    } catch {
+      fileHashRef.current = ''
+    }
+    if (fileHashRef.current && !password) {
+      const cached = await recallRead(fileHashRef.current, targetLang)
+      if (cached) {
+        const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        currentResultIdRef.current = resultId
+        originalResultRef.current = cached
+        translationCacheRef.current.set(`${resultId}:${targetLang}`, cached)
+        setActiveFiles(filesToExplain)
+        activeFilesRef.current = filesToExplain
+        setResultData(cached)
+        setCurrentError(null)
+        navigateToScreen('result')
+        return
+      }
+    }
 
     if (readingTimeoutRef.current) {
       clearTimeout(readingTimeoutRef.current)
@@ -589,6 +613,12 @@ export default function App() {
           await saveOriginalFiles(multiId, filesToExplain)
           await loadRecents()
         }
+        if (fileHashRef.current) {
+          await rememberRead(fileHashRef.current, targetLang, firstReady.result, currentResultIdRef.current || undefined)
+        }
+        if (fileHashRef.current) {
+          await rememberRead(fileHashRef.current, targetLang, firstReady.result, currentResultIdRef.current || undefined)
+        }
       } else {
         const firstErr = updatedCards.find((c) => c.error)?.error
         setCurrentError(
@@ -624,6 +654,9 @@ export default function App() {
       originalResultRef.current = result
       translationCacheRef.current.clear()
       translationCacheRef.current.set(`${resultId}:${result.language || targetLang}`, result)
+      if (fileHashRef.current) {
+        await rememberRead(fileHashRef.current, targetLang, result, resultId)
+      }
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
@@ -903,20 +936,24 @@ export default function App() {
     retryActionRef.current = () => handleSampleClick(sampleFilename)
     try {
       setCurrentError(null)
+      const targetLang = resolveLang(selectedLang)
+      const result = await fetchSampleResult(sampleFilename, targetLang)
       const res = await fetch(`/samples/${sampleFilename}`)
-      if (!res.ok) {
-        throw new Error(`Failed to load sample: ${res.statusText}`)
+      const files: File[] = []
+      if (res.ok) {
+        const blob = await res.blob()
+        const mimeType = sampleFilename.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+        files.push(new File([blob], sampleFilename, { type: mimeType }))
       }
-      const blob = await res.blob()
-      const mimeType = sampleFilename.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-      const sampleFile = new File([blob], sampleFilename, { type: mimeType })
-
-      let processedFile = sampleFile
-      if (mimeType.startsWith('image/')) {
-        processedFile = await shrinkImage(sampleFile)
-      }
-
-      await runExplain([processedFile], selectedLang)
+      const resultId = `sample-${sampleFilename}`
+      currentResultIdRef.current = resultId
+      originalResultRef.current = result
+      translationCacheRef.current.set(`${resultId}:${targetLang}`, result)
+      activeFilesRef.current = files
+      setActiveFiles(files)
+      setResultData(result)
+      setShowOnboarding(false)
+      navigateToScreen('result')
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const msg = err instanceof Error ? err.message : 'Failed to load sample'
@@ -937,6 +974,28 @@ export default function App() {
 
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
+
+    const sampleFile = activeFilesRef.current.find((file) => isSampleFile(file.name))
+    if (sampleFile) {
+      setIsTranslating(true)
+      try {
+        const translated = await fetchSampleResult(sampleFile.name, targetLang)
+        const resultId = currentResultIdRef.current || `sample-${sampleFile.name}`
+        currentResultIdRef.current = resultId
+        translationCacheRef.current.set(`${resultId}:${targetLang}`, translated)
+        setResultData(translated)
+        setTranslateError(null)
+      } catch (err: unknown) {
+        setTranslateError({
+          message: err instanceof Error ? err.message : 'Sample translation is not ready',
+          messageLocal: err instanceof Error ? err.message : 'Sample translation is not ready',
+          statusCode: 0,
+        })
+      } finally {
+        setIsTranslating(false)
+      }
+      return
+    }
 
     const resultId = currentResultIdRef.current
     const originalResult = originalResultRef.current || resultData
@@ -978,6 +1037,7 @@ export default function App() {
 
       translationCacheRef.current.set(cacheKey, translated)
       setResultData(translated)
+      if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, translated, resultId)
       setIsTranslating(false)
       console.log('telemetry: translate_ok', { status: 200 })
 
@@ -995,6 +1055,7 @@ export default function App() {
 
         translationCacheRef.current.set(cacheKey, retried)
         setResultData(retried)
+        if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, retried, resultId)
         setIsTranslating(false)
         console.log('telemetry: translate_retry_ok', { status: 200 })
 

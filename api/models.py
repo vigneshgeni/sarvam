@@ -638,6 +638,7 @@ class ExplainSectionValue(BaseModel):
 
 class ExplainSection(BaseModel):
     heading: str
+    heading_printed: str = ""
     page: int = 1
     values: List[ExplainSectionValue] = Field(default_factory=list)
 

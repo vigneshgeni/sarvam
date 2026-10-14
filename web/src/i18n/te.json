@@ -309,5 +309,19 @@
   "photosNotNow": "ఇప్పుడు వద్దు",
   "speedSlow": "నెమ్మదిగా",
   "speedNormal": "సాధారణం",
-  "speedFast": "వేగంగా"
+  "speedFast": "వేగంగా",
+  "howToFill": "మీరు చేయాల్సింది",
+  "toPay": "చెల్లించాల్సింది",
+  "byDate": "{date} లోపు",
+  "daysLeft": "{n} రోజులు మిగిలి ఉన్నాయి",
+  "waysToPay": "చెల్లించే మార్గాలు",
+  "directionsTitle": "నోటీసు చెప్పేది",
+  "itemsTitle": "వస్తువులు",
+  "notADiagnosis": "ఇది వ్యాధి నిర్ధారణ కాదు.",
+  "notADiagnosisBody": "ముద్రించినది సర్వం వివరిస్తుంది. అది మీకు ఏమిటో మీ వైద్యుడే చెప్పగలరు.",
+  "wholePage": "మొత్తం పేజీ",
+  "summaryOnly": "సారాంశం మాత్రమే",
+  "saveToPhotos": "ఫోటోల్లో సేవ్ చేయండి",
+  "nextEmi": "తర్వాతి వాయిదా",
+  "loanTerms": "రుణ నిబంధనలు"
 }

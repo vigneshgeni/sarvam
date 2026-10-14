@@ -309,5 +309,19 @@
   "photosNotNow": "இப்போது வேண்டாம்",
   "speedSlow": "மெதுவாக",
   "speedNormal": "இயல்பு",
-  "speedFast": "வேகமாக"
+  "speedFast": "வேகமாக",
+  "howToFill": "என்ன செய்ய வேண்டும்",
+  "toPay": "செலுத்த",
+  "byDate": "{date} க்குள்",
+  "daysLeft": "{n} நாட்கள் உள்ளன",
+  "waysToPay": "செலுத்தும் வழிகள்",
+  "directionsTitle": "அறிவிப்பு சொல்வது",
+  "itemsTitle": "பொருட்கள்",
+  "notADiagnosis": "இது நோயறிதல் அல்ல.",
+  "notADiagnosisBody": "அச்சில் இருப்பதை சர்வம் விளக்குகிறது. அது உங்களுக்கு என்ன என்பதை உங்கள் மருத்துவரே சொல்ல முடியும்.",
+  "wholePage": "முழு பக்கம்",
+  "summaryOnly": "சுருக்கம் மட்டும்",
+  "saveToPhotos": "புகைப்படங்களில் சேமி",
+  "nextEmi": "அடுத்த தவணை",
+  "loanTerms": "கடன் விவரங்கள்"
 }

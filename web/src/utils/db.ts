@@ -2,9 +2,10 @@ import type { RecentResult, ExplainResponse } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const STORE_NAME = 'recent_results'
 const ORIGINALS_STORE = 'original_files'
+const READ_CACHE_STORE = 'read_cache'
 const MAX_ENTRIES = 20
 export const MAX_ORIGINALS_BYTES = 40 * 1024 * 1024 // 40 MB
 const SETTING_KEY = 'sarvam.save_recent'
@@ -58,6 +59,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(ORIGINALS_STORE)) {
         const origStore = db.createObjectStore(ORIGINALS_STORE, { keyPath: 'resultId' })
         origStore.createIndex('timestamp', 'timestamp', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        db.createObjectStore(READ_CACHE_STORE, { keyPath: 'id' })
       }
     }
 
@@ -282,10 +286,22 @@ export async function deleteRecentResult(id: string): Promise<void> {
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         stores.push(ORIGINALS_STORE)
       }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        stores.push(READ_CACHE_STORE)
+      }
       const tx = db.transaction(stores, 'readwrite')
       tx.objectStore(STORE_NAME).delete(id)
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         tx.objectStore(ORIGINALS_STORE).delete(id)
+      }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        const cache = tx.objectStore(READ_CACHE_STORE)
+        const all = cache.getAll()
+        all.onsuccess = () => {
+          for (const entry of all.result || []) {
+            if (entry.resultId === id) cache.delete(entry.id)
+          }
+        }
       }
       tx.oncomplete = () => resolve()
       tx.onerror = () => resolve()
@@ -304,16 +320,60 @@ export async function clearAllRecentResults(): Promise<void> {
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         stores.push(ORIGINALS_STORE)
       }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        stores.push(READ_CACHE_STORE)
+      }
       const tx = db.transaction(stores, 'readwrite')
       tx.objectStore(STORE_NAME).clear()
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         tx.objectStore(ORIGINALS_STORE).clear()
+      }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        tx.objectStore(READ_CACHE_STORE).clear()
       }
       tx.oncomplete = () => resolve()
       tx.onerror = () => resolve()
     })
   } catch {
     // Non-fatal
+  }
+}
+
+export interface ReadCacheRecord {
+  id: string
+  resultId?: string
+  translations: Record<string, unknown>
+}
+
+export async function idbGetReadCache(id: string): Promise<ReadCacheRecord | null> {
+  if (typeof indexedDB === 'undefined') return null
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(READ_CACHE_STORE)) return null
+    return await new Promise((resolve) => {
+      const tx = db.transaction(READ_CACHE_STORE, 'readonly')
+      const req = tx.objectStore(READ_CACHE_STORE).get(id)
+      req.onsuccess = () => resolve((req.result as ReadCacheRecord) || null)
+      req.onerror = () => resolve(null)
+    })
+  } catch {
+    return null
+  }
+}
+
+export async function idbPutReadCache(record: ReadCacheRecord): Promise<void> {
+  if (typeof indexedDB === 'undefined') return
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(READ_CACHE_STORE)) return
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(READ_CACHE_STORE, 'readwrite')
+      tx.objectStore(READ_CACHE_STORE).put(record)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    })
+  } catch {
+    /* a missed cache write still leaves the result on screen */
   }
 }
 

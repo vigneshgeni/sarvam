@@ -198,7 +198,7 @@ Rules:
    other (other): anything else.
    Examples, described only, never copy these words as values: a page of test rows with a reference range is a lab_report; a page that starts with Rx and BD is a prescription; a letter that states an EMI and an interest rate is a loan; a page of empty labelled boxes is a form.
    Fill `profile` with only the fields that are printed for that kind. Copy values verbatim. Leave every other profile string empty, and leave emi_day_of_month at 0 when the page does not print the day. Each amount, id and name needs its quote and page when the field has them.
-   When the page prints an amount still to be paid (a bill, challan, tax notice, invoice balance, loan EMI, or insurance premium), add one profile.amounts entry labelled "Amount due" or "Total payable", and set profile.due_date to the printed due date in YYYY-MM-DD. A loan also fills emi_amount. Insurance fills premium. The first action is "Pay ₹{amount} by {date}" using that printed amount and date. Do not leave the amount out when it is printed.
+   When the page prints an amount still to be paid (a bill, challan, tax notice, invoice balance, loan EMI, or insurance premium), add one profile.amounts entry labelled "Amount due" or "Total payable", and set profile.due_date to the printed due date in YYYY-MM-DD. A loan also fills emi_amount. Insurance fills premium. The first action is "Pay ₹{{amount}} by {{date}}" using that printed amount and date. Do not leave the amount out when it is printed.
 4. Glance (`glance`):
    - headline: <= 12 words summarizing the essence of the document.
    - key_values: up to 6 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document. Use kind "amount" only for money. Lab readings, sample IDs and reference numbers are kind "text" or "date".
@@ -824,10 +824,12 @@ def read_document(
 
             def one(chunk: Tuple[bytes, int, int]) -> ReaderResponse:
                 data, start, end = chunk
+                # Each chunk runs at the same time, so each one gets a full
+                # request budget. The wall clock is the slower chunk, not the sum.
                 result = read_document_single_attempt(
                     [(data, mime)],
                     lang,
-                    deadline=deadline,
+                    deadline=time.time() + REQUEST_DEADLINE,
                     page_start=start,
                     page_end=end,
                 )
