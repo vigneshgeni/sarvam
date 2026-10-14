@@ -60,6 +60,10 @@ function mime(file) {
   return 'image/jpeg'
 }
 
+function pause() {
+  return new Promise((resolve) => setTimeout(resolve, 5000))
+}
+
 async function postOnce(file, send) {
   const started = Date.now()
   const response = await send()
@@ -81,6 +85,7 @@ async function explain(file) {
     if (response.ok) return { result: JSON.parse(body), seconds }
     last = `${file} explain ${response.status} after ${seconds}s: ${body.slice(0, 180)}`
     console.log(`retry ${attempt} ${last}`)
+    await pause()
   }
   throw new Error(last)
 }
@@ -96,6 +101,7 @@ async function translate(result, lang) {
     if (response.ok) return { result: JSON.parse(body), seconds }
     last = `translate ${lang} ${response.status} after ${seconds}s: ${body.slice(0, 180)}`
     console.log(`retry ${attempt} ${last}`)
+    await pause()
   }
   throw new Error(last)
 }
@@ -118,6 +124,7 @@ for (const file of files) {
       writeFileSync(englishPath, JSON.stringify(english, null, 2) + '\n')
       report.push({ file, lang: 'en', seconds: read.seconds, facts: ok ? 'match' : 'miss' })
       console.log(`${file} en ${read.seconds}s facts ${ok ? 'match' : 'MISS'}`)
+      await pause()
     }
 
     for (const lang of langs) {
@@ -132,6 +139,7 @@ for (const file of files) {
         writeFileSync(path, JSON.stringify(translated.result, null, 2) + '\n')
         report.push({ file, lang, seconds: translated.seconds })
         console.log(`${file} ${lang} ${translated.seconds}s`)
+        await pause()
       } catch (error) {
         report.push({ file, lang, error: String(error).slice(0, 240) })
         console.log(`FAILED ${file} ${lang}: ${String(error).slice(0, 180)}`)
