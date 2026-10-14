@@ -1,10 +1,31 @@
+import { useEffect, useState } from 'react'
 import type { ReadingLetter } from '../../design/catalog'
 
+function useShownPage(total: number, enabled: boolean) {
+  const [page, setPage] = useState(1)
+  useEffect(() => {
+    setPage(1)
+    if (!enabled || total <= 1) return
+    const reduceMotion =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.getAttribute('data-reduce-motion') === 'true'
+    if (reduceMotion) return
+    const timer = window.setInterval(() => {
+      setPage((current) => (current >= total ? 1 : current + 1))
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [enabled, total])
+  return Math.min(page, total)
+}
+
 export default function ReadingArt({ variant, pages }: { variant: ReadingLetter; pages: number }) {
+  const total = Math.max(1, pages)
+  const shown = useShownPage(total, variant === 'B')
   if (variant === 'B') {
+    const sheets = Math.min(total, 3)
     return (
       <div className="h-[300px] bg-[#1A1A1A] rounded-[40px] relative overflow-hidden border-[1.5px] border-[#1A1A1A]">
-        {[0, 1, 2].map((i) => (
+        {Array.from({ length: sheets }, (_, i) => (
           <div key={i} className="pg" style={{ ['--r0' as string]: `${(i - 1) * 8}deg`, ['--r' as string]: `${(i - 1) * 6}deg`, animationDelay: `${i * 0.5}s` }}>
             <span /><span style={{ width: '70%' }} /><span />
           </div>
@@ -12,7 +33,7 @@ export default function ReadingArt({ variant, pages }: { variant: ReadingLetter;
         <div className="flash" />
         <div className="sweep" />
         <span className="absolute bottom-4 left-0 right-0 text-center text-[13px] font-bold text-[#F4F5F2]">
-          Page <span className="count" /> of {pages}
+          Page {shown} of {total}
         </span>
       </div>
     )

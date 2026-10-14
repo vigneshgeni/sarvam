@@ -114,7 +114,7 @@ export default function SummaryCard({
       {kind === 'C' && <Deadline result={result} t={t} lang={lang} />}
       {kind === 'D' && !(result.sections && result.sections.length) && <ValueTiles result={result} kvs={kvs} t={t} allMatched={allMatched} />}
       {kind === 'F' && <AmountStrip amounts={amounts} t={t} allMatched={allMatched} />}
-      {kind === 'multi' && <PageMap result={result} t={t} />}
+      {kind === 'multi' && <span className="text-[13px] font-semibold text-[#575B58]">{(result.parts || []).length} {t.documentsInUpload || 'documents in this upload'}</span>}
     </section>
   )
 }
@@ -367,25 +367,6 @@ function AmountStrip({
         ))}
       </div>
       {allMatched && <Tick label={t.allAmountsFound || 'All amounts found in your document'} />}
-    </div>
-  )
-}
-
-function PageMap({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
-  const parts = result.parts || []
-  const pages = Math.max(...parts.map((p) => p.pages[1]), 1)
-  const tints = ['#CFE5E0', '#F8D9CB', '#FBEBC4']
-  return (
-    <div className="flex flex-col gap-3">
-      <span className="text-[12px] font-bold tracking-[1.2px]">{t.inThisUpload || 'IN THIS UPLOAD'}</span>
-      <div className="flex gap-2" role="img" aria-label={parts.map((p) => `${p.title}, pages ${p.pages[0]} to ${p.pages[1]}`).join('. ')}>
-        {Array.from({ length: pages }, (_, i) => {
-          const page = i + 1
-          const partIndex = parts.findIndex((p) => page >= p.pages[0] && page <= p.pages[1])
-          return <span key={page} className="h-[78px] flex-1 rounded-[12px] border-[1.5px] border-[#1A1A1A]" style={{ background: tints[Math.max(partIndex, 0) % 3] }} />
-        })}
-      </div>
-      <Tick label={t.splitUsingHeadings || 'Split using the headings on your pages'} />
     </div>
   )
 }

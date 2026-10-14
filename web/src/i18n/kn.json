@@ -286,5 +286,21 @@
   "normalText": "ಸಾಮಾನ್ಯ ಅಕ್ಷರ",
   "largeText": "ದೊಡ್ಡ ಅಕ್ಷರ",
   "extraLargeText": "ತುಂಬಾ ದೊಡ್ಡ ಅಕ್ಷರ",
-  "a11yPreview": "ನಿಮ್ಮ ₹31,200 ಕ್ಲೈಮ್ ಅಂಗೀಕರಿಸಲಾಗಿದೆ."
+  "a11yPreview": "ನಿಮ್ಮ ₹31,200 ಕ್ಲೈಮ್ ಅಂಗೀಕರಿಸಲಾಗಿದೆ.",
+  "mediaAccessTitle": "ಫೋಟೋಗಳು ಮತ್ತು ಫೈಲ್‌ಗಳನ್ನು ಅನುಮತಿಸುವುದೇ?",
+  "mediaAccessIos": "Sarvam ಕ್ಯಾಮೆರಾ ಮತ್ತು Photo Library ಕೇಳುತ್ತದೆ. ನೀವು ಆಯ್ಕೆ ಮಾಡುವವರೆಗೆ ಫೋಟೋ ಅಥವಾ ಫೈಲ್ ಈ iPhoneನಲ್ಲೇ ಇರುತ್ತದೆ.",
+  "mediaAccessAndroid": "Sarvam ಕ್ಯಾಮೆರಾ, ಗ್ಯಾಲರಿ ಮತ್ತು ಫೈಲ್‌ಗಳನ್ನು ಕೇಳುತ್ತದೆ. ನೀವು ಆಯ್ಕೆ ಮಾಡುವವರೆಗೆ ಫೋಟೋ ಅಥವಾ ಫೈಲ್ ಈ ಫೋನಿನಲ್ಲೇ ಇರುತ್ತದೆ.",
+  "mediaAccessOther": "Sarvam ಕ್ಯಾಮೆರಾ ಮತ್ತು ನಿಮ್ಮ ಫೋಟೋಗಳನ್ನು ಕೇಳುತ್ತದೆ. ನೀವು ಆಯ್ಕೆ ಮಾಡುವವರೆಗೆ ಫೋಟೋ ಅಥವಾ ಫೈಲ್ ಈ ಸಾಧನದಲ್ಲೇ ಇರುತ್ತದೆ.",
+  "mediaAllow": "ಅನುಮತಿಸಿ",
+  "mediaNotNow": "ಈಗ ಬೇಡ",
+  "photoChoiceTitle": "ಒಂದು ಪುಟ ಸೇರಿಸಿ",
+  "galleryAndroid": "ಗ್ಯಾಲರಿಯಿಂದ ಆಯ್ಕೆಮಾಡಿ",
+  "galleryPhotos": "Photos ನಿಂದ ಆಯ್ಕೆಮಾಡಿ",
+  "lookFirst": "ಮೊದಲು ಇವನ್ನು ನೋಡಿ",
+  "documentNofM": "ದಾಖಲೆ {n} / {m} · ಪುಟಗಳು {pages}",
+  "fromDocument": "ಇದರಿಂದ: {name}",
+  "valuesAsPrinted": "ಮುದ್ರಿತ ಮೌಲ್ಯಗಳು ಮತ್ತು ಗುರುತುಗಳು ಹಾಗೆಯೇ",
+  "documentsInUpload": "ಈ ಅಪ್‌ಲೋಡಿನ ದಾಖಲೆಗಳು",
+  "inThisUpload": "ಈ ಅಪ್‌ಲೋಡಿನಲ್ಲಿ",
+  "pageMapLabel": "ದಾಖಲೆವಾರು ಬಣ್ಣದ ಪುಟಗಳು"
 }

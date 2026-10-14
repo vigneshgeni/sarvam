@@ -286,5 +286,21 @@
   "normalText": "सामान्य अक्षर",
   "largeText": "बड़ा अक्षर",
   "extraLargeText": "बहुत बड़ा अक्षर",
-  "a11yPreview": "आपका ₹31,200 का दावा मंजूर है."
+  "a11yPreview": "आपका ₹31,200 का दावा मंजूर है.",
+  "mediaAccessTitle": "फ़ोटो और फ़ाइलें अनुमति दें?",
+  "mediaAccessIos": "Sarvam कैमरा और Photo Library माँगेगा। जब तक आप चुनें नहीं, फ़ोटो या फ़ाइल इस iPhone पर ही रहती है।",
+  "mediaAccessAndroid": "Sarvam कैमरा, गैलरी और फ़ाइलें माँगेगा। जब तक आप चुनें नहीं, फ़ोटो या फ़ाइल इस फ़ोन पर ही रहती है।",
+  "mediaAccessOther": "Sarvam कैमरा और आपकी फ़ोटो माँगेगा। जब तक आप चुनें नहीं, फ़ोटो या फ़ाइल इस डिवाइस पर ही रहती है।",
+  "mediaAllow": "अनुमति दें",
+  "mediaNotNow": "अभी नहीं",
+  "photoChoiceTitle": "एक पन्ना जोड़ें",
+  "galleryAndroid": "गैलरी से चुनें",
+  "galleryPhotos": "Photos से चुनें",
+  "lookFirst": "पहले ये देखें",
+  "documentNofM": "दस्तावेज़ {n} / {m} · पृष्ठ {pages}",
+  "fromDocument": "इससे: {name}",
+  "valuesAsPrinted": "छपे मान और निशान जैसे के तैसे",
+  "documentsInUpload": "इस अपलोड में दस्तावेज़",
+  "inThisUpload": "इस अपलोड में",
+  "pageMapLabel": "दस्तावेज़ के हिसाब से रंगे पृष्ठ"
 }

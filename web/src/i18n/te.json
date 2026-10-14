@@ -286,5 +286,21 @@
   "normalText": "సాధారణ అక్షరం",
   "largeText": "పెద్ద అక్షరం",
   "extraLargeText": "చాలా పెద్ద అక్షరం",
-  "a11yPreview": "మీ ₹31,200 క్లెయిమ్ ఆమోదించబడింది."
+  "a11yPreview": "మీ ₹31,200 క్లెయిమ్ ఆమోదించబడింది.",
+  "mediaAccessTitle": "ఫోటోలు మరియు ఫైళ్లను అనుమతించాలా?",
+  "mediaAccessIos": "Sarvam కెమెరా మరియు Photo Library అడుగుతుంది. మీరు ఎంచుకునే వరకు ఫోటో లేదా ఫైలు ఈ iPhoneలోనే ఉంటుంది.",
+  "mediaAccessAndroid": "Sarvam కెమెరా, గ్యాలరీ మరియు ఫైళ్లను అడుగుతుంది. మీరు ఎంచుకునే వరకు ఫోటో లేదా ఫైలు ఈ ఫోనులోనే ఉంటుంది.",
+  "mediaAccessOther": "Sarvam కెమెరా మరియు మీ ఫోటోలను అడుగుతుంది. మీరు ఎంచుకునే వరకు ఫోటో లేదా ఫైలు ఈ పరికరంలోనే ఉంటుంది.",
+  "mediaAllow": "అనుమతించు",
+  "mediaNotNow": "ఇప్పుడు వద్దు",
+  "photoChoiceTitle": "ఒక పేజీని చేర్చు",
+  "galleryAndroid": "గ్యాలరీ నుండి ఎంచుకోండి",
+  "galleryPhotos": "Photos నుండి ఎంచుకోండి",
+  "lookFirst": "ముందు వీటిని చూడండి",
+  "documentNofM": "పత్రం {n} / {m} · పేజీలు {pages}",
+  "fromDocument": "దీని నుండి: {name}",
+  "valuesAsPrinted": "ముద్రించిన విలువలు మరియు గుర్తులు అలాగే",
+  "documentsInUpload": "ఈ అప్‌లోడ్‌లో పత్రాలు",
+  "inThisUpload": "ఈ అప్‌లోడ్‌లో",
+  "pageMapLabel": "పత్రం వారీగా రంగు పేజీలు"
 }

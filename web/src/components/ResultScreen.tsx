@@ -707,6 +707,14 @@ export default function ResultScreen({
                         >
                           {formatAmountsInText(act.text)}
                         </span>
+                        {(result.parts?.length || 0) > 1 && act.part_id && result.parts?.find((part) => part.part_id === act.part_id)?.title && (
+                          <span className="self-start text-[12px] font-bold px-2 py-0.5 rounded-[10px] border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0]">
+                            {(t.fromDocument || 'From: {name}').replace(
+                              '{name}',
+                              result.parts?.find((part) => part.part_id === act.part_id)?.title || ''
+                            )}
+                          </span>
+                        )}
 
                         {/* Chips row */}
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">

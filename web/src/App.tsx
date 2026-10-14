@@ -39,6 +39,7 @@ import A11ySheet, { applyA11ySettings, getStoredA11ySettings } from './component
 import PasswordSheet from './components/PasswordSheet'
 import HomeScreen from './components/v3/HomeScreen'
 import Onboarding from './components/v3/Onboarding'
+import MediaSheet, { grantMediaAccess, mediaAccessGranted } from './components/v3/MediaSheet'
 import { ensureIndicFont } from './design/indicFont'
 import {
   pushBrowserHistory,
@@ -121,8 +122,11 @@ export default function App() {
   const readingTimeoutRef = useRef<number | null>(null)
 
   const takePhotoInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const chooseFileInputRef = useRef<HTMLInputElement>(null)
   const chooseFolderInputRef = useRef<HTMLInputElement>(null)
+  const mediaIntentRef = useRef<'photo' | 'files'>('photo')
+  const [mediaSheet, setMediaSheet] = useState<null | 'ask' | 'choose'>(null)
 
   const t = getDictionary(resolveLang(selectedLang))
 
@@ -402,10 +406,13 @@ export default function App() {
     const controller = new AbortController()
     readingAbortControllerRef.current = controller
 
-    // Single 90s top-level timer from tap covering queue wait, explain, and automatic translate
+    const hasPdf = filesToExplain.some(
+      (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    )
+    // A short read stays at 90s. A PDF with many tables needs the longer server budget.
     readingTimeoutRef.current = window.setTimeout(() => {
       controller.abort('timeout')
-    }, 90_000)
+    }, hasPdf ? 150_000 : 90_000)
 
     activeFilesRef.current = filesToExplain
     retryActionRef.current = () => runExplain(filesToExplain, lang, password)
@@ -685,11 +692,24 @@ export default function App() {
   }
 
   const handleTakePhotoClick = () => {
-    takePhotoInputRef.current?.click()
+    mediaIntentRef.current = 'photo'
+    setMediaSheet(mediaAccessGranted() ? 'choose' : 'ask')
   }
 
   const handleChooseFileClick = () => {
-    chooseFileInputRef.current?.click()
+    mediaIntentRef.current = 'files'
+    if (mediaAccessGranted()) chooseFileInputRef.current?.click()
+    else setMediaSheet('ask')
+  }
+
+  const handleAllowMedia = () => {
+    grantMediaAccess()
+    if (mediaIntentRef.current === 'files') {
+      setMediaSheet(null)
+      chooseFileInputRef.current?.click()
+      return
+    }
+    setMediaSheet('choose')
   }
 
   const handleChooseFolderClick = () => {
@@ -1068,6 +1088,14 @@ export default function App() {
         className="hidden"
       />
       <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleChooseFileChange}
+        className="hidden"
+      />
+      <input
         ref={chooseFileInputRef}
         type="file"
         accept="application/pdf,image/jpeg,image/png"
@@ -1203,6 +1231,27 @@ export default function App() {
       />
 
       {/* Delete Confirmation Sheet */}
+      {mediaSheet && (
+        <MediaSheet
+          mode={mediaSheet}
+          t={t}
+          onAllow={handleAllowMedia}
+          onClose={() => setMediaSheet(null)}
+          onCamera={() => {
+            setMediaSheet(null)
+            takePhotoInputRef.current?.click()
+          }}
+          onGallery={() => {
+            setMediaSheet(null)
+            galleryInputRef.current?.click()
+          }}
+          onFiles={() => {
+            setMediaSheet(null)
+            chooseFileInputRef.current?.click()
+          }}
+        />
+      )}
+
       {deleteConfirm && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-[#8A8F8C] p-0"

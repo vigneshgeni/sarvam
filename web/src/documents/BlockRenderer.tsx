@@ -1,5 +1,4 @@
 import type { ExplainResponse } from '../types'
-import { partAsResult } from './kinds'
 import { resolveProfile, type BlockId } from './profiles'
 import {
   AdviceBlock,
@@ -18,6 +17,7 @@ import {
 } from './blocks/KindBlocks'
 import MedicineCard from '../components/MedicineCard'
 import { LabValues } from '../components/v3/SummaryCard'
+import MultiDocument from './MultiDocument'
 
 function Specific({
   id,
@@ -78,31 +78,17 @@ export default function BlockRenderer({
 }) {
   if ((result.parts?.length || 0) > 1) {
     return (
-      <div className="flex flex-col gap-6">
-        {result.parts!.map((part, index) => {
-          const asResult = partAsResult(part, result)
-          const profile = resolveProfile(asResult)
-          return (
-            <section key={part.part_id || part.title} className="flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <span className="w-8 h-8 shrink-0 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[14px] font-bold" style={{ background: profile.visual.bg, color: profile.visual.ink }}>
-                  {index + 1}
-                </span>
-                <div>
-                  <h2 className="sv-display text-[26px] leading-[1.05] m-0">{part.title}</h2>
-                  <p className="m-0 mt-1 text-[13px] text-[#575B58]">
-                    {part.issuer ? `${part.issuer} · ` : ''}
-                    {part.pages[0]}–{part.pages[1]}
-                  </p>
-                </div>
-              </div>
-              {profile.blocks.filter((id) => !COMMON.has(id)).map((id) => (
-                <Specific key={id} id={id} result={asResult} t={t} />
-              ))}
-            </section>
-          )
-        })}
-      </div>
+      <MultiDocument
+        result={result}
+        t={t}
+        renderBlocks={(partResult) => (
+          <>
+            {resolveProfile(partResult).blocks.filter((id) => !COMMON.has(id)).map((id) => (
+              <Specific key={id} id={id} result={partResult} t={t} />
+            ))}
+          </>
+        )}
+      />
     )
   }
 

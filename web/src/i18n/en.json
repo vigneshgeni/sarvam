@@ -286,5 +286,21 @@
   "normalText": "Normal text",
   "largeText": "Large text",
   "extraLargeText": "Extra large text",
-  "a11yPreview": "Your claim of ₹31,200 is approved."
+  "a11yPreview": "Your claim of ₹31,200 is approved.",
+  "mediaAccessTitle": "Allow photos and files?",
+  "mediaAccessIos": "Sarvam will ask for the camera and Photo Library. A photo or file stays on this iPhone until you choose it to be read.",
+  "mediaAccessAndroid": "Sarvam will ask for the camera, gallery and files. A photo or file stays on this phone until you choose it to be read.",
+  "mediaAccessOther": "Sarvam will ask for the camera and your photos. A photo or file stays on this device until you choose it to be read.",
+  "mediaAllow": "Allow access",
+  "mediaNotNow": "Not now",
+  "photoChoiceTitle": "Add a page",
+  "galleryAndroid": "Choose from gallery",
+  "galleryPhotos": "Choose from Photos",
+  "lookFirst": "Look at these first",
+  "documentNofM": "DOCUMENT {n} OF {m} · PAGES {pages}",
+  "fromDocument": "From: {name}",
+  "valuesAsPrinted": "Values and flags exactly as printed",
+  "documentsInUpload": "documents in this upload",
+  "inThisUpload": "In this upload",
+  "pageMapLabel": "Pages coloured by document"
 }

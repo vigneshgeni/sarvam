@@ -367,5 +367,21 @@
   "offWord": "ବନ୍ଦ",
   "normalText": "ସାଧାରଣ ଅକ୍ଷର",
   "extraLargeText": "ବହୁତ ବଡ଼ ଅକ୍ଷର",
-  "a11yPreview": "ଆପଣଙ୍କ ₹31,200 ଦାବି ମଞ୍ଜୁର."
+  "a11yPreview": "ଆପଣଙ୍କ ₹31,200 ଦାବି ମଞ୍ଜୁର.",
+  "mediaAccessTitle": "ଫଟୋ ଓ ଫାଇଲକୁ ଅନୁମତି ଦେବେ?",
+  "mediaAccessIos": "Sarvam କ୍ୟାମେରା ଓ Photo Library ମାଗିବ। ଆପଣ ବାଛିବା ପର୍ଯ୍ୟନ୍ତ ଫଟୋ କିମ୍ବା ଫାଇଲ ଏହି iPhoneରେ ରହିବ।",
+  "mediaAccessAndroid": "Sarvam କ୍ୟାମେରା, ଗ୍ୟାଲେରୀ ଓ ଫାଇଲ ମାଗିବ। ଆପଣ ବାଛିବା ପର୍ଯ୍ୟନ୍ତ ଫଟୋ କିମ୍ବା ଫାଇଲ ଏହି ଫୋନରେ ରହିବ।",
+  "mediaAccessOther": "Sarvam କ୍ୟାମେରା ଓ ଆପଣଙ୍କ ଫଟୋ ମାଗିବ। ଆପଣ ବାଛିବା ପର୍ଯ୍ୟନ୍ତ ଫଟୋ କିମ୍ବା ଫାଇଲ ଏହି ଡିଭାଇସରେ ରହିବ।",
+  "mediaAllow": "ଅନୁମତି ଦିଅନ୍ତୁ",
+  "mediaNotNow": "ବର୍ତ୍ତମାନ ନୁହେଁ",
+  "photoChoiceTitle": "ଗୋଟିଏ ପୃଷ୍ଠା ଯୋଡନ୍ତୁ",
+  "galleryAndroid": "ଗ୍ୟାଲେରୀରୁ ବାଛନ୍ତୁ",
+  "galleryPhotos": "Photosରୁ ବାଛନ୍ତୁ",
+  "lookFirst": "ପ୍ରଥମେ ଏଗୁଡ଼ିକୁ ଦେଖନ୍ତୁ",
+  "documentNofM": "ଦଳିଲ {n} / {m} · ପୃଷ୍ଠା {pages}",
+  "fromDocument": "ଏଥିରୁ: {name}",
+  "valuesAsPrinted": "ଛପା ମୂଲ୍ୟ ଓ ଚିହ୍ନ ଯେପରି ଅଛି",
+  "documentsInUpload": "ଏହି ଅପଲୋଡର ଦଳିଲ",
+  "inThisUpload": "ଏହି ଅପଲୋଡରେ",
+  "pageMapLabel": "ଦଳିଲ ଅନୁସାରେ ରଙ୍ଗ ପୃଷ୍ଠା"
 }

@@ -367,5 +367,21 @@
   "offWord": "বন্ধ",
   "normalText": "সাধারণ অক্ষর",
   "extraLargeText": "অনেক বড় অক্ষর",
-  "a11yPreview": "আপনার ₹31,200 দাবি মঞ্জুর হয়েছে."
+  "a11yPreview": "আপনার ₹31,200 দাবি মঞ্জুর হয়েছে.",
+  "mediaAccessTitle": "ছবি ও ফাইলের অনুমতি দেবেন?",
+  "mediaAccessIos": "Sarvam ক্যামেরা ও Photo Library চাইবে। আপনি বেছে না নেওয়া পর্যন্ত ছবি বা ফাইল এই iPhone-এই থাকে।",
+  "mediaAccessAndroid": "Sarvam ক্যামেরা, গ্যালারি ও ফাইল চাইবে। আপনি বেছে না নেওয়া পর্যন্ত ছবি বা ফাইল এই ফোনেই থাকে।",
+  "mediaAccessOther": "Sarvam ক্যামেরা ও আপনার ছবি চাইবে। আপনি বেছে না নেওয়া পর্যন্ত ছবি বা ফাইল এই ডিভাইসেই থাকে।",
+  "mediaAllow": "অনুমতি দিন",
+  "mediaNotNow": "এখন নয়",
+  "photoChoiceTitle": "একটি পাতা যোগ করুন",
+  "galleryAndroid": "গ্যালারি থেকে বেছে নিন",
+  "galleryPhotos": "Photos থেকে বেছে নিন",
+  "lookFirst": "আগে এগুলো দেখুন",
+  "documentNofM": "নথি {n} / {m} · পাতা {pages}",
+  "fromDocument": "এখান থেকে: {name}",
+  "valuesAsPrinted": "ছাপা মান ও চিহ্ন যেমন আছে তেমন",
+  "documentsInUpload": "এই আপলোডের নথি",
+  "inThisUpload": "এই আপলোডে",
+  "pageMapLabel": "নথি অনুসারে রঙিন পাতা"
 }

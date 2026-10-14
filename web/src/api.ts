@@ -50,12 +50,16 @@ export async function explainDocument(
         formData.append('password', password)
       }
 
+      const hasPdf = files.some(
+        (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      )
+      const budgetMs = hasPdf ? 150_000 : 90_000
       const controller = new AbortController()
       let timedOut = false
       const timeoutId = setTimeout(() => {
         timedOut = true
         controller.abort('timeout')
-      }, 90_000)
+      }, budgetMs)
 
       const onExternalAbort = () => {
         controller.abort(externalSignal?.reason)
