@@ -69,6 +69,7 @@ export default function App() {
   // Shared language state persisted in localStorage sarvam.lang (defaults to 'auto' for new users per WEB-3)
   const [selectedLang, setSelectedLang] = useState<string>(getStoredLanguage)
   const [screen, setScreen] = useState<AppScreen>('home')
+  const [readingArrived, setReadingArrived] = useState(false)
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
   const [resultData, setResultData] = useState<ExplainResponse | null>(null)
@@ -423,6 +424,7 @@ export default function App() {
     setMultiReportProgress(null)
     setReReadInLang(null)
     setTranslateFailedLang(null)
+    setReadingArrived(false)
     navigateToScreen('reading')
 
     const isMultiPdf =
@@ -504,6 +506,8 @@ export default function App() {
       if (firstReady && firstReady.result) {
         setResultData(firstReady.result)
         setMultiReportsData(updatedCards)
+        setReadingArrived(true)
+        await new Promise((resolve) => window.setTimeout(resolve, 320))
         navigateToScreen('result')
 
         if (isSaveRecentEnabled()) {
@@ -563,6 +567,8 @@ export default function App() {
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
+      setReadingArrived(true)
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
       navigateToScreen('result')
 
       const fileCount = filesToExplain.length
@@ -1179,6 +1185,7 @@ export default function App() {
             langName={(SUPPORTED_LANGS.find((l) => l.id === resolveLang(selectedLang)) || SUPPORTED_LANGS[1]).name}
             error={currentError}
             multiReportProgress={multiReportProgress}
+            arrived={readingArrived}
             onRetry={() => {
               if (retryActionRef.current) {
                 retryActionRef.current()

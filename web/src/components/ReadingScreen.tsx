@@ -3,6 +3,7 @@ import { getDictionary, SUPPORTED_LANGS } from '../i18n'
 import type { AppErrorInfo } from '../types'
 import { pickReadingVariant, type ReadingLetter } from '../design/catalog'
 import { useOverlayRestore } from '../design/contracts'
+import { useReadingStage } from '../hooks/useReadingStage'
 import ReadingArt from './v3/ReadingArt'
 
 interface ReadingScreenProps {
@@ -13,6 +14,36 @@ interface ReadingScreenProps {
   onRetry: () => void
   onCancel: () => void
   multiReportProgress?: { ready: number; total: number } | null
+  arrived?: boolean
+}
+
+function ProgressRing({ percent, still }: { percent: number; still: boolean }) {
+  const radius = 26
+  const turn = 2 * Math.PI * radius
+  const shown = Math.max(0, Math.min(100, percent))
+  return (
+    <div className="relative h-[72px] w-[72px] shrink-0" aria-label={`${shown}%`}>
+      <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="#E2E5E0" strokeWidth="6" />
+        <circle
+          cx="36"
+          cy="36"
+          r={radius}
+          fill="none"
+          stroke="#034F46"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={turn}
+          strokeDashoffset={turn * (1 - shown / 100)}
+          transform="rotate(-90 36 36)"
+          style={still ? undefined : { transition: 'stroke-dashoffset 180ms linear' }}
+        />
+      </svg>
+      <span className="sv-display pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] tabular-nums text-[#1A1A1A]">
+        {shown}
+      </span>
+    </div>
+  )
 }
 
 function ErrorView({
@@ -137,8 +168,19 @@ export default function ReadingScreen({
   onRetry,
   onCancel,
   multiReportProgress,
+  arrived,
 }: ReadingScreenProps) {
   useOverlayRestore()
+  const reading = useReadingStage({ files, targetLanguage: lang, arrived })
+  const [reduceMotion, setReduceMotion] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const read = () =>
+      setReduceMotion(media.matches || document.documentElement.getAttribute('data-reduce-motion') === 'true')
+    read()
+    media.addEventListener('change', read)
+    return () => media.removeEventListener('change', read)
+  }, [])
   const [variant] = useState<ReadingLetter>(() =>
     pickReadingVariant({
       photo: files.some((f) => f.type.startsWith('image/')),
@@ -146,7 +188,6 @@ export default function ReadingScreen({
       language: lang,
     })
   )
-  const [step, setStep] = useState<number>(0)
   const [takingLonger, setTakingLonger] = useState<boolean>(false)
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
 
@@ -157,31 +198,12 @@ export default function ReadingScreen({
   // Reset progress state when error clears (e.g. on retry) or document changes
   useEffect(() => {
     if (!error) {
-      setStep(0)
       setTakingLonger(false)
       setElapsedSeconds(0)
     }
   }, [error, files, lang])
 
-  // Stepper progress simulation while waiting
-  useEffect(() => {
-    if (error) return
-
-    const t1 = setTimeout(() => {
-      setStep(1)
-    }, 1800)
-
-    const t2 = setTimeout(() => {
-      setStep(2)
-    }, 3600)
-
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-    }
-  }, [error, files, lang])
-
-  // Track elapsed time and delay notices per WEB-5 & live photo processing
+  // Track elapsed time. The 90 second reassurance stays with the longer notices.
   useEffect(() => {
     if (error) return
 
@@ -191,7 +213,7 @@ export default function ReadingScreen({
 
     const tLonger = setTimeout(() => {
       setTakingLonger(true)
-    }, 20000)
+    }, 90000)
 
     return () => {
       clearInterval(interval)
@@ -228,6 +250,7 @@ export default function ReadingScreen({
     { label: stepWritingLabel },
   ]
 
+  const step = reading.stage === 'checking' ? 1 : reading.stage === 'writing' ? 2 : 0
   const showTakingLonger = !error && takingLonger
 
   const progressiveNoticeText = (() => {
@@ -285,7 +308,8 @@ export default function ReadingScreen({
 
       {/* Stepper Card */}
       {!error && (
-        <div className="w-full border-[1.5px] border-[#1A1A1A] rounded-[32px] px-[18px] pt-1.5 pb-4">
+        <div className="flex w-full items-center gap-3 border-[1.5px] border-[#1A1A1A] rounded-[32px] px-[18px] pt-1.5 pb-4">
+          <div className="min-w-0 flex-1">
           {steps.map((st, i) => {
             const isDone = step > i
             const isActive = step === i
@@ -330,7 +354,12 @@ export default function ReadingScreen({
               </div>
             )
           })}
+          </div>
+          <ProgressRing percent={reading.percent} still={reduceMotion} />
         </div>
+      )}
+      {!error && reading.almost && (
+        <p className="m-0 text-center text-[15px] font-semibold text-[#575B58]">{t.almostThere || 'Almost there…'}</p>
       )}
 
       {/* Honest Progressive Reassurance Notice */}
