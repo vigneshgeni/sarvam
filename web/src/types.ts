@@ -101,14 +101,103 @@ export interface MedicineItem {
   duration_days: number | null
   instruction_text: string
   decoded: boolean
+  as_needed?: boolean
   quote?: string
   page?: number
   evidence: 'matched' | 'check_original' | 'calculated'
 }
 
+export interface QuotedField {
+  label: string
+  value: string
+  quote?: string
+  page?: number
+}
+
+export interface DocumentProfile {
+  lab_name?: string | null
+  patient_age_sex?: string | null
+  sample_date?: string | null
+  referred_by?: string | null
+  follow_up?: string | null
+  diagnosis_as_written?: string | null
+  advice_lines?: string[]
+  amounts?: QuotedField[]
+  due_date?: string | null
+  last_date_without_penalty?: string | null
+  how_to_pay?: string[]
+  seller?: string | null
+  invoice_no?: string | null
+  invoice_date?: string | null
+  line_items?: { description: string; qty?: string | null; amount?: string | null }[]
+  taxable_value?: string | null
+  taxes?: QuotedField[]
+  total?: string | null
+  paid_or_due?: string | null
+  warranty_until?: string | null
+  return_window?: string | null
+  claimed?: string | null
+  approved?: string | null
+  deducted?: string | null
+  deduction_reasons?: string[]
+  policy_no?: string | null
+  sum_insured?: string | null
+  premium?: string | null
+  renewal_date?: string | null
+  review_window?: string | null
+  invested?: string | null
+  current_value?: string | null
+  gain?: string | null
+  gain_calculated?: boolean
+  units?: string | null
+  nav?: string | null
+  nav_date?: string | null
+  folio?: string | null
+  next_sip_date?: string | null
+  opening?: string | null
+  closing?: string | null
+  credits_total?: string | null
+  debits_total?: string | null
+  gross?: string | null
+  deductions?: string | null
+  net_pay?: string | null
+  period?: string | null
+  lender?: string | null
+  loan_type?: string | null
+  loan_account?: string | null
+  sanctioned_amount?: string | null
+  interest_rate?: string | null
+  tenure?: string | null
+  emi_amount?: string | null
+  emi_day_of_month?: number | null
+  first_emi_date?: string | null
+  next_emi_date?: string | null
+  outstanding?: string | null
+  charges?: QuotedField[]
+  agreement_type?: string | null
+  parties?: { role: string; name: string }[]
+  subject?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  term?: string | null
+  rent_or_price?: string | null
+  deposit?: string | null
+  lock_in?: string | null
+  notice_period?: string | null
+  renewal_or_escalation?: string | null
+  penalties?: string[]
+  case_or_notice_no?: string | null
+  hearing_or_deadline?: string | null
+  directions?: string[]
+  consequence?: string | null
+  form_fields?: { name: string; instruction?: string; quote?: string; page?: number }[]
+}
+
 export interface ExplainResponse {
   doc_type: DocType | string
   document_type?: DocType | string
+  document_kind?: string | null
+  profile?: DocumentProfile | null
   title: string
   report_title: string | null
   report_date: string | null
@@ -166,6 +255,8 @@ export interface Part {
   part_id: string
   title: string
   document_type: string
+  document_kind?: string | null
+  profile?: DocumentProfile | null
   issuer?: string
   date_iso?: string
   pages: [number, number]

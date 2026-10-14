@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ExplainResponse, GlanceKeyValue, Part, Section } from '../../types'
 import { getLocalisedDocType } from '../../i18n'
-import { isMoneyValue, pickGlance, visualForDocument } from '../../design/catalog'
+import { isMoneyValue, pickGlance, visualForDocument, type GlanceKind } from '../../design/catalog'
 import { DocIcon } from '../../ui/icons'
 import { formatAmountValue } from '../../utils/currency'
 
@@ -63,14 +63,16 @@ export default function SummaryCard({
   lang,
   hasDocumentPreview,
   onOpenDocumentPreview,
+  layout,
 }: {
   result: ExplainResponse
   t: Record<string, string>
   lang: string
   hasDocumentPreview?: boolean
   onOpenDocumentPreview?: () => void
+  layout?: GlanceKind
 }) {
-  const kind = pickGlance(result)
+  const kind = layout || pickGlance(result)
   const docType = result.doc_type || (result.document_type as string) || 'other'
   const visual = visualForDocument(docType, {
     medicines: (result.medicines?.length || 0) > 0,
@@ -259,7 +261,7 @@ function ValueTiles({
   )
 }
 
-function SectionedValues({ sections, t }: { sections: Section[]; t: Record<string, string> }) {
+export function SectionedValues({ sections, t }: { sections: Section[]; t: Record<string, string> }) {
   const ranked = [...sections].sort((a, b) => {
     const fa = a.values.some((v) => v.flag_printed) ? 0 : 1
     const fb = b.values.some((v) => v.flag_printed) ? 0 : 1

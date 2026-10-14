@@ -149,14 +149,32 @@ Rules:
    - Month names, units, and labels must be strictly in the target language (no English words mixed in).
    - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
    - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed in Western digits (0-9).
-3. Document Type (`document_type`):
-   Must be one of: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other.
-   - Prefer specific types: property tax receipt -> tax_receipt; discharge summary / hospital bills -> medical; rental / sale / loan deeds -> agreement; board resolutions -> corporate.
-   - Capture key details per type if present:
-     * All types: parties and signatories/certifying persons, venue/addresses, dates, amounts, IDs, contact numbers.
-     * Agreements: term, rent/price, deposit, notice period, penalties.
-     * Court: case no., court name, next hearing date, directions.
-     * Challan: offence, amount, last date to pay, how to contest.
+3. Document kind (`document_kind`) — choose the most specific one. Also set `document_type` to the coarse type in brackets:
+   government_notice (government_notice): department letterhead, notice number, "you are hereby informed".
+   pension_notice (government_notice): pension, PPO, life certificate, Jeevan Pramaan.
+   tax_notice (tax_receipt): property tax, demand, assessment, rebate.
+   challan (challan): e-challan, offence, vehicle number, fine.
+   court_legal (court_legal): court, case number, summons, hearing, plaintiff or defendant.
+   utility_bill (utility_bill): electricity, water, gas, units, due date.
+   telecom_bill (telecom_bill): mobile, broadband, plan, data.
+   invoice (receipt): tax invoice, GSTIN, HSN, item lines, CGST/SGST, warranty.
+   receipt (receipt): payment receipt, received with thanks, paid.
+   insurance (insurance): policy, claim, premium, sum insured.
+   lab_report (medical): test, result, unit, reference range, lab number. Fill `sections` with every printed row under the report's own headings, up to 80, even when there are only a few rows. flag_printed only if the page prints High, Low, H, L or an arrow. Also fill profile lab_name, patient_age_sex, sample_date, referred_by.
+   prescription (medical): Rx, Tab or Cap, 1-0-1, BD, TDS, OD, a doctor's registration number. Fill medicines.
+   discharge_summary (medical): admission and discharge dates, diagnosis as written, advice, medicines. Fill profile diagnosis_as_written, advice_lines, follow_up.
+   hospital_bill (medical): IP or OP bill, room charges, package.
+   investment (bank): mutual fund, folio, NAV, units, SIP, demat, PPF, FD maturity.
+   bank_statement (bank): account statement, opening and closing balance.
+   loan (bank): sanction letter, EMI, interest rate, tenure, outstanding. Fill profile sanctioned_amount, interest_rate, tenure, emi_amount, emi_day_of_month only if printed, loan_account, charges.
+   agreement (agreement): rental, lease, sale or employment agreement, rent, deposit, lock-in, notice period. Fill profile parties, rent_or_price, deposit, lock_in, notice_period, start_date, end_date.
+   form (other): blank boxes, fill in block letters, application, slip. Fill profile form_fields in printed order.
+   salary_slip (bank): earnings, deductions, net pay.
+   school (other): school or college fee, admission, report card.
+   corporate (corporate): board resolution, company letter.
+   other (other): anything else.
+   Examples, described only, never copy these words as values: a page of test rows with a reference range is a lab_report; a page that starts with Rx and BD is a prescription; a letter that states an EMI and an interest rate is a loan; a page of empty labelled boxes is a form.
+   Fill `profile` with only the fields that are printed for that kind. Copy values verbatim. Leave everything else null. Each amount, id and name needs its quote and page when the field has them.
 4. Glance (`glance`):
    - headline: <= 12 words summarizing the essence of the document.
    - key_values: up to 6 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document. Use kind "amount" only for money. Lab readings, sample IDs and reference numbers are kind "text" or "date".
@@ -205,7 +223,7 @@ Rules:
     If the upload contains 2 or more distinct documents (e.g. a packet holding a lab report, a prescription, and a bill with different letterheads, issuers, titles, or dates), split into `parts`:
     - `part_id`: 'part-1', 'part-2', etc.
     - `title`: document title for that part
-    - `document_type`: document type for that part (e.g. medical, receipt)
+    - `document_kind`: the specific kind for that part, and `document_type`: the coarse type for that kind
     - `issuer`: issuer/clinic/organization name printed on this part
     - `date_iso`: date printed on this part in YYYY-MM-DD format if any, else null
     - `pages`: [start_page, end_page] (1-indexed)

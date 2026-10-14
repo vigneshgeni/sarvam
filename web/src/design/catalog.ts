@@ -18,6 +18,8 @@ export type DocIconName =
   | 'receipt'
   | 'pen'
   | 'pages'
+  | 'key'
+  | 'cap'
 
 export interface DocVisual {
   icon: DocIconName

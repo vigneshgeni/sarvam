@@ -281,6 +281,18 @@ const PATHS: Record<DocIconName, ReactNode> = {
       <path d="M9 8h6M9 12h6" />
     </>
   ),
+  key: (
+    <>
+      <circle cx="8" cy="12" r="3.2" />
+      <path d="M11 12h10M17 12v3M20 12v2" />
+    </>
+  ),
+  cap: (
+    <>
+      <path d="M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v4c2 2 10 2 12 0v-4" />
+    </>
+  ),
   pages: (
     <>
       <path d="M7 6h11v14H7z" />

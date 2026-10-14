@@ -172,6 +172,7 @@ def process_medicines(
                 duration_days=duration_days,
                 instruction_text=med.instruction_text.strip(),
                 decoded=decoded,
+                as_needed=freq_code == "SOS",
                 quote=med.quote.strip() if med.quote else "",
                 page=med.page or 1,
                 evidence=evidence,

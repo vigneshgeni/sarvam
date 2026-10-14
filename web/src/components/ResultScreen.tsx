@@ -19,9 +19,10 @@ import {
   CopyIcon,
 } from './icons'
 import Sheet from './Sheet'
-import SummaryCard, { PartPanels } from './v3/SummaryCard'
+import SummaryCard from './v3/SummaryCard'
+import BlockRenderer from '../documents/BlockRenderer'
+import { resolveProfile } from '../documents/profiles'
 import PlacesContactsCard from './PlacesContactsCard'
-import MedicineCard from './MedicineCard'
 import DocumentPreviewModal, { type PreviewFileItem } from './DocumentPreviewModal'
 import FeedbackBlock from '../features/feedback/FeedbackBlock'
 import ListenSheet from './ListenSheet'
@@ -636,29 +637,9 @@ export default function ResultScreen({
           lang={contentLang}
           hasDocumentPreview={hasDocumentPreview}
           onOpenDocumentPreview={handleOpenPreview}
+          layout={resolveProfile(result).glanceLayout}
         />
-        <PartPanels result={result} t={t} />
-
-
-        {/* WEB-7: PLACES AND CONTACTS CARD */}
-        {(result.places || result.contacts) && (
-          <PlacesContactsCard
-            places={result.places}
-            contacts={result.contacts}
-            t={t}
-            onCheckOriginal={handleCheckOriginal}
-          />
-        )}
-
-        {/* WEB-8: MEDICINE REMINDERS CARD */}
-        {result.medicines && result.medicines.length > 0 && (
-          <MedicineCard
-            medicines={result.medicines}
-            resultId={result.title || 'med-doc'}
-            t={t}
-            onCheckOriginal={handleCheckOriginal}
-          />
-        )}
+        <BlockRenderer result={result} t={t} />
 
         {/* 1. WHAT YOU NEED TO DO */}
         {result.actions && result.actions.length > 0 && (
@@ -909,6 +890,15 @@ export default function ResultScreen({
               })}
             </div>
           </section>
+        )}
+
+        {(result.places || result.contacts) && (
+          <PlacesContactsCard
+            places={result.places}
+            contacts={result.contacts}
+            t={t}
+            onCheckOriginal={handleCheckOriginal}
+          />
         )}
 
         {/* 4. KEY FACTS (First 5 + Show all disclosure per WEB-5) */}

@@ -33,6 +33,198 @@ DocumentType = Literal[
     "other",
 ]
 
+DOCUMENT_KINDS = (
+    "government_notice",
+    "pension_notice",
+    "tax_notice",
+    "challan",
+    "court_legal",
+    "utility_bill",
+    "telecom_bill",
+    "invoice",
+    "receipt",
+    "insurance",
+    "lab_report",
+    "prescription",
+    "discharge_summary",
+    "hospital_bill",
+    "investment",
+    "bank_statement",
+    "loan",
+    "agreement",
+    "form",
+    "salary_slip",
+    "school",
+    "corporate",
+    "other",
+)
+
+DocumentKind = Literal[
+    "government_notice",
+    "pension_notice",
+    "tax_notice",
+    "challan",
+    "court_legal",
+    "utility_bill",
+    "telecom_bill",
+    "invoice",
+    "receipt",
+    "insurance",
+    "lab_report",
+    "prescription",
+    "discharge_summary",
+    "hospital_bill",
+    "investment",
+    "bank_statement",
+    "loan",
+    "agreement",
+    "form",
+    "salary_slip",
+    "school",
+    "corporate",
+    "other",
+]
+
+KIND_TO_DOCUMENT_TYPE = {
+    "government_notice": "government_notice",
+    "pension_notice": "government_notice",
+    "tax_notice": "tax_receipt",
+    "challan": "challan",
+    "court_legal": "court_legal",
+    "utility_bill": "utility_bill",
+    "telecom_bill": "telecom_bill",
+    "invoice": "receipt",
+    "receipt": "receipt",
+    "insurance": "insurance",
+    "lab_report": "medical",
+    "prescription": "medical",
+    "discharge_summary": "medical",
+    "hospital_bill": "medical",
+    "investment": "bank",
+    "bank_statement": "bank",
+    "loan": "bank",
+    "agreement": "agreement",
+    "form": "other",
+    "salary_slip": "bank",
+    "school": "other",
+    "corporate": "corporate",
+    "other": "other",
+}
+
+
+def coarse_type_for_kind(kind: Optional[str]) -> Optional[str]:
+    if not kind:
+        return None
+    return KIND_TO_DOCUMENT_TYPE.get(kind)
+
+
+class QuotedField(BaseModel):
+    label: str = ""
+    value: str = ""
+    quote: str = ""
+    page: int = 1
+
+
+class LineItem(BaseModel):
+    description: str = ""
+    qty: Optional[str] = None
+    amount: Optional[str] = None
+    quote: str = ""
+    page: int = 1
+
+
+class Party(BaseModel):
+    role: str = ""
+    name: str = ""
+
+
+class FormFieldItem(BaseModel):
+    name: str = ""
+    instruction: str = ""
+    quote: str = ""
+    page: int = 1
+
+
+class DocumentProfile(BaseModel):
+    """Kind-specific fields. Only the printed ones for this document are set."""
+
+    lab_name: Optional[str] = None
+    patient_age_sex: Optional[str] = None
+    sample_date: Optional[str] = None
+    referred_by: Optional[str] = None
+    follow_up: Optional[str] = None
+    diagnosis_as_written: Optional[str] = None
+    advice_lines: List[str] = Field(default_factory=list)
+    amounts: List[QuotedField] = Field(default_factory=list)
+    due_date: Optional[str] = None
+    last_date_without_penalty: Optional[str] = None
+    how_to_pay: List[str] = Field(default_factory=list)
+    seller: Optional[str] = None
+    invoice_no: Optional[str] = None
+    invoice_date: Optional[str] = None
+    line_items: List[LineItem] = Field(default_factory=list)
+    taxable_value: Optional[str] = None
+    taxes: List[QuotedField] = Field(default_factory=list)
+    total: Optional[str] = None
+    paid_or_due: Optional[str] = None
+    warranty_until: Optional[str] = None
+    return_window: Optional[str] = None
+    claimed: Optional[str] = None
+    approved: Optional[str] = None
+    deducted: Optional[str] = None
+    deduction_reasons: List[str] = Field(default_factory=list)
+    policy_no: Optional[str] = None
+    sum_insured: Optional[str] = None
+    premium: Optional[str] = None
+    renewal_date: Optional[str] = None
+    review_window: Optional[str] = None
+    invested: Optional[str] = None
+    current_value: Optional[str] = None
+    gain: Optional[str] = None
+    gain_calculated: bool = False
+    units: Optional[str] = None
+    nav: Optional[str] = None
+    nav_date: Optional[str] = None
+    folio: Optional[str] = None
+    next_sip_date: Optional[str] = None
+    opening: Optional[str] = None
+    closing: Optional[str] = None
+    credits_total: Optional[str] = None
+    debits_total: Optional[str] = None
+    gross: Optional[str] = None
+    deductions: Optional[str] = None
+    net_pay: Optional[str] = None
+    period: Optional[str] = None
+    lender: Optional[str] = None
+    loan_type: Optional[str] = None
+    loan_account: Optional[str] = None
+    sanctioned_amount: Optional[str] = None
+    interest_rate: Optional[str] = None
+    tenure: Optional[str] = None
+    emi_amount: Optional[str] = None
+    emi_day_of_month: Optional[int] = None
+    first_emi_date: Optional[str] = None
+    next_emi_date: Optional[str] = None
+    outstanding: Optional[str] = None
+    charges: List[QuotedField] = Field(default_factory=list)
+    agreement_type: Optional[str] = None
+    parties: List[Party] = Field(default_factory=list)
+    subject: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    term: Optional[str] = None
+    rent_or_price: Optional[str] = None
+    deposit: Optional[str] = None
+    lock_in: Optional[str] = None
+    notice_period: Optional[str] = None
+    renewal_or_escalation: Optional[str] = None
+    penalties: List[str] = Field(default_factory=list)
+    case_or_notice_no: Optional[str] = None
+    hearing_or_deadline: Optional[str] = None
+    directions: List[str] = Field(default_factory=list)
+    consequence: Optional[str] = None
+    form_fields: List[FormFieldItem] = Field(default_factory=list)
+
 
 # Models used for Gemini Reader Prompt response schema (without evidence, date_status, evidence_summary)
 class ReaderAction(BaseModel):
@@ -163,7 +355,9 @@ class ReaderSection(BaseModel):
 class ReaderPart(BaseModel):
     part_id: str = Field(description="Unique part identifier, e.g. part-1, part-2")
     title: str = Field(description="Document title for this part, e.g. Lab Report, Prescription, Bill")
-    document_type: str = Field(description="Document type for this part: medical, receipt, etc.")
+    document_type: str = Field(description="Coarse document type derived from document_kind")
+    document_kind: Optional[str] = Field(default=None, description="Specific kind: lab_report, prescription, loan, invoice, and the other kinds")
+    profile: Optional[DocumentProfile] = None
     issuer: Optional[str] = Field(default=None, description="Issuer or clinic name printed on this part")
     date_iso: Optional[str] = Field(default=None, description="Date printed on this part in YYYY-MM-DD format if present, else null")
     pages: List[int] = Field(description="Start and end page [start, end] (1-indexed)")
@@ -179,9 +373,14 @@ class ReaderResponse(BaseModel):
         default="other",
         description="Document type: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other",
     )
+    document_kind: Optional[str] = Field(
+        default=None,
+        description="Most specific kind. One of the 23 document kinds. Derive document_type from it.",
+    )
+    profile: Optional[DocumentProfile] = None
     document_type: str = Field(
         default="other",
-        description="Document type: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other",
+        description="Coarse type derived from document_kind: utility_bill, telecom_bill, tax_receipt, insurance, bank, government_notice, court_legal, challan, medical, receipt, agreement, corporate, other",
     )
     document_language: Optional[str] = Field(
         default=None,
@@ -266,7 +465,7 @@ class ReaderResponse(BaseModel):
     )
     sections: Optional[List[ReaderSection]] = Field(
         default=None,
-        description="Sections for lab report with more than 4 test values, else null",
+        description="Every printed lab section, even when there are only a few rows",
     )
 
     @model_validator(mode="before")
@@ -277,6 +476,10 @@ class ReaderResponse(BaseModel):
                 data["doc_type"] = data["document_type"]
             elif "doc_type" in data and ("document_type" not in data or not data.get("document_type")):
                 data["document_type"] = data["doc_type"]
+            coarse = coarse_type_for_kind(data.get("document_kind"))
+            if coarse:
+                data["document_type"] = coarse
+                data["doc_type"] = coarse
         return data
 
 
@@ -356,6 +559,7 @@ class MedicineInfo(BaseModel):
     duration_days: Optional[int] = None
     instruction_text: str
     decoded: bool = True
+    as_needed: bool = False
     quote: str = ""
     page: int = 1
     evidence: str = "check_original"  # matched | check_original | calculated
@@ -380,6 +584,8 @@ class ExplainPart(BaseModel):
     part_id: str
     title: str
     document_type: str
+    document_kind: Optional[str] = None
+    profile: Optional[DocumentProfile] = None
     issuer: Optional[str] = None
     date_iso: Optional[str] = None
     pages: List[int]  # [start, end]
@@ -393,6 +599,8 @@ class ExplainPart(BaseModel):
 class ExplainResponse(BaseModel):
     doc_type: str = "other"
     document_type: str = "other"
+    document_kind: Optional[str] = None
+    profile: Optional[DocumentProfile] = None
     document_language: Optional[str] = None
     title: str
     report_title: Optional[str] = None
@@ -441,6 +649,10 @@ class ExplainResponse(BaseModel):
                 data["doc_type"] = data["document_type"]
             elif "doc_type" in data and ("document_type" not in data or not data.get("document_type")):
                 data["document_type"] = data["doc_type"]
+            coarse = coarse_type_for_kind(data.get("document_kind"))
+            if coarse:
+                data["document_type"] = coarse
+                data["doc_type"] = coarse
         return data
 
 
