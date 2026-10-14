@@ -26,8 +26,10 @@ from models import (
     AskResponse,
     DOCUMENT_TYPES,
     KeyedTranslateResponse,
+    GeminiReaderResponse,
     NameRenderingFill,
     ReaderResponse,
+    lift_reader_result,
     TranslatePayload,
 )
 
@@ -46,8 +48,10 @@ TRANSLATE_THINKING: int = 0
 
 # Timeout and Retry Configuration (env-overridable constants)
 TRANSLATE_TIMEOUT: float = float(os.environ.get("TRANSLATE_TIMEOUT", 25.0))
-EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 38.0))
-EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 38.0))
+EXPLAIN_TIMEOUT: float = float(os.environ.get("EXPLAIN_TIMEOUT", 55.0))
+EXPLAIN_LARGE_TIMEOUT: float = float(os.environ.get("EXPLAIN_LARGE_TIMEOUT", 55.0))
+LONG_DOCUMENT_PAGES: int = 6
+LONG_REQUEST_DEADLINE: float = 140.0
 
 FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
 FALLBACK_TIMEOUT: float = float(os.environ.get("FALLBACK_TIMEOUT", 35.0))
@@ -69,6 +73,23 @@ class GeminiTimeoutError(Exception):
     def __init__(self, message: str = "Request deadline reached", status_code: int = 504):
         super().__init__(message)
         self.status_code = status_code
+
+
+def pdf_page_count(files_data: List[Tuple[bytes, str]]) -> int:
+    """How many pages the upload actually has. Zero when it is not a PDF."""
+    import io
+
+    import pypdf
+
+    total = 0
+    for data, mime_type in files_data:
+        if "pdf" not in (mime_type or ""):
+            continue
+        try:
+            total += len(pypdf.PdfReader(io.BytesIO(data)).pages)
+        except Exception:
+            total += 1
+    return total
 
 
 class GeminiServiceError(Exception):
@@ -150,7 +171,7 @@ Rules:
    - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
    - Keep numbers, amounts, dates, ID numbers and phone numbers exactly as printed in Western digits (0-9).
 3. Document kind (`document_kind`) — choose the most specific one. Also set `document_type` to the coarse type in brackets:
-   government_notice (government_notice): department letterhead, notice number, "you are hereby informed".
+   government_notice (government_notice): department letterhead, notice number, "you are hereby informed". A letter that informs the reader, or lists what to carry or bring, is a notice. A form is a page of empty boxes.
    pension_notice (government_notice): pension, PPO, life certificate, Jeevan Pramaan.
    tax_notice (tax_receipt): property tax, demand, assessment, rebate.
    challan (challan): e-challan, offence, vehicle number, fine.
@@ -174,7 +195,7 @@ Rules:
    corporate (corporate): board resolution, company letter.
    other (other): anything else.
    Examples, described only, never copy these words as values: a page of test rows with a reference range is a lab_report; a page that starts with Rx and BD is a prescription; a letter that states an EMI and an interest rate is a loan; a page of empty labelled boxes is a form.
-   Fill `profile` with only the fields that are printed for that kind. Copy values verbatim. Leave everything else null. Each amount, id and name needs its quote and page when the field has them.
+   Fill `profile` with only the fields that are printed for that kind. Copy values verbatim. Leave every other profile string empty, and leave emi_day_of_month at 0 when the page does not print the day. Each amount, id and name needs its quote and page when the field has them.
 4. Glance (`glance`):
    - headline: <= 12 words summarizing the essence of the document.
    - key_values: up to 6 most important key-value pairs (amounts, due dates, IDs). Each value copied verbatim from document. Use kind "amount" only for money. Lab readings, sample IDs and reference numbers are kind "text" or "date".
@@ -220,7 +241,7 @@ Rules:
     Must mention who this is from, what it is about, what action the person must take, and by when.
     Keep all numbers in Western digits (0-9).
 17. Multi-document Packets (`parts`):
-    If the upload contains 2 or more distinct documents (e.g. a packet holding a lab report, a prescription, and a bill with different letterheads, issuers, titles, or dates), split into `parts`:
+    Always return `parts`. One document is exactly one part. Two or more distinct documents (a packet holding a lab report, a prescription, and a bill with different letterheads, issuers, titles, or dates) are one part each. Put that document's `profile` on the part. Leave the top-level profile as an empty string.
     - `part_id`: 'part-1', 'part-2', etc.
     - `title`: document title for that part
     - `document_kind`: the specific kind for that part, and `document_type`: the coarse type for that kind
@@ -231,7 +252,7 @@ Rules:
     - `medicines`: prescribed medicines if this part is a prescription
     - `key_points`: key takeaways for that part
     - `summary_lines`: 1-2 summary sentences for that part
-    IMPORTANT: Split only on clear evidence in the pages (new letterhead, issuer, title or date). Never invent a part. If the upload is a single document (even across multiple pages), do NOT set `parts` (leave `parts` null).
+    IMPORTANT: Split only on clear evidence in the pages (new letterhead, issuer, title or date). Never invent an extra part. A single document, even across many pages, is one part.
 18. Sectioned Lab Reports (`sections`):
     For every lab report, extract `sections` (up to 80 rows). Do this even when there are 4 or fewer values:
     - `heading`: the document's own section heading in page order (e.g. 'Blood sugar', 'Lipid profile', 'Complete blood count', 'Vitamins', etc.)
@@ -245,6 +266,10 @@ Rules:
     Also keep the most important rows in `glance`. Never leave `sections` empty when the page prints test rows.
 19. Action and Fact tagging:
     When `parts` are present, tag each action and fact with `part_id` corresponding to which part it belongs to.
+"""
+
+LONG_DOCUMENT_NOTE = """
+20. Long document: this upload has many pages and several tables. It is still one document unless the letterhead, issuer or title changes. Do not copy every table row. For each table keep the heading, the total, the amount due, and any row the page itself marks High or Low. Cap sections at 12 and values at 40. Finish the JSON in this call. A complete shorter reading is required.
 """
 
 KEYED_TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate the following user-facing text strings into {LANG}.
@@ -322,6 +347,7 @@ def call_gemini_with_retry(
     attempt_timeout_sec: Optional[float] = None,
     fallback_model: Optional[str] = None,
     fallback_timeout_sec: Optional[float] = None,
+    retry_budget: Optional[float] = None,
 ) -> Any:
     start_time = time.time()
     if deadline is None:
@@ -360,7 +386,8 @@ def call_gemini_with_retry(
         elapsed_so_far = now - start_time
         remaining_budget = deadline - now
 
-        if remaining_budget < MIN_USEFUL_ATTEMPT_SEC or elapsed_so_far >= TOTAL_RETRY_BUDGET:
+        budget_cap = TOTAL_RETRY_BUDGET if retry_budget is None else retry_budget
+        if remaining_budget < MIN_USEFUL_ATTEMPT_SEC or elapsed_so_far >= budget_cap:
             logger.info(
                 "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                 endpoint,
@@ -613,6 +640,11 @@ def read_document_single_attempt(
 
     client = get_client()
 
+    pages = pdf_page_count(files_data)
+    if pages >= LONG_DOCUMENT_PAGES:
+        prompt += LONG_DOCUMENT_NOTE
+        logger.info("explain_long_document: pages=%d", pages)
+
     contents = []
     for data, mime_type in files_data:
         part = types.Part.from_bytes(data=data, mime_type=mime_type)
@@ -622,14 +654,20 @@ def read_document_single_attempt(
     timeout_sec = timeout if timeout is not None else (
         EXPLAIN_LARGE_TIMEOUT if len(files_data) > 3 else EXPLAIN_TIMEOUT
     )
+    if pages >= LONG_DOCUMENT_PAGES and deadline is not None:
+        # One attempt for the whole remaining budget. A fallback start after
+        # 55s cannot finish a long table document and the user only sees "busy".
+        timeout_sec = max(timeout_sec, max(1.0, deadline - time.time() - SAFETY_MARGIN))
 
     config = types.GenerateContentConfig(
         temperature=0.2,
         response_mime_type="application/json",
-        response_schema=ReaderResponse,
+        response_schema=GeminiReaderResponse,
         http_options=types.HttpOptions(timeout=max(1, int(timeout_sec * 1000))),
         thinking_config=types.ThinkingConfig(thinking_budget=EXPLAIN_THINKING),
     )
+
+    long_budget = max(TOTAL_RETRY_BUDGET, timeout_sec) if pages >= LONG_DOCUMENT_PAGES else None
 
     response = call_gemini_with_retry(
         client=client,
@@ -639,12 +677,13 @@ def read_document_single_attempt(
         endpoint="explain",
         deadline=deadline,
         attempt_timeout_sec=timeout_sec,
+        retry_budget=long_budget,
     )
 
-    if response.parsed and isinstance(response.parsed, ReaderResponse):
-        result = response.parsed
+    if isinstance(response.parsed, GeminiReaderResponse):
+        result = lift_reader_result(response.parsed)
     else:
-        result = ReaderResponse.model_validate_json(response.text)
+        result = lift_reader_result(GeminiReaderResponse.model_validate_json(response.text))
 
     # Sync document_type and doc_type
     if not result.document_type or result.document_type == "other":
@@ -677,11 +716,12 @@ def read_document_single_attempt(
                 endpoint="explain",
                 deadline=deadline,
                 attempt_timeout_sec=timeout_sec,
+                retry_budget=long_budget,
             )
-            if retry_resp.parsed and isinstance(retry_resp.parsed, ReaderResponse):
-                result = retry_resp.parsed
+            if isinstance(retry_resp.parsed, GeminiReaderResponse):
+                result = lift_reader_result(retry_resp.parsed)
             else:
-                result = ReaderResponse.model_validate_json(retry_resp.text)
+                result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
             if not result.document_type or result.document_type == "other":
                 if result.doc_type and result.doc_type in DOCUMENT_TYPES:
                     result.document_type = result.doc_type

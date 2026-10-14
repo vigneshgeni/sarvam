@@ -77,6 +77,8 @@ from reader import (
     EXPLAIN_TIMEOUT,
     GeminiServiceError,
     GeminiTimeoutError,
+    LONG_DOCUMENT_PAGES,
+    LONG_REQUEST_DEADLINE,
     REQUEST_DEADLINE,
     TRANSLATE_TIMEOUT,
     ask_document,
@@ -450,6 +452,15 @@ async def explain(
             for (c, mime) in file_data_list
         ]
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
+
+    pages = reader.pdf_page_count(file_data_list)
+    if pages >= LONG_DOCUMENT_PAGES:
+        deadline = start_time + LONG_REQUEST_DEADLINE
+        logger.info(
+            "explain_long_document: pages=%d, deadline_seconds=%.0f",
+            pages,
+            LONG_REQUEST_DEADLINE,
+        )
 
     # Check remaining deadline before semaphore wait
     remaining = deadline - time.time()

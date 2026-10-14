@@ -3,23 +3,25 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 4 0 obj
-<< /Length 190 >>
-stream
-BT /F1 12 Tf
-1 0 0 1 48 740 Tm (SAMPLE \267 FICTIONAL) Tj
-1 0 0 1 48 712 Tm (Rental agreement. Parties, rent, deposit.) Tj
-1 0 0 1 48 692 Tm (11-month term, lock-in, two-month notice.) Tj
-ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 3 0 R >> >> >>
 endobj
 5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+<< /Length 380 >>
+stream
+BT /F1 11 Tf
+1 0 0 1 48 760 Tm (SAMPLE . FICTIONAL) Tj
+1 0 0 1 48 744 Tm (Rental agreement between Lessor A. Sample and Tenant B. Sample.) Tj
+1 0 0 1 48 728 Tm (Flat 12, Sample Street. Start 01 Oct 2026. End 01 Sep 2027.) Tj
+1 0 0 1 48 712 Tm (Term 11 months. Rent Rs. 22,000 per month. Deposit Rs. 1,00,000.) Tj
+1 0 0 1 48 696 Tm (Lock-in 3 months. Notice period 2 months.) Tj
+ET
+endstream
 endobj
 xref
 0 6
@@ -27,9 +29,9 @@ xref
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
-0000000241 00000 n 
-0000000482 00000 n 
+0000000185 00000 n 
+0000000311 00000 n 
 trailer << /Size 6 /Root 1 0 R >>
 startxref
-552
+742
 %%EOF

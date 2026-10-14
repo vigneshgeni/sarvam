@@ -146,84 +146,110 @@ class FormFieldItem(BaseModel):
 
 
 class DocumentProfile(BaseModel):
-    """Kind-specific fields. Only the printed ones for this document are set."""
+    """Kind-specific fields. Empty means the page did not print that fact.
 
-    lab_name: Optional[str] = None
-    patient_age_sex: Optional[str] = None
-    sample_date: Optional[str] = None
-    referred_by: Optional[str] = None
-    follow_up: Optional[str] = None
-    diagnosis_as_written: Optional[str] = None
+    Fields are plain values, not null, so the reader schema stays small enough
+    for Vertex. The web treats an empty string or a zero EMI day as absent.
+    """
+
+    lab_name: str = ""
+    patient_age_sex: str = ""
+    sample_date: str = ""
+    referred_by: str = ""
+    follow_up: str = ""
+    diagnosis_as_written: str = ""
     advice_lines: List[str] = Field(default_factory=list)
     amounts: List[QuotedField] = Field(default_factory=list)
-    due_date: Optional[str] = None
-    last_date_without_penalty: Optional[str] = None
+    due_date: str = ""
+    last_date_without_penalty: str = ""
     how_to_pay: List[str] = Field(default_factory=list)
-    seller: Optional[str] = None
-    invoice_no: Optional[str] = None
-    invoice_date: Optional[str] = None
+    seller: str = ""
+    invoice_no: str = ""
+    invoice_date: str = ""
     line_items: List[LineItem] = Field(default_factory=list)
-    taxable_value: Optional[str] = None
+    taxable_value: str = ""
     taxes: List[QuotedField] = Field(default_factory=list)
-    total: Optional[str] = None
-    paid_or_due: Optional[str] = None
-    warranty_until: Optional[str] = None
-    return_window: Optional[str] = None
-    claimed: Optional[str] = None
-    approved: Optional[str] = None
-    deducted: Optional[str] = None
+    total: str = ""
+    paid_or_due: str = ""
+    warranty_until: str = ""
+    return_window: str = ""
+    claimed: str = ""
+    approved: str = ""
+    deducted: str = ""
     deduction_reasons: List[str] = Field(default_factory=list)
-    policy_no: Optional[str] = None
-    sum_insured: Optional[str] = None
-    premium: Optional[str] = None
-    renewal_date: Optional[str] = None
-    review_window: Optional[str] = None
-    invested: Optional[str] = None
-    current_value: Optional[str] = None
-    gain: Optional[str] = None
+    policy_no: str = ""
+    sum_insured: str = ""
+    premium: str = ""
+    renewal_date: str = ""
+    review_window: str = ""
+    invested: str = ""
+    current_value: str = ""
+    gain: str = ""
     gain_calculated: bool = False
-    units: Optional[str] = None
-    nav: Optional[str] = None
-    nav_date: Optional[str] = None
-    folio: Optional[str] = None
-    next_sip_date: Optional[str] = None
-    opening: Optional[str] = None
-    closing: Optional[str] = None
-    credits_total: Optional[str] = None
-    debits_total: Optional[str] = None
-    gross: Optional[str] = None
-    deductions: Optional[str] = None
-    net_pay: Optional[str] = None
-    period: Optional[str] = None
-    lender: Optional[str] = None
-    loan_type: Optional[str] = None
-    loan_account: Optional[str] = None
-    sanctioned_amount: Optional[str] = None
-    interest_rate: Optional[str] = None
-    tenure: Optional[str] = None
-    emi_amount: Optional[str] = None
-    emi_day_of_month: Optional[int] = None
-    first_emi_date: Optional[str] = None
-    next_emi_date: Optional[str] = None
-    outstanding: Optional[str] = None
+    units: str = ""
+    nav: str = ""
+    nav_date: str = ""
+    folio: str = ""
+    next_sip_date: str = ""
+    opening: str = ""
+    closing: str = ""
+    credits_total: str = ""
+    debits_total: str = ""
+    gross: str = ""
+    deductions: str = ""
+    net_pay: str = ""
+    period: str = ""
+    lender: str = ""
+    loan_type: str = ""
+    loan_account: str = ""
+    sanctioned_amount: str = ""
+    interest_rate: str = ""
+    tenure: str = ""
+    emi_amount: str = ""
+    emi_day_of_month: int = 0
+    first_emi_date: str = ""
+    next_emi_date: str = ""
+    outstanding: str = ""
     charges: List[QuotedField] = Field(default_factory=list)
-    agreement_type: Optional[str] = None
+    agreement_type: str = ""
     parties: List[Party] = Field(default_factory=list)
-    subject: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    term: Optional[str] = None
-    rent_or_price: Optional[str] = None
-    deposit: Optional[str] = None
-    lock_in: Optional[str] = None
-    notice_period: Optional[str] = None
-    renewal_or_escalation: Optional[str] = None
+    subject: str = ""
+    start_date: str = ""
+    end_date: str = ""
+    term: str = ""
+    rent_or_price: str = ""
+    deposit: str = ""
+    lock_in: str = ""
+    notice_period: str = ""
+    renewal_or_escalation: str = ""
     penalties: List[str] = Field(default_factory=list)
-    case_or_notice_no: Optional[str] = None
-    hearing_or_deadline: Optional[str] = None
+    case_or_notice_no: str = ""
+    hearing_or_deadline: str = ""
     directions: List[str] = Field(default_factory=list)
-    consequence: Optional[str] = None
+    consequence: str = ""
     form_fields: List[FormFieldItem] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def blank_missing(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for key, value in list(data.items()):
+            if value is not None:
+                continue
+            field = cls.model_fields.get(key)
+            if field is None:
+                continue
+            origin = getattr(field.annotation, "__origin__", None)
+            if field.annotation is int:
+                data[key] = 0
+            elif field.annotation is bool:
+                data[key] = False
+            elif origin is list:
+                data[key] = []
+            else:
+                data[key] = ""
+        return data
 
 
 # Models used for Gemini Reader Prompt response schema (without evidence, date_status, evidence_summary)
@@ -481,6 +507,38 @@ class ReaderResponse(BaseModel):
                 data["document_type"] = coarse
                 data["doc_type"] = coarse
         return data
+
+
+class GeminiReaderResponse(ReaderResponse):
+    """Vertex schema. The profile object is on each part, not also on the root.
+
+    Vertex rejects a response schema that contains DocumentProfile in both places.
+    """
+
+    profile: str = ""
+
+
+def lift_reader_result(raw: GeminiReaderResponse) -> ReaderResponse:
+    """Turn the Vertex shape into the API shape. One part is a single document."""
+    data = raw.model_dump()
+    parts = data.get("parts") or []
+    if len(parts) == 1:
+        part = parts[0] or {}
+        data["profile"] = part.get("profile") or {}
+        if not data.get("sections") and part.get("sections"):
+            data["sections"] = part["sections"]
+        if not data.get("medicines") and part.get("medicines"):
+            data["medicines"] = part["medicines"]
+        if not data.get("document_kind"):
+            data["document_kind"] = part.get("document_kind")
+        if not data.get("glance") and part.get("glance"):
+            data["glance"] = part["glance"]
+        data["parts"] = None
+    elif len(parts) > 1:
+        data["profile"] = None
+    else:
+        data["profile"] = None
+    return ReaderResponse.model_validate(data)
 
 
 # Final API Response Models (Section 6 contract with evidence, date_status, and evidence_summary)
