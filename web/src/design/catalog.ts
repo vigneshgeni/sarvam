@@ -38,13 +38,13 @@ const VISUAL: Record<string, DocVisual> = {
   receipt: { icon: 'bank', bg: '#F8D9CB', ink: '#1A1A1A' },
   investment: { icon: 'trend', bg: '#034F46', ink: '#F4F5F2' },
   utility_bill: { icon: 'bolt', bg: '#E9B44C', ink: '#1A1A1A' },
-  telecom_bill: { icon: 'wifi', bg: '#1A1A1A', ink: '#F4F5F2' },
+  telecom_bill: { icon: 'wifi', bg: 'var(--sv-fill)', ink: 'var(--sv-on-dark)' },
   challan: { icon: 'car', bg: '#D9603B', ink: '#FFFFFF' },
   tax_receipt: { icon: 'house', bg: '#CFE5E0', ink: '#1A1A1A' },
-  court_legal: { icon: 'gavel', bg: '#1A1A1A', ink: '#F4F5F2' },
+  court_legal: { icon: 'gavel', bg: 'var(--sv-fill)', ink: 'var(--sv-on-dark)' },
   form: { icon: 'clip', bg: '#E9B44C', ink: '#1A1A1A' },
-  agreement: { icon: 'pen', bg: '#F4F5F2', ink: '#1A1A1A' },
-  other: { icon: 'pen', bg: '#F4F5F2', ink: '#1A1A1A' },
+  agreement: { icon: 'pen', bg: 'var(--sv-bg)', ink: 'var(--sv-ink)' },
+  other: { icon: 'pen', bg: 'var(--sv-bg)', ink: 'var(--sv-ink)' },
   multi: { icon: 'pages', bg: '#E2E5E0', ink: '#1A1A1A' },
 }
 
@@ -105,7 +105,7 @@ export const HOME_SAMPLES: HomeSample[] = [
   { file: 'sample-echallan.pdf', titleKey: 'sampleChallanName', title: 'Traffic e-challan', subKey: 'sampleChallanOrg', sub: 'Traffic Police', kind: 'PDF', icon: 'car', bg: '#D9603B', ink: '#FFFFFF' },
   { file: 'sample-prescription.jpg', titleKey: 'sampleRxName', title: 'Prescription', subKey: 'sampleRxOrg', sub: 'Neighbourhood clinic', kind: 'PHOTO', icon: 'pill', bg: '#CFE5E0', ink: '#1A1A1A' },
   { file: 'sample-mutual-fund-statement.pdf', titleKey: 'sampleFundName', title: 'Mutual fund statement', subKey: 'sampleFundOrg', sub: 'Fund house', kind: 'PDF', icon: 'trend', bg: '#034F46', ink: '#F4F5F2' },
-  { file: 'sample-court-summons.pdf', titleKey: 'sampleCourtName', title: 'Court summons', subKey: 'sampleCourtOrg', sub: 'City Civil Court', kind: 'PDF', icon: 'gavel', bg: '#1A1A1A', ink: '#F4F5F2' },
+  { file: 'sample-court-summons.pdf', titleKey: 'sampleCourtName', title: 'Court summons', subKey: 'sampleCourtOrg', sub: 'City Civil Court', kind: 'PDF', icon: 'gavel', bg: 'var(--sv-fill)', ink: 'var(--sv-on-dark)' },
   { file: 'sample-bank-deposit-slip.jpg', titleKey: 'sampleSlipName', title: 'Bank deposit slip (form)', subKey: 'sampleSlipOrg', sub: 'Your bank', kind: 'PHOTO', icon: 'clip', bg: '#E9B44C', ink: '#1A1A1A' },
 ]
 

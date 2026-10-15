@@ -6,6 +6,7 @@
   /* Surfaces (v3: cooler, NOT warm cream) */
   --sv-bg: #F4F5F2;          /* page background, cool off-white */
   --sv-ink: #1A1A1A;         /* text, 1.5px outlines, dark panels */
+  --sv-fill: #1A1A1A;        /* solid ink panels; grey in the dark theme */
   --sv-on-dark: #F4F5F2;     /* text on ink / teal panels */
   --sv-on-dark-2: #E4E7E3;   /* secondary text on ink (key facts) */
   --sv-on-dark-3: #D3D7D2;   /* subtitle on ink hero */

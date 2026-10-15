@@ -142,13 +142,13 @@ export default function MultiDocument({
             type="button"
             aria-current={active === index}
             className="sv-press min-w-0 flex-1 h-11 rounded-[22px] text-[14px] font-bold inline-flex items-center justify-center gap-1.5 px-2"
-            style={{ background: active === index ? '#E9B44C' : 'transparent' }}
+            style={{ background: active === index ? '#E9B44C' : 'transparent', color: active === index ? '#1A1A1A' : undefined }}
             onClick={() => {
               window.scrollTo(0, 0)
               document.getElementById(`sv-doc-${index}`)?.scrollIntoView({ behavior: 'auto', block: 'start' })
             }}
           >
-            <span className="w-5 h-5 rounded-full border-[1.5px] border-[#1A1A1A] text-[11px] inline-flex items-center justify-center shrink-0" style={{ background: active === index ? '#1A1A1A' : 'transparent', color: active === index ? '#F4F5F2' : '#1A1A1A' }}>
+            <span className="w-5 h-5 rounded-full border-[1.5px] border-[#1A1A1A] text-[11px] inline-flex items-center justify-center shrink-0" style={{ background: active === index ? 'var(--sv-fill)' : 'transparent', color: active === index ? 'var(--sv-on-dark)' : 'var(--sv-ink)' }}>
               {index + 1}
             </span>
             <span className="truncate">{part.title}</span>
@@ -171,7 +171,7 @@ export default function MultiDocument({
                 <span className="sv-fit-box max-w-[42%] shrink-0">
                   <FitText text={row.value} max={22} min={12} />
                 </span>
-                <span className="text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A]" style={{ background: row.flag === 'High' ? '#D9603B' : '#E9B44C' }}>
+                <span className="text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A]" style={{ background: row.flag === 'High' ? '#D9603B' : '#E9B44C', color: '#1A1A1A' }}>
                   {row.flag}
                 </span>
               </div>

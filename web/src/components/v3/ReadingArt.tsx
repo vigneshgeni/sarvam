@@ -46,7 +46,7 @@ export default function ReadingArt({ variant, pages }: { variant: ReadingLetter;
         <span className="orbit">
           <i style={{ left: '8%', top: '40%', background: '#D9603B' }} />
           <i style={{ right: '10%', top: '18%', background: '#034F46' }} />
-          <i style={{ left: '42%', bottom: '6%', background: '#1A1A1A' }} />
+          <i style={{ left: '42%', bottom: '6%', background: 'var(--sv-fill)' }} />
         </span>
         {glyphs.map((g, i) => (
           <span key={g + i} className="glyph" style={{ animationDelay: `${i * 0.6}s`, color: '#1A1A1A' }}>{g}</span>

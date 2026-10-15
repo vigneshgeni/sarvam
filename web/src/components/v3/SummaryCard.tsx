@@ -147,7 +147,7 @@ export default function SummaryCard({
       <div className="flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-1.5 h-8 pl-[5px] pr-3 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold" style={{ background: visual.bg, color: visual.ink }}>
           <span className="w-[22px] h-[22px] rounded-full bg-[#1A1A1A] flex items-center justify-center">
-            <DocIcon name={visual.icon} size={12} stroke={visual.bg === '#1A1A1A' ? '#F4F5F2' : visual.bg} />
+            <DocIcon name={visual.icon} size={12} stroke={visual.bg === '#1A1A1A' || visual.bg === 'var(--sv-fill)' ? 'var(--sv-on-dark)' : visual.bg} />
           </span>
           {typeLabel}
         </span>

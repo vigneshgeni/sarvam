@@ -108,7 +108,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="flex items-center justify-between shrink-0">
         <span aria-label={`Step ${step + 1} of 3`} className="flex gap-1.5">
           {[0, 1, 2].map((i) => (
-            <span key={i} className="h-2 rounded" style={{ width: i === step ? 26 : 8, background: i === step ? '#1A1A1A' : '#C4C8C3' }} />
+            <span key={i} className="h-2 rounded" style={{ width: i === step ? 26 : 8, background: i === step ? 'var(--sv-fill)' : '#C4C8C3' }} />
           ))}
         </span>
         {step < 2 ? (

@@ -1,0 +1,282 @@
+/* Dark theme. Light colours stay on the brand fills (peach, gold, teal tint, coral)
+   so the words on those cards stay dark. Black fills become grey. Black text and
+   borders on the page become off-white and grey. */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  background: #121413;
+  color: #F0F2EE;
+  --sv-bg: #1E211E;
+  --sv-ink: #F0F2EE;
+  --sv-fill: #3E433F;
+  --sv-on-dark: #F7F8F6;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .sv-app {
+  background: #121413;
+  color: #F0F2EE;
+}
+
+html[data-theme="dark"] .sv-med-slot-row span,
+html[data-theme="dark"] .sv-med-time {
+  color: #F0F2EE;
+  border-color: #9AA09B;
+}
+
+html[data-theme="dark"] .sv-med-time {
+  background: #222622;
+}
+
+/* Page and card surfaces */
+html[data-theme="dark"] :is(
+  .bg-\[\#F4F5F2\],
+  .bg-\[\#F4F5F2\]\/90,
+  .bg-\[\#FFFFFF\],
+  .bg-\[\#ffffff\],
+  .bg-\[\#FBF7EF\],
+  .bg-\[\#F6F6F3\],
+  .bg-\[\#F8F8F6\],
+  .bg-\[\#F0F0EB\],
+  .bg-\[\#E6E6E1\],
+  .bg-\[\#ECECE8\],
+  .bg-\[\#E8E8E2\],
+  .bg-\[\#E8EAE7\],
+  .bg-\[\#F1EBDD\]
+) {
+  background-color: #1E211E;
+  color: #F0F2EE;
+}
+
+/* Black panels and buttons become grey, with light type */
+html[data-theme="dark"] :is(
+  .bg-\[\#1A1A1A\],
+  .bg-\[\#15171A\],
+  .bg-\[\#000000\],
+  .bg-\[\#000\],
+  .bg-\[\#1E1838\]
+) {
+  background-color: #3E433F;
+  color: #F7F8F6;
+}
+
+html[data-theme="dark"] :is(
+  .border-\[\#1A1A1A\],
+  .border-\[\#15171A\],
+  .border-\[\#000000\],
+  .border-\[\#000\]
+) {
+  border-color: #9AA09B;
+}
+
+html[data-theme="dark"] .shadow-\[0_0_0_2px_\#1A1A1A\] {
+  --tw-shadow: 0 0 0 2px #9AA09B;
+  --tw-shadow-colored: 0 0 0 2px #9AA09B;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+html[data-theme="dark"] :is(
+  .bg-\[\#E2E5E0\],
+  .border-\[\#E2E5E0\],
+  .border-\[\#383B39\]
+) {
+  background-color: #2A2E2B;
+  border-color: #4A4F4B;
+  color: #F0F2EE;
+}
+
+html[data-theme="dark"] .border-\[\#E2E5E0\] {
+  background-color: transparent;
+}
+
+/* Ink text becomes off-white. Secondary text becomes grey. */
+html[data-theme="dark"] :is(
+  .text-\[\#1A1A1A\],
+  .text-\[\#15171A\],
+  .text-\[\#000000\],
+  .text-\[\#000\]
+) {
+  color: #F0F2EE;
+}
+
+html[data-theme="dark"] :is(
+  .text-\[\#575B58\],
+  .text-\[\#5E636B\],
+  .text-\[\#3B3E3C\],
+  .text-\[\#71717A\],
+  .text-\[\#656077\],
+  .text-\[\#8A8F8C\],
+  .text-\[\#475A7A\]
+) {
+  color: #C5CAC4;
+}
+
+html[data-theme="dark"] :is(
+  .text-\[\#C4C8C3\],
+  .text-\[\#D3D7D2\],
+  .text-\[\#E4E7E3\]
+) {
+  color: #B7BCB6;
+}
+
+html[data-theme="dark"] :is(
+  .text-\[\#034F46\],
+  .text-\[\#0E5B37\],
+  .text-\[\#2E6E64\]
+) {
+  color: #9FD4CB;
+}
+
+html[data-theme="dark"] :is(
+  .text-\[\#B3361A\],
+  .text-\[\#B42318\],
+  .text-\[\#7A2E1B\],
+  .text-\[\#C2410C\],
+  .text-\[\#5A3500\],
+  .text-\[\#9A6700\]
+) {
+  color: #F0B0A0;
+}
+
+html[data-theme="dark"] .text-\[\#5A3500\],
+html[data-theme="dark"] .text-\[\#9A6700\] {
+  color: #F0D48A;
+}
+
+html[data-theme="dark"] :is(.stroke-\[\#1A1A1A\], .stroke-\[\#15171A\]) {
+  stroke: #F0F2EE;
+}
+
+html[data-theme="dark"] :is(.fill-\[\#1A1A1A\], .fill-\[\#15171A\]) {
+  fill: #F0F2EE;
+}
+
+/* Teal panels stay deep, with light type */
+html[data-theme="dark"] .bg-\[\#034F46\] {
+  background-color: #0C5C52;
+  color: #F7F8F6;
+}
+
+html[data-theme="dark"] .bg-\[\#034F46\] :is(.text-\[\#F4F5F2\], .text-white, .text-\[\#1A1A1A\]) {
+  color: #F7F8F6;
+}
+
+/* Brand fills keep their colour and dark type */
+html[data-theme="dark"] :is(
+  .bg-\[\#F8D9CB\],
+  .bg-\[\#E9B44C\],
+  .bg-\[\#CFE5E0\],
+  .bg-\[\#FBEBC4\],
+  .bg-\[\#F0D7FF\],
+  .bg-\[\#D9603B\],
+  .bg-\[\#FADCD1\],
+  .bg-\[\#F4DDB0\],
+  .bg-\[\#FFF4DE\],
+  .bg-\[\#FFF4D6\],
+  .bg-\[\#FDECE6\],
+  .bg-\[\#FDECEA\],
+  .bg-\[\#E4F3EC\],
+  .bg-\[\#D4EBDD\],
+  .bg-\[\#EAEFF7\],
+  .bg-\[\#DCE5F2\],
+  .bg-\[\#EEE6FF\],
+  .bg-\[\#F3B8A6\],
+  .bg-\[\#F8B4B4\]
+) {
+  color: #1A1A1A;
+}
+
+html[data-theme="dark"] :is(
+  .bg-\[\#F8D9CB\],
+  .bg-\[\#E9B44C\],
+  .bg-\[\#CFE5E0\],
+  .bg-\[\#FBEBC4\],
+  .bg-\[\#F0D7FF\],
+  .bg-\[\#D9603B\],
+  .bg-\[\#FADCD1\],
+  .bg-\[\#F4DDB0\],
+  .bg-\[\#FFF4DE\],
+  .bg-\[\#FFF4D6\],
+  .bg-\[\#FDECE6\],
+  .bg-\[\#FDECEA\],
+  .bg-\[\#E4F3EC\],
+  .bg-\[\#D4EBDD\],
+  .bg-\[\#EAEFF7\],
+  .bg-\[\#DCE5F2\],
+  .bg-\[\#EEE6FF\],
+  .bg-\[\#F3B8A6\],
+  .bg-\[\#F8B4B4\]
+) :is(
+  .text-\[\#1A1A1A\],
+  .text-\[\#15171A\],
+  .text-\[\#575B58\],
+  .text-\[\#5E636B\],
+  .text-\[\#3B3E3C\],
+  .text-\[\#034F46\],
+  .text-\[\#B3361A\],
+  .text-\[\#C2410C\]
+) {
+  color: #1A1A1A;
+}
+
+html[data-theme="dark"] :is(
+  .bg-\[\#F8D9CB\],
+  .bg-\[\#E9B44C\],
+  .bg-\[\#CFE5E0\],
+  .bg-\[\#FBEBC4\],
+  .bg-\[\#D9603B\]
+) :is(.text-\[\#575B58\], .text-\[\#5E636B\], .text-\[\#3B3E3C\]) {
+  color: #3B3E3C;
+}
+
+html[data-theme="dark"] :is(.bg-\[\#1A1A1A\], .bg-\[\#3E433F\]) :is(.text-\[\#F4F5F2\], .text-\[\#D3D7D2\], .text-\[\#E4E7E3\]) {
+  color: #F7F8F6;
+}
+
+html[data-theme="dark"] :is(
+  .bg-\[\#F8D9CB\],
+  .bg-\[\#E9B44C\],
+  .bg-\[\#CFE5E0\],
+  .bg-\[\#FBEBC4\],
+  .bg-\[\#D9603B\],
+  .bg-\[\#FADCD1\]
+) svg {
+  stroke: #1A1A1A;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background-color: #222622;
+  color: #F0F2EE;
+  border-color: #9AA09B;
+}
+
+html[data-theme="dark"] [style*="background: #F4F5F2"],
+html[data-theme="dark"] [style*="background:#F4F5F2"] {
+  background-color: #1E211E !important;
+  color: #F0F2EE !important;
+}
+
+html[data-theme="dark"] [style*="background: #1A1A1A"],
+html[data-theme="dark"] [style*="background:#1A1A1A"] {
+  background-color: #3E433F !important;
+  color: #F7F8F6 !important;
+}
+
+html[data-theme="dark"] [style*="color: #1A1A1A"],
+html[data-theme="dark"] [style*="color:#1A1A1A"] {
+  color: #F0F2EE !important;
+}
+
+html[data-theme="dark"] :is(
+  [style*="#F8D9CB"],
+  [style*="#E9B44C"],
+  [style*="#CFE5E0"],
+  [style*="#D9603B"],
+  [style*="#FBEBC4"],
+  [style*="#F0D7FF"],
+  [style*="#FADCD1"]
+) {
+  color: #1A1A1A !important;
+}

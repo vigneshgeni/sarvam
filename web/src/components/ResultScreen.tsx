@@ -745,7 +745,7 @@ export default function ResultScreen({
         </button>
 
         {/* Language selector dropdown */}
-        <label className="flex-1 relative h-12 rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center gap-2 px-3 text-[15px] font-semibold text-[#1A1A1A] min-w-0 cursor-pointer" style={{ background: contentLang !== 'en' ? '#E9B44C' : 'transparent' }}>
+        <label className="flex-1 relative h-12 rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center gap-2 px-3 text-[15px] font-semibold text-[#1A1A1A] min-w-0 cursor-pointer" style={{ background: contentLang !== 'en' ? '#E9B44C' : 'transparent', color: contentLang !== 'en' ? '#1A1A1A' : undefined }}>
           <span className="truncate">
             {lang === 'auto'
               ? `Auto · ${LANG_LABELS[resolveLang('auto')] || 'English'}`
@@ -1517,7 +1517,7 @@ export default function ResultScreen({
                   try { localStorage.setItem('sarvam.snapshotMode', mode) } catch { /* ignore */ }
                 }}
                 className="h-12 rounded-full border-[1.5px] border-[#1A1A1A] text-[15px] font-bold"
-                style={{ background: snapshotMode === mode ? '#E9B44C' : 'transparent' }}
+                style={{ background: snapshotMode === mode ? '#E9B44C' : 'transparent', color: snapshotMode === mode ? '#1A1A1A' : undefined }}
               >
                 {mode === 'page' ? (t.wholePage || 'Whole page') : (t.summaryOnly || 'Summary only')}
               </button>

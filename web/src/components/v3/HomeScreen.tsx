@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react'
+import { applyDarkTheme, readDarkTheme } from '../../design/theme'
 import type { RecentResult } from '../../types'
 import type { ReminderRow } from '../../utils/reminders'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
@@ -264,6 +265,7 @@ function RemindersPage({
               className="sv-press shrink-0 h-10 px-4 rounded-full border-[1.5px] border-[#1A1A1A] text-[14px] text-[#1A1A1A]"
               style={{
                 background: on ? '#E9B44C' : 'transparent',
+                color: on ? '#1A1A1A' : undefined,
                 fontWeight: on ? 700 : 600,
                 fontFamily: indic ? chipFont(lang) : undefined,
               }}
@@ -286,6 +288,12 @@ export default function HomeScreen(props: HomeProps) {
   const { t, selectedLang, recent } = props
   const [renameItem, setRenameItem] = useState<RecentResult | null>(null)
   const [remindersOpen, setRemindersOpen] = useState(false)
+  const [dark, setDark] = useState(readDarkTheme)
+  useEffect(() => {
+    const sync = () => setDark(readDarkTheme())
+    window.addEventListener('sarvam-theme', sync)
+    return () => window.removeEventListener('sarvam-theme', sync)
+  }, [])
   const [reminderTab, setReminderTab] = useState<'upcoming' | 'past'>('upcoming')
   const indic = selectedLang !== 'en' && selectedLang !== 'auto'
   ensureOnboardingFonts()
@@ -321,6 +329,15 @@ export default function HomeScreen(props: HomeProps) {
         <div className="text-[32px] font-bold tracking-[-1px]">
           Sarvam<span className="text-[#D9603B]">.</span>
         </div>
+        <span className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={dark}
+            onClick={() => applyDarkTheme(!dark)}
+            className="sv-press h-11 px-3.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold"
+          >
+            {dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
+          </button>
         <button
           type="button"
           onClick={props.onA11y}
@@ -329,6 +346,7 @@ export default function HomeScreen(props: HomeProps) {
         >
           <IconA11y />
         </button>
+        </span>
       </header>
       {offlineBanner}
 
@@ -347,6 +365,7 @@ export default function HomeScreen(props: HomeProps) {
               className={chipBtn}
               style={{
                 background: selected ? '#E9B44C' : 'transparent',
+                color: selected ? '#1A1A1A' : undefined,
                 fontFamily: chipFont(lang.id === 'auto' ? 'en' : lang.id),
               }}
             >
@@ -676,7 +695,7 @@ function AllDocuments(props: HomeProps) {
               type="button"
               onClick={() => setFilter(f.id)}
               className="sv-press shrink-0 h-10 px-4 rounded-full border-[1.5px] border-[#1A1A1A] text-[14px] text-[#1A1A1A]"
-              style={{ background: on ? '#E9B44C' : 'transparent', fontWeight: on ? 700 : 600 }}
+              style={{ background: on ? '#E9B44C' : 'transparent', color: on ? '#1A1A1A' : undefined, fontWeight: on ? 700 : 600 }}
             >
               {t[f.key] || f.label} {n}
             </button>

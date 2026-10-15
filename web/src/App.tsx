@@ -1597,7 +1597,7 @@ export default function App() {
                 type="button"
                 onClick={handleConfirmDelete}
                 className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] font-bold text-[16px] text-[#F4F5F2]"
-                style={{ background: deleteConfirm.type === 'all' ? '#B3361A' : '#1A1A1A' }}
+                style={{ background: deleteConfirm.type === 'all' ? '#B3361A' : 'var(--sv-fill)', color: 'var(--sv-on-dark)' }}
               >
                 {t.delete || 'Delete'}
               </button>

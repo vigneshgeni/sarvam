@@ -174,6 +174,8 @@
   "lineSpacingRelaxed": "Relaxed",
   "easyReadMode": "Easier-to-read mode (cleaner fonts & spacing)",
   "highContrast": "High contrast",
+  "darkTheme": "Dark",
+  "lightTheme": "Light",
   "reduceMotion": "Reduce motion",
   "largerTapTargets": "Larger tap targets",
   "preview": "Preview",

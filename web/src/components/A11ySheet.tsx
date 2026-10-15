@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { A11ySettings } from '../types'
 import Sheet from './Sheet'
 import { CloseIcon } from './icons'
+import { applyDarkTheme, readDarkTheme } from '../design/theme'
 
 interface A11ySheetProps {
   isOpen: boolean
@@ -53,6 +54,13 @@ export function applyA11ySettings(settings: A11ySettings): void {
 
 export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheetProps) {
   const [settings, setSettings] = useState<A11ySettings>(getStoredA11ySettings)
+  const [dark, setDark] = useState(readDarkTheme)
+
+  useEffect(() => {
+    const sync = () => setDark(readDarkTheme())
+    window.addEventListener('sarvam-theme', sync)
+    return () => window.removeEventListener('sarvam-theme', sync)
+  }, [])
 
   useEffect(() => {
     applyA11ySettings(settings)
@@ -170,6 +178,16 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
           </button>
         </div>
 
+        <button
+          type="button"
+          aria-pressed={dark}
+          onClick={() => applyDarkTheme(!dark)}
+          className="sv-press h-14 px-4 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-between text-[16px] font-bold"
+        >
+          <span>{dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}</span>
+          <span className="text-[13px]">{dark ? (t.onWord || 'On') : (t.offWord || 'Off')}</span>
+        </button>
+
         <div className="grid grid-cols-3 gap-2.5">
           {tiles.map((tile) => (
             <button
@@ -178,7 +196,7 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
               aria-pressed={tile.on}
               onClick={tile.toggle}
               className="sv-press flex flex-col items-center gap-2 px-1.5 pt-3.5 pb-3 rounded-[22px] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A]"
-              style={{ background: tile.on ? '#E9B44C' : 'transparent' }}
+              style={{ background: tile.on ? '#E9B44C' : 'transparent', color: tile.on ? '#1A1A1A' : undefined }}
             >
               <span className="w-[52px] h-[52px] box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center" style={{ background: tile.bg, color: tile.ink }}>
                 {tile.id === 'big' || tile.id === 'lang' ? (
@@ -194,7 +212,7 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
                 )}
               </span>
               <span className="text-[13.5px] font-semibold leading-[1.2] text-center">{tile.label}</span>
-              <span className="text-[12px] font-bold px-2.5 py-0.5 rounded-[10px]" style={tile.on ? { background: '#1A1A1A', color: '#F4F5F2' } : { border: '1.5px solid #1A1A1A' }}>
+              <span className="text-[12px] font-bold px-2.5 py-0.5 rounded-[10px]" style={tile.on ? { background: 'var(--sv-fill)', color: 'var(--sv-on-dark)' } : { border: '1.5px solid var(--sv-fill)', color: 'var(--sv-ink)' }}>
                 {tile.on ? (t.onWord || 'On') : (t.offWord || 'Off')}
               </span>
             </button>
@@ -218,7 +236,7 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
                   aria-label={z.label}
                   onClick={() => handleUpdate('textSize', z.size)}
                   className="sv-press h-12 rounded-2xl border-[1.5px] border-[#1A1A1A] font-extrabold text-[#1A1A1A]"
-                  style={{ background: selected ? '#E9B44C' : 'transparent', fontSize: z.px }}
+                  style={{ background: selected ? '#E9B44C' : 'transparent', color: selected ? '#1A1A1A' : undefined, fontSize: z.px }}
                 >
                   A
                 </button>
@@ -229,16 +247,16 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
 
         <p className="m-0 text-[15px] leading-[1.5] text-[#3B3E3C] border-[1.5px] border-[#1A1A1A] rounded-[28px] px-4 py-3.5">
           {t.preview || 'Preview'}:{' '}
-          <span style={{ fontSize: previewPx, fontWeight: 700, background: settings.highContrast ? '#1A1A1A' : 'transparent', color: settings.highContrast ? '#F4F5F2' : '#1A1A1A', padding: settings.highContrast ? '2px 4px' : undefined }}>
+          <span style={{ fontSize: previewPx, fontWeight: 700, background: settings.highContrast ? 'var(--sv-fill)' : 'transparent', color: settings.highContrast ? 'var(--sv-on-dark)' : 'var(--sv-ink)', padding: settings.highContrast ? '2px 4px' : undefined }}>
             {t.a11yPreview || 'Your claim of ₹31,200 is approved.'}
           </span>
         </p>
 
         <div className="flex flex-col gap-2">
-          <button type="button" onClick={() => handleUpdate('reduceMotion', !settings.reduceMotion)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.reduceMotion ? '#E9B44C' : 'transparent' }}>
+          <button type="button" onClick={() => handleUpdate('reduceMotion', !settings.reduceMotion)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.reduceMotion ? '#E9B44C' : 'transparent', color: settings.reduceMotion ? '#1A1A1A' : undefined }}>
             {t.reduceMotion || 'Reduce motion'}
           </button>
-          <button type="button" onClick={() => handleUpdate('largerTapTargets', !settings.largerTapTargets)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.largerTapTargets ? '#E9B44C' : 'transparent' }}>
+          <button type="button" onClick={() => handleUpdate('largerTapTargets', !settings.largerTapTargets)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.largerTapTargets ? '#E9B44C' : 'transparent', color: settings.largerTapTargets ? '#1A1A1A' : undefined }}>
             {t.largerTapTargets || 'Larger tap targets'}
           </button>
           <button type="button" onClick={handleReset} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] text-[15px] font-semibold">
