@@ -5,8 +5,8 @@ import {
   getStoredLanguage,
   setStoredLanguage,
   getLocalFallbackError,
+  getLocalisedDocType,
   resolveLang,
-  LANG_LABELS,
 } from './i18n'
 import type {
   AppScreen,
@@ -15,9 +15,9 @@ import type {
   AppErrorInfo,
   RecentResult,
   MultiReportCard,
+  AskTurn,
 } from './types'
 import {
-  shrinkImage,
   isHeicFile,
   processPhotosSequentially,
 } from './utils/image'
@@ -32,12 +32,20 @@ import {
   saveRecentTranslation,
   saveOriginalFiles,
   getOriginalFiles,
+  updateRecentFields,
+  saveRecentAsks,
 } from './utils/db'
+import { defaultDocumentName, emptyActivity, isSampleResultId, mergeActivity, type DocumentActivity } from './utils/activity'
+import { collectReminders, dismissNext, pastReminders, readDismissed, upcomingReminders, writeDismissed } from './utils/reminders'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
 import TrayScreen from './components/TrayScreen'
 import A11ySheet, { applyA11ySettings, getStoredA11ySettings } from './components/A11ySheet'
 import PasswordSheet from './components/PasswordSheet'
+import HomeScreen from './components/v3/HomeScreen'
+import Onboarding from './components/v3/Onboarding'
+import MediaSheet, { grantMediaAccess, mediaAccessGranted } from './components/v3/MediaSheet'
+import { ensureIndicFont } from './design/indicFont'
 import {
   pushBrowserHistory,
   replaceBrowserHistory,
@@ -47,11 +55,10 @@ import {
   seedResultHistory,
 } from './utils/history'
 import { useOverlayRestore } from './hooks/useOverlayRestore'
-import {
-  CalendarIcon,
-  AlertTriangleIcon,
-  ChevronRightIcon,
-} from './components/icons'
+import { outputNeedsTranslation } from './utils/languageMatch'
+import { forgetReadMemory, forgetReadResult, recallRead, rememberRead, sha256Files } from './utils/readCache'
+import { fetchSampleResult, isSampleFile, resolveSampleOpen } from './samples/loadSample'
+import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -69,10 +76,15 @@ interface PasswordState {
 export default function App() {
   // Shared language state persisted in localStorage sarvam.lang (defaults to 'auto' for new users per WEB-3)
   const [selectedLang, setSelectedLang] = useState<string>(getStoredLanguage)
-  const [screen, setScreen] = useState<AppScreen>('home')
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    const saved = loadActiveSession()
+    if (!saved?.result) return 'home'
+    return saved.screen === 'reading' ? 'reading' : 'result'
+  })
+  const [readingArrived, setReadingArrived] = useState(false)
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
-  const [resultData, setResultData] = useState<ExplainResponse | null>(null)
+  const [resultData, setResultData] = useState<ExplainResponse | null>(() => loadActiveSession()?.result || null)
   const [multiReportsData, setMultiReportsData] = useState<MultiReportCard[] | null>(null)
   const [multiReportProgress, setMultiReportProgress] = useState<{
     ready: number
@@ -110,21 +122,53 @@ export default function App() {
     typeof navigator !== 'undefined' ? navigator.onLine : true
   )
 
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const saved = loadActiveSession()
+    let seen = false
+    let shared = false
+    try {
+      seen = sessionStorage.getItem('sarvam.onboardingSeen') === '1'
+      const params = new URLSearchParams(window.location.search)
+      shared = params.has('share') || params.has('result') || params.has('fixture')
+    } catch {
+      /* ignore */
+    }
+    return shouldShowOnboarding({
+      seenThisSession: seen,
+      hasRestoredResult: Boolean(saved?.result),
+      hasOpenOverlay: Boolean(saved?.overlay || window.history.state?.overlay),
+      fromSharedLink: shared,
+    })
+  })
+
   // Session refs
   const activeFilesRef = useRef<File[]>([])
   const retryActionRef = useRef<(() => void) | null>(null)
-  const currentResultIdRef = useRef<string | null>(null)
+  const [dismissedNext, setDismissedNext] = useState<string[]>(() => {
+    if (typeof localStorage === 'undefined') return []
+    return readDismissed(localStorage)
+  })
+  const currentResultIdRef = useRef<string | null>(loadActiveSession()?.currentResultId || null)
+  const asksRef = useRef<AskTurn[]>(loadActiveSession()?.asks || [])
+  const activityTimer = useRef<number | null>(null)
+  const activitySnapshot = useRef<DocumentActivity>(emptyActivity())
+  const [sessionActivity, setSessionActivity] = useState<DocumentActivity>(emptyActivity())
+  const [sessionName, setSessionName] = useState('')
+  const [sessionTitle, setSessionTitle] = useState('')
+  const fileHashRef = useRef<string>('')
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
   const activeTranslateControllerRef = useRef<AbortController | null>(null)
   const readingAbortControllerRef = useRef<AbortController | null>(null)
   const readingTimeoutRef = useRef<number | null>(null)
 
-  const langRowRef = useRef<HTMLDivElement>(null)
-  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const takePhotoInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const chooseFileInputRef = useRef<HTMLInputElement>(null)
   const chooseFolderInputRef = useRef<HTMLInputElement>(null)
+  const mediaIntentRef = useRef<'photo' | 'files'>('photo')
+  const [mediaSheet, setMediaSheet] = useState<null | 'ask' | 'choose'>(null)
 
   const t = getDictionary(resolveLang(selectedLang))
 
@@ -132,6 +176,10 @@ export default function App() {
   useEffect(() => {
     applyA11ySettings(getStoredA11ySettings())
   }, [])
+
+  useEffect(() => {
+    ensureIndicFont(resolveLang(selectedLang))
+  }, [selectedLang])
 
   // Online/offline listeners (WEB-14)
   useEffect(() => {
@@ -173,6 +221,7 @@ export default function App() {
       setResultData(saved.result)
       originalResultRef.current = saved.originalResult || saved.result
       currentResultIdRef.current = saved.currentResultId || null
+      if (Array.isArray(saved.asks)) asksRef.current = saved.asks
       if (saved.multiReports) setMultiReportsData(saved.multiReports)
       if (saved.lang) setSelectedLang(saved.lang)
 
@@ -189,11 +238,42 @@ export default function App() {
       }
 
       setScreen('result')
+      setShowOnboarding(false)
       seedResultHistory()
-    } else {
+    } else if (!loadActiveSession()?.result) {
       replaceBrowserHistory({ screen: 'home', overlay: null })
     }
   }, [])
+
+  useEffect(() => {
+    const recover = () => {
+      document.body.style.overflow = ''
+      const saved = loadActiveSession()
+      const next = screenAfterReturn({ screen, hasResult: Boolean(resultData) }, saved)
+      if (next.restore && saved?.result) {
+        setResultData(saved.result)
+        originalResultRef.current = saved.originalResult || saved.result
+        currentResultIdRef.current = saved.currentResultId || null
+        if (Array.isArray(saved.asks)) asksRef.current = saved.asks
+        if (saved.multiReports) setMultiReportsData(saved.multiReports)
+        if (saved.lang) setSelectedLang(saved.lang)
+        setScreen(next.screen)
+        setShowOnboarding(false)
+        return
+      }
+      if (next.screen !== screen) setScreen(next.screen)
+    }
+    const onShow = () => recover()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') recover()
+    }
+    window.addEventListener('pageshow', onShow)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('pageshow', onShow)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [screen, resultData])
 
 
   // Keep active result session updated
@@ -205,6 +285,9 @@ export default function App() {
         lang: selectedLang,
         originalResult: originalResultRef.current,
         currentResultId: currentResultIdRef.current,
+        asks: asksRef.current,
+        screen: 'result',
+        overlay: loadActiveSession()?.overlay || null,
       })
     }
   }, [screen, resultData, multiReportsData, selectedLang])
@@ -217,6 +300,7 @@ export default function App() {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
         currentResultIdRef.current = saved.currentResultId || null
+        if (Array.isArray(saved.asks)) asksRef.current = saved.asks
         if (saved.multiReports) setMultiReportsData(saved.multiReports)
         if (saved.lang) setSelectedLang(saved.lang)
         setScreen('result')
@@ -250,12 +334,22 @@ export default function App() {
 
       const state = event.state as { screen?: AppScreen; overlay?: string | null } | null
       const targetScreen = state?.screen || 'home'
+      if ((targetScreen === 'result' || targetScreen === 'reading') && !resultData) {
+        const saved = loadActiveSession()
+        const next = screenAfterReturn({ screen: targetScreen, hasResult: false }, saved)
+        if (next.restore && saved?.result) {
+          setResultData(saved.result)
+          setShowOnboarding(false)
+        }
+        setScreen(next.screen)
+        return
+      }
       setScreen(targetScreen)
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [isA11yOpen, passwordState.isOpen, deleteConfirm])
+  }, [isA11yOpen, passwordState.isOpen, deleteConfirm, resultData])
 
   const navigateToScreen = (target: AppScreen) => {
     setScreen(target)
@@ -275,48 +369,10 @@ export default function App() {
     }
   }
 
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
-
-  const updateScrollFades = () => {
-    const el = langRowRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
-  }
-
-  useEffect(() => {
-    const el = langRowRef.current
-    if (!el) return
-    updateScrollFades()
-    el.addEventListener('scroll', updateScrollFades, { passive: true })
-    window.addEventListener('resize', updateScrollFades, { passive: true })
-    return () => {
-      el.removeEventListener('scroll', updateScrollFades)
-      window.removeEventListener('resize', updateScrollFades)
-    }
-  }, [])
-
   const handleSelectLang = (langId: string) => {
     setSelectedLang(langId)
     setStoredLanguage(langId)
-    const chip = chipRefs.current[langId]
-    if (chip) {
-      chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    }
   }
-
-  // Scroll selected language chip into view when selection changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const chip = chipRefs.current[selectedLang]
-      if (chip) {
-        chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-      }
-      updateScrollFades()
-    }, 50)
-    return () => clearTimeout(timer)
-  }, [selectedLang])
 
   // Load recent results on initial mount
   useEffect(() => {
@@ -328,8 +384,83 @@ export default function App() {
     setRecentResults(items)
   }
 
+  const cleanerTitle = (result: ExplainResponse) => {
+    const kind = getLocalisedDocType(resolveLang(selectedLang), result.document_kind || result.doc_type || result.document_type)
+    const issuer = result.profile?.lab_name || result.profile?.seller || ''
+    return defaultDocumentName(kind, issuer, result.report_date_iso || result.letter_date || '') || result.title || (t.document || 'Document')
+  }
+
+  const flushActivity = async (next: DocumentActivity) => {
+    let id = currentResultIdRef.current
+    const result = originalResultRef.current || resultData
+    if (!id || !result || !isSaveRecentEnabled()) return
+    if (isSampleResultId(id)) {
+      const copyId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const title = cleanerTitle(result)
+      currentResultIdRef.current = copyId
+      setSessionTitle(title)
+      await saveRecentResult({
+        id: copyId,
+        title,
+        fileCount: Math.max(activeFilesRef.current.length, 1),
+        fileNames: activeFilesRef.current.map((file) => file.name),
+        lang: next.lang || resolveLang(selectedLang),
+        result,
+        activity: next,
+      })
+      await loadRecents()
+      return
+    }
+    await updateRecentFields(id, { activity: next, lang: next.lang || resolveLang(selectedLang) })
+  }
+
+  const saveAsks = async (asks: AskTurn[]) => {
+    asksRef.current = asks
+    const active = loadActiveSession()
+    if (active?.result) {
+      saveActiveSession({ ...active, asks, currentResultId: currentResultIdRef.current, screen: 'result' })
+    }
+    let id = currentResultIdRef.current
+    const result = originalResultRef.current || resultData
+    if (!id || !result || !isSaveRecentEnabled()) return
+    if (isSampleResultId(id)) {
+      const copyId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const title = cleanerTitle(result)
+      currentResultIdRef.current = copyId
+      setSessionTitle(title)
+      await saveRecentResult({
+        id: copyId,
+        title,
+        fileCount: Math.max(activeFilesRef.current.length, 1),
+        fileNames: activeFilesRef.current.map((file) => file.name),
+        lang: resolveLang(selectedLang),
+        result,
+        activity: activitySnapshot.current,
+        asks,
+      })
+      await loadRecents()
+      return
+    }
+    await saveRecentAsks(id, asks)
+    await loadRecents()
+  }
+
+  const queueActivity = (next: DocumentActivity) => {
+    activitySnapshot.current = next
+    if (activityTimer.current) window.clearTimeout(activityTimer.current)
+    activityTimer.current = window.setTimeout(() => { void flushActivity(activitySnapshot.current) }, 300)
+  }
+
+  const handleRenameSaved = async (item: RecentResult, name: string) => {
+    const next = name.trim().slice(0, 60)
+    await updateRecentFields(item.id, { displayName: next && next !== item.title ? next : '' })
+    if (currentResultIdRef.current === item.id) setSessionName(next && next !== item.title ? next : '')
+    await loadRecents()
+  }
+
   const handleOpenRecent = async (item: RecentResult) => {
     currentResultIdRef.current = item.id
+    asksRef.current = item.asks || []
     originalResultRef.current = item.result
     translationCacheRef.current.clear()
 
@@ -358,12 +489,21 @@ export default function App() {
       setActiveFiles(dummyFiles)
     }
 
-    if (item.result.language) {
+    const restored = mergeActivity(item.activity)
+    if (restored.lang) {
+      setSelectedLang(restored.lang)
+      setStoredLanguage(restored.lang)
+    } else if (item.result.language) {
       setSelectedLang(item.result.language)
       setStoredLanguage(item.result.language)
     }
+    activitySnapshot.current = restored
+    setSessionActivity(restored)
+    setSessionName(item.displayName || '')
+    setSessionTitle(item.title)
 
 
+    setShowOnboarding(false)
     setResultData(item.result)
     setMultiReportsData(item.multiReports && item.multiReports.length > 0 ? item.multiReports : null)
     setCurrentError(null)
@@ -379,10 +519,7 @@ export default function App() {
     setDeleteConfirm({
       type: 'single',
       id: item.id,
-      title:
-        item.fileCount > 1
-          ? t.reportsCount?.replace('{count}', String(item.fileCount)) || `${item.fileCount} reports`
-          : item.title,
+      title: item.title,
     })
   }
 
@@ -394,12 +531,20 @@ export default function App() {
     if (!deleteConfirm) return
     if (deleteConfirm.type === 'single' && deleteConfirm.id) {
       await deleteRecentResult(deleteConfirm.id)
+      forgetReadResult(deleteConfirm.id)
+      try { sessionStorage.removeItem(`sarvam.ask.${deleteConfirm.id}`) } catch { /* already gone */ }
       const active = loadActiveSession()
       if (active?.currentResultId === deleteConfirm.id) {
         clearActiveSession()
       }
     } else if (deleteConfirm.type === 'all') {
       await clearAllRecentResults()
+      forgetReadMemory()
+      try {
+        for (const key of Object.keys(sessionStorage)) {
+          if (key.startsWith('sarvam.ask.')) sessionStorage.removeItem(key)
+        }
+      } catch { /* already gone */ }
       clearActiveSession()
     }
     setDeleteConfirm(null)
@@ -420,6 +565,26 @@ export default function App() {
     if (!filesToExplain || filesToExplain.length === 0) return
 
     const targetLang = resolveLang(lang)
+    try {
+      fileHashRef.current = await sha256Files(filesToExplain)
+    } catch {
+      fileHashRef.current = ''
+    }
+    if (fileHashRef.current && !password) {
+      const cached = await recallRead(fileHashRef.current, targetLang)
+      if (cached) {
+        const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        currentResultIdRef.current = resultId
+        originalResultRef.current = cached
+        translationCacheRef.current.set(`${resultId}:${targetLang}`, cached)
+        setActiveFiles(filesToExplain)
+        activeFilesRef.current = filesToExplain
+        setResultData(cached)
+        setCurrentError(null)
+        navigateToScreen('result')
+        return
+      }
+    }
 
     if (readingTimeoutRef.current) {
       clearTimeout(readingTimeoutRef.current)
@@ -433,10 +598,13 @@ export default function App() {
     const controller = new AbortController()
     readingAbortControllerRef.current = controller
 
-    // Single 90s top-level timer from tap covering queue wait, explain, and automatic translate
+    const hasPdf = filesToExplain.some(
+      (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    )
+    // A short read stays at 90s. A PDF with many tables needs the longer server budget.
     readingTimeoutRef.current = window.setTimeout(() => {
       controller.abort('timeout')
-    }, 90_000)
+    }, hasPdf ? 150_000 : 90_000)
 
     activeFilesRef.current = filesToExplain
     retryActionRef.current = () => runExplain(filesToExplain, lang, password)
@@ -446,6 +614,7 @@ export default function App() {
     setMultiReportProgress(null)
     setReReadInLang(null)
     setTranslateFailedLang(null)
+    setReadingArrived(false)
     navigateToScreen('reading')
 
     const isMultiPdf =
@@ -527,12 +696,17 @@ export default function App() {
       if (firstReady && firstReady.result) {
         setResultData(firstReady.result)
         setMultiReportsData(updatedCards)
+        setReadingArrived(true)
+        await new Promise((resolve) => window.setTimeout(resolve, 320))
         navigateToScreen('result')
 
         if (isSaveRecentEnabled()) {
           const fileCount = filesToExplain.length
+          const firstTitle = updatedCards.find((card) => card.result?.title)?.result?.title
           const displayTitle =
-            t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+            firstTitle && fileCount > 1
+              ? (t.moreReports || '{title} + {n} more').replace('{title}', cleanerTitle(firstReady.result)).replace('{n}', String(fileCount - 1))
+              : cleanerTitle(firstReady.result)
           const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           currentResultIdRef.current = multiId
 
@@ -547,6 +721,12 @@ export default function App() {
           })
           await saveOriginalFiles(multiId, filesToExplain)
           await loadRecents()
+        }
+        if (fileHashRef.current) {
+          await rememberRead(fileHashRef.current, targetLang, firstReady.result, currentResultIdRef.current || undefined)
+        }
+        if (fileHashRef.current) {
+          await rememberRead(fileHashRef.current, targetLang, firstReady.result, currentResultIdRef.current || undefined)
         }
       } else {
         const firstErr = updatedCards.find((c) => c.error)?.error
@@ -564,7 +744,15 @@ export default function App() {
     // Single document pipeline
     setMultiReportsData(null)
     try {
-      const result = await explainDocument(filesToExplain, targetLang, controller.signal, password)
+      let result = await explainDocument(filesToExplain, targetLang, controller.signal, password)
+      if (outputNeedsTranslation(result, targetLang)) {
+        try {
+          result = await translateDocument(result, targetLang, controller.signal)
+          if (outputNeedsTranslation(result, targetLang)) setTranslateFailedLang(targetLang)
+        } catch {
+          setTranslateFailedLang(targetLang)
+        }
+      }
 
       if (readingTimeoutRef.current) {
         clearTimeout(readingTimeoutRef.current)
@@ -576,16 +764,26 @@ export default function App() {
       originalResultRef.current = result
       translationCacheRef.current.clear()
       translationCacheRef.current.set(`${resultId}:${result.language || targetLang}`, result)
+      if (fileHashRef.current) {
+        await rememberRead(fileHashRef.current, targetLang, result, resultId)
+      }
 
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
+      setReadingArrived(true)
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
       navigateToScreen('result')
 
       const fileCount = filesToExplain.length
       const displayTitle =
         fileCount > 1
-          ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
-          : result.title || filesToExplain[0]?.name || 'Document'
+          ? (t.moreReports || '{title} + {n} more').replace('{title}', cleanerTitle(result)).replace('{n}', String(fileCount - 1))
+          : cleanerTitle(result)
+      const fresh = emptyActivity()
+      activitySnapshot.current = fresh
+      setSessionActivity(fresh)
+      setSessionName('')
+      setSessionTitle(displayTitle)
 
       if (isSaveRecentEnabled()) {
         await saveRecentResult({
@@ -695,7 +893,7 @@ export default function App() {
     const file = activeFilesRef.current[index]
 
     try {
-      const res = await explainDocument([file], selectedLang)
+      const res = await explainDocument([file], resolveLang(selectedLang))
       setMultiReportsData((prev) => {
         if (!prev) return null
         const next = [...prev]
@@ -716,11 +914,24 @@ export default function App() {
   }
 
   const handleTakePhotoClick = () => {
-    takePhotoInputRef.current?.click()
+    mediaIntentRef.current = 'photo'
+    setMediaSheet(mediaAccessGranted() ? 'choose' : 'ask')
   }
 
   const handleChooseFileClick = () => {
-    chooseFileInputRef.current?.click()
+    mediaIntentRef.current = 'files'
+    if (mediaAccessGranted()) chooseFileInputRef.current?.click()
+    else setMediaSheet('ask')
+  }
+
+  const handleAllowMedia = () => {
+    grantMediaAccess()
+    if (mediaIntentRef.current === 'files') {
+      setMediaSheet(null)
+      chooseFileInputRef.current?.click()
+      return
+    }
+    setMediaSheet('choose')
   }
 
   const handleChooseFolderClick = () => {
@@ -838,22 +1049,46 @@ export default function App() {
   // Handle "Try a sample" items (WEB-14)
   const handleSampleClick = async (sampleFilename: string) => {
     retryActionRef.current = () => handleSampleClick(sampleFilename)
+    const targetLang = resolveLang(selectedLang)
+    const choice = resolveSampleOpen(
+      sampleFilename,
+      targetLang,
+      recentResults.map((item) => ({
+        title: item.title,
+        doc_type: item.result?.doc_type,
+        document_kind: item.result?.document_kind,
+        fileNames: item.fileNames,
+      })),
+    )
+    if (!choice) return
+    fileHashRef.current = ''
+    setMultiReportsData(null)
     try {
       setCurrentError(null)
-      const res = await fetch(`/samples/${sampleFilename}`)
-      if (!res.ok) {
-        throw new Error(`Failed to load sample: ${res.statusText}`)
+      const loaded = await fetchSampleResult(choice.file, choice.lang)
+      const result = loaded.result
+      setTranslateFailedLang(loaded.shownLang === targetLang ? null : targetLang)
+      const res = await fetch(`/samples/${choice.file}`)
+      const files: File[] = []
+      if (res.ok) {
+        const blob = await res.blob()
+        const mimeType = choice.file.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+        files.push(new File([blob], choice.file, { type: mimeType }))
       }
-      const blob = await res.blob()
-      const mimeType = sampleFilename.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-      const sampleFile = new File([blob], sampleFilename, { type: mimeType })
-
-      let processedFile = sampleFile
-      if (mimeType.startsWith('image/')) {
-        processedFile = await shrinkImage(sampleFile)
-      }
-
-      await runExplain([processedFile], selectedLang)
+      const resultId = `sample-${choice.file}`
+      currentResultIdRef.current = resultId
+      const fresh = emptyActivity()
+      activitySnapshot.current = fresh
+      setSessionActivity(fresh)
+      setSessionName('')
+      setSessionTitle(result.title || '')
+      originalResultRef.current = result
+      translationCacheRef.current.set(`${resultId}:${targetLang}`, result)
+      activeFilesRef.current = files
+      setActiveFiles(files)
+      setResultData(result)
+      setShowOnboarding(false)
+      navigateToScreen('result')
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const msg = err instanceof Error ? err.message : 'Failed to load sample'
@@ -874,6 +1109,36 @@ export default function App() {
 
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
+    if (currentResultIdRef.current && !isSampleResultId(currentResultIdRef.current)) {
+      queueActivity(mergeActivity(activitySnapshot.current, { lang: newLang }))
+    }
+
+    const sampleFromFiles = activeFilesRef.current.find((file) => isSampleFile(file.name))?.name
+    const sampleFromId = (currentResultIdRef.current || '').startsWith('sample-')
+      ? (currentResultIdRef.current || '').slice('sample-'.length)
+      : ''
+    const sampleName = sampleFromFiles || (isSampleFile(sampleFromId) ? sampleFromId : '')
+    if (sampleName) {
+      setIsTranslating(true)
+      try {
+        const loaded = await fetchSampleResult(sampleName, targetLang)
+        const resultId = currentResultIdRef.current || `sample-${sampleName}`
+        currentResultIdRef.current = resultId
+        translationCacheRef.current.set(`${resultId}:${loaded.shownLang}`, loaded.result)
+        setResultData(loaded.result)
+        setTranslateError(null)
+        setTranslateFailedLang(loaded.shownLang === targetLang ? null : targetLang)
+      } catch (err: unknown) {
+        setTranslateError({
+          message: err instanceof Error ? err.message : 'Sample translation is not ready',
+          messageLocal: err instanceof Error ? err.message : 'Sample translation is not ready',
+          statusCode: 0,
+        })
+      } finally {
+        setIsTranslating(false)
+      }
+      return
+    }
 
     const resultId = currentResultIdRef.current
     const originalResult = originalResultRef.current || resultData
@@ -915,6 +1180,8 @@ export default function App() {
 
       translationCacheRef.current.set(cacheKey, translated)
       setResultData(translated)
+      setTranslateFailedLang(outputNeedsTranslation(translated, targetLang) ? targetLang : null)
+      if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, translated, resultId)
       setIsTranslating(false)
       console.log('telemetry: translate_ok', { status: 200 })
 
@@ -932,6 +1199,8 @@ export default function App() {
 
         translationCacheRef.current.set(cacheKey, retried)
         setResultData(retried)
+        setTranslateFailedLang(outputNeedsTranslation(retried, targetLang) ? targetLang : null)
+        if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, retried, resultId)
         setIsTranslating(false)
         console.log('telemetry: translate_retry_ok', { status: 200 })
 
@@ -947,7 +1216,7 @@ export default function App() {
           try {
             const fallbackResult = await explainDocument(
               activeFilesRef.current,
-              newLang,
+              targetLang,
               controller.signal
             )
             if (controller.signal.aborted) return
@@ -1002,6 +1271,7 @@ export default function App() {
     translationCacheRef.current.clear()
 
     setResultData(null)
+    setMultiReportsData(null)
     setCurrentError(null)
     setTranslateError(null)
     setIsTranslating(false)
@@ -1057,41 +1327,34 @@ export default function App() {
     setStagedFiles((prev) => [...prev, ...newStaged])
   }
 
-  // Soonest upcoming action across saved results (WEB-15)
-  const nextUpAction = (() => {
-    const allActions: { text: string; date: string; formattedDate: string; recentItem: RecentResult }[] = []
-    const today = new Date().toISOString().slice(0, 10)
-
-    for (const item of recentResults) {
-      if (item.result?.actions) {
-        for (const act of item.result.actions) {
-          if (act.due_date && act.due_date >= today && act.date_status !== 'passed') {
-            let formattedDate = act.due_date
-            try {
-              formattedDate = new Intl.DateTimeFormat(
-                resolveLang(selectedLang),
-                { day: 'numeric', month: 'short' }
-              ).format(new Date(act.due_date))
-            } catch {}
-
-            allActions.push({
-              text: act.text,
-              date: act.due_date,
-              formattedDate,
-              recentItem: item,
-            })
-          }
-        }
+  const reminderRows = collectReminders(recentResults, {
+    lang: resolveLang(selectedLang),
+    medicineLine: (name) => (t.takeMedicineLine || 'Take {name}').replace('{name}', name),
+  })
+  const upcomingRows = upcomingReminders(reminderRows, dismissedNext)
+  const pastRows = pastReminders(reminderRows)
+  const nextUpAction = upcomingRows[0]
+    ? {
+        id: upcomingRows[0].id,
+        summary: upcomingRows[0].summary,
+        date: upcomingRows[0].date,
+        time: upcomingRows[0].time,
+        documentName: upcomingRows[0].documentName,
+        recentId: upcomingRows[0].recentId,
       }
-    }
-
-    if (allActions.length === 0) return null
-    allActions.sort((a, b) => a.date.localeCompare(b.date))
-    return allActions[0]
-  })()
+    : null
+  const dismissHomeReminder = (id: string) => {
+    const next = dismissNext(dismissedNext, id)
+    setDismissedNext(next)
+    writeDismissed(localStorage, next)
+  }
+  const openReminderDoc = (recentId: string) => {
+    const item = recentResults.find((row) => row.id === recentId)
+    if (item) void handleOpenRecent(item)
+  }
 
   return (
-    <div className="min-h-screen bg-bg text-ink flex justify-center">
+    <div className="min-h-[100dvh] bg-bg text-ink flex justify-center">
       {/* Hidden file inputs */}
       <input
         ref={takePhotoInputRef}
@@ -1099,6 +1362,14 @@ export default function App() {
         accept="image/*"
         capture="environment"
         onChange={handleTakePhotoChange}
+        className="hidden"
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleChooseFileChange}
         className="hidden"
       />
       <input
@@ -1119,482 +1390,40 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="w-full max-w-[430px] min-w-0 min-h-screen flex flex-col p-5 pb-8 gap-5 relative overflow-x-hidden">
-        {/* ========================================================
-            SCREEN 1: HOME
-           ======================================================== */}
-        {screen === 'home' && (
-          <>
-            {/* Header: Logo with coral dot + Accessibility button */}
-            <header className="flex items-center justify-between h-12 animate-card-in">
-              <div className="font-heading font-bold text-[26px] tracking-tight text-ink select-none flex items-center">
-                Sarvam<span className="text-logo-dot">.</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenA11y}
-                aria-label={t.makeEasierToRead || 'Make it easier to read'}
-                className="btn-press w-12 h-12 rounded-full border border-line bg-surface text-ink flex items-center justify-center hover:bg-soft transition-colors shadow-xs"
-              >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-ink"
-                >
-                  <circle cx="12" cy="4.5" r="1.8" />
-                  <path d="M5 8.5l7 1.5 7-1.5M12 10v4.5M9 21l3-6.5 3 6.5" />
-                </svg>
-              </button>
-            </header>
-
-            {/* Offline Notice (WEB-14) */}
-            {!isOnline && (
-              <div className="bg-[#FFF4DE] border border-[#F4DDB0] text-[#5A3500] px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 animate-card-in">
-                <AlertTriangleIcon className="w-4 h-4 text-[#C2410C] shrink-0" />
-                <span>
-                  {t.offlineNotice ||
-                    "You're offline: saved results still open, scanning needs internet"}
-                </span>
-              </div>
-            )}
-
-            {/* Next up strip (WEB-15) */}
-            {nextUpAction && (
-              <div
-                onClick={() => handleOpenRecent(nextUpAction.recentItem)}
-                className="btn-press bg-[#ECEBFA] border border-[#D8D4EF] rounded-2xl p-3.5 flex items-center justify-between cursor-pointer shadow-xs animate-card-in"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-[#5B52D6] text-white flex items-center justify-center shrink-0">
-                    <CalendarIcon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#5B52D6]">
-                      {t.nextUp || 'Next up'} · {nextUpAction.formattedDate}
-                    </span>
-                    <p className="text-xs font-semibold text-[#1E1838] line-clamp-1 truncate">
-                      {nextUpAction.text}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-[#5B52D6] shrink-0" />
-              </div>
-            )}
-
-            {/* Language Selection Row */}
-            <div className="flex flex-col gap-2.5 animate-card-in-1 min-w-0">
-              <div className="relative -mx-5 px-5 min-w-0">
-                {/* Left-edge soft fade */}
-                {canScrollLeft && (
-                  <div
-                    className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10 bg-gradient-to-r from-bg to-transparent transition-opacity duration-200"
-                    aria-hidden="true"
-                  />
-                )}
-
-                <div
-                  ref={langRowRef}
-                  className="flex gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0"
-                  role="tablist"
-                  aria-label="Language selection"
-                >
-                  {SUPPORTED_LANGS.map((lang) => {
-                    const isSelected = selectedLang === lang.id
-                    const autoResolvedCode = resolveLang('auto')
-                    const autoResolvedLabel = LANG_LABELS[autoResolvedCode] || 'English'
-                    const chipLabel =
-                      lang.id === 'auto' ? `Auto · ${autoResolvedLabel}` : lang.label
-                    return (
-                      <button
-                        key={lang.id}
-                        ref={(el) => {
-                          chipRefs.current[lang.id] = el
-                        }}
-                        role="tab"
-                        aria-selected={isSelected}
-                        disabled={lang.disabled}
-                        onClick={() => handleSelectLang(lang.id)}
-                        className={`shrink-0 h-[44px] min-h-[44px] min-w-[44px] px-4 rounded-full text-[15px] font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors select-none active:scale-95 focus-ring ${
-                          isSelected
-                            ? 'bg-ink text-surface border border-ink'
-                            : 'bg-surface text-ink border border-line hover:border-muted/40'
-                        } ${lang.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                      >
-                        <span>{chipLabel}</span>
-                        {lang.badge && (
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                              isSelected
-                                ? 'bg-white/20 text-white'
-                                : 'bg-[#ECEBFA] text-[#5B52D6]'
-                            }`}
-                          >
-                            {lang.badge}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                  <div className="w-5 shrink-0" aria-hidden="true" />
-                </div>
-
-                {/* Right-edge soft fade */}
-                {canScrollRight && (
-                  <div
-                    className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10 bg-gradient-to-l from-bg to-transparent transition-opacity duration-200"
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-              <p className="text-[11px] text-muted text-center sm:text-left px-1 pt-0.5 leading-normal">
-                {t.aiTranslationDisclaimer ||
-                  'Translations are generated by AI. Check the original document for anything important.'}
-              </p>
-            </div>
-
-
-            {/* Greeting Heading */}
-            <h1 className="text-[28px] sm:text-[30px] font-bold font-heading text-ink leading-[1.18] tracking-[-0.015em] m-0 animate-card-in-1">
-              {t.hello}
-            </h1>
-
-            {/* Action Cards: Compact Green Take Photo + Outline Choose File */}
-            <div className="flex flex-col gap-2.5 animate-card-in-2">
-              {/* Primary Action: "Take photo" card */}
-              <button
-                type="button"
-                onClick={handleTakePhotoClick}
-                className="w-full flex items-center gap-4 p-4 sm:p-5 rounded-card bg-brand text-white text-left transition-transform active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-brand/40 min-h-[88px]"
-              >
-                <span className="w-12 h-12 sm:w-14 sm:h-14 rounded-[18px] bg-white/16 flex items-center justify-center shrink-0">
-                  <svg
-                    width="26"
-                    height="26"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
-                    <circle cx="12" cy="13" r="3.5" />
-                  </svg>
-                </span>
-                <span className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className="text-[17px] sm:text-[18px] font-bold leading-tight">
-                    {t.takePhoto}
-                  </span>
-                  <span className="text-[13px] sm:text-[13.5px] leading-snug text-white/80">
-                    {t.takePhotoSub}
-                  </span>
-                </span>
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#FFFFFF"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
-                >
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
-              </button>
-
-              {/* Secondary Action: "Choose file" card */}
-              <button
-                type="button"
-                onClick={handleChooseFileClick}
-                className="w-full flex items-center gap-4 p-4 sm:p-5 rounded-card bg-surface border border-line text-ink text-left transition-colors hover:bg-soft/50 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-brand/30 min-h-[76px] sm:min-h-[84px]"
-              >
-                <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-[16px] bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                </span>
-                <span className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className="text-[16px] sm:text-[17px] font-bold leading-tight">
-                    {t.chooseFiles || 'Choose files'}
-                  </span>
-                  <span className="text-[13px] sm:text-[13.5px] leading-snug text-muted">
-                    {t.chooseFileSub}
-                  </span>
-                </span>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0 text-muted"
-                >
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
-              </button>
-
-              {/* Desktop-only "Choose folder" action */}
-              <button
-                type="button"
-                onClick={handleChooseFolderClick}
-                className="hidden sm:flex w-full items-center gap-3 px-4 py-2.5 rounded-xl border border-line bg-surface text-ink text-[13.5px] font-semibold hover:bg-soft transition-colors active:scale-[0.99]"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-muted"
-                >
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                <span>{t.chooseFolder || 'Choose folder'}</span>
-              </button>
-            </div>
-
-            {/* Try a sample section (WEB-14) */}
-            <section
-              className="flex flex-col gap-2.5 animate-card-in-3"
-              aria-labelledby="sample-heading"
-            >
-              <div
-                id="sample-heading"
-                className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted"
-              >
-                {t.samples || 'Try a sample'}
-              </div>
-
-              <div className="bg-surface border border-line rounded-card overflow-hidden divide-y divide-line">
-                {/* Sample 1: Lab report */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-lab-report.pdf')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    PDF
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.sampleLab || 'Lab report (PDF)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample1Sub}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-
-                {/* Sample 2: Insurance letter */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-insurance-letter.pdf')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    PDF
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.sampleInsurance || 'Insurance letter (PDF)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample2Sub}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-
-                {/* Sample 3: Pension notice */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-pension-notice.jpg')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    IMG
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.samplePension || 'Pension notice (Photo)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample3Sub}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-
-                {/* Sample 4: Phone invoice & warranty */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-invoice-warranty.pdf')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    PDF
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.sampleInvoiceWarranty || 'Phone invoice & warranty (PDF)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample4Sub || 'Retail store · PDF'}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-
-                {/* Sample 5: Property tax notice */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-property-tax-notice.pdf')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    PDF
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.samplePropertyTax || 'Property tax notice (PDF)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample5Sub || 'City municipality · PDF'}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-
-                {/* Sample 6: Traffic e-challan */}
-                <button
-                  type="button"
-                  onClick={() => handleSampleClick('sample-echallan.pdf')}
-                  className="w-full flex items-center gap-3.5 p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors min-h-[68px] focus:outline-none focus:bg-soft/40"
-                >
-                  <span className="w-10 h-10 rounded-[12px] bg-soft flex items-center justify-center shrink-0 text-[11px] font-bold text-muted">
-                    PDF
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="text-[15px] font-semibold text-ink leading-snug">
-                      {t.sampleEChallan || 'Traffic e-challan (PDF)'}
-                    </span>
-                    <span className="text-[13px] text-muted leading-tight">
-                      {t.sample6Sub || 'Traffic Police · PDF'}
-                    </span>
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4 text-muted shrink-0" />
-                </button>
-              </div>
-            </section>
-
-            {/* Recent on this phone Section */}
-            {recentResults.length > 0 && (
-              <section
-                className="flex flex-col gap-2.5 animate-card-in-3"
-                aria-labelledby="recent-heading"
-              >
-                <div className="flex items-center justify-between">
-                  <div
-                    id="recent-heading"
-                    className="text-[12px] font-bold tracking-[0.08em] uppercase text-muted"
-                  >
-                    {t.recent || 'Recent on this phone'}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleDeleteAllRecent}
-                    className="text-[12px] font-semibold text-[#B42318] hover:underline"
-                  >
-                    {t.deleteAll || 'Delete all'}
-                  </button>
-                </div>
-
-                <div className="bg-surface border border-line rounded-card overflow-hidden divide-y divide-line">
-                  {recentResults.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleOpenRecent(item)}
-                      className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left hover:bg-soft/40 active:bg-soft transition-colors cursor-pointer group"
-                    >
-                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <span className="text-[15px] font-semibold text-ink leading-snug truncate">
-                          {item.title}
-                        </span>
-                        <span className="text-[12.5px] text-muted">
-                          {new Intl.DateTimeFormat(
-                            resolveLang(selectedLang),
-                            { day: 'numeric', month: 'short', year: 'numeric' }
-                          ).format(new Date(item.timestamp))}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteRecentItem(e, item)}
-                          aria-label={`Delete ${item.title}`}
-                          className="w-8 h-8 rounded-full text-muted hover:text-[#B42318] hover:bg-[#FDECEA] flex items-center justify-center transition-colors"
-                        >
-                          ✕
-                        </button>
-                        <ChevronRightIcon className="w-4 h-4 text-muted" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Save results setting toggle */}
-                <label className="flex items-center justify-between p-3 rounded-xl bg-soft/60 cursor-pointer">
-                  <span className="text-[13px] font-medium text-ink">
-                    {t.saveRecentSetting || 'Save results on this phone'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={saveRecentEnabled}
-                    onChange={(e) => handleToggleSaveRecent(e.target.checked)}
-                    className="w-4 h-4 rounded text-brand focus:ring-0"
-                  />
-                </label>
-
-                <p className="text-[12px] text-muted text-center leading-normal">
-                  {t.savedOnThisPhoneOnly ||
-                    t.recentFooter ||
-                    'Saved on this phone only (including document text).'}
-                </p>
-              </section>
-            )}
-
-
-            {/* Privacy reassurance footer note */}
-            <footer className="text-center text-[13px] text-muted leading-relaxed px-3 pt-2">
-              {t.privacy}
-            </footer>
-          </>
+      <main className={`w-full max-w-[430px] min-w-0 min-h-[100dvh] flex flex-col relative overflow-x-hidden ${screen === 'home' ? '' : 'p-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] gap-5'}`}>
+        {screen === 'home' && showOnboarding && (
+          <Onboarding onDone={() => { setShowOnboarding(false); setScreen('home') }} />
+        )}
+        {screen === 'home' && !showOnboarding && (
+          <HomeScreen
+            t={t}
+            selectedLang={selectedLang}
+            onSelectLang={handleSelectLang}
+            isOnline={isOnline}
+            nextUp={nextUpAction}
+            upcomingCount={upcomingRows.length}
+            upcomingReminders={upcomingRows}
+            pastReminders={pastRows}
+            onOpenNext={() => nextUpAction && openReminderDoc(nextUpAction.recentId)}
+            onOpenReminder={openReminderDoc}
+            onDismissNext={dismissHomeReminder}
+            onTakePhoto={handleTakePhotoClick}
+            onChooseFiles={handleChooseFileClick}
+            onChooseFolder={handleChooseFolderClick}
+            onSample={handleSampleClick}
+            recent={recentResults}
+            onOpenRecent={handleOpenRecent}
+            onRemoveRecent={handleDeleteRecentItem}
+            onRenameRecent={handleRenameSaved}
+            onDeleteAll={handleDeleteAllRecent}
+            saveEnabled={saveRecentEnabled}
+            onToggleSave={handleToggleSaveRecent}
+            onA11y={handleOpenA11y}
+            library={libraryOpen}
+            onOpenLibrary={() => setLibraryOpen(true)}
+            onCloseLibrary={() => setLibraryOpen(false)}
+            onRetryOnline={() => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true)}
+          />
         )}
 
         {/* ========================================================
@@ -1625,6 +1454,7 @@ export default function App() {
             langName={(SUPPORTED_LANGS.find((l) => l.id === resolveLang(selectedLang)) || SUPPORTED_LANGS[1]).name}
             error={currentError}
             multiReportProgress={multiReportProgress}
+            arrived={readingArrived}
             onRetry={() => {
               if (retryActionRef.current) {
                 retryActionRef.current()
@@ -1650,9 +1480,7 @@ export default function App() {
             translateFailedLang={translateFailedLang}
             onChangeLanguage={handleChangeResultLang}
             onRetryTranslate={() => {
-              if (translateFailedLang) {
-                handleChangeResultLang(translateFailedLang)
-              }
+              handleChangeResultLang(translateFailedLang || selectedLang)
             }}
             onDismissTranslateError={() => {
               setTranslateError(null)
@@ -1662,6 +1490,33 @@ export default function App() {
             onA11yClick={handleOpenA11y}
             multiReports={multiReportsData || undefined}
             onRetrySingleReport={handleRetrySingleReport}
+            resultId={currentResultIdRef.current || undefined}
+            asks={(() => {
+              const saved = recentResults.find((item) => item.id === currentResultIdRef.current)?.asks
+              return saved?.length ? saved : asksRef.current
+            })()}
+            activity={sessionActivity}
+            displayName={sessionName}
+            savedTitle={sessionTitle}
+            onActivityChange={queueActivity}
+            onSaveAsks={(asks) => { void saveAsks(asks) }}
+            onRename={(name) => {
+              const id = currentResultIdRef.current
+              if (!id) return
+              const trimmed = name.trim().slice(0, 60)
+              if (isSampleResultId(id)) {
+                void flushActivity(activitySnapshot.current).then(async () => {
+                  const savedId = currentResultIdRef.current
+                  if (!savedId || isSampleResultId(savedId)) return
+                  await updateRecentFields(savedId, { displayName: trimmed })
+                  setSessionName(trimmed)
+                  await loadRecents()
+                })
+                return
+              }
+              void updateRecentFields(id, { displayName: trimmed && trimmed !== sessionTitle ? trimmed : '' }).then(loadRecents)
+              setSessionName(trimmed && trimmed !== sessionTitle ? trimmed : '')
+            }}
           />
         )}
       </main>
@@ -1671,6 +1526,7 @@ export default function App() {
         isOpen={isA11yOpen}
         onClose={handleCloseA11y}
         t={t}
+        lang={selectedLang}
       />
 
       {/* Password-protected PDF Sheet (WEB-11) */}
@@ -1684,45 +1540,64 @@ export default function App() {
       />
 
       {/* Delete Confirmation Sheet */}
+      {mediaSheet && (
+        <MediaSheet
+          mode={mediaSheet}
+          t={t}
+          onAllow={handleAllowMedia}
+          onClose={() => setMediaSheet(null)}
+          onCamera={() => {
+            setMediaSheet(null)
+            takePhotoInputRef.current?.click()
+          }}
+          onGallery={() => {
+            setMediaSheet(null)
+            galleryInputRef.current?.click()
+          }}
+          onFiles={() => {
+            setMediaSheet(null)
+            chooseFileInputRef.current?.click()
+          }}
+        />
+      )}
+
       {deleteConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[2px] p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#8A8F8C] p-0"
           onClick={() => setDeleteConfirm(null)}
           role="presentation"
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-[400px] bg-white rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-card-in"
+            className="w-full max-w-[430px] bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] px-5 pt-3 pb-7 flex flex-col gap-[18px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div>
-              <h2 className="text-lg font-bold text-[#15171A]">
+            <span aria-hidden="true" className="w-11 h-[5px] rounded-[3px] bg-[#1A1A1A] opacity-25 self-center" />
+            <span aria-hidden="true" className="w-16 h-16 box-border border-[1.5px] border-[#1A1A1A] rounded-full bg-[#F8D9CB] flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <h2 className="sv-display m-0 text-[34px] leading-[1.02] text-[#1A1A1A]">
                 {deleteConfirm.type === 'single'
-                  ? t.deleteSingleConfirmTitle || 'Delete this report?'
-                  : t.deleteAllConfirmTitle || 'Delete all recent reports?'}
+                  ? t.deleteSingleConfirmTitle || 'Delete this result?'
+                  : t.deleteAllConfirmTitle || 'Delete all results?'}
               </h2>
-              <p className="text-xs text-[#5E636B] mt-1 leading-relaxed">
+              <p className="m-0 text-[15.5px] leading-[1.4] text-[#3B3E3C]">
                 {deleteConfirm.type === 'single'
-                  ? t.deleteSingleConfirmDesc ||
-                    'This will remove the saved result from this phone.'
-                  : t.deleteAllConfirmDesc ||
-                    'This will remove all saved results from this phone.'}
+                  ? (t.deleteSingleConfirmDesc || '“{name}” will be removed from this phone. Reminders already in your calendar stay there.').replace('{name}', deleteConfirm.title || '')
+                  : t.deleteAllConfirmDesc || 'Every saved result will be removed from this phone. Reminders already in your calendar stay there.'}
               </p>
             </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="btn-press flex-1 py-3 rounded-xl border border-[#E6E6E1] bg-white text-[#15171A] font-semibold text-xs hover:bg-[#F0F0EB] transition-colors"
-              >
-                {t.keep || 'Keep'}
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => setDeleteConfirm(null)} className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[16px]">
+                {t.keepIt || 'Keep it'}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="btn-press flex-1 py-3 rounded-xl bg-[#B42318] text-white font-semibold text-xs hover:bg-[#911d13] transition-colors shadow-sm"
+                className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] font-bold text-[16px] text-[#F4F5F2]"
+                style={{ background: deleteConfirm.type === 'all' ? '#B3361A' : '#1A1A1A' }}
               >
                 {t.delete || 'Delete'}
               </button>

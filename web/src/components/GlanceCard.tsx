@@ -137,15 +137,15 @@ export default function GlanceCard({
           <button
             type="button"
             onClick={onOpenDocumentPreview}
-            className="hit-44 btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#146B4E] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
+            className="hit-44 btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#034F46] bg-[#EAF5F0] hover:bg-[#D7EFE4] transition-colors cursor-pointer"
           >
-            <EyeIcon className="w-3.5 h-3.5 text-[#146B4E]" />
+            <EyeIcon className="w-3.5 h-3.5 text-[#034F46]" />
             <span>{t.viewDocument || 'View document'}</span>
           </button>
         )}
         {formattedDate && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F1FB] text-[#1D5FA8]">
-            <CalendarIcon className="w-3.5 h-3.5 mr-1 text-[#1D5FA8]" />
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#CFE5E0] text-[#034F46]">
+            <CalendarIcon className="w-3.5 h-3.5 mr-1 text-[#034F46]" />
             {formattedDate}
           </span>
         )}
@@ -161,8 +161,8 @@ export default function GlanceCard({
       {keyValues.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           {keyValues.map((kv, idx) => {
-            let iconTileBg = 'bg-[#F1ECFB]'
-            let iconTileColor = 'text-[#6D45C9]'
+            let iconTileBg = 'bg-[#CFE5E0]'
+            let iconTileColor = 'text-[#034F46]'
             let IconComponent = SparklesIcon
 
             if (kv.kind === 'amount') {
@@ -170,8 +170,8 @@ export default function GlanceCard({
               iconTileColor = 'text-[#9A6700]'
               IconComponent = CurrencyRupeeIcon
             } else if (kv.kind === 'date') {
-              iconTileBg = 'bg-[#E8F1FB]'
-              iconTileColor = 'text-[#1D5FA8]'
+              iconTileBg = 'bg-[#CFE5E0]'
+              iconTileColor = 'text-[#034F46]'
               IconComponent = CalendarIcon
             }
 
@@ -216,7 +216,7 @@ export default function GlanceCard({
                     </button>
                   )}
                   {kv.evidence === 'calculated' && (
-                    <span className="inline-flex items-center text-[11px] font-medium text-[#6D45C9] bg-[#F1ECFB] px-2 py-0.5 rounded-md">
+                    <span className="inline-flex items-center text-[11px] font-medium text-[#034F46] bg-[#CFE5E0] px-2 py-0.5 rounded-md">
                       {t.calculatedChip || 'Calculated'}
                     </span>
                   )}

@@ -2,13 +2,25 @@ import { useState } from 'react'
 import type { MedicineItem, MedicineSlot } from '../types'
 import { PillIcon, EyeIcon, CalendarIcon, AlertTriangleIcon } from './icons'
 import Sheet from './Sheet'
-import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
+import { generateIcs, downloadIcs, hashString } from '../utils/ics'
+import { calendarDraftEvent, localDate, reminderSummary } from '../utils/reminders'
+import CalendarEditSheet, { type CalendarDose } from './CalendarEditSheet'
+
+interface MedicineActivityState {
+  slots: Record<string, boolean>
+  times: Record<string, string>
+  durations: Record<string, number>
+}
 
 interface MedicineCardProps {
   medicines?: MedicineItem[]
   resultId: string
   t: Record<string, string>
   onCheckOriginal?: (quote?: string, page?: number) => void
+  saved?: MedicineActivityState
+  onChange?: (next: MedicineActivityState) => void
+  reminderAdded?: boolean
+  onReminderAdded?: () => void
 }
 
 const DEFAULT_SLOT_TIMES: Record<MedicineSlot, string> = {
@@ -22,20 +34,42 @@ const DEFAULT_SLOT_TIMES: Record<MedicineSlot, string> = {
 
 const DURATION_CHIPS = [3, 5, 7, 10, 14, 30]
 
+function slotLabel(slot: string, t: Record<string, string>) {
+  const full = slot === 'morning' ? (t.slotMorning || 'Morning')
+    : slot === 'afternoon' ? (t.slotAfternoon || 'Afternoon')
+    : slot === 'evening' ? (t.slotEvening || 'Evening')
+    : slot === 'night' ? (t.slotNight || 'Night')
+    : slot === 'bedtime' ? (t.slotBedtime || 'Bedtime')
+    : slot === 'as_needed' ? (t.slotAsNeeded || 'As needed')
+    : slot
+  return full.replace(/\s*\([^)]*\)\s*$/, '')
+}
+
 export default function MedicineCard({
   medicines,
   resultId,
   t,
   onCheckOriginal,
+  saved,
+  onChange,
+  reminderAdded = false,
+  onReminderAdded,
 }: MedicineCardProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [userDurations, setUserDurations] = useState<Record<number, number>>({})
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [calTitle, setCalTitle] = useState('')
+  const [calDate, setCalDate] = useState('')
+  const [calTime, setCalTime] = useState('08:00')
+  const [calAlert, setCalAlert] = useState('1d')
+  const [calDoses, setCalDoses] = useState<CalendarDose[]>([])
+  const [userDurations, setUserDurations] = useState<Record<number, number>>(() => saved?.durations || {})
   const [selectedSlots, setSelectedSlots] = useState<Record<string, boolean>>(() => {
+    if (saved && Object.keys(saved.slots || {}).length) return saved.slots
     // Initialize slot ticks: unticked unless evidence === 'matched' and decoded === true
     const initial: Record<string, boolean> = {}
     if (medicines) {
       medicines.forEach((med, mIdx) => {
-        const canTick = med.evidence === 'matched' && med.decoded === true
+        const canTick = med.decoded === true
         med.slots?.forEach((slot) => {
           if (slot !== 'as_needed') {
             initial[`${mIdx}-${slot}`] = canTick
@@ -46,7 +80,12 @@ export default function MedicineCard({
     return initial
   })
 
+  const publish = (slots: Record<string, boolean>, times: Record<string, string>, durations: Record<string, number>) => {
+    onChange?.({ slots, times, durations })
+  }
+
   const [slotTimes, setSlotTimes] = useState<Record<string, string>>(() => {
+    if (saved && Object.keys(saved.times || {}).length) return saved.times
     const initial: Record<string, string> = {}
     if (medicines) {
       medicines.forEach((med, mIdx) => {
@@ -63,123 +102,135 @@ export default function MedicineCard({
   if (!medicines || medicines.length === 0) return null
 
   // Check if any medicine is unverified or check_original
-  const hasUncertainMed = medicines.some(
-    (m) => m.evidence === 'check_original' || !m.decoded
-  )
-
   const handleToggleSlot = (mIdx: number, slot: string) => {
     const key = `${mIdx}-${slot}`
-    setSelectedSlots((prev) => ({ ...prev, [key]: !prev[key] }))
+    setSelectedSlots((prev) => {
+      const slots = { ...prev, [key]: !prev[key] }
+      publish(slots, slotTimes, userDurations)
+      return slots
+    })
   }
 
   const handleTimeChange = (mIdx: number, slot: string, time: string) => {
     const key = `${mIdx}-${slot}`
-    setSlotTimes((prev) => ({ ...prev, [key]: time }))
+    setSlotTimes((prev) => {
+      const times = { ...prev, [key]: time }
+      publish(selectedSlots, times, userDurations)
+      return times
+    })
   }
 
   const handleSetDuration = (mIdx: number, days: number) => {
-    setUserDurations((prev) => ({ ...prev, [mIdx]: days }))
+    setUserDurations((prev) => {
+      const durations = { ...prev, [mIdx]: days }
+      publish(selectedSlots, slotTimes, durations)
+      return durations
+    })
   }
 
-  const handleExportIcs = () => {
-    const events: CalendarEventInput[] = []
-    const today = new Date()
-    const yyyy = today.getFullYear()
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
-    const dateStr = `${yyyy}-${mm}-${dd}`
-
-    medicines.forEach((med, mIdx) => {
-      const days = med.duration_days || userDurations[mIdx] || 5
-      const strength = med.strength_text ? ` ${med.strength_text}` : ''
-      const title = `Take ${med.name}${strength}`
-      const desc = `From your prescription. Check the original. Sarvam does not give medical advice.`
-
+  const selectedDoses = () => {
+    const doses: CalendarDose[] = []
+    ;(medicines || []).forEach((med, mIdx) => {
       med.slots?.forEach((slot) => {
         if (slot === 'as_needed') return
         const slotKey = `${mIdx}-${slot}`
         if (!selectedSlots[slotKey]) return
-
-        const time = slotTimes[slotKey] || DEFAULT_SLOT_TIMES[slot] || '08:00'
-        const [hour, min] = time.split(':')
-        const startTimestamp = `${dateStr.replace(/-/g, '')}T${hour}${min}00`
-
-        events.push({
-          uid: hashString(`${resultId}-med-${mIdx}-${slot}`),
-          title,
-          description: desc,
-          startDate: startTimestamp,
-          isAllDay: false,
-          rrule: `FREQ=DAILY;COUNT=${days}`,
-          alarmTrigger: '-PT0S',
+        doses.push({
+          key: slotKey,
+          label: `${med.name} · ${slotLabel(slot, t)}`,
+          time: slotTimes[slotKey] || DEFAULT_SLOT_TIMES[slot] || '08:00',
         })
       })
     })
+    return doses
+  }
 
-    if (events.length === 0) return
+  const openMedicineCalendar = () => {
+    const doses = selectedDoses()
+    if (!doses.length) return
+    const line = (name: string) => (t.takeMedicineLine || 'Take {name}').replace('{name}', name)
+    const names = [...new Set(doses.map((dose) => dose.label.split(' · ')[0]).filter(Boolean))]
+    setCalTitle(reminderSummary(names.map(line).join(', ')))
+    setCalDate(localDate(new Date()))
+    setCalTime(doses[0].time)
+    setCalDoses(doses)
+    setCalAlert('1d')
+    setCalendarOpen(true)
+  }
 
-    const icsContent = generateIcs(events)
-    downloadIcs('medicine-reminders.ics', icsContent)
+  const confirmMedicineCalendar = () => {
+    const doses = calDoses.length ? calDoses : [{ key: 'once', label: calTitle, time: calTime }]
+    const events = doses.map((dose) => {
+      const medIndex = Number(dose.key.split('-')[0])
+      const days = medicines?.[medIndex]?.duration_days ?? userDurations[medIndex]
+      return {
+        ...calendarDraftEvent({
+          uid: hashString(`${resultId}-med-${dose.key}`),
+          title: calTitle,
+          note: t.calendarOneLine || 'Sarvam reminder.',
+          date: calDate,
+          time: dose.time,
+          alert: calAlert,
+        }),
+        rrule: days ? `FREQ=DAILY;COUNT=${days}` : undefined,
+      }
+    })
+    if (!events.length) return
+    downloadIcs('medicine-reminders.ics', generateIcs(events))
+    onReminderAdded?.()
+    setCalendarOpen(false)
     setIsSheetOpen(false)
   }
 
   return (
     <>
       {/* Medicine Reminders Overview Card */}
-      <div className="w-full bg-[#FFFFFF] border border-[#E6E6E1] rounded-[22px] p-5 flex flex-col gap-4 shadow-sm animate-card-in">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#ECEBFA] text-[#5B52D6] flex items-center justify-center shrink-0">
-              <PillIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-[#15171A]">
-                {t.medicineReminders || 'Medicine reminders'}
-              </h3>
-              <p className="text-xs text-[#5E636B]">
-                {medicines.length} {medicines.length === 1 ? 'medicine' : 'medicines'} detected
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsSheetOpen(true)}
-            className="btn-press px-3.5 py-1.5 bg-[#5B52D6] text-white text-xs font-semibold rounded-xl hover:bg-[#483EB8] transition-colors"
-          >
-            {t.addReminders || 'Add reminders'}
-          </button>
+      <section className="bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3 px-1 min-w-0">
+          <span className="w-10 h-10 rounded-full bg-[#034F46] flex items-center justify-center shrink-0">
+            <PillIcon className="w-5 h-5 text-[#F4F5F2]" />
+          </span>
+          <h2 className="sv-card-heading sv-display m-0 min-w-0 flex-1">
+            {t.medicineReminders || 'Medicine reminders'}<span className="text-[#D9603B]">.</span>
+          </h2>
         </div>
-
-        {/* Medicines List Preview */}
-        <div className="divide-y divide-[#F0F0EB]">
-          {medicines.map((med, idx) => (
-            <div key={idx} className="py-2.5 first:pt-0 last:pb-0 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm text-[#15171A]">
-                  {med.name} {med.strength_text ? `(${med.strength_text})` : ''}
-                </span>
-                <span className="text-xs font-mono bg-[#F0F0EB] px-2 py-0.5 rounded text-[#5E636B]">
-                  {med.frequency_raw}
-                </span>
+        <p className="m-0 mx-1 flex gap-2 items-start text-[13.5px] leading-[1.4] bg-[#F4F5F2] border-[1.5px] border-dashed border-[#1A1A1A] rounded-2xl p-2.5">
+          <AlertTriangleIcon className="w-4 h-4 text-[#D9603B] shrink-0 mt-0.5" />
+          <span>{t.medicineCheckWarning || 'Check these against your prescription before adding. Sarvam does not give medical advice.'}</span>
+        </p>
+        {medicines.map((med, idx) => {
+          const weekly = !med.decoded && /week/i.test(med.frequency_raw || '')
+          const sos = med.as_needed || med.frequency_code === 'SOS'
+          const food = med.food_timing === 'before_food' ? (t.beforeFood || 'Before food') : med.food_timing === 'after_food' ? (t.afterFood || 'After food') : med.food_timing === 'at_bedtime' ? (t.atBedtime || 'At bedtime') : ''
+          return (
+            <div key={idx} className="bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[24px] p-3.5 flex flex-col gap-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[17px] font-bold">{med.name} {med.strength_text && <span className="font-medium text-[#3B3E3C]">{med.strength_text}</span>}</span>
+                <span className="font-mono text-[13px] font-bold px-2 py-0.5 border-[1.5px] border-[#1A1A1A] rounded-lg">{med.frequency_raw}</span>
               </div>
-
-              <div className="flex items-center gap-2 text-xs text-[#5E636B]">
-                {med.food_timing && (
-                  <span>
-                    {med.food_timing === 'before_food'
-                      ? t.beforeFood || 'Before food'
-                      : t.afterFood || 'After food'}
-                  </span>
-                )}
-                {med.duration_days && (
-                  <span>· {med.duration_days} days</span>
-                )}
-              </div>
+              {sos && <span className="text-[13.5px]">{t.onlyWhenNeeded || 'Only when needed'}</span>}
+              {weekly && <span className="text-[13.5px]">{t.pickDayTime || 'Pick a day and time'}</span>}
+              {!sos && !weekly && (
+                <div className="flex flex-wrap gap-1.5">
+                  {med.slots.map((slot) => (
+                    <span key={slot} className={`inline-flex items-center h-[30px] px-2.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[12.5px] font-bold text-[#1A1A1A] ${slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#E4DFF0]'}`}>
+                      {slotLabel(slot, t)} {DEFAULT_SLOT_TIMES[slot]?.replace(/^0/, '')}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(food || med.duration_days) && (
+                <span className="text-[13.5px] text-[#3B3E3C]">
+                  {food}{food && med.duration_days ? ' · ' : ''}{med.duration_days ? `${med.duration_days} ${t.days || 'days'}` : ''}
+                </span>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+          )
+        })}
+        <button type="button" onClick={() => { if (!reminderAdded) setIsSheetOpen(true) }} className="sv-press h-[52px] mx-1 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[16px] font-bold">
+          {reminderAdded ? (t.added || 'Added') : (t.setMedicineReminders || 'Set medicine reminders')}
+        </button>
+      </section>
 
       {/* Configuration & Confirmation Sheet */}
       <Sheet
@@ -188,26 +239,14 @@ export default function MedicineCard({
         title={t.medicineReminders || 'Medicine reminders'}
         maxHeight="max-h-[92vh]"
       >
-        <div className="flex flex-col gap-5 pt-2">
-          <div>
-            <h2 className="text-lg font-bold text-[#15171A]">
-              {t.medicineReminders || 'Medicine reminders'}
-            </h2>
-            <p className="text-xs text-[#5E636B] mt-0.5">
-              Review times and tap Add to Calendar to save reminders to your device.
-            </p>
-          </div>
-
-          {/* Uncertainty banner if check_original or !decoded */}
-          {hasUncertainMed && (
-            <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-xl p-3 flex items-start gap-2.5 text-xs text-[#5A3500]">
-              <AlertTriangleIcon className="w-4 h-4 text-[#C2410C] shrink-0 mt-0.5" />
-              <span>
-                {t.medicineCheckWarning ||
-                  'Check these against your prescription before adding'}
-              </span>
-            </div>
-          )}
+        <div className="flex flex-col gap-3.5 pt-1">
+          <h2 className="sv-display text-[27px] leading-none m-0">
+            {t.medicineReminders || 'Medicine reminders'}<span className="text-[#D9603B]">.</span>
+          </h2>
+          <p className="m-0 flex gap-2 items-start text-[13px] leading-[1.4] border-[1.5px] border-dashed border-[#1A1A1A] rounded-2xl p-2.5 bg-[#F8D9CB]">
+            <AlertTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{t.medicineTapTime || 'Check every time against your prescription. Tap a time to change it.'}</span>
+          </p>
 
           {/* Per Medicine Configuration */}
           <div className="flex flex-col gap-4">
@@ -217,7 +256,7 @@ export default function MedicineCard({
               return (
                 <div
                   key={mIdx}
-                  className="bg-[#FBF7EF] border border-[#F1EBDD] rounded-2xl p-4 flex flex-col gap-3"
+                  className="border-[1.5px] border-[#1A1A1A] rounded-[26px] p-3.5 flex flex-col gap-2.5"
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -237,7 +276,7 @@ export default function MedicineCard({
 
                   {/* Food Note */}
                   {med.food_timing && (
-                    <span className="text-xs font-medium text-[#5B52D6]">
+                    <span className="text-xs font-medium text-[#034F46]">
                       {med.food_timing === 'before_food'
                         ? t.beforeFood || 'Before food'
                         : t.afterFood || 'After food'}
@@ -245,16 +284,16 @@ export default function MedicineCard({
                   )}
 
                   {/* as_needed or slot checkboxes */}
-                  {med.slots?.includes('as_needed') ? (
-                    <div className="text-xs text-[#5E636B] italic">
-                      {t.takeOnlyWhenNeeded || 'Take only when needed, no reminder'}
-                    </div>
+                  {med.as_needed || med.frequency_code === 'SOS' ? (
+                    <div className="text-[13.5px]">{t.onlyWhenNeeded || 'Only when needed'}</div>
+                  ) : !med.decoded && /week/i.test(med.frequency_raw || '') ? (
+                    <div className="text-[13.5px]">{t.pickDayTime || 'Pick a day and time'}</div>
                   ) : (
                     <div className="flex flex-col gap-2 pt-1">
                       <span className="text-xs font-medium text-[#5E636B]">
-                        Reminder slots:
+                        {t.reminderSlots || 'Reminder slots:'}
                       </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="sv-med-slots">
                         {med.slots?.map((slot) => {
                           const slotKey = `${mIdx}-${slot}`
                           const isTicked = !!selectedSlots[slotKey]
@@ -263,17 +302,17 @@ export default function MedicineCard({
                           return (
                             <label
                               key={slot}
-                              className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-[#E6E6E1] cursor-pointer hover:border-[#5B52D6]"
+                              className={`sv-med-slot px-2 py-2 rounded-2xl border-[1.5px] border-[#1A1A1A] cursor-pointer ${isTicked ? (slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#E4DFF0]') : 'bg-transparent'}`}
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="sv-med-slot-row">
                                 <input
                                   type="checkbox"
                                   checked={isTicked}
                                   onChange={() => handleToggleSlot(mIdx, slot)}
-                                  className="w-4 h-4 text-[#5B52D6] rounded border-[#E6E6E1] focus:ring-0"
+                                  className="w-4 h-4 shrink-0 text-[#034F46] rounded border-[#E6E6E1] focus:ring-0"
                                 />
-                                <span className="text-xs capitalize font-medium text-[#15171A]">
-                                  {slot}
+                                <span className="text-xs font-medium">
+                                  {slotLabel(slot, t)}
                                 </span>
                               </div>
 
@@ -284,7 +323,7 @@ export default function MedicineCard({
                                   handleTimeChange(mIdx, slot, e.target.value)
                                 }
                                 disabled={!isTicked}
-                                className="text-xs font-mono bg-neutral-50 border border-neutral-200 rounded px-1.5 py-0.5 disabled:opacity-50"
+                                className="sv-med-time text-xs font-mono px-1.5 py-0.5 disabled:opacity-50"
                               />
                             </label>
                           )
@@ -294,10 +333,10 @@ export default function MedicineCard({
                   )}
 
                   {/* Duration picker if null */}
-                  {med.duration_days === null && !med.slots?.includes('as_needed') && (
+                  {med.duration_days == null && !(med.as_needed || med.frequency_code === 'SOS') && (
                     <div className="flex flex-col gap-1.5 pt-1">
-                      <span className="text-xs font-medium text-[#5E636B]">
-                        {t.chooseDuration || 'Choose duration (days):'}
+                      <span className="text-[12.5px] font-bold text-[#B3361A]">
+                        {t.howManyDays || "How many days? The prescription doesn't say."}
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {DURATION_CHIPS.map((days) => (
@@ -305,10 +344,8 @@ export default function MedicineCard({
                             key={days}
                             type="button"
                             onClick={() => handleSetDuration(mIdx, days)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                              duration === days
-                                ? 'bg-[#5B52D6] text-white'
-                                : 'bg-white border border-[#E6E6E1] text-[#15171A]'
+                            className={`h-[34px] min-w-11 px-2.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold ${
+                              duration === days ? 'bg-[#E9B44C]' : 'bg-transparent'
                             }`}
                           >
                             {days}d
@@ -340,8 +377,8 @@ export default function MedicineCard({
           <div className="pt-2">
             <button
               type="button"
-              onClick={handleExportIcs}
-              className="btn-press w-full py-3 bg-[#5B52D6] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#483EB8] transition-colors"
+              onClick={openMedicineCalendar}
+              className="sv-press w-full h-14 bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] font-bold text-[17px] rounded-full flex items-center justify-center gap-2"
             >
               <CalendarIcon className="w-5 h-5" />
               {t.addToCalendar || 'Add to calendar (.ics)'}
@@ -349,6 +386,24 @@ export default function MedicineCard({
           </div>
         </div>
       </Sheet>
+      <CalendarEditSheet
+        isOpen={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        t={t}
+        title={calTitle}
+        date={calDate}
+        time={calTime}
+        alert={calAlert}
+        doses={calDoses.length > 1 ? calDoses : undefined}
+        onChange={(next) => {
+          setCalTitle(next.title)
+          setCalDate(next.date)
+          setCalTime(next.time)
+          setCalAlert(next.alert)
+        }}
+        onDoseTime={(key, time) => setCalDoses((prev) => prev.map((dose) => dose.key === key ? { ...dose, time } : dose))}
+        onAdd={confirmMedicineCalendar}
+      />
     </>
   )
 }

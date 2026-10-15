@@ -7,16 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#F6F6F3',
-        surface: '#FFFFFF',
-        ivory: '#FBF7EF',
-        sand: '#F1EBDD',
-        ink: '#15171A',
-        muted: '#5E636B',
-        line: '#E6E6E1',
+        bg: '#F4F5F2',
+        surface: '#F4F5F2',
+        ivory: '#F4F5F2',
+        sand: '#E2E5E0',
+        ink: '#1A1A1A',
+        muted: '#575B58',
+        line: '#E2E5E0',
         soft: '#F0F0EB',
-        brand: '#146B4E',
-        'brand-soft': '#E3F1EA',
+        brand: '#034F46',
+        'brand-soft': '#CFE5E0',
         'indigo-base': '#1E1838',
         'indigo-tint': '#ECEBFA',
         'indigo-mid': '#5B52D6',
@@ -42,12 +42,13 @@ export default {
         'voice-highlight': '#E4DFFC',
         'warn-bg': '#FFF4DE',
         'warn-ink': '#5A3500',
-        'logo-dot': '#D35A3A',
+        'logo-dot': '#D9603B',
       },
       fontFamily: {
-        heading: ['"Bricolage Grotesque"', 'sans-serif'],
+        heading: ['Fraunces', 'Georgia', 'serif'],
         sans: [
-          'Figtree',
+          'DM Sans',
+          'system-ui',
           '"Noto Sans Tamil"',
           '"Noto Sans Devanagari"',
           '"Noto Sans Kannada"',
@@ -68,8 +69,8 @@ export default {
       },
 
       borderRadius: {
-        card: '22px',
-        sheet: '28px',
+        card: '32px',
+        sheet: '40px',
       },
       keyframes: {
         cardIn: {

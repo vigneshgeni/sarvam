@@ -1,0 +1,373 @@
+{
+  "doc_type": "receipt",
+  "document_type": "receipt",
+  "document_kind": "invoice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Taxable value",
+        "value": "17,795.76",
+        "quote": "17,795.76",
+        "page": 1
+      },
+      {
+        "label": "GST 18%",
+        "value": "3,203.24",
+        "quote": "3,203.24",
+        "page": 1
+      },
+      {
+        "label": "Amount",
+        "value": "20,999.00",
+        "quote": "20,999.00",
+        "page": 1
+      },
+      {
+        "label": "Taxable value",
+        "value": "17,795.76",
+        "quote": "Rs. 17,795.76",
+        "page": 1
+      },
+      {
+        "label": "CGST @ 9%",
+        "value": "1,601.62",
+        "quote": "Rs. 1,601.62",
+        "page": 1
+      },
+      {
+        "label": "SGST @ 9%",
+        "value": "1,601.62",
+        "quote": "Rs. 1,601.62",
+        "page": 1
+      },
+      {
+        "label": "Total paid",
+        "value": "20,999.00",
+        "quote": "Rs. 20,999.00",
+        "page": 1
+      }
+    ],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "SUNRISE MOBILES & ELECTRONICS",
+    "invoice_no": "SME/2026/004217",
+    "invoice_date": "08 Oct 2026",
+    "line_items": [
+      {
+        "description": "Zephyr M5 5G (8GB + 128GB), Midnight Blue",
+        "qty": "1",
+        "amount": "20,999.00",
+        "quote": "Zephyr M5 5G (8GB + 128GB), Midnight Blue",
+        "page": 1
+      }
+    ],
+    "taxable_value": "17,795.76",
+    "taxes": [
+      {
+        "label": "GST 18%",
+        "value": "3,203.24",
+        "quote": "GST 18% 3,203.24",
+        "page": 1
+      },
+      {
+        "label": "CGST @ 9%",
+        "value": "1,601.62",
+        "quote": "CGST @ 9% Rs. 1,601.62",
+        "page": 1
+      },
+      {
+        "label": "SGST @ 9%",
+        "value": "1,601.62",
+        "quote": "SGST @ 9% Rs. 1,601.62",
+        "page": 1
+      }
+    ],
+    "total": "20,999.00",
+    "paid_or_due": "paid",
+    "warranty_until": "07 Oct 2027",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "SUNRISE MOBILES & ELECTRONICS-இன் வரி ரசீது",
+  "report_title": "வரி ரசீது",
+  "report_date": "08 Oct 2026",
+  "report_date_iso": "2026-10-08",
+  "language": "ta",
+  "letter_date": "2026-10-08",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "SUNRISE MOBILES & ELECTRONICS-இடமிருந்து மொபைல் போன் வாங்கியதற்கான வரி ரசீது.",
+    "key_values": [
+      {
+        "label": "ரசீது எண்",
+        "value": "SME/2026/004217",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "ரசீது தேதி",
+        "value": "08 Oct 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "மொத்தம் செலுத்தியது",
+        "value": "Rs. 20,999.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "உத்தரவாதம் செல்லும் வரை",
+        "value": "07 Oct 2027",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "இது SUNRISE MOBILES & ELECTRONICS-இடமிருந்து ஒரு மொபைல் போன் வாங்கியதற்கான வரி ரசீது.",
+    "மொத்தமாக செலுத்திய தொகை ரூ. 20,999.00.",
+    "இந்த பொருளுக்கான உத்தரவாதம் ரசீது தேதியிலிருந்து 12 மாதங்களுக்கு, அதாவது அக்டோபர் 7, 2027 வரை செல்லும்."
+  ],
+  "spoken_summary": "இது SUNRISE MOBILES & ELECTRONICS-இன் வரி ரசீது தொடர்பான ஒரு அதிகாரப்பூர்வ ஆவணம். முக்கிய விவரங்களை சரிபார்க்கவும். முழு உத்தரவாதத்தைப் பெற, வாங்கிய 30 நாட்களுக்குள், அதாவது 2026 நவம்பர் 7-க்குள் பிராண்டின் செயலியில் உத்தரவாதத்தைப் பதிவு செய்யவும்.",
+  "actions": [
+    {
+      "text": "முழு உத்தரவாதத்தைப் பெற, வாங்கிய 30 நாட்களுக்குள் பிராண்டின் செயலியில் உத்தரவாதத்தைப் பதிவு செய்யவும்.",
+      "due_date": "2026-11-07",
+      "deadline_rule": "வாங்கிய 30 நாட்களுக்குள்",
+      "deadline_days": 30,
+      "deadline_anchor": "letter_date",
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "Register the warranty on the brand's app within 30 days of purchase, otherwise only the\n6-month standard cover applies.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    },
+    {
+      "text": "பொருளை வாங்கிய 48 மணி நேரத்திற்குள் ஏதேனும் குறைபாடுகள் இருந்தால், இந்த ரசீது மற்றும் அசல் பெட்டியுடன் கடைக்குத் தெரிவித்து மாற்றிக் கொள்ளவும்.",
+      "due_date": "2026-10-10",
+      "deadline_rule": "வாங்கிய 48 மணி நேரத்திற்குள்",
+      "deadline_days": 2,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "Out-of-box defect: report to the store within 48 hours of purchase with this invoice and the\noriginal box for a replacement.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "உடல் ரீதியான சேதம், திரவ சேதம் அல்லது அங்கீகரிக்கப்படாத நபர்களால் செய்யப்பட்ட பழுதுபார்ப்புகளுக்கு உத்தரவாதம் பொருந்தாது.",
+      "quote": "Warranty does not cover physical damage, liquid damage or repairs by unauthorised persons.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    },
+    {
+      "text": "விற்கப்பட்ட பொருட்கள் திரும்பப் பெறவோ அல்லது பணத்தைத் திரும்பப் பெறவோ முடியாது.",
+      "quote": "Goods once sold are not returnable or refundable.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "ரசீது எண் SME/2026/004217.",
+      "quote": "SME/2026/004217",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ரசீது தேதி 08 அக்டோபர் 2026.",
+      "quote": "08 Oct 2026",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "வாடிக்கையாளர் பெயர் Meena Subramanian.",
+      "quote": "Meena Subramanian",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "பில் முகவரி 22, Gandhi Nagar, Coimbatore 641 012.",
+      "quote": "22, Gandhi Nagar, Coimbatore 641 012",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "வாங்கிய பொருள் Zephyr M5 5G (8GB + 128GB), Midnight Blue.",
+      "quote": "Zephyr M5 5G (8GB + 128GB), Midnight Blue",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "IMEI எண் 356000000012345.",
+      "quote": "356000000012345",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "மொத்தமாக செலுத்திய தொகை ரூ. 20,999.00.",
+      "quote": "Rs. 20,999.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "பணம் செலுத்தும் முறை UPI, குறிப்பு எண் 6021 7788 3145.",
+      "quote": "UPI (ref 6021 7788 3145)",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "உத்தரவாதம் 07 அக்டோபர் 2027 வரை செல்லும்.",
+      "quote": "07 Oct 2027",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "கடை முகவரி",
+      "address": "14, Lake View Road, Coimbatore 641 001",
+      "quote": "14, Lake View Road, Coimbatore 641 001",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "பில் முகவரி",
+      "address": "22, Gandhi Nagar, Coimbatore 641 012",
+      "quote": "22, Gandhi Nagar, Coimbatore 641 012",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "ஆதரவு மின்னஞ்சல்",
+      "value": "support@sunrisemobiles.example",
+      "quote": "support@sunrisemobiles.example",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "ஆதரவு தொலைபேசி",
+      "value": "0422-000-0000",
+      "quote": "0422-000-0000",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 11,
+    "check_original": 0,
+    "calculated": 2
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "SUNRISE MOBILES & ELECTRONICS\n14, Lake View Road, Coimbatore 641 001  |  GSTIN 33ABCDE1234F1Z5 (sample)\nTAX INVOICE\nInvoice No\nSME/2026/004217\nInvoice Date\n08 Oct 2026\nCustomer\nMeena Subramanian\nPhone\n98xxxxxx21\nBilling address\n22, Gandhi Nagar, Coimbatore 641 012\nItem\nQty\nTaxable value\nGST 18%\nAmount\nZephyr M5 5G (8GB + 128GB), Midnight Blue\n1\n17,795.76\n3,203.24\n20,999.00\nIMEI 356000000012345  |  HSN 8517\nTaxable value\nRs. 17,795.76\nCGST @ 9%\nRs. 1,601.62\nSGST @ 9%\nRs. 1,601.62\nTotal paid\nRs. 20,999.00\nPayment mode\nUPI (ref 6021 7788 3145)\nWarranty and return terms\n1. Warranty: 12 months from the date of invoice. Warranty is valid until 07 Oct 2027.\n2. Register the warranty on the brand's app within 30 days of purchase, otherwise only the\n6-month standard cover applies.\n3. Out-of-box defect: report to the store within 48 hours of purchase with this invoice and the\noriginal box for a replacement.\n4. Warranty does not cover physical damage, liquid damage or repairs by unauthorised persons.\n5. Goods once sold are not returnable or refundable.\nFor queries: support@sunrisemobiles.example  |  0422-000-0000\nSAMPLE DOCUMENT - FICTIONAL. Names, numbers and organisations are invented for demonstration only.\n",
+  "protected_terms": [
+    "SUNRISE MOBILES & ELECTRONICS",
+    "14, Lake View Road, Coimbatore 641 001",
+    "GSTIN 33ABCDE1234F1Z5",
+    "SME/2026/004217",
+    "Meena Subramanian",
+    "98xxxxxx21",
+    "22, Gandhi Nagar, Coimbatore 641 012",
+    "Zephyr M5 5G (8GB + 128GB), Midnight Blue",
+    "356000000012345",
+    "HSN 8517",
+    "6021 7788 3145",
+    "support@sunrisemobiles.example",
+    "0422-000-0000"
+  ]
+}

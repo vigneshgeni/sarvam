@@ -510,7 +510,10 @@ def names_after_labels(text: str) -> List[str]:
 
 # Role words that introduce a person. Longer phrases come first.
 _ROLE_WORDS = (
+    "registered owner",
+    "vehicle owner",
     "account holder",
+    "owner",
     "complainant",
     "petitioner",
     "respondent",
@@ -534,6 +537,10 @@ _ROLE_WORDS = (
     "मरीज",
     "रोगी",
     "वादी",
+    "पंजीकृत मालिक",
+    "रजिस्टर्ड मालिक",
+    "वाहन मालिक",
+    "मालिक",
     "குற்றவாளி",
     "புகார்தாரர்",
     "எதிர்மனுதாரர்",
@@ -545,6 +552,9 @@ _ROLE_WORDS = (
     "நாமினி",
     "சாட்சி",
     "வாதி",
+    "பதிவுசெய்யப்பட்ட உரிமையாளர்",
+    "வாகன உரிமையாளர்",
+    "உரிமையாளர்",
     "నిందితుడు",
     "దరఖాస్తుదారు",
     "అభియుక్తుడు",
@@ -556,6 +566,9 @@ _ROLE_WORDS = (
     "సాక్షి",
     "వాది",
     "రోగి",
+    "నమోదైన యజమాని",
+    "వాహన యజమాని",
+    "యజమాని",
     "ದೂರುದಾರ",
     "ಖಾತೆದಾರ",
     "ಪ್ರತಿವಾದಿ",
@@ -565,6 +578,9 @@ _ROLE_WORDS = (
     "ಸಾಕ್ಷಿ",
     "ವಾದಿ",
     "ರೋಗಿ",
+    "ನೋಂದಾಯಿತ ಮಾಲೀಕ",
+    "ವಾಹನ ಮಾಲೀಕ",
+    "ಮಾಲೀಕ",
     "പരാതിക്കാരൻ",
     "ഹർജിക്കാരൻ",
     "പ്രതിവാദി",
@@ -574,7 +590,13 @@ _ROLE_WORDS = (
     "രോഗി",
     "വാദി",
     "നോമിനി",
+    "രജിസ്റ്റർ ചെയ്ത ഉടമ",
+    "വാഹന ഉടമ",
+    "ഉടമ",
     "तक्रारदार",
+    "नोंदणीकृत मालक",
+    "वाहन मालक",
+    "मालक",
     "साक्षीदार",
     "नामनिर्देशित",
     "खातेदार",
@@ -589,6 +611,9 @@ _ROLE_WORDS = (
     "মনোনীত",
     "রোগী",
     "বাদী",
+    "নিবন্ধিত মালিক",
+    "যানবাহনের মালিক",
+    "মালিক",
     "ଅଭିଯୋଗକାରୀ",
     "ଆବେଦନକାରୀ",
     "ପ୍ରତିବାଦୀ",
@@ -598,10 +623,13 @@ _ROLE_WORDS = (
     "ସାକ୍ଷୀ",
     "ରୋଗୀ",
     "ବାଦୀ",
+    "ପଞ୍ଜୀକୃତ ମାଲିକ",
+    "ଯାନ ମାଲିକ",
+    "ମାଲିକ",
 )
 _ROLE_PARTICLE = {
     "का", "की", "के", "को", "में", "है", "हैं", "ने", "से", "पर", "लिए", "और", "या",
-    "இன்", "மற்றும்", "గారి", "ആണ്", "ಆಗಿದೆ", "आहे", "এর", "ଙ୍କ",
+    "இன்", "மற்றும்", "గారి", "ആണ്", "ಆಗಿದೆ", "आहे", "आहेत", "यांना", "यांनी", "এর", "ଙ୍କ",
 }
 _ROLE_STOP = {
     "the", "court", "city", "notice", "summons", "shall", "should", "must",
@@ -799,6 +827,31 @@ def normalize_text_for_evidence(text: str) -> str:
     t = re.sub(r"(?<=\d)/(?=\d)", "-", t)
     t = re.sub(r"\b(lacs?|lakhs?)\b", "lakh", t, flags=re.IGNORECASE)
     return collapse_whitespace(t).lower()
+
+
+def match_lab_row(
+    label: str,
+    value: str,
+    quote: str,
+    page: int,
+    pages_text: Optional[List[str]],
+) -> str:
+    """Match a printed lab row. A High/Low row uses its quote. Any other row matches when both its label and value are on the page."""
+    if not pages_text:
+        return "check_original"
+    if quote and quote.strip():
+        return verify_evidence(quote, value or "", page or 1, pages_text)
+    chosen = pages_text
+    if page and 1 <= page <= len(pages_text):
+        chosen = [pages_text[page - 1]]
+    label_text = (label or "").strip().lower()
+    value_text = (value or "").strip()
+    if not label_text or not value_text:
+        return "check_original"
+    for text in chosen:
+        if value_text in text and label_text in text.lower():
+            return "matched"
+    return "check_original"
 
 
 def verify_evidence(

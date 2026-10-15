@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "Old Age Pension Scheme Notice to Pensioners",
+  "report_title": "OFFICE OF THE DISTRICT SOCIAL WELFARE OFFICER (SAMPLE)\nOld Age Pension Scheme — Notice to Pensioners",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "en",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "Submit Life Certificate by 30.11.2026 to avoid pension withholding.",
+    "key_values": [
+      {
+        "label": "Pension ID",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "Name",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "Submission Deadline",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "This notice from the Office of the District Social Welfare Officer informs Smt. Kamala Devi regarding her Old Age Pension.",
+    "Pensioners must submit their Life Certificate on or before 30.11.2026 at the pension-disbursing bank branch or a Common Service Centre (CSC).",
+    "Pension payment of Rs. 1,200 will be withheld starting from December 2026 if the Life Certificate is not submitted on time."
+  ],
+  "spoken_summary": "This is an official document regarding Old Age Pension Scheme Notice to Pensioners. Please review the key details. Submit your Life Certificate at your pension-disbursing bank branch or any Common Service Centre (CSC) carrying your Aadhaar card and pension book, and collect the acknowledgement receipt. by 30 November 2026.",
+  "actions": [
+    {
+      "text": "Submit your Life Certificate at your pension-disbursing bank branch or any Common Service Centre (CSC) carrying your Aadhaar card and pension book, and collect the acknowledgement receipt.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "Monthly pension payment will be withheld from December 2026 if the Life Certificate is not submitted on time.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Pension ID is OAP/BLR/2019/04417.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Beneficiary name is Smt. Kamala Devi.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Monthly pension amount is Rs. 1,200.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

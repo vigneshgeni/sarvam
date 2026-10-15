@@ -101,14 +101,103 @@ export interface MedicineItem {
   duration_days: number | null
   instruction_text: string
   decoded: boolean
+  as_needed?: boolean
   quote?: string
   page?: number
   evidence: 'matched' | 'check_original' | 'calculated'
 }
 
+export interface QuotedField {
+  label: string
+  value: string
+  quote?: string
+  page?: number
+}
+
+export interface DocumentProfile {
+  lab_name?: string | null
+  patient_age_sex?: string | null
+  sample_date?: string | null
+  referred_by?: string | null
+  follow_up?: string | null
+  diagnosis_as_written?: string | null
+  advice_lines?: string[]
+  amounts?: QuotedField[]
+  due_date?: string | null
+  last_date_without_penalty?: string | null
+  how_to_pay?: string[]
+  seller?: string | null
+  invoice_no?: string | null
+  invoice_date?: string | null
+  line_items?: { description: string; qty?: string | null; amount?: string | null }[]
+  taxable_value?: string | null
+  taxes?: QuotedField[]
+  total?: string | null
+  paid_or_due?: string | null
+  warranty_until?: string | null
+  return_window?: string | null
+  claimed?: string | null
+  approved?: string | null
+  deducted?: string | null
+  deduction_reasons?: string[]
+  policy_no?: string | null
+  sum_insured?: string | null
+  premium?: string | null
+  renewal_date?: string | null
+  review_window?: string | null
+  invested?: string | null
+  current_value?: string | null
+  gain?: string | null
+  gain_calculated?: boolean
+  units?: string | null
+  nav?: string | null
+  nav_date?: string | null
+  folio?: string | null
+  next_sip_date?: string | null
+  opening?: string | null
+  closing?: string | null
+  credits_total?: string | null
+  debits_total?: string | null
+  gross?: string | null
+  deductions?: string | null
+  net_pay?: string | null
+  period?: string | null
+  lender?: string | null
+  loan_type?: string | null
+  loan_account?: string | null
+  sanctioned_amount?: string | null
+  interest_rate?: string | null
+  tenure?: string | null
+  emi_amount?: string | null
+  emi_day_of_month?: number | null
+  first_emi_date?: string | null
+  next_emi_date?: string | null
+  outstanding?: string | null
+  charges?: QuotedField[]
+  agreement_type?: string | null
+  parties?: { role: string; name: string }[]
+  subject?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  term?: string | null
+  rent_or_price?: string | null
+  deposit?: string | null
+  lock_in?: string | null
+  notice_period?: string | null
+  renewal_or_escalation?: string | null
+  penalties?: string[]
+  case_or_notice_no?: string | null
+  hearing_or_deadline?: string | null
+  directions?: string[]
+  consequence?: string | null
+  form_fields?: { name: string; instruction?: string; quote?: string; page?: number }[]
+}
+
 export interface ExplainResponse {
   doc_type: DocType | string
   document_type?: DocType | string
+  document_kind?: string | null
+  profile?: DocumentProfile | null
   title: string
   report_title: string | null
   report_date: string | null
@@ -140,6 +229,7 @@ export interface ExplainResponse {
 
 export interface SectionValue {
   label: string
+  label_printed?: string
   name?: string
   value: string
   unit?: string
@@ -152,6 +242,7 @@ export interface SectionValue {
 
 export interface Section {
   heading: string
+  heading_printed?: string
   title?: string
   page: number
   values: SectionValue[]
@@ -166,6 +257,8 @@ export interface Part {
   part_id: string
   title: string
   document_type: string
+  document_kind?: string | null
+  profile?: DocumentProfile | null
   issuer?: string
   date_iso?: string
   pages: [number, number]
@@ -176,12 +269,21 @@ export interface Part {
   summary_lines?: string[]
 }
 
+export interface AskFact {
+  label: string
+  value: string
+}
+
 export interface AskResponse {
   answer: string
+  points?: string[]
+  steps?: string[]
+  facts?: AskFact[]
+  follow_ups?: string[]
   quote: string | null
   page: number | null
   evidence: 'matched' | 'check_original' | 'none'
-  answered_from: 'document' | 'summary'
+  answered_from: 'document' | 'summary' | 'general'
   not_found: boolean
   language: string
 }
@@ -193,6 +295,8 @@ export interface A11ySettings {
   highContrast: boolean
   reduceMotion: boolean
   largerTapTargets: boolean
+  readAloud?: boolean
+  slowVoice?: boolean
 }
 
 export interface ErrorResponse {
@@ -234,16 +338,34 @@ export interface MultiReportCard {
   status: 'pending' | 'ready' | 'error'
 }
 
+export interface AskTurn {
+  question: string
+  answer: string
+  points?: string[]
+  steps?: string[]
+  facts?: AskFact[]
+  follow_ups?: string[]
+  quote?: string
+  page?: number | null
+  not_found?: boolean
+  evidence?: string
+  answered_from?: string
+  lang?: string
+}
+
 export interface RecentResult {
   id: string
   timestamp: number
   title: string
+  displayName?: string
   fileCount: number
   fileNames: string[]
   lang: string
   result: ExplainResponse
   translations?: Record<string, ExplainResponse>
   multiReports?: MultiReportCard[]
+  asks?: AskTurn[]
+  activity?: import('./utils/activity').DocumentActivity
 }
 
 export type AppScreen = 'home' | 'tray' | 'reading' | 'result'

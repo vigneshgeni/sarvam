@@ -1,0 +1,301 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "document_kind": "prescription",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "62 / F",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "20/10/2026",
+    "diagnosis_as_written": "Throat infection",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "Shanthi Family Clinic कडून दिलेले औषधांचे प्रिस्क्रिप्शन",
+  "report_title": null,
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "mr",
+  "letter_date": "2026-10-13",
+  "source_kind": "photo",
+  "glance": {
+    "headline": "घशाच्या संसर्गावरील उपचारासाठी आणि औषधांसाठी डॉक्टरांचे प्रिस्क्रिप्शन",
+    "key_values": [
+      {
+        "label": "रुग्णाचे नाव",
+        "value": "Lakshmi Narayan",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "तारीख",
+        "value": "13/10/2026",
+        "kind": "date",
+        "evidence": "check_original"
+      },
+      {
+        "label": "निदान",
+        "value": "Throat infection",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "पुन्हा तपासणीची तारीख",
+        "value": "20/10/2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "हे Shanthi Family Clinic मधील Dr. S. Rao यांनी Lakshmi Narayan यांच्यासाठी 13/10/2026 रोजी दिलेले औषधांचे प्रिस्क्रिप्शन आहे.",
+    "घशाचा संसर्ग (इन्फेक्शन) झाल्याचे निदान झाले आहे, आणि अँटीबायोटिक, वेदनाशामक व ॲलर्जीवरील गोळीसह तीन औषधे लिहून दिली आहेत.",
+    "पुढील तपासणीसाठी 20/10/2026 रोजी भेटायचे ठरले आहे."
+  ],
+  "spoken_summary": "हे Shanthi Family Clinic मधील Dr. S. Rao यांनी Lakshmi Narayan यांच्यासाठी दिलेले प्रिस्क्रिप्शन आहे. तुम्हाला घशाचा संसर्ग झाला आहे. तुम्हाला तीन औषधे घ्यावी लागतील: Amoxicillin दिवसातून तीन वेळा 7 दिवस, Paracetamol दिवसातून दोन वेळा 5 दिवस, आणि Cetirizine रात्री झोपताना 5 दिवस. पुढील तपासणीसाठी 20 ऑक्टोबर 2026 रोजी पुन्हा जा.",
+  "actions": [
+    {
+      "text": "20/10/2026 रोजी डॉक्टरांकडे पुन्हा तपासणीसाठी जा",
+      "due_date": "2026-10-20",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Review on 20/10/2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Amoxicillin 500 mg जेवणानंतर दिवसातून तीन वेळा (सकाळी, दुपारी, रात्री) 7 दिवस घ्या",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "1. Tab. Amoxicillin 500 mg 1 - 1 - 1 x 7 days after food",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Paracetamol 650 mg जेवणानंतर दिवसातून दोन वेळा (सकाळी आणि रात्री) 5 दिवस घ्या",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "2. Tab. Paracetamol 650 mg 1 - 0 - 1 x 5 days after food",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Cetirizine 10 mg रात्री झोपताना दिवसातून एकदा 5 दिवस घ्या",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "3. Tab. Cetirizine 10 mg 0 - 0 - 1 x 5 days at bedtime",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [],
+  "facts": [
+    {
+      "text": "रुग्ण Lakshmi Narayan, 62 वर्षांची महिला आहे",
+      "quote": "Name: Lakshmi Narayan Age/Sex: 62 / F",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "निदान: घशाचा संसर्ग (Throat infection)",
+      "quote": "Dx: Throat infection",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "डॉक्टरांचा नोंदणी क्रमांक KMC 00000 आहे",
+      "quote": "Reg. No. KMC 00000",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "क्लिनिकचा पत्ता",
+      "address": "14, 1st Main, Rayasandra, Bengaluru 560099",
+      "quote": "14, 1st Main, Rayasandra, Bengaluru 560099",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "क्लिनिकचा फोन नंबर",
+      "value": "080 2222 3344",
+      "quote": "Ph: 080 2222 3344",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "medicines": [
+    {
+      "name": "Tab. Amoxicillin",
+      "strength_text": "500 mg",
+      "frequency_raw": "1 - 1 - 1",
+      "frequency_code": "1-1-1",
+      "slots": [
+        "morning",
+        "afternoon",
+        "night"
+      ],
+      "food_timing": "after_food",
+      "duration_days": 7,
+      "instruction_text": "जेवणानंतर दिवसातून तीन वेळा एक गोळी 7 दिवस घ्या.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "1. Tab. Amoxicillin 500 mg\n1 - 1 - 1 x 7 days after food",
+      "page": 1,
+      "evidence": "check_original"
+    },
+    {
+      "name": "Tab. Paracetamol",
+      "strength_text": "650 mg",
+      "frequency_raw": "1 - 0 - 1",
+      "frequency_code": "1-0-1",
+      "slots": [
+        "morning",
+        "night"
+      ],
+      "food_timing": "after_food",
+      "duration_days": 5,
+      "instruction_text": "जेवणानंतर सकाळी आणि रात्री एक गोळी 5 दिवस घ्या.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "2. Tab. Paracetamol 650 mg\n1 - 0 - 1 x 5 days after food",
+      "page": 1,
+      "evidence": "check_original"
+    },
+    {
+      "name": "Tab. Cetirizine",
+      "strength_text": "10 mg",
+      "frequency_raw": "0 - 0 - 1",
+      "frequency_code": "0-0-1",
+      "slots": [
+        "night"
+      ],
+      "food_timing": null,
+      "duration_days": 5,
+      "instruction_text": "रात्री झोपताना एक गोळी 5 दिवस घ्या.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "3. Tab. Cetirizine 10 mg\n0 - 0 - 1 x 5 days at bedtime",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 7,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Shanthi Family Clinic",
+    "Dr. S. Rao",
+    "KMC 00000",
+    "Lakshmi Narayan",
+    "Bengaluru",
+    "Rayasandra",
+    "080 2222 3344"
+  ]
+}

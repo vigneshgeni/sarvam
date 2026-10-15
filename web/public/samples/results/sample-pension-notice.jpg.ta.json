@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "முதியோர் ஓய்வூதியத் திட்டம் (Old Age Pension Scheme) - ஓய்வூதியதாரர்களுக்கான அறிவிப்பு",
+  "report_title": "மாவட்ட சமூக நல அலுவலர் அலுவலகம் (மாதிரி)\nமுதியோர் ஓய்வூதியத் திட்டம் (Old Age Pension Scheme) — ஓய்வூதியதாரர்களுக்கான அறிவிப்பு",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "ta",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "ஓய்வூதியம் நிறுத்தப்படுவதைத் தவிர்க்க 30.11.2026-க்குள் வாழ்நாள் சான்றிதழை சமர்ப்பிக்கவும்.",
+    "key_values": [
+      {
+        "label": "ஓய்வூதிய அடையாள எண்",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "மாதாந்திர ஓய்வூதியத் தொகை",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "பெயர்",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "சமர்ப்பிக்க வேண்டிய கடைசி தேதி",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "மாவட்ட சமூக நல அலுவலர் அலுவலகத்திலிருந்து வந்துள்ள இந்த அறிவிப்பு, Smt. Kamala Devi அவர்களுக்கு அவரது முதியோர் ஓய்வூதியம் பற்றி தெரிவிக்கிறது.",
+    "ஓய்வூதியதாரர்கள் தங்களின் வாழ்நாள் சான்றிதழை 30.11.2026 அன்று அல்லது அதற்கு முன் ஓய்வூதியம் வழங்கும் வங்கி கிளையிலோ அல்லது பொது சேவை மையத்திலோ (CSC) சமர்ப்பிக்க வேண்டும்.",
+    "வாழ்நாள் சான்றிதழை குறித்த நேரத்தில் சமர்ப்பிக்காவிட்டால், டிசம்பர் 2026 முதல் ஓய்வூதியத் தொகை ரூ. 1,200 நிறுத்தப்படும்."
+  ],
+  "spoken_summary": "இது முதியோர் ஓய்வூதியத் திட்டம் (Old Age Pension Scheme) ஓய்வூதியதாரர்களுக்கான அறிவிப்பு பற்றிய அதிகாரப்பூர்வ ஆவணம் ஆகும். முக்கிய விவரங்களை கவனியுங்கள். உங்கள் ஆதார் அட்டை மற்றும் ஓய்வூதியப் புத்தகத்தை எடுத்துக்கொண்டு, உங்களுக்கு ஓய்வூதியம் வழங்கும் வங்கி கிளையிலோ அல்லது ஏதேனும் பொது சேவை மையத்திலோ (CSC) உங்கள் வாழ்நாள் சான்றிதழை 30 நவம்பர் 2026-க்குள் சமர்ப்பித்து, ஒப்புதல் ரசீதைப் பெற்றுக்கொள்ளுங்கள்.",
+  "actions": [
+    {
+      "text": "உங்கள் ஆதார் அட்டை மற்றும் ஓய்வூதியப் புத்தகத்தை எடுத்துக்கொண்டு, உங்களுக்கு ஓய்வூதியம் வழங்கும் வங்கி கிளையிலோ அல்லது ஏதேனும் பொது சேவை மையத்திலோ (CSC) உங்கள் வாழ்நாள் சான்றிதழை சமர்ப்பித்து, அதற்கான ஒப்புதல் ரசீதைப் பெற்றுக்கொள்ளவும்.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "வாழ்நாள் சான்றிதழை குறித்த நேரத்தில் சமர்ப்பிக்காவிட்டால், டிசம்பர் 2026 முதல் மாதாந்திர ஓய்வூதியம் நிறுத்தப்படும்.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "ஓய்வூதிய அடையாள எண்: OAP/BLR/2019/04417.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "பயனாளியின் பெயர்: Smt. Kamala Devi.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "மாதாந்திர ஓய்வூதியத் தொகை ரூ. 1,200.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

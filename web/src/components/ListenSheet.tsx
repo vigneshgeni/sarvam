@@ -65,8 +65,16 @@ export default function ListenSheet({
   const [duration, setDuration] = useState(0)
   const [playbackProgress, setPlaybackProgress] = useState(0)
   const [seekPreview, setSeekPreview] = useState<number | null>(null)
-  const [speed, setSpeed] = useState<number>(1.0)
-  const selectedSpeedRef = useRef(1.0)
+  const [speed, setSpeed] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('sarvam.a11y')
+      if (raw && JSON.parse(raw).slowVoice) return 0.9
+    } catch {
+      /* ignore */
+    }
+    return 1.0
+  })
+  const selectedSpeedRef = useRef(speed)
   const [gender, setGender] = useState<'female' | 'male'>(() => {
     try {
       return (localStorage.getItem('sarvam.voice') as 'female' | 'male') || 'female'
@@ -695,32 +703,30 @@ export default function ListenSheet({
     >
       <div className="flex flex-col gap-5 pt-1">
         {/* Top Header Mode Switcher */}
-        <div className="flex items-center justify-between">
-          <div className="bg-[#F0F0EB] p-1 rounded-xl flex items-center">
+        <div className="flex items-center justify-between gap-2.5">
+          <div role="tablist" className="flex p-[3px] rounded-3xl border-[1.5px] border-[#1A1A1A]">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'quick'}
               onClick={() => {
                 if (mode !== 'quick') setMode('quick')
               }}
-              aria-pressed={mode === 'quick'}
-              className={`focus-ring px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                mode === 'quick'
-                  ? 'bg-white text-[#15171A] shadow-sm'
-                  : 'text-[#5E636B] hover:text-[#15171A]'
+              className={`h-[38px] px-4 rounded-[19px] border-0 text-[14px] ${
+                mode === 'quick' ? 'bg-[#E9B44C] font-bold text-[#1A1A1A]' : 'bg-transparent font-semibold text-[#575B58]'
               }`}
             >
               {t.quickSummary || 'Quick summary'}
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'full'}
               onClick={() => {
                 if (mode !== 'full') setMode('full')
               }}
-              aria-pressed={mode === 'full'}
-              className={`focus-ring px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                mode === 'full'
-                  ? 'bg-white text-[#15171A] shadow-sm'
-                  : 'text-[#5E636B] hover:text-[#15171A]'
+              className={`h-[38px] px-4 rounded-[19px] border-0 text-[14px] ${
+                mode === 'full' ? 'bg-[#E9B44C] font-bold text-[#1A1A1A]' : 'bg-transparent font-semibold text-[#575B58]'
               }`}
             >
               {t.fullDetails || 'Full details'}
@@ -730,10 +736,10 @@ export default function ListenSheet({
           <button
             type="button"
             onClick={handleClose}
-            className="focus-ring p-2 text-[#5E636B] hover:text-[#15171A] rounded-full hover:bg-[#F0F0EB] transition-colors"
+            className="sv-press w-11 h-11 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center shrink-0"
             aria-label={t.close || 'Close'}
           >
-            <CloseIcon className="w-5 h-5" />
+            <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
 
@@ -760,37 +766,42 @@ export default function ListenSheet({
         )}
 
         {/* The bars show audio activity; the track below shows position. */}
-        <div className="rounded-[22px] bg-[#F3F6F1] px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between gap-3 text-[11px] font-semibold tracking-wide text-[#52665C]">
-            <span className="truncate">{result.title || t.listenBtnLabel || 'Listen'}</span>
-            <span className="shrink-0 tabular-nums">
+        <div className="rounded-[32px] bg-[#1A1A1A] text-[#F4F5F2] p-[18px] flex flex-col gap-3.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span className="w-9 h-9 shrink-0 rounded-full bg-[#E9B44C] flex items-center justify-center text-[#1A1A1A] text-[16px]" aria-hidden="true">♪</span>
+              <span className="text-[14px] font-semibold truncate">{result.title || t.listenBtnLabel || 'Listen'}</span>
+            </span>
+            <span className="shrink-0 text-[13px] text-[#C4C8C3] tabular-nums">
               {isBuffering
                 ? (t.preparingAudio || 'Preparing audio...')
                 : `${formatTime(currentTime)} / ${formatTime(duration)}`}
             </span>
           </div>
 
-          <div className="flex h-24 items-center justify-center gap-[3px] overflow-hidden" aria-hidden="true">
-            {barHeights.map((height, index) => (
-              <span
-                key={index}
-                className="min-w-0 flex-1 rounded-full"
-                style={{
-                  height: `${height}px`,
-                  backgroundColor: isPlaying ? '#245A49' : '#A5B9AC',
-                  transition: 'background-color 160ms ease',
-                }}
-              />
-            ))}
+          <div className="flex h-16 items-center gap-1 overflow-hidden" aria-hidden="true">
+            {barHeights.map((height, index) => {
+              const played = index / Math.max(1, barHeights.length) < visibleProgress
+              return (
+                <span
+                  key={index}
+                  className="min-w-0 flex-1 rounded-[3px]"
+                  style={{
+                    height: `${Math.max(8, Math.min(60, height))}px`,
+                    backgroundColor: played ? '#D9603B' : index < barHeights.length / 2 ? '#E9B44C' : '#525754',
+                  }}
+                />
+              )
+            })}
           </div>
 
-          <div className="relative flex h-9 items-center">
-            <div className="pointer-events-none absolute left-0 right-0 h-1 rounded-full bg-[#D8E2D9]">
+          <div className="relative flex h-6 items-center">
+            <div className="pointer-events-none absolute left-0 right-0 h-1 rounded-[2px] bg-[#383B39]">
               <div
-                className="h-full rounded-full"
+                className="h-1 rounded-[2px]"
                 style={{
                   width: `${Math.min(100, Math.max(0, visibleProgress * 100))}%`,
-                  backgroundColor: 'var(--color-violet-text, #6D45C9)',
+                  backgroundColor: '#D9603B',
                 }}
               />
             </div>
@@ -826,12 +837,12 @@ export default function ListenSheet({
         </div>
 
         {/* Live Captions */}
-        <div className="flex min-h-[102px] flex-col justify-center gap-2 px-1" aria-live="polite">
-          <p className="text-[17px] font-medium leading-[1.55] text-[#18372D]">
+        <div className="flex min-h-[88px] flex-col gap-1.5" aria-live="polite">
+          <p className="sv-display m-0 text-[26px] leading-[1.15] text-[#1A1A1A]">
             {currentSentence}
           </p>
           {nextSentence && (
-            <p className="line-clamp-1 text-sm leading-normal text-[#8A8792]">
+            <p className="m-0 text-[16px] leading-[1.4] text-[#575B58] line-clamp-2">
               {nextSentence}
             </p>
           )}
@@ -840,27 +851,25 @@ export default function ListenSheet({
         {/* Player Controls */}
         <div className="flex flex-col gap-5 pt-1">
           {/* Main Controls Row */}
-          <div className="flex items-center justify-center gap-9">
-            {/* Replay 10s */}
+          <div className="flex items-center justify-center gap-7">
             <button
               type="button"
               onClick={handleReplay10s}
-              className="btn-press focus-ring flex h-12 w-12 items-center justify-center rounded-full text-[#625D70] hover:bg-[#F3F1F6] hover:text-[#1E1838] transition-colors"
+              className="sv-press w-[52px] h-[52px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
               aria-label={t.replay10s || 'Replay 10 seconds'}
             >
-              <ReplayIcon className="h-6 w-6" />
+              <ReplayIcon className="h-[22px] w-[22px]" />
             </button>
 
-            {/* Play/Pause */}
             <button
               type="button"
               onClick={handleTogglePlay}
               disabled={isBuffering || concreteLang === 'or'}
-              className="btn-press focus-ring flex h-16 w-16 items-center justify-center rounded-full bg-[#183E32] text-white shadow-[0_8px_20px_rgba(24,62,50,0.14)] transition-colors hover:bg-[#245A49] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="sv-press w-[78px] h-[78px] rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] flex items-center justify-center disabled:opacity-40"
               aria-label={isPlaying ? t.pause || 'Pause' : t.play || 'Play'}
             >
               {isBuffering ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-[#1A1A1A]/30 border-t-[#1A1A1A] rounded-full animate-spin" />
               ) : isPlaying ? (
                 <PauseIcon className="w-7 h-7" />
               ) : (
@@ -868,7 +877,6 @@ export default function ListenSheet({
               )}
             </button>
 
-            {/* Stop Button */}
             <button
               type="button"
               onClick={() => {
@@ -878,25 +886,25 @@ export default function ListenSheet({
                 setSeekPreview(null)
                 setActiveSentenceIndex(0)
               }}
-              className="btn-press focus-ring flex h-12 w-12 items-center justify-center rounded-full text-[#625D70] hover:bg-[#F3F1F6] hover:text-[#1E1838] transition-colors"
+              className="sv-press w-[52px] h-[52px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
               aria-label={t.stop || 'Stop'}
             >
-              <span className="h-4 w-4 rounded-[3px] bg-current" />
+              <span className="h-4 w-4 rounded-[3px] bg-[#1A1A1A]" />
             </button>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[#EEECEF] pt-4">
+          <div className="flex flex-col gap-2.5 border-t-[1.5px] border-[#E2E5E0] pt-3.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-[#656077]">{t.voice || 'Voice'}</span>
-              <div className="flex items-center rounded-xl bg-[#F3F2F0] p-1">
+              <span className="text-[15px] font-semibold">{t.voice || 'Voice'}</span>
+              <div className="flex p-[3px] rounded-[22px] border-[1.5px] border-[#1A1A1A]">
                 {(['female', 'male'] as const).map((choice) => (
                   <button
                     key={choice}
                     type="button"
                     onClick={() => handleGenderToggle(choice)}
                     aria-pressed={gender === choice}
-                    className={`focus-ring rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      gender === choice ? 'bg-white text-[#1E1838] shadow-sm' : 'text-[#656077]'
+                    className={`h-[34px] px-4 rounded-[17px] border-0 text-[14px] ${
+                      gender === choice ? 'bg-[#E9B44C] font-bold text-[#1A1A1A]' : 'bg-transparent font-semibold text-[#575B58]'
                     }`}
                   >
                     {choice === 'female' ? t.voiceFemale || 'Female' : t.voiceMale || 'Male'}
@@ -905,19 +913,23 @@ export default function ListenSheet({
               </div>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-[#656077]">{t.speed || 'Speed'}</span>
-              <div className="flex items-center gap-1 rounded-xl bg-[#F3F2F0] p-1">
-                {[0.9, 1.0, 1.15].map((value) => (
+              <span className="text-[15px] font-semibold">{t.speed || 'Speed'}</span>
+              <div className="flex p-[3px] rounded-[22px] border-[1.5px] border-[#1A1A1A]">
+                {([
+                  [0.9, t.speedSlow || 'Slow'],
+                  [1, t.speedNormal || 'Normal'],
+                  [1.15, t.speedFast || 'Fast'],
+                ] as const).map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => handleSpeedSelect(value)}
                     aria-pressed={speed === value}
-                    className={`focus-ring rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                      speed === value ? 'bg-white text-[#1E1838] shadow-sm' : 'text-[#656077]'
+                    className={`h-[34px] px-3.5 rounded-[17px] border-0 text-[14px] ${
+                      speed === value ? 'bg-[#E9B44C] font-bold text-[#1A1A1A]' : 'bg-transparent font-semibold text-[#575B58]'
                     }`}
                   >
-                    {value}x
+                    {label}
                   </button>
                 ))}
               </div>

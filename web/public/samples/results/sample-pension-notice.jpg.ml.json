@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "വാർദ്ധക്യ പെൻഷൻ പദ്ധതി (Old Age Pension Scheme) പെൻഷൻകാർക്കുള്ള അറിയിപ്പ്",
+  "report_title": "ജില്ലാ സാമൂഹിക ക്ഷേമ ഓഫീസറുടെ കാര്യാലയം (മാതൃക)\nവാർദ്ധക്യ പെൻഷൻ പദ്ധതി (Old Age Pension Scheme) — പെൻഷൻകാർക്കുള്ള അറിയിപ്പ്",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "ml",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "പെൻഷൻ തടഞ്ഞുവെക്കാതിരിക്കാൻ 30.11.2026-നകം ലൈഫ് സർട്ടിഫിക്കറ്റ് സമർപ്പിക്കുക.",
+    "key_values": [
+      {
+        "label": "പെൻഷൻ ഐഡി",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "പ്രതിമാസ പെൻഷൻ തുക",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "പേര്",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "സമർപ്പിക്കേണ്ട അവസാന തീയതി",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "ജില്ലാ സാമൂഹിക ക്ഷേമ ഓഫീസറുടെ കാര്യാലയത്തിൽ നിന്നുള്ള ഈ അറിയിപ്പ് Smt. Kamala Devi യെ അവരുടെ വാർദ്ധക്യ പെൻഷൻ സംബന്ധിച്ച വിവരം അറിയിക്കുന്നു.",
+    "പെൻഷൻ ലഭിക്കുന്നവർ അവരുടെ ലൈഫ് സർട്ടിഫിക്കറ്റ് 30.11.2026-ന് മുമ്പോ ആ തീയതിയിലോ പെൻഷൻ നൽകുന്ന ബാങ്ക് ശാഖയിലോ ഒരു പൊതു സേവന കേന്ദ്രത്തിലോ (Common Service Centre - CSC) സമർപ്പിക്കണം.",
+    "ലൈഫ് സർട്ടിഫിക്കറ്റ് സമയത്ത് നൽകിയില്ലെങ്കിൽ, 2026 ഡിസംബർ മുതൽ 1,200 രൂപയുടെ പെൻഷൻ തുക തടഞ്ഞുവെക്കും."
+  ],
+  "spoken_summary": "ഇത് വാർദ്ധക്യ പെൻഷൻ പദ്ധതി (Old Age Pension Scheme) പെൻഷൻകാർക്കുള്ള അറിയിപ്പ് സംബന്ധിച്ച ഔദ്യോഗിക രേഖയാണ്. പ്രധാന വിവരങ്ങൾ ദയവായി പരിശോധിക്കുക. നിങ്ങളുടെ ആധാർ കാർഡും പെൻഷൻ ബുക്കും സഹിതം പെൻഷൻ ലഭിക്കുന്ന ബാങ്ക് ശാഖയിലോ ഏതെങ്കിലും പൊതു സേവന കേന്ദ്രത്തിലോ (Common Service Centre - CSC) പോയി 30 നവംബർ 2026-നകം ലൈഫ് സർട്ടിഫിക്കറ്റ് സമർപ്പിച്ച് രസീത് വാങ്ങുക.",
+  "actions": [
+    {
+      "text": "നിങ്ങളുടെ ആധാർ കാർഡും പെൻഷൻ ബുക്കും സഹിതം പെൻഷൻ ലഭിക്കുന്ന ബാങ്ക് ശാഖയിലോ ഏതെങ്കിലും പൊതു സേവന കേന്ദ്രത്തിലോ (Common Service Centre - CSC) പോയി ലൈഫ് സർട്ടിഫിക്കറ്റ് സമർപ്പിച്ച് രസീത് വാങ്ങുക.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "ലൈഫ് സർട്ടിഫിക്കറ്റ് സമയത്ത് സമർപ്പിച്ചില്ലെങ്കിൽ, 2026 ഡിസംബർ മുതൽ പ്രതിമാസ പെൻഷൻ തുക തടഞ്ഞുവെക്കും.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "പെൻഷൻ ഐഡി OAP/BLR/2019/04417 ആകുന്നു.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ഗുണഭോക്താവിന്റെ പേര് Smt. Kamala Devi ആകുന്നു.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "പ്രതിമാസ പെൻഷൻ തുക 1,200 രൂപ ആകുന്നു.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

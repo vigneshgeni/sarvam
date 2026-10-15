@@ -18,8 +18,8 @@ test('PWA Audit - Web Manifest configuration', () => {
   assert.equal(manifest.short_name, 'Sarvam')
   assert.equal(manifest.start_url, '/')
   assert.equal(manifest.display, 'standalone')
-  assert.equal(manifest.theme_color, '#146B4E')
-  assert.equal(manifest.background_color, '#F6F6F3')
+  assert.equal(manifest.theme_color, '#F4F5F2')
+  assert.equal(manifest.background_color, '#F4F5F2')
 
   const iconSizes = manifest.icons.map((i) => i.sizes)
   assert.ok(iconSizes.includes('192x192'), 'Manifest must include 192x192 icon')

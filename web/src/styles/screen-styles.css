@@ -1,0 +1,156 @@
+/* Every screen's own CSS, verbatim: keyframes, timings, delays, classes.
+   Port these exactly (rename classes with an sv- prefix if you like; keep every number). */
+
+/* ===== 01 0a · Welcome (first open) (verbatim from source/Onboard1.dc.html) ===== */
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.pill{animation:floaty 4s ease-in-out infinite}
+
+/* ===== 02 0b · Simple words (verbatim from source/Onboard2.dc.html) ===== */
+@keyframes rise{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+.rise{animation:rise .7s ease-out both}
+
+/* ===== 03 0c · Listen & ask (verbatim from source/Onboard3.dc.html) ===== */
+@keyframes ring{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.ring{animation:ring 2.4s ease-out infinite}
+
+/* ===== 04 1 · Home (verbatim from source/Main.dc.html) ===== */
+.stack > *{flex-shrink:0}
+
+/* ===== 05 1b · All documents (View all) (verbatim from source/AllDocs.dc.html) ===== */
+.stack > *{flex-shrink:0}
+.chips::-webkit-scrollbar{display:none}
+
+/* ===== 06 2a · Reading A: scan (verbatim from source/Reading.dc.html) ===== */
+@keyframes scan{0%{top:6%}50%{top:88%}100%{top:6%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fill{0%{width:18%}100%{width:78%}}
+@keyframes glow{0%,100%{background:#E2E5E0}50%{background:#CFE5E0}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-8px) rotate(-6deg)}}
+.scanline{position:absolute;left:-14px;right:-14px;height:46px;animation:scan 2.6s ease-in-out infinite}
+.spin{animation:spin 1s linear infinite}
+.bar{animation:fill 6s ease-out infinite alternate}
+.ln{animation:glow 2.6s ease-in-out infinite}
+.bob{animation:bob 3s ease-in-out infinite}
+
+/* ===== 07 2b · Reading B: photo pages (verbatim from source/ReadingB.dc.html) ===== */
+@keyframes fly{0%{opacity:0;transform:translateY(70px) rotate(var(--r0))}14%{opacity:1;transform:translateY(0) rotate(var(--r))}86%{opacity:1;transform:translateY(0) rotate(var(--r))}100%{opacity:0;transform:translateY(-10px) rotate(var(--r))}}
+@keyframes flash{0%,100%{opacity:0}4%{opacity:.85}12%{opacity:0}}
+@keyframes sweep{0%{top:4%}50%{top:86%}100%{top:4%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes count{0%,33%{content:"1"}34%,66%{content:"2"}67%,100%{content:"3"}}
+.pg{position:absolute;left:50%;top:50%;width:132px;height:172px;margin:-86px 0 0 -66px;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:16px;background:#F4F5F2;padding:16px 14px;display:flex;flex-direction:column;gap:9px;animation:fly 4.5s cubic-bezier(.2,.8,.2,1) infinite both}
+.pg span{height:6px;border-radius:3px;background:#C4C8C3}
+.flash{position:absolute;inset:0;background:#F4F5F2;animation:flash 4.5s ease-out infinite;pointer-events:none}
+.sweep{position:absolute;left:-12px;right:-12px;height:3px;border-radius:2px;background:#034F46;box-shadow:0 0 0 6px rgba(3,79,70,.18);animation:sweep 2.2s ease-in-out infinite}
+.spin{animation:spin 1s linear infinite}
+.count::before{content:"1";animation:count 4.5s steps(1) infinite}
+
+/* ===== 08 2c · Reading C: your language (verbatim from source/ReadingC.dc.html) ===== */
+@keyframes cyc{0%{opacity:0;transform:scale(.6) rotate(-8deg)}3%{opacity:1;transform:scale(1) rotate(0)}10%{opacity:1;transform:scale(1)}12%{opacity:0;transform:scale(1.15)}100%{opacity:0}}
+@keyframes orbit{to{transform:rotate(360deg)}}
+@keyframes type{0%{width:0}60%,100%{width:var(--w)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.glyph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:#F4F5F2;opacity:0;animation:cyc 5.4s ease-out infinite}
+.orbit{position:absolute;left:50%;top:50%;width:236px;height:236px;margin:-118px 0 0 -118px;border-radius:50%;border:1.5px dashed #1A1A1A;animation:orbit 14s linear infinite}
+.orbit i{position:absolute;width:14px;height:14px;border-radius:50%;border:1.5px solid #1A1A1A;box-sizing:border-box}
+.ln{display:block;height:6px;border-radius:3px;background:#034F46;animation:type 2.4s ease-out infinite}
+.spin{animation:spin 1s linear infinite}
+
+/* ===== 09 2d · Reading D: finding key facts (verbatim from source/ReadingD.dc.html) ===== */
+@keyframes lens{0%{transform:translate(0,0)}22%{transform:translate(58px,46px)}44%{transform:translate(4px,96px)}66%{transform:translate(60px,128px)}88%{transform:translate(8px,18px)}100%{transform:translate(0,0)}}
+@keyframes pop{0%,8%{opacity:0;transform:scale(.4) translateY(8px)}16%{opacity:1;transform:scale(1.08)}22%,82%{opacity:1;transform:scale(1)}92%,100%{opacity:0;transform:scale(.9)}}
+@keyframes mark{0%,12%{background:#E2E5E0}20%,80%{background:var(--hl)}92%,100%{background:#E2E5E0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1)}}
+.lens{position:absolute;left:96px;top:44px;animation:lens 4.4s cubic-bezier(.45,0,.25,1) infinite}
+.chip{position:absolute;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:17px;font-size:13px;font-weight:700;opacity:0;animation:pop 4.4s ease-out infinite}
+.mk{display:block;height:7px;border-radius:4px;background:#E2E5E0;animation:mark 4.4s ease-out infinite}
+.spin{animation:spin 1s linear infinite}
+.tw{position:absolute;width:10px;height:10px;border-radius:50%;animation:twinkle 2.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.lens,.chip,.mk,.spin,.tw{animation:none}.chip{opacity:1}}
+
+/* ===== 10 3a · Result: insurance (A split amounts) (verbatim from source/Result.dc.html) ===== */
+.stack > *{flex-shrink:0}
+
+/* ===== 11 3b · Result: lab report (D values) (verbatim from source/ResultLab.dc.html) ===== */
+.stack > *{flex-shrink:0}
+
+/* ===== 12 3c · Result: pension notice in Tamil (C deadline) (verbatim from source/ResultTa.dc.html) ===== */
+.stack > *{flex-shrink:0}
+.ta{font-family:'Noto Sans Tamil','DM Sans',sans-serif}
+
+/* ===== 13 3d · Result: prescription (medicines) (verbatim from source/ResultRx.dc.html) ===== */
+.stack > *{flex-shrink:0}
+
+/* ===== 14 3e · Result: challan (B), legal notice (C), investment (F), form (E + steps) (verbatim from source/MoreTypes.dc.html) ===== */
+.ph{width:390px;flex:none;box-sizing:border-box;border:1.5px solid #1A1A1A;border-radius:36px;background:#F4F5F2;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:14px;height:1020px}
+.ph > *{flex-shrink:0}
+.top{display:flex;align-items:center;gap:10px}
+.rb{width:44px;height:44px;flex:none;box-sizing:border-box;border-radius:50%;border:1.5px solid #1A1A1A;display:flex;align-items:center;justify-content:center;background:transparent}
+.lp{flex:1;height:44px;box-sizing:border-box;border-radius:22px;border:1.5px solid #1A1A1A;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14.5px;font-weight:600}
+.card{border:1.5px solid #1A1A1A;border-radius:32px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;box-sizing:border-box;border-radius:16px;border:1.5px solid #1A1A1A;font-size:13px;font-weight:600}
+.tchip{padding-left:5px;font-weight:700}
+.tdot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.h1{margin:0;font-family:'Fraunces',serif;font-weight:400;font-size:30px;line-height:1.07;letter-spacing:-0.4px}
+.h2{margin:0;font-family:'Fraunces',serif;font-weight:400;font-size:25px}
+.dot{color:#D9603B}
+.p{margin:0;font-size:16px;line-height:1.5}
+.ok{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.panel{border:1.5px solid #1A1A1A;border-radius:32px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.ic{width:38px;height:38px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;box-sizing:border-box;border-radius:17px;border:1.5px solid #1A1A1A;font-size:13px;font-weight:700}
+.row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1.5px solid #E2E5E0}
+.step{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1.5px solid #E2E5E0}
+.num{width:30px;height:30px;flex:none;box-sizing:border-box;border-radius:50%;border:1.5px solid #1A1A1A;background:#E9B44C;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.field{font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;padding:2px 8px;border:1.5px dashed #1A1A1A;border-radius:8px;background:rgba(233,180,76,.22)}
+.cap{font-size:13px;font-weight:700;letter-spacing:1.2px;color:#575B58}
+
+/* ===== 15 3f · Result: one upload, several documents (verbatim from source/ResultMulti.dc.html) ===== */
+.stack > *{flex-shrink:0}
+details > summary{list-style:none;cursor:pointer}
+details > summary::-webkit-details-marker{display:none}
+details[open] .chev{transform:rotate(180deg)}
+.chev{transition:transform .24s cubic-bezier(.2,.8,.2,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px) rotate(0)}to{opacity:1}}
+.pg{animation:pageIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.br{transform-origin:left center;animation:grow .6s cubic-bezier(.2,.8,.2,1) .45s both}
+@media (prefers-reduced-motion: reduce){.pg,.br{animation:none}.chev{transition:none}}
+
+/* ===== 16 4a · Listen (verbatim from source/Listen.dc.html) ===== */
+@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.55)}}
+.eq{transform-origin:center;animation:eq 1.1s ease-in-out infinite}
+
+/* ===== 18 4c · Share or save (verbatim from source/Share.dc.html) ===== */
+.mask{display:inline-flex;align-items:center;gap:4px;padding:0 6px;border-radius:8px;border:1.5px dashed #1A1A1A;background:rgba(233,180,76,0.22);color:#3B3E3C;font-family:'Courier New',monospace;font-weight:700;letter-spacing:1px}
+
+/* ===== 19 8 · Save as image (from Share) (verbatim from source/Snapshot.dc.html) ===== */
+@keyframes shot{0%,70%,100%{opacity:0}74%{opacity:.9}}
+.shot{animation:shot 3.6s ease-out infinite}
+@media (prefers-reduced-motion: reduce){.shot{animation:none}}
+.b{display:block;border-radius:6px}
+
+/* ===== 22 6b · Password PDF (verbatim from source/Password.dc.html) ===== */
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+.shake{animation:shake .4s ease-out 1}
+.wiggle{transform-origin:50% 30%;animation:wiggle 2.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.shake,.wiggle{animation:none}}
+
+/* ===== 25 6d · Offline / error state (verbatim from source/Offline.dc.html) ===== */
+@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.drift{animation:drift 3.2s ease-in-out infinite}
+.blink{animation:blink 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.drift,.blink{animation:none}}
+
+/* ===== 26 7 · How every screen adapts to the document (verbatim from source/ContentMap.dc.html) ===== */
+.card{border:1.5px solid #1A1A1A;border-radius:28px;padding:18px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.cap{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#575B58}
+.rule{font-size:13.5px;line-height:1.4;color:#3B3E3C}
+.h{font-family:'Fraunces',serif;font-weight:400}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td,th{text-align:left;padding:9px 10px;border-top:1.5px solid #E2E5E0;vertical-align:top;line-height:1.35}
+th{font-size:12px;letter-spacing:1px;color:#575B58;border-top:0}

@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "వృద్ధాప్య పింఛను పథకం (Old Age Pension Scheme) పెన్షనర్లకు నోటీసు",
+  "report_title": "జిల్లా సాంఘిక సంక్షేమ అధికారి కార్యాలయం (నమూనా)\nవృద్ధాప్య పింఛను పథకం (Old Age Pension Scheme) — పెన్షనర్లకు నోటీసు",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "te",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "పింఛను ఆగిపోకుండా ఉండటానికి 30.11.2026 లోపు జీవన ప్రమాణ పత్రాన్ని సమర్పించండి.",
+    "key_values": [
+      {
+        "label": "పింఛను ఐడీ",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "నెలవారీ పింఛను మొత్తం",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "పేరు",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "సమర్పించడానికి చివరి తేదీ",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "జిల్లా సాంఘిక సంక్షేమ అధికారి కార్యాలయం నుండి వచ్చిన ఈ నోటీసు Smt. Kamala Devi గారికి వారి వృద్ధాప్య పింఛను గురించి తెలియజేస్తుంది.",
+    "పింఛనుదారులు తమ జీవన ప్రమాణ పత్రాన్ని (Life Certificate) 30.11.2026 లోపు లేదా ఆ తేదీ నాటికి పింఛను చెల్లించే బ్యాంకు శాఖలో లేదా కామన్ సర్వీస్ సెంటర్ (CSC) లో సమర్పించాలి.",
+    "జీవన ప్రమాణ పత్రాన్ని సరైన సమయానికి సమర్పించకపోతే, డిసెంబర్ 2026 నుండి నెలకు రూ. 1,200 పింఛను చెల్లింపు నిలిపివేయబడుతుంది."
+  ],
+  "spoken_summary": "ఇది వృద్ధాప్య పింఛను పథకం (Old Age Pension Scheme) పెన్షనర్ల నోటీసుకు సంబంధించిన అధికారిక పత్రం. దయచేసి ముఖ్యమైన వివరాలను చూడండి. మీ ఆధార్ కార్డు మరియు పింఛను పుస్తకం తీసుకుని, మీ పింఛను చెల్లించే బ్యాంకు శాఖలో లేదా ఏదైనా కామన్ సర్వీస్ సెంటర్ (CSC) లో మీ జీవన ప్రమాణ పత్రాన్ని సమర్పించి, రసీదును పొందండి. చివరి తేదీ 30 నవంబర్ 2026.",
+  "actions": [
+    {
+      "text": "మీ ఆధార్ కార్డు మరియు పింఛను పుస్తకం తీసుకుని, మీ పింఛను చెల్లించే బ్యాంకు శాఖలో లేదా ఏదైనా కామన్ సర్వీస్ సెంటర్ (CSC) లో మీ జీవన ప్రమాణ పత్రాన్ని సమర్పించి, రసీదును పొందండి.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "జీవన ప్రమాణ పత్రాన్ని సరైన సమయానికి సమర్పించకపోతే, డిసెంబర్ 2026 నుండి నెలవారీ పింఛను చెల్లింపు నిలిపివేయబడుతుంది.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "పింఛను ఐడీ OAP/BLR/2019/04417.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "లబ్ధిదారుని పేరు Smt. Kamala Devi.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "నెలవారీ పింఛను మొత్తం రూ. 1,200.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

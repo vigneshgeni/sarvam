@@ -47,6 +47,9 @@ def test_role_labels_and_missing_name_renderings():
     assert names_after_roles("The accused Anand Rao appeared") == ["Anand Rao"]
     assert names_after_roles("प्रतिवादी को 12 नवंबर को आना है") == []
     assert names_after_roles("The patient should rest") == []
+    assert names_after_roles("नोंदणीकृत मालक Suresh Raman आहेत") == ["Suresh Raman"]
+    assert names_after_roles("नोंदणीकृत मालक आहेत") == []
+    assert names_after_roles("Registered owner Suresh Raman") == ["Suresh Raman"]
     text = ["वादी आनंद राव ने दावा किया"]
     assert missing_source_names(["Shri Anand Rao"], {}, text) == ["Shri Anand Rao"]
     merged = merge_name_renderings({}, {"Shri Anand Rao": ["आनंद राव", "कोई और"]}, text)

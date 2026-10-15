@@ -1,10 +1,11 @@
-import type { RecentResult, ExplainResponse } from '../types'
+import type { RecentResult, ExplainResponse, AskTurn } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const STORE_NAME = 'recent_results'
 const ORIGINALS_STORE = 'original_files'
+const READ_CACHE_STORE = 'read_cache'
 const MAX_ENTRIES = 20
 export const MAX_ORIGINALS_BYTES = 40 * 1024 * 1024 // 40 MB
 const SETTING_KEY = 'sarvam.save_recent'
@@ -59,6 +60,9 @@ function openDB(): Promise<IDBDatabase> {
         const origStore = db.createObjectStore(ORIGINALS_STORE, { keyPath: 'resultId' })
         origStore.createIndex('timestamp', 'timestamp', { unique: false })
       }
+      if (!db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        db.createObjectStore(READ_CACHE_STORE, { keyPath: 'id' })
+      }
     }
 
     request.onsuccess = () => resolve(request.result)
@@ -107,12 +111,15 @@ export async function saveRecentResult(
       id: entry.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       timestamp: entry.timestamp || Date.now(),
       title: entry.title,
+      displayName: entry.displayName || '',
       fileCount: entry.fileCount,
       fileNames: entry.fileNames || [],
       lang: entry.lang,
       result: entry.result, // Result JSON only
       translations: entry.translations || {},
       multiReports: entry.multiReports,
+      asks: entry.asks,
+      activity: entry.activity,
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -138,6 +145,52 @@ export async function saveRecentResult(
     })
   } catch {
     // Non-fatal if IndexedDB write fails
+  }
+}
+
+export async function updateRecentFields(
+  id: string,
+  fields: Partial<Pick<RecentResult, 'activity' | 'displayName' | 'lang' | 'title'>>
+): Promise<void> {
+  if (!isSaveRecentEnabled() || !id) return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+      getReq.onsuccess = () => {
+        const item = getReq.result as RecentResult | undefined
+        if (item) store.put({ ...item, ...fields })
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal
+  }
+}
+
+export async function saveRecentAsks(id: string, asks: AskTurn[]): Promise<void> {
+  if (!isSaveRecentEnabled() || !id) return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+      getReq.onsuccess = () => {
+        const item = getReq.result as RecentResult | undefined
+        if (item) {
+          item.asks = asks.slice(-40)
+          store.put(item)
+        }
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal
   }
 }
 
@@ -282,10 +335,22 @@ export async function deleteRecentResult(id: string): Promise<void> {
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         stores.push(ORIGINALS_STORE)
       }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        stores.push(READ_CACHE_STORE)
+      }
       const tx = db.transaction(stores, 'readwrite')
       tx.objectStore(STORE_NAME).delete(id)
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         tx.objectStore(ORIGINALS_STORE).delete(id)
+      }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        const cache = tx.objectStore(READ_CACHE_STORE)
+        const all = cache.getAll()
+        all.onsuccess = () => {
+          for (const entry of all.result || []) {
+            if (entry.resultId === id) cache.delete(entry.id)
+          }
+        }
       }
       tx.oncomplete = () => resolve()
       tx.onerror = () => resolve()
@@ -304,16 +369,60 @@ export async function clearAllRecentResults(): Promise<void> {
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         stores.push(ORIGINALS_STORE)
       }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        stores.push(READ_CACHE_STORE)
+      }
       const tx = db.transaction(stores, 'readwrite')
       tx.objectStore(STORE_NAME).clear()
       if (db.objectStoreNames.contains(ORIGINALS_STORE)) {
         tx.objectStore(ORIGINALS_STORE).clear()
+      }
+      if (db.objectStoreNames.contains(READ_CACHE_STORE)) {
+        tx.objectStore(READ_CACHE_STORE).clear()
       }
       tx.oncomplete = () => resolve()
       tx.onerror = () => resolve()
     })
   } catch {
     // Non-fatal
+  }
+}
+
+export interface ReadCacheRecord {
+  id: string
+  resultId?: string
+  translations: Record<string, unknown>
+}
+
+export async function idbGetReadCache(id: string): Promise<ReadCacheRecord | null> {
+  if (typeof indexedDB === 'undefined') return null
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(READ_CACHE_STORE)) return null
+    return await new Promise((resolve) => {
+      const tx = db.transaction(READ_CACHE_STORE, 'readonly')
+      const req = tx.objectStore(READ_CACHE_STORE).get(id)
+      req.onsuccess = () => resolve((req.result as ReadCacheRecord) || null)
+      req.onerror = () => resolve(null)
+    })
+  } catch {
+    return null
+  }
+}
+
+export async function idbPutReadCache(record: ReadCacheRecord): Promise<void> {
+  if (typeof indexedDB === 'undefined') return
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(READ_CACHE_STORE)) return
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(READ_CACHE_STORE, 'readwrite')
+      tx.objectStore(READ_CACHE_STORE).put(record)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    })
+  } catch {
+    /* a missed cache write still leaves the result on screen */
   }
 }
 

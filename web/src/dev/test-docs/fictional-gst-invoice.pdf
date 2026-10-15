@@ -1,0 +1,40 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+5 0 obj
+<< /Length 551 >>
+stream
+BT /F1 11 Tf
+1 0 0 1 48 760 Tm (SAMPLE . FICTIONAL) Tj
+1 0 0 1 48 744 Tm (Tax invoice. Seller Sample Retail. GSTIN 29AAAAA0000A1Z5. Invoice no INV-100.) Tj
+1 0 0 1 48 728 Tm (HSN 8517 Handset qty 1 amount Rs. 10,000) Tj
+1 0 0 1 48 712 Tm (HSN 4202 Cover qty 1 amount Rs. 400) Tj
+1 0 0 1 48 696 Tm (HSN 8504 Charger qty 1 amount Rs. 800) Tj
+1 0 0 1 48 680 Tm (HSN 8544 Cable qty 1 amount Rs. 200) Tj
+1 0 0 1 48 664 Tm (Taxable value Rs. 11,400. CGST Rs. 1,026. SGST Rs. 1,026. Total Rs. 13,452.) Tj
+1 0 0 1 48 648 Tm (Warranty until 14 Oct 2027.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000311 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+913
+%%EOF

@@ -2,7 +2,9 @@ import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from '.
 import { explainQueue } from './utils/queue'
 import { getLocalFallbackError } from './i18n'
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+const API_BASE = import.meta.env.DEV
+  ? ''
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
 export class ExplainApiError extends Error {
   messageLocal: string
@@ -48,12 +50,16 @@ export async function explainDocument(
         formData.append('password', password)
       }
 
+      const hasPdf = files.some(
+        (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      )
+      const budgetMs = hasPdf ? 150_000 : 90_000
       const controller = new AbortController()
       let timedOut = false
       const timeoutId = setTimeout(() => {
         timedOut = true
         controller.abort('timeout')
-      }, 90_000)
+      }, budgetMs)
 
       const onExternalAbort = () => {
         controller.abort(externalSignal?.reason)
@@ -290,12 +296,14 @@ export async function askDocument(params: {
   result: ExplainResponse
   files?: File[]
   password?: string
+  history?: string
   signal?: AbortSignal
 }): Promise<AskResponse> {
   const formData = new FormData()
   formData.append('question', params.question)
   formData.append('lang', params.lang)
   formData.append('result', JSON.stringify(params.result))
+  if (params.history) formData.append('history', params.history)
 
   if (params.files && params.files.length > 0) {
     for (const f of params.files) {
@@ -463,5 +471,32 @@ export async function extractDocumentText(
       signal.removeEventListener('abort', onAbort)
     }
   }
+}
+
+export async function redactText(
+  text: string,
+  lang: string,
+  signal?: AbortSignal
+): Promise<{ spans: { text: string; type: string }[] }> {
+  const res = await fetch(`${API_BASE}/api/redact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang }),
+    signal,
+  })
+  if (!res.ok) throw new Error('redact failed')
+  const data = await res.json()
+  const spans = Array.isArray(data?.spans) ? data.spans : []
+  return { spans }
+}
+
+export async function transcribeAudio(blob: Blob, lang: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('lang', lang)
+  formData.append('audio', blob, 'question.webm')
+  const res = await fetch(`${API_BASE}/api/transcribe`, { method: 'POST', body: formData })
+  if (!res.ok) return ''
+  const data = await res.json()
+  return typeof data?.text === 'string' ? data.text.slice(0, 500) : ''
 }
 

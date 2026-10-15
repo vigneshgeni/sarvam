@@ -1,0 +1,201 @@
+{
+  "doc_type": "government_notice",
+  "document_type": "government_notice",
+  "document_kind": "pension_notice",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Monthly pension amount",
+        "value": "Rs. 1,200",
+        "quote": "Monthly pension amount: Rs. 1,200",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-11-30",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "ವೃದ್ಧಾಪ್ಯ ವೇತನ ಯೋಜನೆ (Old Age Pension Scheme) ಪಿಂಚಣಿದಾರರಿಗೆ ಸೂಚನೆ",
+  "report_title": "ಜಿಲ್ಲಾ ಸಮಾಜ ಕಲ್ಯಾಣಾಧಿಕಾರಿಗಳ ಕಚೇರಿ (ಮಾದರಿ)\nವೃದ್ಧಾಪ್ಯ ವೇತನ ಯೋಜನೆ (Old Age Pension Scheme) — ಪಿಂಚಣಿದಾರರಿಗೆ ಸೂಚನೆ",
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "kn",
+  "letter_date": null,
+  "source_kind": "photo",
+  "glance": {
+    "headline": "ಪಿಂಚಣಿ ತಡೆಹಿಡಿಯುವುದನ್ನು ತಪ್ಪಿಸಲು 30.11.2026 ರೊಳಗೆ ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಸಲ್ಲಿಸಿ.",
+    "key_values": [
+      {
+        "label": "ಪಿಂಚಣಿ ಐಡಿ",
+        "value": "OAP/BLR/2019/04417",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "ತಿಂಗಳ ಪಿಂಚಣಿ ಮೊತ್ತ",
+        "value": "Rs. 1,200",
+        "kind": "amount",
+        "evidence": "check_original"
+      },
+      {
+        "label": "ಹೆಸರು",
+        "value": "Smt. Kamala Devi",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "ಸಲ್ಲಿಸಲು ಕೊನೆಯ ದಿನಾಂಕ",
+        "value": "30.11.2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "ಜಿಲ್ಲಾ ಸಮಾಜ ಕಲ್ಯಾಣಾಧಿಕಾರಿಗಳ ಕಚೇರಿಯ ಈ ಸೂಚನೆಯು Smt. Kamala Devi ಅವರಿಗೆ ತಮ್ಮ ವೃದ್ಧಾಪ್ಯ ವೇತನದ ಬಗ್ಗೆ ತಿಳಿಸುತ್ತದೆ.",
+    "ಪಿಂಚಣಿದಾರರು ತಮ್ಮ ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು (Life Certificate) 30.11.2026 ರೊಳಗೆ ಪಿಂಚಣಿ ನೀಡುವ ಬ್ಯಾಂಕ್ ಶಾಖೆ ಅಥವಾ ಸಾಮಾನ್ಯ ಸೇವಾ ಕೇಂದ್ರದಲ್ಲಿ (CSC) ಸಲ್ಲಿಸಬೇಕು.",
+    "ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿ ಸಲ್ಲಿಸದಿದ್ದರೆ, ಡಿಸೆಂಬರ್ 2026 ರಿಂದ ರೂ. 1,200 ಪಿಂಚಣಿ ಹಣವನ್ನು ತಡೆಹಿಡಿಯಲಾಗುತ್ತದೆ."
+  ],
+  "spoken_summary": "ಇದು ವೃದ್ಧಾಪ್ಯ ವೇತನ ಯೋಜನೆ (Old Age Pension Scheme) ಪಿಂಚಣಿದಾರರ ಸೂಚನೆಗೆ ಸಂಬಂಧಿಸಿದ ಅಧಿಕೃತ ದಾಖಲೆಯಾಗಿದೆ. ದಯವಿಟ್ಟು ಮುಖ್ಯ ವಿವರಗಳನ್ನು ಗಮನಿಸಿ. 30 ನವೆಂಬರ್ 2026 ರೊಳಗೆ ನಿಮ್ಮ ಆಧಾರ್ ಕಾರ್ಡ್ ಮತ್ತು ಪಿಂಚಣಿ ಪುಸ್ತಕದೊಂದಿಗೆ ನಿಮ್ಮ ಪಿಂಚಣಿ ನೀಡುವ ಬ್ಯಾಂಕ್ ಶಾಖೆ ಅಥವಾ ಯಾವುದೇ ಸಾಮಾನ್ಯ ಸೇವಾ ಕೇಂದ್ರದಲ್ಲಿ (CSC) ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಸಲ್ಲಿಸಿ, ಮತ್ತು ಸ್ವೀಕೃತಿ ರಶೀದಿಯನ್ನು ಪಡೆದುಕೊಳ್ಳಿ.",
+  "actions": [
+    {
+      "text": "ನಿಮ್ಮ ಆಧಾರ್ ಕಾರ್ಡ್ ಮತ್ತು ಪಿಂಚಣಿ ಪುಸ್ತಕದೊಂದಿಗೆ ನಿಮ್ಮ ಪಿಂಚಣಿ ನೀಡುವ ಬ್ಯಾಂಕ್ ಶಾಖೆ ಅಥವಾ ಯಾವುದೇ ಸಾಮಾನ್ಯ ಸೇವಾ ಕೇಂದ್ರದಲ್ಲಿ (CSC) ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಸಲ್ಲಿಸಿ, ಮತ್ತು ಸ್ವೀಕೃತಿ ರಶೀದಿಯನ್ನು ಪಡೆದುಕೊಳ್ಳಿ.",
+      "due_date": "2026-11-30",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Pensioners must submit Life Certificate on or before 30.11.2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "ಜೀವಿತ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿ ಸಲ್ಲಿಸದಿದ್ದರೆ, ಡಿಸೆಂಬರ್ 2026 ರಿಂದ ಮಾಸಿಕ ಪಿಂಚಣಿ ಹಣವನ್ನು ತಡೆಹಿಡಿಯಲಾಗುತ್ತದೆ.",
+      "quote": "Payment will be withheld from December 2026 if not submitted.",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "ಪಿಂಚಣಿ ಐಡಿ OAP/BLR/2019/04417 ಆಗಿದೆ.",
+      "quote": "Pension ID: OAP/BLR/2019/04417",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ಫಲಾನುಭವಿಯ ಹೆಸರು Smt. Kamala Devi.",
+      "quote": "Name: Smt. Kamala Devi",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ತಿಂಗಳ ಪಿಂಚಣಿ ಮೊತ್ತ ರೂ. 1,200.",
+      "quote": "Monthly pension amount: Rs. 1,200",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [],
+  "contacts": [],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 5,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Smt. Kamala Devi",
+    "OAP/BLR/2019/04417"
+  ]
+}

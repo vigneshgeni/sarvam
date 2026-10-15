@@ -1,0 +1,306 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "document_kind": "lab_report",
+  "profile": {
+    "lab_name": "City Diagnostics",
+    "patient_age_sex": "48 Y / M",
+    "sample_date": "08 Oct 2026",
+    "referred_by": "Dr. A. Rao",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [
+      "Please consult your doctor for follow-up of the flagged values."
+    ],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "ল্যাবরেটরি রিপোর্ট",
+  "report_title": "ল্যাবরেটরি রিপোর্ট",
+  "report_date": "09 Oct 2026",
+  "report_date_iso": "2026-10-09",
+  "language": "bn",
+  "letter_date": "2026-10-09",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "City Diagnostics থেকে Mr. Suresh Babu-এর ল্যাবরেটরি পরীক্ষার রিপোর্ট",
+    "key_values": [
+      {
+        "label": "রোগী",
+        "value": "Mr. Suresh Babu",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "ল্যাব নং।",
+        "value": "CD-2026-11873",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "হিমোগ্লোবিন",
+        "value": "11.2 g/dL",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "খালি পেটে রক্তে শর্করা",
+        "value": "126 mg/dL",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "মোট কোলেস্টেরল",
+        "value": "182 mg/dL",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "রিপোর্ট তৈরির তারিখ",
+        "value": "09 Oct 2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "এটি 09 অক্টোবর 2026 তারিখে City Diagnostics দ্বারা Mr. Suresh Babu-এর জন্য জারি করা একটি ল্যাবরেটরি রিপোর্ট।",
+    "ফলাফলের মধ্যে রয়েছে সম্পূর্ণ রক্ত ​​গণনা, রক্তে শর্করা এবং লিপিড প্রোফাইল পরীক্ষা।",
+    "হিমোগ্লোবিন কম এবং খালি পেটে রক্তে শর্করা বেশি দেখানো হয়েছে।",
+    "রিপোর্টে চিহ্নিত মানগুলির ফলো-আপের জন্য আপনার ডাক্তারের সাথে পরামর্শ করার কথা বলা হয়েছে।"
+  ],
+  "spoken_summary": "এটি City Diagnostics থেকে Mr. Suresh Babu-এর একটি ল্যাবরেটরি রিপোর্ট, যার তারিখ 09 অক্টোবর 2026। এতে হিমোগ্লোবিন, খালি পেটে রক্তে শর্করা এবং মোট কোলেস্টেরলের ফলাফল রয়েছে। হিমোগ্লোবিন কম এবং খালি পেটে রক্তে শর্করা বেশি দেখানো হয়েছে। ফলো-আপ পরামর্শের জন্য এই রিপোর্টটি আপনার ডাক্তারকে দেখান।",
+  "actions": [
+    {
+      "text": "চিহ্নিত পরীক্ষার মানগুলির ফলো-আপের জন্য এই রিপোর্টটি আপনার ডাক্তারকে দেখান।",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "Please consult your doctor for follow-up of the flagged values.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "রেফারেন্স সীমার বাইরের মানগুলি রিপোর্টে চিহ্নিত করা হয়েছে।",
+      "quote": "Values outside the reference range are flagged.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "রোগীর নাম Mr. Suresh Babu।",
+      "quote": "Patient Mr. Suresh Babu",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ল্যাব নম্বর হল CD-2026-11873।",
+      "quote": "Lab No. CD-2026-11873",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "রোগীর বয়স এবং লিঙ্গ হল 48 বছর / পুরুষ।",
+      "quote": "Age / Sex 48 Y / M",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Dr. A. Rao দ্বারা রেফার করা হয়েছে।",
+      "quote": "Referred by Dr. A. Rao",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "নমুনা সংগ্রহের তারিখ হল 08 অক্টোবর 2026।",
+      "quote": "Sample collected 08 Oct 2026",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "রিপোর্ট তৈরির তারিখ হল 09 অক্টোবর 2026।",
+      "quote": "Report date 09 Oct 2026",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "ল্যাবের ঠিকানা",
+      "address": "2nd Main, Indiranagar, Bengaluru 560038",
+      "quote": "2nd Main, Indiranagar, Bengaluru 560038",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "ফোন নম্বর",
+      "value": "080 0000 0000",
+      "quote": "Ph: 080 0000 0000",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": [
+    {
+      "heading": "সম্পূর্ণ রক্ত ​​গণনা",
+      "heading_printed": "COMPLETE BLOOD COUNT",
+      "page": 1,
+      "values": [
+        {
+          "label": "Haemoglobin",
+          "value": "11.2",
+          "unit": "g/dL",
+          "ref_range": "13.0 - 17.0",
+          "flag_printed": "Low",
+          "quote": "Haemoglobin 11.2 g/dL 13.0 - 17.0 Low",
+          "page": 1,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "রক্তে শর্করা",
+      "heading_printed": "BLOOD SUGAR",
+      "page": 1,
+      "values": [
+        {
+          "label": "Fasting blood sugar",
+          "value": "126",
+          "unit": "mg/dL",
+          "ref_range": "70 - 100",
+          "flag_printed": "High",
+          "quote": "Fasting blood sugar 126 mg/dL 70 - 100 High",
+          "page": 1,
+          "evidence": "matched"
+        }
+      ]
+    },
+    {
+      "heading": "লিপিড প্রোফাইল",
+      "heading_printed": "LIPID PROFILE",
+      "page": 1,
+      "values": [
+        {
+          "label": "Total cholesterol",
+          "value": "182",
+          "unit": "mg/dL",
+          "ref_range": "Below 200",
+          "flag_printed": null,
+          "quote": "",
+          "page": 0,
+          "evidence": "matched"
+        }
+      ]
+    }
+  ],
+  "evidence_summary": {
+    "matched": 8,
+    "check_original": 0,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "City Diagnostics\n2nd Main, Indiranagar, Bengaluru 560038  ·  Ph: 080 0000 0000  ·  NABL-style accreditation (sample)\nPatient\nMr. Suresh Babu\nLab No.\nCD-2026-11873\nAge / Sex\n48 Y / M\nSample collected\n08 Oct 2026\nReferred by\nDr. A. Rao\nReport date\n09 Oct 2026\nLaboratory Report\nCOMPLETE BLOOD COUNT\nTest\nResult\nUnit\nReference range\nFlag\nHaemoglobin\n11.2\ng/dL\n13.0 - 17.0\nLow\nBLOOD SUGAR\nTest\nResult\nUnit\nReference range\nFlag\nFasting blood sugar\n126\nmg/dL\n70 - 100\nHigh\nLIPID PROFILE\nTest\nResult\nUnit\nReference range\nFlag\nTotal cholesterol\n182\nmg/dL\nBelow 200\nValues outside the reference range are flagged.\nPlease consult your doctor for follow-up of the flagged values.\n--- End of report ---\nDr. P. Nair, MD (Pathology)\nConsultant Pathologist\nPage 1 of 1\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "City Diagnostics",
+    "2nd Main, Indiranagar, Bengaluru 560038",
+    "080 0000 0000",
+    "Mr. Suresh Babu",
+    "CD-2026-11873",
+    "Dr. A. Rao",
+    "Dr. P. Nair"
+  ]
+}

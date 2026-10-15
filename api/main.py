@@ -37,6 +37,7 @@ from evidence import (
     filter_protected_terms,
     inspect_and_decrypt_pdf,
     is_personal_field,
+    match_lab_row,
     process_contacts,
     process_places,
     verify_evidence,
@@ -451,6 +452,9 @@ async def explain(
         ]
         pdf_pages_text = extract_pdf_pages(pdf_bytes)
 
+    # A long PDF is split into 5-page calls inside read_document. The request
+    # keeps the normal deadline so one document never waits on a 140 second call.
+
     # Check remaining deadline before semaphore wait
     remaining = deadline - time.time()
     if remaining <= 1.0:
@@ -743,7 +747,7 @@ async def explain(
     glance_summary = None
     if reader_result.glance:
         kvs = []
-        for kv in (reader_result.glance.key_values or [])[:3]:
+        for kv in (reader_result.glance.key_values or [])[:6]:
             lbl = kv.label
             val = kv.value
             knd = kv.kind if kv.kind in ("amount", "date", "text") else "text"
@@ -830,10 +834,7 @@ async def explain(
         for s in reader_result.sections:
             sec_vals = []
             for v in s.values:
-                val_ev = "check_original"
-                if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
-                    if v.value in pdf_pages_text[s.page - 1]:
-                        val_ev = "matched"
+                val_ev = match_lab_row(v.label, v.value, getattr(v, "quote", "") or "", getattr(v, "page", 0) or s.page, pdf_pages_text)
                 sec_vals.append(
                     ExplainSectionValue(
                         label=v.label,
@@ -841,6 +842,8 @@ async def explain(
                         unit=v.unit,
                         ref_range=v.ref_range,
                         flag_printed=v.flag_printed,
+                        quote=getattr(v, "quote", "") or "",
+                        page=getattr(v, "page", 0) or 0,
                         evidence=val_ev,
                     )
                 )
@@ -863,10 +866,7 @@ async def explain(
                 for s in p.sections:
                     sec_vals = []
                     for v in s.values:
-                        val_ev = "check_original"
-                        if pdf_pages_text and 1 <= s.page <= len(pdf_pages_text):
-                            if v.value in pdf_pages_text[s.page - 1]:
-                                val_ev = "matched"
+                        val_ev = match_lab_row(v.label, v.value, getattr(v, "quote", "") or "", getattr(v, "page", 0) or s.page, pdf_pages_text)
                         sec_vals.append(
                             ExplainSectionValue(
                                 label=v.label,
@@ -874,6 +874,8 @@ async def explain(
                                 unit=v.unit,
                                 ref_range=v.ref_range,
                                 flag_printed=v.flag_printed,
+                                quote=getattr(v, "quote", "") or "",
+                                page=getattr(v, "page", 0) or 0,
                                 evidence=val_ev,
                             )
                         )
@@ -908,6 +910,8 @@ async def explain(
                     part_id=p.part_id,
                     title=p.title,
                     document_type=p.document_type,
+                    document_kind=getattr(p, "document_kind", None),
+                    profile=getattr(p, "profile", None),
                     issuer=p.issuer,
                     date_iso=p.date_iso,
                     pages=p.pages,
@@ -924,6 +928,8 @@ async def explain(
     return ExplainResponse(
         doc_type=doc_type_val,
         document_type=doc_type_val,
+        document_kind=reader_result.document_kind,
+        profile=reader_result.profile,
         document_language=doc_lang,
         source_kind=source_kind,
         title=reader_result.title,
@@ -1022,6 +1028,29 @@ async def translate(
     for i, m in enumerate(orig.medicines):
         if m.instruction_text:
             strings_to_translate[f"med_{i}_instruction"] = m.instruction_text
+    if orig.profile:
+        for i, field in enumerate(orig.profile.form_fields or []):
+            if field.name:
+                strings_to_translate[f"form_{i}_name"] = field.name
+            if field.instruction:
+                strings_to_translate[f"form_{i}_instruction"] = field.instruction
+    for i, part in enumerate(orig.parts or []):
+        if part.title:
+            strings_to_translate[f"part_{i}_title"] = part.title
+        for j, line in enumerate(part.summary_lines or []):
+            strings_to_translate[f"part_{i}_summary_{j}"] = line
+        for j, section in enumerate(part.sections or []):
+            if section.heading:
+                strings_to_translate[f"part_{i}_section_{j}"] = section.heading
+            for k, value in enumerate(section.values or []):
+                if value.label:
+                    strings_to_translate[f"part_{i}_section_{j}_value_{k}_label"] = value.label
+    for i, section in enumerate(orig.sections or []):
+        if section.heading:
+            strings_to_translate[f"section_{i}_heading"] = section.heading
+        for k, value in enumerate(section.values or []):
+            if value.label:
+                strings_to_translate[f"section_{i}_value_{k}_label"] = value.label
 
     # Legacy payload constructed for mock compatibility
     actions_payload = [
@@ -1420,6 +1449,7 @@ async def translate(
                 duration_days=m.duration_days,
                 instruction_text=inst,
                 decoded=m.decoded,
+                as_needed=getattr(m, "as_needed", False),
                 quote=m.quote,
                 page=m.page,
                 evidence=m.evidence,
@@ -1450,9 +1480,93 @@ async def translate(
 
     doc_type_val = orig.document_type or orig.doc_type or "other"
 
+    stitched_profile = orig.profile
+    if orig.profile and "translated_dict" in locals() and orig.profile.form_fields:
+        fields = []
+        for i, field in enumerate(orig.profile.form_fields):
+            fields.append(
+                field.model_copy(
+                    update={
+                        "name": translated_dict.get(f"form_{i}_name", field.name),
+                        "instruction": translated_dict.get(f"form_{i}_instruction", field.instruction),
+                    }
+                )
+            )
+        stitched_profile = orig.profile.model_copy(update={"form_fields": fields})
+
+    def kept_label(original: str, translated: str) -> str:
+        if not translated or translated == original:
+            return original
+        if verify_translation_guard(original, translated):
+            return translated
+        return original
+
+    def stitch_values(section, prefix: str):
+        values = []
+        for k, value in enumerate(section.values or []):
+            translated = kept_label(value.label, translated_dict.get(f"{prefix}_value_{k}_label", value.label))
+            values.append(
+                value.model_copy(
+                    update={
+                        "label": translated,
+                        "label_printed": value.label if translated != value.label else "",
+                    }
+                )
+            )
+        return values
+
+    stitched_sections = orig.sections
+    if orig.sections and "translated_dict" in locals():
+        stitched_sections = []
+        for i, section in enumerate(orig.sections):
+            printed = getattr(section, "heading_printed", "") or section.heading
+            stitched_sections.append(
+                section.model_copy(
+                    update={
+                        "heading": translated_dict.get(f"section_{i}_heading", section.heading),
+                        "heading_printed": printed,
+                        "values": stitch_values(section, f"section_{i}"),
+                    }
+                )
+            )
+
+    stitched_parts = orig.parts
+    if orig.parts and "translated_dict" in locals():
+        stitched_parts = []
+        for i, part in enumerate(orig.parts):
+            lines = [
+                translated_dict.get(f"part_{i}_summary_{j}", line)
+                for j, line in enumerate(part.summary_lines or [])
+            ]
+            part_sections = part.sections
+            if part.sections:
+                part_sections = []
+                for j, section in enumerate(part.sections):
+                    printed = getattr(section, "heading_printed", "") or section.heading
+                    part_sections.append(
+                        section.model_copy(
+                            update={
+                                "heading": translated_dict.get(f"part_{i}_section_{j}", section.heading),
+                                "heading_printed": printed,
+                                "values": stitch_values(section, f"part_{i}_section_{j}"),
+                            }
+                        )
+                    )
+            stitched_parts.append(
+                part.model_copy(
+                    update={
+                        "title": translated_dict.get(f"part_{i}_title", part.title),
+                        "summary_lines": lines or part.summary_lines,
+                        "sections": part_sections,
+                    }
+                )
+            )
+
     return ExplainResponse(
         doc_type=doc_type_val,
         document_type=doc_type_val,
+        document_kind=orig.document_kind,
+        profile=stitched_profile,
         document_language=orig.document_language,
         source_kind=orig.source_kind,
         title=trans_title,
@@ -1471,8 +1585,8 @@ async def translate(
         contacts=stitched_contacts,
         medicines=stitched_medicines,
         conflicts=trans_conflicts,
-        parts=orig.parts,
-        sections=orig.sections,
+        parts=stitched_parts,
+        sections=stitched_sections,
         evidence_summary=orig.evidence_summary,  # Copied by CODE
         unreadable=orig.unreadable,
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
@@ -1569,6 +1683,7 @@ async def ask(
     result: str = Form(...),
     files: Optional[List[UploadFile]] = File(None),
     password: Optional[str] = Form(None),
+    history: Optional[str] = Form(None),
 ):
     start_time = time.time()
     deadline = start_time + 45.0  # 45s server deadline for ask
@@ -1671,6 +1786,9 @@ async def ask(
                 file_data_list or None,
                 pdf_pages_text,
                 deadline,
+                None,
+                1,
+                reader.last_ask_turns(history or "") or None,
             )
         return ask_res
     except AskUnverifiedError:
@@ -1685,6 +1803,38 @@ async def ask(
             or time.time() >= deadline - 1.0
         ):
             return make_error_response(504, "timeout", lang)
+        return make_error_response(503, "service_busy", lang)
+    finally:
+        GEMINI_SEMAPHORE.release()
+
+
+@app.post("/api/transcribe")
+async def transcribe(
+    request: Request,
+    lang: str = Form("en"),
+    audio: UploadFile = File(...),
+):
+    """Turn a short recording into text. Nothing is stored."""
+    start_time = time.time()
+    deadline = start_time + 25.0
+    client_ip = get_client_ip(request)
+    allowed, retry_after = check_rate_limit("ask", client_ip, ASK_RATE_LIMIT)
+    if not allowed:
+        return make_error_response(429, "rate_limit", lang, headers={"Retry-After": str(retry_after)})
+    content = await audio.read()
+    if not content or len(content) > 2_000_000:
+        return make_error_response(400, "invalid_file_type", lang, custom_message="Recording must be under 30 seconds.")
+    mime_type = audio.content_type or "audio/webm"
+    if mime_type not in ("audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4a-latm"):
+        mime_type = "audio/webm"
+    try:
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=min(15.0, deadline - time.time()))
+    except (asyncio.TimeoutError, TimeoutError):
+        return make_error_response(503, "service_busy", lang)
+    try:
+        text = await run_in_threadpool(reader.transcribe_audio, content, mime_type, lang, deadline)
+        return {"text": text}
+    except Exception:
         return make_error_response(503, "service_busy", lang)
     finally:
         GEMINI_SEMAPHORE.release()

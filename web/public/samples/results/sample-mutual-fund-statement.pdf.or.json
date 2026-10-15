@@ -1,0 +1,293 @@
+{
+  "doc_type": "bank",
+  "document_type": "bank",
+  "document_kind": "investment",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "ମ୍ୟୁଚୁଆଲ୍ ଫଣ୍ଡ ଆକାଉଣ୍ଟ ଷ୍ଟେଟମେଣ୍ଟ",
+  "report_title": "ଆକାଉଣ୍ଟ ଷ୍ଟେଟମେଣ୍ଟ",
+  "report_date": "30-Sep-2026",
+  "report_date_iso": null,
+  "language": "or",
+  "letter_date": "2026-09-30",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Suryodaya Mutual Fund ଷ୍ଟେଟମେଣ୍ଟ ବର୍ତ୍ତମାନର ନିବେଶ ମୂଲ୍ୟ Rs. 1,24,300.00 ଦର୍ଶାଉଛି।",
+    "key_values": [
+      {
+        "label": "ଫୋଲିଓ ନମ୍ବର",
+        "value": "1234567/89",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "ମୋଟ ନିବେଶ",
+        "value": "Rs. 1,10,000.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "ବଜାର ମୂଲ୍ୟ",
+        "value": "Rs. 1,24,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "ଲାଭ",
+        "value": "Rs. 14,300.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "ଗଚ୍ଛିତ ୟୁନିଟ୍",
+        "value": "2,200.00",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "ପରବର୍ତ୍ତୀ SIP ତାରିଖ",
+        "value": "05-Oct-2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "ଏହା 01-ଅପ୍ରେଲ-2026 ରୁ 30-ସେପ୍ଟେମ୍ବର-2026 ପର୍ଯ୍ୟନ୍ତ ସମୟ ପାଇଁ Ms. Meera Iyer ଙ୍କ ପାଇଁ Suryodaya Mutual Fund ର ଏକ ଆକାଉଣ୍ଟ ଷ୍ଟେଟମେଣ୍ଟ।",
+    "Suryodaya Flexi Cap Fund ରେ 2,200.00 ୟୁନିଟ୍ ମାଧ୍ୟମରେ ସମୁଦାୟ Rs. 1,10,000.00 ନିବେଶ କରାଯାଇଛି।",
+    "30-ସେପ୍ଟେମ୍ବର-2026 ସୁଦ୍ଧା ସମୁଦାୟ ବଜାର ମୂଲ୍ୟ Rs. 1,24,300.00 ଅଟେ, ଯାହା Rs. 14,300.00 ର ଲାଭ ଦର୍ଶାଉଛି।",
+    "ପରବର୍ତ୍ତୀ Rs. 10,000 ର SIP କିସ୍ତି 05-ଅକ୍ଟୋବର-2026 ରେ ହେବାକୁ ସ୍ଥିର ହୋଇଛି।"
+  ],
+  "spoken_summary": "ଏହା Suryodaya Mutual Fund ରୁ Meera Iyer ଙ୍କ ପାଇଁ ଏକ ଆକାଉଣ୍ଟ ଷ୍ଟେଟମେଣ୍ଟ। Flexi Cap Fund ରେ ଆପଣଙ୍କର ସମୁଦାୟ ନିବେଶ Rs. 1,10,000.00 ଅଟେ। 30 ସେପ୍ଟେମ୍ବର 2026 ସୁଦ୍ଧା, ଏହାର ବଜାର ମୂଲ୍ୟ Rs. 1,24,300.00 ଅଟେ, ଯାହା ଆପଣଙ୍କୁ Rs. 14,300.00 ର ଲାଭ ଦେଉଛି। ଆପଣଙ୍କର ପରବର୍ତ୍ତୀ Rs. 10,000 ର SIP 05 ଅକ୍ଟୋବର 2026 ରେ ହେବାକୁ ଅଛି। ଯଦି ଆପଣ ଏହାକୁ ବନ୍ଦ କିମ୍ବା ପରିବର୍ତ୍ତନ କରିବାକୁ ଚାହାଁନ୍ତି, ତେବେ ତାରିଖର ଅତି କମରେ 10 ଦିନ ପୂର୍ବରୁ ଆବେଦନ କରନ୍ତୁ।",
+  "actions": [
+    {
+      "text": "ଯଦି ଆପଣ ଆପଣଙ୍କର SIP ବନ୍ଦ କିମ୍ବା ପରିବର୍ତ୍ତନ କରିବାକୁ ଚାହାଁନ୍ତି, ତେବେ ପରବର୍ତ୍ତୀ ତାରିଖର ଅତି କମରେ 10 ଦିନ ପୂର୍ବରୁ ଆବେଦନ କରନ୍ତୁ।",
+      "due_date": "2026-10-10",
+      "deadline_rule": "ପରବର୍ତ୍ତୀ ତାରିଖର ଅତି କମରେ 10 ଦିନ ପୂର୍ବରୁ",
+      "deadline_days": 10,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "To stop or change your SIP, apply at least 10 days before the next date.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "ମ୍ୟୁଚୁଆଲ୍ ଫଣ୍ଡ ନିବେଶ ବଜାର ବିପଦ ଅଧୀନ, ଏବଂ ଅତୀତର ପ୍ରଦର୍ଶନ ଭବିଷ୍ୟତରେ ଜାରି ନ ରହିପାରେ।",
+      "quote": "Mutual fund investments are subject to market risks. Read all scheme related documents carefully. Past performance may or may not be sustained in future.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "ନିବେଶକଙ୍କ ନାମ ହେଉଛି Ms. Meera Iyer।",
+      "quote": "Ms. Meera Iyer",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ଫୋଲିଓ ନମ୍ବର ହେଉଛି 1234567/89।",
+      "quote": "Folio No. 1234567/89",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ସ୍ଥାୟୀ ଆକାଉଣ୍ଟ ନମ୍ବର (PAN) ହେଉଛି ABCPI1234K।",
+      "quote": "PAN ABCPI1234K",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ଯୋଜନାର ନାମ ହେଉଛି Suryodaya Flexi Cap Fund - Direct Plan - Growth।",
+      "quote": "Scheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ମାସିକ SIP କିସ୍ତି ପ୍ରତି ମାସର 5 ତାରିଖରେ Rs. 10,000 ଅଟେ।",
+      "quote": "SIP: Rs. 10,000 on 5th of every month",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "ସମୁଦାୟ ନିବେଶିତ ରାଶି Rs. 1,10,000.00 ଅଟେ।",
+      "quote": "Total amount invested (cost) Rs. 1,10,000.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-ସେପ୍ଟେମ୍ବର-2026 ସୁଦ୍ଧା ନିବେଶର ବଜାର ମୂଲ୍ୟ Rs. 1,24,300.00 ଅଟେ।",
+      "quote": "Market value Rs. 1,24,300.00",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "30-ସେପ୍ଟେମ୍ବର-2026 ରେ ନେଟ୍ ଆସେଟ୍ ଭାଲ୍ୟୁ (NAV) ହେଉଛି Rs. 56.50।",
+      "quote": "NAV on 30-Sep-2026 Rs. 56.50",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": false,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "ନିବେଶକଙ୍କ ଠିକଣା",
+      "address": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "quote": "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "ନିବେଶକଙ୍କ ଇମେଲ୍",
+      "value": "meera.iyer@example.com",
+      "quote": "Email: meera.iyer@example.com",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "ନିବେଶକଙ୍କ ମୋବାଇଲ୍",
+      "value": "+91 98450 11223",
+      "quote": "Mobile: +91 98450 11223",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "ନିବେଶକ ସେବା ହେଲ୍ପଲାଇନ୍",
+      "value": "1800 000 1111",
+      "quote": "Investor service: 1800 000 1111 (toll free)",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "ନିବେଶକ ସେବା ଇମେଲ୍",
+      "value": "service@suryodaya-mf.example",
+      "quote": "service@suryodaya-mf.example",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 9,
+    "check_original": 0,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "Suryodaya Mutual Fund\nAccount Statement  ·  Period: 01-Apr-2026 to 30-Sep-2026\nInvestor\nMs. Meera Iyer\nNo. 21, 4th Main, Malleswaram, Bengaluru 560003\nEmail: meera.iyer@example.com   Mobile: +91 98450 11223\nFolio No.\n1234567/89\nPAN\nABCPI1234K\nScheme: Suryodaya Flexi Cap Fund - Direct Plan - Growth\nNominee: Registered    ·    Mode of holding: Single    ·    SIP: Rs. 10,000 on 5th of every month\nDate\nTransaction\nAmount (Rs.)\nNAV (Rs.)\nUnits\nBalance units\n01-Apr-2026\nOpening balance (cost Rs. 50,000.00)\n1,113.24\n05-Apr-2026\nSIP purchase\n10,000.00\n52.10\n191.94\n1,305.18\n05-May-2026\nSIP purchase\n10,000.00\n53.40\n187.27\n1,492.45\n05-Jun-2026\nSIP purchase\n10,000.00\n55.05\n181.65\n1,674.10\n06-Jul-2026\nSIP purchase\n10,000.00\n56.30\n177.62\n1,851.72\n05-Aug-2026\nSIP purchase\n10,000.00\n57.10\n175.13\n2,026.85\n05-Sep-2026\nSIP purchase\n10,000.00\n57.75\n173.15*\n2,200.00\n* After stamp duty. Units shown up to 2 decimals.\nSummary as on 30-Sep-2026\nTotal amount invested (cost)\nRs. 1,10,000.00\nUnits held\n2,200.00\nNAV on 30-Sep-2026\nRs. 56.50\nMarket value\nRs. 1,24,300.00\nGain (market value - cost)\nRs. 14,300.00\nMutual fund investments are subject to market risks. Read all scheme related documents carefully.\nPast performance may or may not be sustained in future.\nNext SIP instalment: 05-Oct-2026. To stop or change your SIP, apply at least 10 days before the next date.\nInvestor service: 1800 000 1111 (toll free)  ·  service@suryodaya-mf.example  ·  Registrar: Sample Registry Services, Hyderabad\nSAMPLE · FICTIONAL\nSAMPLE DOCUMENT FOR SARVAM DEMO · ALL NAMES, NUMBERS AND ORGANISATIONS ARE FICTIONAL\n",
+  "protected_terms": [
+    "Suryodaya Mutual Fund",
+    "Ms. Meera Iyer",
+    "No. 21, 4th Main, Malleswaram, Bengaluru 560003",
+    "meera.iyer@example.com",
+    "+91 98450 11223",
+    "1234567/89",
+    "ABCPI1234K",
+    "Suryodaya Flexi Cap Fund - Direct Plan - Growth",
+    "1800 000 1111",
+    "service@suryodaya-mf.example",
+    "Sample Registry Services, Hyderabad"
+  ]
+}

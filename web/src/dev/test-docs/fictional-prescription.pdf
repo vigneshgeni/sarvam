@@ -1,0 +1,41 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+5 0 obj
+<< /Length 542 >>
+stream
+BT /F1 11 Tf
+1 0 0 1 48 760 Tm (SAMPLE . FICTIONAL) Tj
+1 0 0 1 48 744 Tm (Neighbourhood Clinic. Prescription.) Tj
+1 0 0 1 48 728 Tm (Rx) Tj
+1 0 0 1 48 712 Tm (1. Tab. Amlo 5 mg 1-0-0 BD after food for 5 days) Tj
+1 0 0 1 48 696 Tm (2. Tab. Metfor 500 mg 1-1-1 TDS after food for 7 days) Tj
+1 0 0 1 48 680 Tm (3. Tab. Sleepa 10 mg HS at bedtime for 3 days) Tj
+1 0 0 1 48 664 Tm (4. Tab. Paino 400 mg SOS only when needed) Tj
+1 0 0 1 48 648 Tm (5. Tab. Weeklyvit once a week on Sunday) Tj
+1 0 0 1 48 632 Tm (Doctor registration MCI-100200) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000311 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+904
+%%EOF

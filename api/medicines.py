@@ -132,12 +132,12 @@ def process_medicines(
 ) -> List[MedicineInfo]:
     """
     Processes reader medicines into contract MedicineInfo objects.
-    - Only populated when document_type == 'medical'
+    - Kept whenever the page prints medicines, including a prescription inside a larger packet
     - Photos are always evidence='check_original'
     - Max 12 medicines
     - Decoded via decode_medicine_frequency
     """
-    if document_type != "medical" or not raw_medicines:
+    if not raw_medicines or document_type is None:
         return []
 
     results: List[MedicineInfo] = []
@@ -172,6 +172,7 @@ def process_medicines(
                 duration_days=duration_days,
                 instruction_text=med.instruction_text.strip(),
                 decoded=decoded,
+                as_needed=freq_code == "SOS",
                 quote=med.quote.strip() if med.quote else "",
                 page=med.page or 1,
                 evidence=evidence,

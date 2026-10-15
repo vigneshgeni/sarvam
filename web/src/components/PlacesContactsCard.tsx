@@ -42,7 +42,7 @@ export default function PlacesContactsCard({
   const mapsEmbedKey = import.meta.env.VITE_MAPS_EMBED_KEY
 
   return (
-    <div className="w-full bg-[#FDECE6] border border-[#F3B8A6] rounded-[22px] p-5 flex flex-col gap-5 text-[#7A2E1B] animate-card-in">
+    <div className="w-full bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-5 text-[#1A1A1A]">
       {/* Places Subsection */}
       {hasPlaces && (
         <div className="flex flex-col gap-3">
@@ -103,7 +103,7 @@ export default function PlacesContactsCard({
                       href={mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-press inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C2410C] text-white text-xs font-semibold rounded-lg hover:bg-[#9C340A] transition-colors"
+                      className="sv-press inline-flex items-center gap-1.5 h-9 px-3 bg-[#D9603B] text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] text-xs font-bold rounded-full"
                     >
                       <MapPinIcon className="w-3.5 h-3.5" />
                       {t.openInMaps || 'Open in Maps'}
@@ -220,7 +220,7 @@ export default function PlacesContactsCard({
                     {isEmail ? (
                       <a
                         href={`mailto:${contact.value.trim()}`}
-                        className="btn-press inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C2410C] text-white text-xs font-semibold rounded-lg hover:bg-[#9C340A] transition-colors"
+                        className="sv-press inline-flex items-center gap-1.5 h-9 px-3 bg-[#D9603B] text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] text-xs font-bold rounded-full"
                       >
                         <MailIcon className="w-3.5 h-3.5" />
                         {t.email || 'Email'}
@@ -228,7 +228,7 @@ export default function PlacesContactsCard({
                     ) : (
                       <a
                         href={`tel:${cleanPhone}`}
-                        className="btn-press inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C2410C] text-white text-xs font-semibold rounded-lg hover:bg-[#9C340A] transition-colors"
+                        className="sv-press inline-flex items-center gap-1.5 h-9 px-3 bg-[#D9603B] text-[#1A1A1A] border-[1.5px] border-[#1A1A1A] text-xs font-bold rounded-full"
                       >
                         <PhoneIcon className="w-3.5 h-3.5" />
                         {t.call || 'Call'}

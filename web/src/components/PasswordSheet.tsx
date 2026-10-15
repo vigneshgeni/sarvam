@@ -58,92 +58,54 @@ export default function PasswordSheet({
       title={t.passwordRequiredTitle || 'This PDF is password protected'}
       maxHeight="max-h-[85vh]"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pt-1">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#FFF4DE] text-[#9A6700] flex items-center justify-center shrink-0">
-              <LockIcon className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-[#15171A]">
-                {t.passwordRequiredTitle || 'This PDF is password protected'}
-              </h2>
-              {fileName && (
-                <p className="text-xs text-[#5E636B] truncate max-w-[240px]">
-                  {fileName}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-2 text-[#5E636B] hover:text-[#15171A] rounded-full hover:bg-[#F0F0EB] transition-colors"
-            aria-label={t.close || 'Close'}
-          >
-            <CloseIcon className="w-5 h-5" />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+        <div className="flex items-start justify-between">
+          <span aria-hidden="true" className="w-16 h-16 box-border border-[1.5px] border-[#1A1A1A] rounded-full bg-[#E9B44C] flex items-center justify-center">
+            <LockIcon className="w-7 h-7" />
+          </span>
+          <button type="button" onClick={onCancel} className="sv-press w-11 h-11 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center" aria-label={t.close || 'Close'}>
+            <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
-
-        <p className="text-xs text-[#5E636B] leading-relaxed">
-          {t.passwordRequiredDesc || 'Enter the password to read this document. Password is used only to decrypt and never saved.'}
-        </p>
-
-        {/* Password Input Field */}
-        <div
-          className={`flex flex-col gap-1.5 transition-transform ${
-            isShaking ? 'animate-[shake_0.4s_ease-in-out]' : ''
-          }`}
-        >
-          <div className="relative flex items-center">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="sv-display m-0 text-[34px] leading-[1.02] text-[#1A1A1A]">
+            {t.passwordRequiredTitle || 'This PDF is locked'}<span className="text-[#D9603B]">.</span>
+          </h2>
+          <p className="m-0 text-[15.5px] leading-[1.4] text-[#3B3E3C]">
+            {fileName ? `${fileName} ` : ''}{t.passwordRequiredDesc || 'needs its password. It is used once and never saved.'}
+          </p>
+        </div>
+        <div className={`flex flex-col gap-2 ${isShaking ? 'animate-[shake_0.4s_ease-in-out]' : ''}`}>
+          <label htmlFor="sv-pdf-password" className="text-[13px] font-bold">{t.password || 'Password'}</label>
+          <div className={`flex items-center gap-1.5 h-14 box-border pl-[18px] pr-1.5 rounded-[28px] border-[1.5px] ${errorMsg ? 'border-[#D9603B] shadow-[0_0_0_3px_#F8D9CB]' : 'border-[#1A1A1A]'}`}>
             <input
+              id="sv-pdf-password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={t.passwordPlaceholder || 'Enter password'}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck="false"
-              className="w-full bg-[#F6F6F3] border border-[#E6E6E1] rounded-xl px-3.5 py-3 pr-10 text-sm text-[#15171A] placeholder-[#5E636B] focus:outline-none focus:border-[#5B52D6]"
+              className="flex-1 min-w-0 border-0 bg-transparent font-semibold text-[17px] tracking-[2px] text-[#1A1A1A] outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 text-[#5E636B] hover:text-[#15171A] p-1"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              <EyeIcon className="w-4 h-4" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="w-11 h-11 rounded-full flex items-center justify-center" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+              <EyeIcon className="w-5 h-5" />
             </button>
           </div>
-
           {errorMsg && (
-            <span className="text-xs font-semibold text-[#B42318] px-1">
-              {errorMsg}
-            </span>
+            <span role="alert" className="flex items-center gap-1.5 text-[13.5px] font-semibold text-[#B3361A]">{errorMsg}</span>
           )}
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="btn-press flex-1 py-3 bg-[#F0F0EB] text-[#15171A] font-semibold text-xs rounded-xl hover:bg-[#E6E6E1] transition-colors"
-          >
-            {t.skip || 'Skip'}
+        <div className="flex gap-2.5">
+          <button type="button" onClick={onCancel} className="sv-press flex-1 h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[16px]">
+            {t.skipThisFile || 'Skip this file'}
           </button>
-
-          <button
-            type="submit"
-            disabled={!password.trim()}
-            className="btn-press flex-1 py-3 bg-[#5B52D6] disabled:opacity-50 text-white font-semibold text-xs rounded-xl hover:bg-[#483EB8] transition-colors shadow-sm"
-          >
+          <button type="submit" disabled={!password.trim()} className="sv-press flex-[1.3] h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-50 font-bold text-[16px]">
             {t.unlock || 'Unlock'}
           </button>
         </div>
+        <p className="m-0 text-[12.5px] text-[#575B58]">{t.passwordOnce || 'The password is used once and never saved.'}</p>
       </form>
     </Sheet>
   )

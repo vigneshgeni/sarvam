@@ -1,0 +1,283 @@
+{
+  "doc_type": "challan",
+  "document_type": "challan",
+  "document_kind": "challan",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "",
+    "diagnosis_as_written": "",
+    "advice_lines": [],
+    "amounts": [
+      {
+        "label": "Total payable",
+        "value": "Rs. 1,000.00",
+        "quote": "Fine amount Rs. 1,000.00",
+        "page": 1
+      }
+    ],
+    "due_date": "2026-12-05",
+    "last_date_without_penalty": "",
+    "how_to_pay": [
+      "Pay online at pay.anandnagartraffic.example using Challan No."
+    ],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "ECH/2026/0098121",
+    "hearing_or_deadline": "2026-12-05",
+    "directions": [
+      "Pay the fine online at pay.anandnagartraffic.example using Challan No.",
+      "Contest the challan before 05 Dec 2026 if you disagree"
+    ],
+    "consequence": "Case may be forwarded to the Virtual Court and additional charges may apply",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "Traffic Violation Notice (e-Challan)",
+  "report_title": "Notice of Traffic Violation (e-Challan)",
+  "report_date": "06 Oct 2026",
+  "report_date_iso": "2026-10-06",
+  "language": "en",
+  "letter_date": "2026-10-06",
+  "source_kind": "text_pdf",
+  "glance": {
+    "headline": "Traffic violation fine of Rs. 1,000.00 for riding without a helmet",
+    "key_values": [
+      {
+        "label": "Challan No",
+        "value": "ECH/2026/0098121",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "Fine Amount",
+        "value": "Rs. 1,000.00",
+        "kind": "amount",
+        "evidence": "matched"
+      },
+      {
+        "label": "Vehicle No",
+        "value": "TN 99 AB 1234",
+        "kind": "text",
+        "evidence": "matched"
+      },
+      {
+        "label": "Due Date",
+        "value": "05 Dec 2026",
+        "kind": "date",
+        "evidence": "matched"
+      },
+      {
+        "label": "Notice Date",
+        "value": "06 Oct 2026",
+        "kind": "date",
+        "evidence": "matched"
+      }
+    ]
+  },
+  "summary": [
+    "A traffic violation notice has been issued to Suresh Raman by the City Traffic Police, Anand Nagar, for riding a two-wheeler without a helmet.",
+    "The fine amount is Rs. 1,000.00, which must be paid or contested on or before 05 Dec 2026.",
+    "If the fine is not cleared or contested in time, the matter may be referred to the Virtual Court with additional charges."
+  ],
+  "spoken_summary": "This is a traffic violation notice from City Traffic Police, Anand Nagar. A fine of Rs. 1,000.00 has been issued for riding without a helmet. You need to pay the fine online using your challan number or contest it by 05 Dec 2026. If it is not paid or contested by then, the case may be sent to the Virtual Court.",
+  "actions": [
+    {
+      "text": "Pay the fine of Rs. 1,000.00 online on or before 05 Dec 2026",
+      "due_date": "2026-12-05",
+      "deadline_rule": null,
+      "deadline_days": 60,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "calculated",
+      "quote": "Pay the fine within 60 days of the date of this notice, that is on or before 05 Dec 2026, online at pay.anandnagartraffic.example using the Challan No.",
+      "page": 1,
+      "evidence": "calculated",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Contest the challan before 05 Dec 2026 if you disagree",
+      "due_date": "2026-12-05",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "If you disagree, you may contest the challan before the same date by writing to the Traffic Review Officer or through the online contest option.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Keep the payment receipt after completing payment",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "Keep the payment receipt. Payment is recorded against the vehicle number.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [
+    {
+      "text": "If the fine is not paid or contested by 05 Dec 2026, the case may go to Virtual Court and extra charges may apply",
+      "quote": "If the fine is not paid or contested by 05 Dec 2026, the case may be forwarded to the Virtual Court and additional charges may apply.",
+      "page": 1,
+      "evidence": "matched",
+      "part_id": "part-1"
+    }
+  ],
+  "facts": [
+    {
+      "text": "Challan Number is ECH/2026/0098121",
+      "quote": "Challan No ECH/2026/0098121",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Vehicle number is TN 99 AB 1234 (two-wheeler)",
+      "quote": "Vehicle No TN 99 AB 1234 (two-wheeler)",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Registered owner is Suresh Raman",
+      "quote": "Registered owner Suresh Raman",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Violation recorded: Two-wheeler rider found without a helmet",
+      "quote": "Violation recorded Two-wheeler rider found without a helmet. Recorded by a roadside camera.",
+      "page": 1,
+      "evidence": "matched",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "Violation time was 11:42 am on 06 Oct 2026",
+      "quote": "Date of notice 06 Oct 2026 Time 11:42 am",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "Place of Violation",
+      "address": "Lake Road Junction, Anand Nagar",
+      "quote": "Place Lake Road Junction, Anand Nagar",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "Helpline Phone",
+      "value": "0422-000-0000",
+      "quote": "Help: 0422-000-0000 | echallan@anandnagartraffic.example",
+      "page": 1,
+      "evidence": "matched"
+    },
+    {
+      "label": "Helpline Email",
+      "value": "echallan@anandnagartraffic.example",
+      "quote": "Help: 0422-000-0000 | echallan@anandnagartraffic.example",
+      "page": 1,
+      "evidence": "matched"
+    }
+  ],
+  "medicines": [],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 7,
+    "check_original": 1,
+    "calculated": 1
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": "CITY TRAFFIC POLICE, ANAND NAGAR\nNotice of Traffic Violation (e-Challan)\nChallan No\nECH/2026/0098121\nDate of notice\n06 Oct 2026\nVehicle No\nTN 99 AB 1234 (two-wheeler)\nTime\n11:42 am\nPlace\nLake Road Junction, Anand Nagar\nRegistered owner\nSuresh Raman\nViolation recorded\nTwo-wheeler rider found without a helmet. Recorded by a roadside camera.\nFine amount\nRs. 1,000.00\nWhat you can do\n1. Pay the fine within 60 days of the date of this notice, that is on or before 05 Dec 2026,\nonline at pay.anandnagartraffic.example using the Challan No.\n2. If you disagree, you may contest the challan before the same date by writing to the Traffic\nReview Officer or through the online contest option.\n3. If the fine is not paid or contested by 05 Dec 2026, the case may be forwarded to the\nVirtual Court and additional charges may apply.\n4. Keep the payment receipt. Payment is recorded against the vehicle number.\nHelp: 0422-000-0000  |  echallan@anandnagartraffic.example\nSAMPLE DOCUMENT - FICTIONAL. Names, numbers and organisations are invented for demonstration only.\n",
+  "protected_terms": [
+    "CITY TRAFFIC POLICE, ANAND NAGAR",
+    "ECH/2026/0098121",
+    "TN 99 AB 1234",
+    "Lake Road Junction, Anand Nagar",
+    "Suresh Raman",
+    "0422-000-0000",
+    "echallan@anandnagartraffic.example",
+    "pay.anandnagartraffic.example"
+  ]
+}

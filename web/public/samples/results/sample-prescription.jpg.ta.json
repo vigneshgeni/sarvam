@@ -1,0 +1,301 @@
+{
+  "doc_type": "medical",
+  "document_type": "medical",
+  "document_kind": "prescription",
+  "profile": {
+    "lab_name": "",
+    "patient_age_sex": "62 / F",
+    "sample_date": "",
+    "referred_by": "",
+    "follow_up": "20/10/2026",
+    "diagnosis_as_written": "Throat infection",
+    "advice_lines": [],
+    "amounts": [],
+    "due_date": "",
+    "last_date_without_penalty": "",
+    "how_to_pay": [],
+    "seller": "",
+    "invoice_no": "",
+    "invoice_date": "",
+    "line_items": [],
+    "taxable_value": "",
+    "taxes": [],
+    "total": "",
+    "paid_or_due": "",
+    "warranty_until": "",
+    "return_window": "",
+    "claimed": "",
+    "approved": "",
+    "deducted": "",
+    "deduction_reasons": [],
+    "policy_no": "",
+    "sum_insured": "",
+    "premium": "",
+    "renewal_date": "",
+    "review_window": "",
+    "invested": "",
+    "current_value": "",
+    "gain": "",
+    "gain_calculated": false,
+    "units": "",
+    "nav": "",
+    "nav_date": "",
+    "folio": "",
+    "next_sip_date": "",
+    "opening": "",
+    "closing": "",
+    "credits_total": "",
+    "debits_total": "",
+    "gross": "",
+    "deductions": "",
+    "net_pay": "",
+    "period": "",
+    "lender": "",
+    "loan_type": "",
+    "loan_account": "",
+    "sanctioned_amount": "",
+    "interest_rate": "",
+    "tenure": "",
+    "emi_amount": "",
+    "emi_day_of_month": 0,
+    "first_emi_date": "",
+    "next_emi_date": "",
+    "outstanding": "",
+    "charges": [],
+    "agreement_type": "",
+    "parties": [],
+    "subject": "",
+    "start_date": "",
+    "end_date": "",
+    "term": "",
+    "rent_or_price": "",
+    "deposit": "",
+    "lock_in": "",
+    "notice_period": "",
+    "renewal_or_escalation": "",
+    "penalties": [],
+    "case_or_notice_no": "",
+    "hearing_or_deadline": "",
+    "directions": [],
+    "consequence": "",
+    "form_fields": []
+  },
+  "document_language": "en",
+  "title": "Shanthi Family Clinic-இல் இருந்து மருந்துச் சீட்டு",
+  "report_title": null,
+  "report_date": null,
+  "report_date_iso": null,
+  "language": "ta",
+  "letter_date": "2026-10-13",
+  "source_kind": "photo",
+  "glance": {
+    "headline": "தொண்டை தொற்று சிகிச்சை மற்றும் மருந்துகளுக்கான மருத்துவர் சீட்டு",
+    "key_values": [
+      {
+        "label": "நோயாளி பெயர்",
+        "value": "Lakshmi Narayan",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "தேதி",
+        "value": "13/10/2026",
+        "kind": "date",
+        "evidence": "check_original"
+      },
+      {
+        "label": "நோய் கண்டறிதல்",
+        "value": "Throat infection",
+        "kind": "text",
+        "evidence": "check_original"
+      },
+      {
+        "label": "மறு பரிசோதனை தேதி",
+        "value": "20/10/2026",
+        "kind": "date",
+        "evidence": "check_original"
+      }
+    ]
+  },
+  "summary": [
+    "இது 13/10/2026 அன்று Shanthi Family Clinic-இல் Dr. S. Rao அவர்களால் Lakshmi Narayan-க்கு வழங்கப்பட்ட மருத்துவச் சீட்டு ஆகும்.",
+    "தொண்டை தொற்று பாதிப்பு இருப்பது கண்டறியப்பட்டுள்ளது. ஒரு ஆன்டிபயாடிக், ஒரு வலி நிவாரணி மற்றும் ஒரு ஒவ்வாமை மாத்திரை உட்பட மூன்று மருந்துகள் பரிந்துரைக்கப்பட்டுள்ளன.",
+    "மீண்டும் மருத்துவரை வந்து பார்ப்பதற்கான தேதி 20/10/2026 அன்று திட்டமிடப்பட்டுள்ளது."
+  ],
+  "spoken_summary": "இது Shanthi Family Clinic-இல் இருந்து Dr. S. Rao அவர்கள் Lakshmi Narayan-க்கு அளித்த மருந்துச் சீட்டு. உங்களுக்குத் தொண்டை தொற்று இருப்பது கண்டறியப்பட்டுள்ளது. நீங்கள் மூன்று மருந்துகளைச் சாப்பிட வேண்டும்: Amoxicillin மாத்திரையை 7 நாட்களுக்கு தினமும் மூன்று வேளை, Paracetamol மாத்திரையை 5 நாட்களுக்கு தினமும் இரண்டு வேளை, மற்றும் Cetirizine மாத்திரையை 5 நாட்களுக்குத் தூங்குவதற்கு முன் சாப்பிட வேண்டும். 20 அக்டோபர் 2026 அன்று மறுபரிசோதனைக்காக மருத்துவரிடம் செல்லவும்.",
+  "actions": [
+    {
+      "text": "20/10/2026 அன்று மறு மருத்துவப் பரிசோதனைக்குச் செல்லவும்",
+      "due_date": "2026-10-20",
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "upcoming",
+      "quote": "Review on 20/10/2026",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Amoxicillin 500 mg மாத்திரையை 7 நாட்களுக்கு தினமும் மூன்று வேளை (காலை, மதியம், இரவு) உணவுக்குப் பின் சாப்பிடவும்",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "1. Tab. Amoxicillin 500 mg 1 - 1 - 1 x 7 days after food",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Paracetamol 650 mg மாத்திரையை 5 நாட்களுக்கு தினமும் இரண்டு வேளை (காலை மற்றும் இரவு) உணவுக்குப் பின் சாப்பிடவும்",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "2. Tab. Paracetamol 650 mg 1 - 0 - 1 x 5 days after food",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    },
+    {
+      "text": "Tab. Cetirizine 10 mg மாத்திரையை 5 நாட்களுக்கு தினமும் ஒரு வேளை தூங்குவதற்கு முன் சாப்பிடவும்",
+      "due_date": null,
+      "deadline_rule": null,
+      "deadline_days": null,
+      "deadline_anchor": null,
+      "recurrence": null,
+      "date_status": "none",
+      "quote": "3. Tab. Cetirizine 10 mg 0 - 0 - 1 x 5 days at bedtime",
+      "page": 1,
+      "evidence": "check_original",
+      "part_id": "part-1"
+    }
+  ],
+  "warnings": [],
+  "facts": [
+    {
+      "text": "நோயாளி Lakshmi Narayan, 62 வயது பெண்",
+      "quote": "Name: Lakshmi Narayan Age/Sex: 62 / F",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    },
+    {
+      "text": "நோய் கண்டறிதல்: தொண்டை தொற்று",
+      "quote": "Dx: Throat infection",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": false,
+      "part_id": "part-1"
+    },
+    {
+      "text": "மருத்துவர் பதிவு எண் KMC 00000",
+      "quote": "Reg. No. KMC 00000",
+      "page": 1,
+      "evidence": "check_original",
+      "is_personal": true,
+      "part_id": "part-1"
+    }
+  ],
+  "places": [
+    {
+      "label": "மருத்துவமனை முகவரி",
+      "address": "14, 1st Main, Rayasandra, Bengaluru 560099",
+      "quote": "14, 1st Main, Rayasandra, Bengaluru 560099",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "மருத்துவமனை தொலைபேசி எண்",
+      "value": "080 2222 3344",
+      "quote": "Ph: 080 2222 3344",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "medicines": [
+    {
+      "name": "Tab. Amoxicillin",
+      "strength_text": "500 mg",
+      "frequency_raw": "1 - 1 - 1",
+      "frequency_code": "1-1-1",
+      "slots": [
+        "morning",
+        "afternoon",
+        "night"
+      ],
+      "food_timing": "after_food",
+      "duration_days": 7,
+      "instruction_text": "ஒரு மாத்திரையை 7 நாட்களுக்கு தினமும் மூன்று வேளை உணவுக்குப் பின் சாப்பிடவும்.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "1. Tab. Amoxicillin 500 mg\n1 - 1 - 1 x 7 days after food",
+      "page": 1,
+      "evidence": "check_original"
+    },
+    {
+      "name": "Tab. Paracetamol",
+      "strength_text": "650 mg",
+      "frequency_raw": "1 - 0 - 1",
+      "frequency_code": "1-0-1",
+      "slots": [
+        "morning",
+        "night"
+      ],
+      "food_timing": "after_food",
+      "duration_days": 5,
+      "instruction_text": "ஒரு மாத்திரையை 5 நாட்களுக்கு காலை மற்றும் இரவு உணவுக்குப் பின் சாப்பிடவும்.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "2. Tab. Paracetamol 650 mg\n1 - 0 - 1 x 5 days after food",
+      "page": 1,
+      "evidence": "check_original"
+    },
+    {
+      "name": "Tab. Cetirizine",
+      "strength_text": "10 mg",
+      "frequency_raw": "0 - 0 - 1",
+      "frequency_code": "0-0-1",
+      "slots": [
+        "night"
+      ],
+      "food_timing": null,
+      "duration_days": 5,
+      "instruction_text": "ஒரு மாத்திரையை 5 நாட்களுக்கு தூங்குவதற்கு முன் சாப்பிடவும்.",
+      "decoded": true,
+      "as_needed": false,
+      "quote": "3. Tab. Cetirizine 10 mg\n0 - 0 - 1 x 5 days at bedtime",
+      "page": 1,
+      "evidence": "check_original"
+    }
+  ],
+  "conflicts": [],
+  "parts": null,
+  "sections": null,
+  "evidence_summary": {
+    "matched": 0,
+    "check_original": 7,
+    "calculated": 0
+  },
+  "unreadable": false,
+  "unreadable_reason": null,
+  "source_text": null,
+  "protected_terms": [
+    "Shanthi Family Clinic",
+    "Dr. S. Rao",
+    "KMC 00000",
+    "Lakshmi Narayan",
+    "Bengaluru",
+    "Rayasandra",
+    "080 2222 3344"
+  ]
+}
