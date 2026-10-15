@@ -34,6 +34,68 @@
   font-family: var(--sv-indic-family, 'DM Sans'), 'DM Sans', sans-serif;
   line-height: 1.68;
 }
+.sv-result-headline {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.sv-display.sv-result-headline {
+  font-size: clamp(26px, 8vw, 34px);
+  line-height: 1.12;
+}
+.sv-indic.sv-result-headline {
+  font-size: clamp(18px, 5.4vw, 24px);
+  line-height: 1.35;
+  font-weight: 650;
+}
+.sv-days-left {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.sv-display.sv-days-left {
+  font-size: clamp(20px, 6vw, 28px);
+  line-height: 1.2;
+}
+.sv-indic.sv-days-left {
+  font-size: clamp(14px, 4vw, 18px);
+  line-height: 1.35;
+  font-weight: 650;
+}
+.sv-med-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sv-med-slot {
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.sv-med-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sv-med-slot-row span {
+  min-width: 0;
+  color: #1A1A1A;
+  overflow-wrap: anywhere;
+}
+.sv-med-time {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: #F4F5F2;
+  color: #1A1A1A;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 8px;
+}
 .sv-card-in {
   animation: sv-fade-up 320ms cubic-bezier(.2, .8, .2, 1) both;
 }

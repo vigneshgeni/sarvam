@@ -184,7 +184,7 @@ export default function MedicineCard({
               {!sos && !weekly && (
                 <div className="flex flex-wrap gap-1.5">
                   {med.slots.map((slot) => (
-                    <span key={slot} className={`inline-flex items-center h-[30px] px-2.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[12.5px] font-bold ${slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#1A1A1A] text-[#F4F5F2]'}`}>
+                    <span key={slot} className={`inline-flex items-center h-[30px] px-2.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[12.5px] font-bold text-[#1A1A1A] ${slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#E4DFF0]'}`}>
                       {slot} {DEFAULT_SLOT_TIMES[slot]?.replace(/^0/, '')}
                     </span>
                   ))}
@@ -264,7 +264,7 @@ export default function MedicineCard({
                       <span className="text-xs font-medium text-[#5E636B]">
                         Reminder slots:
                       </span>
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="sv-med-slots">
                         {med.slots?.map((slot) => {
                           const slotKey = `${mIdx}-${slot}`
                           const isTicked = !!selectedSlots[slotKey]
@@ -273,16 +273,16 @@ export default function MedicineCard({
                           return (
                             <label
                               key={slot}
-                              className={`flex flex-col items-center gap-1 px-1 py-2 rounded-2xl border-[1.5px] border-[#1A1A1A] cursor-pointer ${isTicked ? (slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#1A1A1A] text-[#F4F5F2]') : 'bg-transparent'}`}
+                              className={`sv-med-slot px-2 py-2 rounded-2xl border-[1.5px] border-[#1A1A1A] cursor-pointer ${isTicked ? (slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#E4DFF0]') : 'bg-transparent'}`}
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="sv-med-slot-row">
                                 <input
                                   type="checkbox"
                                   checked={isTicked}
                                   onChange={() => handleToggleSlot(mIdx, slot)}
-                                  className="w-4 h-4 text-[#034F46] rounded border-[#E6E6E1] focus:ring-0"
+                                  className="w-4 h-4 shrink-0 text-[#034F46] rounded border-[#E6E6E1] focus:ring-0"
                                 />
-                                <span className="text-xs capitalize font-medium text-[#15171A]">
+                                <span className="text-xs capitalize font-medium">
                                   {slot}
                                 </span>
                               </div>
@@ -294,7 +294,7 @@ export default function MedicineCard({
                                   handleTimeChange(mIdx, slot, e.target.value)
                                 }
                                 disabled={!isTicked}
-                                className="text-xs font-mono bg-neutral-50 border border-neutral-200 rounded px-1.5 py-0.5 disabled:opacity-50"
+                                className="sv-med-time text-xs font-mono px-1.5 py-0.5 disabled:opacity-50"
                               />
                             </label>
                           )

@@ -159,7 +159,7 @@ export default function SummaryCard({
           </button>
         )}
       </div>
-      <h1 className={`m-0 text-[34px] leading-[1.05] tracking-[-0.4px] ${lang !== 'en' ? 'sv-indic text-[26px] font-semibold' : 'sv-display'}`}>
+      <h1 className={`sv-result-headline m-0 tracking-[-0.4px] ${lang !== 'en' ? 'sv-indic' : 'sv-display'}`}>
         {headline}
       </h1>
       {paid.length > 0 && kind !== 'B' && (
@@ -238,12 +238,12 @@ function AmountToPay({
   const date = dueIso ? formatChipDate(dueIso, lang) : null
   const figure = formatAmountValue(payable.value || amounts[0]?.value || '')
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 min-w-0">
       <div className="flex-1 min-w-0 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
         <span className="text-[12px] font-bold tracking-[1.2px]">{t.toPay || 'TO PAY'}</span>
         <span className="sv-display text-[44px] leading-none tabular-nums">{figure}</span>
         {date && (
-          <span className="text-[14px] font-semibold">
+          <span className="text-[14px] font-semibold break-words [overflow-wrap:anywhere]">
             {(t.byDate || 'by {date}').replace('{date}', date)}
             {left != null && left >= 0 ? ` · ${(t.daysLeft || '{n} days left').replace('{n}', String(left))}` : ''}
           </span>
@@ -263,11 +263,11 @@ function Deadline({ result, t, lang }: { result: ExplainResponse; t: Record<stri
     return <span className="self-start inline-flex h-8 items-center px-3 rounded-full bg-[#1A1A1A] text-[#F4F5F2] text-[13px] font-bold">{t.datePassed || 'Date has passed'}</span>
   }
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 min-w-0">
       <DateTile iso={due.due_date} />
-      <div className="flex-1 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-2 justify-center">
-        <span className="text-[14px] font-semibold">{formatChipDate(due.due_date, lang)}</span>
-        <span className="sv-display text-[28px] leading-none">{(t.daysLeft || '{n} days left').replace('{n}', String(left ?? ''))}</span>
+      <div className="flex-1 min-w-0 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-2 justify-center">
+        <span className="text-[14px] font-semibold break-words [overflow-wrap:anywhere]">{formatChipDate(due.due_date, lang)}</span>
+        <span className={`sv-days-left ${lang !== 'en' ? 'sv-indic' : 'sv-display'}`}>{(t.daysLeft || '{n} days left').replace('{n}', String(left ?? ''))}</span>
         <span className="h-1.5 rounded-full bg-[#1A1A1A]/15 overflow-hidden">
           <span className="block h-full bg-[#D9603B]" style={{ width: `${Math.max(8, Math.min(100, ((left ?? 0) / 30) * 100))}%` }} />
         </span>
