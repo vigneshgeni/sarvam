@@ -287,6 +287,10 @@ export default function ResultScreen({
   const [hidePersonal, setHidePersonal] = useState(true)
   const [copySuccess, setCopySuccess] = useState(false)
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [resultId, result?.title, result?.language, selectedReportIndex])
+
   // Top bar scroll hairline
   const [isScrolled, setIsScrolled] = useState(false)
   useEffect(() => {
@@ -1274,7 +1278,7 @@ export default function ResultScreen({
             </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-2 pt-1">
+          <div className="grid grid-cols-4 gap-2 pt-1">
             <button type="button" onClick={() => shareToWhatsApp(sharedText)} className="sv-press flex flex-col items-center gap-1.5">
               <span className="w-14 h-14 rounded-full bg-[#25D366] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-white">
                 <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
@@ -1296,17 +1300,6 @@ export default function ResultScreen({
             <button type="button" onClick={() => setIsSaveImageOpen(true)} className="sv-press flex flex-col items-center gap-1.5">
               <span className="w-14 h-14 rounded-full bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">IMG</span>
               <span className="text-[12px] font-semibold">{t.saveImage || 'Save image'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (navigator.share) void navigator.share({ title: shared.title, text: sharedText })
-                else handleCopyShared()
-              }}
-              className="sv-press flex flex-col items-center gap-1.5"
-            >
-              <span className="w-14 h-14 rounded-full bg-[#1A1A1A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">···</span>
-              <span className="text-[12px] font-semibold">{t.more || 'More'}</span>
             </button>
           </div>
         </div>

@@ -142,7 +142,10 @@ export default function MultiDocument({
             aria-current={active === index}
             className="sv-press min-w-0 flex-1 h-11 rounded-[22px] text-[14px] font-bold inline-flex items-center justify-center gap-1.5 px-2"
             style={{ background: active === index ? '#E9B44C' : 'transparent' }}
-            onClick={() => document.getElementById(`sv-doc-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => {
+              window.scrollTo(0, 0)
+              document.getElementById(`sv-doc-${index}`)?.scrollIntoView({ behavior: 'auto', block: 'start' })
+            }}
           >
             <span className="w-5 h-5 rounded-full border-[1.5px] border-[#1A1A1A] text-[11px] inline-flex items-center justify-center shrink-0" style={{ background: active === index ? '#1A1A1A' : 'transparent', color: active === index ? '#F4F5F2' : '#1A1A1A' }}>
               {index + 1}
