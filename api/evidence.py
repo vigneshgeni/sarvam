@@ -508,6 +508,245 @@ def names_after_labels(text: str) -> List[str]:
     return found
 
 
+# Role words that introduce a person. Longer phrases come first.
+_ROLE_WORDS = (
+    "account holder",
+    "complainant",
+    "petitioner",
+    "respondent",
+    "plaintiff",
+    "defendant",
+    "applicant",
+    "accused",
+    "witness",
+    "patient",
+    "nominee",
+    "शिकायतकर्ता",
+    "याचिकाकर्ता",
+    "खाताधारक",
+    "प्रतिवादी",
+    "अभियुक्त",
+    "नामांकित",
+    "आवेदक",
+    "आरोपी",
+    "गवाह",
+    "मरीज़",
+    "मरीज",
+    "रोगी",
+    "वादी",
+    "குற்றவாளி",
+    "புகார்தாரர்",
+    "எதிர்மனுதாரர்",
+    "விண்ணப்பதாரர்",
+    "கணக்குதாரர்",
+    "மனுதாரர்",
+    "எதிர்வாதி",
+    "நோயாளி",
+    "நாமினி",
+    "சாட்சி",
+    "வாதி",
+    "నిందితుడు",
+    "దరఖాస్తుదారు",
+    "అభియుక్తుడు",
+    "ఫిర్యాది",
+    "ప్రతివాది",
+    "ఖాతాదారు",
+    "పిటిషనర్",
+    "నామినీ",
+    "సాక్షి",
+    "వాది",
+    "రోగి",
+    "ದೂರುದಾರ",
+    "ಖಾತೆದಾರ",
+    "ಪ್ರತಿವಾದಿ",
+    "ಅರ್ಜಿದಾರ",
+    "ಆರೋಪಿ",
+    "ನಾಮಿನಿ",
+    "ಸಾಕ್ಷಿ",
+    "ವಾದಿ",
+    "ರೋಗಿ",
+    "പരാതിക്കാരൻ",
+    "ഹർജിക്കാരൻ",
+    "പ്രതിവാദി",
+    "അപേക്ഷകൻ",
+    "അക്കൗണ്ട് ഉടമ",
+    "സാക്ഷി",
+    "രോഗി",
+    "വാദി",
+    "നോമിനി",
+    "तक्रारदार",
+    "साक्षीदार",
+    "नामनिर्देशित",
+    "खातेदार",
+    "अर्जदार",
+    "रुग्ण",
+    "অভিযোগকারী",
+    "আবেদনকারী",
+    "হিসাবধারী",
+    "বিবাদী",
+    "আসামি",
+    "সাক্ষী",
+    "মনোনীত",
+    "রোগী",
+    "বাদী",
+    "ଅଭିଯୋଗକାରୀ",
+    "ଆବେଦନକାରୀ",
+    "ପ୍ରତିବାଦୀ",
+    "ଖାତାଧାରୀ",
+    "ଅଭିଯୁକ୍ତ",
+    "ମନୋନୀତ",
+    "ସାକ୍ଷୀ",
+    "ରୋଗୀ",
+    "ବାଦୀ",
+)
+_ROLE_PARTICLE = {
+    "का", "की", "के", "को", "में", "है", "हैं", "ने", "से", "पर", "लिए", "और", "या",
+    "இன்", "மற்றும்", "గారి", "ആണ്", "ಆಗಿದೆ", "आहे", "এর", "ଙ୍କ",
+}
+_ROLE_STOP = {
+    "the", "court", "city", "notice", "summons", "shall", "should", "must",
+    "this", "that", "you", "your", "and", "for", "with", "from", "case",
+    "suit", "order", "date", "amount", "name", "aged", "age", "hall", "no",
+}
+_ROLE_NAME = re.compile(
+    r"(?<!\w)(?i:"
+    + "|".join(re.escape(word) for word in sorted(_ROLE_WORDS, key=len, reverse=True))
+    + r")(?!\w)\.?\s*:?\s*"
+    r"(?:(?:Mrs|Mr|Ms|Dr|Shri|Smt|श्रीमती|सुश्री|कुमारी|श्री|डॉ|"
+    r"திருமதி|திரு|செல்வி|டாக்டர்|శ్రీమతి|శ్రీ|కుమారి|డాక్టర్|"
+    r"ശ്രീമതി|ശ്രീ|കുമാരി|ഡോ|ಶ್ರೀಮತಿ|ಶ್ರೀ|ಕುಮಾರಿ|ಡಾ|"
+    r"শ্রীমতী|শ্রী|কুমারী|ডা|ଶ୍ରୀମତୀ|ଶ୍ରୀ|କୁମାରୀ|ଡା)\.?\s+)?"
+    r"((?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})"
+    r"(?:\s+(?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})){0,2})"
+)
+
+
+def _role_name_span(span: str) -> str:
+    """Drop particles and titles. Keep the 1–3 name words."""
+    kept: List[str] = []
+    for part in (span or "").strip(" .।॥").split():
+        bare = part.strip(".").lower()
+        if part in _ROLE_PARTICLE or bare in _ROLE_PARTICLE:
+            if kept:
+                break
+            continue
+        if bare in _ROLE_STOP or part in _NOT_A_NAME or bare in _NOT_A_NAME:
+            break
+        if bare in {"mr", "mrs", "ms", "dr", "shri", "smt", "sri"}:
+            continue
+        if not part or (not re.match(r"[A-Z]", part) and not re.match(r"[\u0900-\u0D7F]", part)):
+            break
+        kept.append(part)
+        if len(kept) == 3:
+            break
+    return " ".join(kept)
+
+
+def names_after_roles(text: str) -> List[str]:
+    """The 1–3 name words written after a role label, in the script used."""
+    found: List[str] = []
+    if not text:
+        return found
+    for match in _ROLE_NAME.finditer(text):
+        span = _role_name_span(match.group(1))
+        if len(span) < 2 or span in found:
+            continue
+        found.append(span)
+    return found
+
+
+_PERSON_TITLE = {
+    "mr", "mrs", "ms", "miss", "dr", "shri", "smt", "sri",
+}
+_NOT_A_PERSON = (
+    "road", "street", "nagar", "cross", "hospital", "clinic", "bank", "court",
+    "dept", "department", "police", "municipality", "municipal", "fund",
+    "diagnostics", "ward", "flat", "door", "apartment", "apartments", "complex",
+    "hall", "city", "ltd", "limited", "insurance", "welfare", "authority",
+    "services", "service",
+)
+
+
+def is_source_person_name(term: str) -> bool:
+    """A protected term that is a person's name, not an ID, place, or institution."""
+    raw = (term or "").strip()
+    if len(raw) < 2 or any(ch.isdigit() for ch in raw) or "@" in raw:
+        return False
+    lower = raw.lower()
+    if any(re.search(rf"(?<!\w){re.escape(word)}(?!\w)", lower) for word in _NOT_A_PERSON):
+        return False
+    tokens = [part for part in raw.split() if part]
+    bare = [part.strip(".").lower() for part in tokens]
+    has_title = any(part in _PERSON_TITLE for part in bare)
+    words = [part for part, key in zip(tokens, bare) if key not in _PERSON_TITLE]
+    if has_title and words:
+        return True
+    if len(words) < 2:
+        return False
+    return all(re.fullmatch(r"[A-Za-z.'’-]+|[\u0900-\u0D7F.'’-]+", part) for part in words)
+
+
+def source_person_names(terms: Optional[List[str]]) -> List[str]:
+    found: List[str] = []
+    for term in filter_protected_terms(terms or []):
+        if is_source_person_name(term) and term not in found:
+            found.append(term)
+    return found
+
+
+def missing_source_names(
+    terms: Optional[List[str]],
+    rendered: Optional[dict],
+    texts: Optional[List[str]],
+) -> List[str]:
+    """Source names with no exact rendering written in the output."""
+    blob = "\n".join(text for text in (texts or []) if text)
+    rendered = rendered or {}
+    missing: List[str] = []
+    for name in source_person_names(terms):
+        forms = rendered.get(name) or []
+        usable = [
+            form.strip()
+            for form in forms
+            if isinstance(form, str) and len(form.strip()) >= 2 and form.strip() in blob
+        ]
+        if name in blob:
+            usable.append(name)
+        if not usable:
+            missing.append(name)
+    return missing
+
+
+def merge_name_renderings(
+    rendered: Optional[dict],
+    proposed: Optional[dict],
+    texts: Optional[List[str]],
+) -> Dict[str, List[str]]:
+    """Keep a proposed rendering only when that exact string is in the output."""
+    blob = "\n".join(text for text in (texts or []) if text)
+    merged = _clean_rendered_map(rendered)
+    if not isinstance(proposed, dict):
+        return merged
+    for name, forms in proposed.items():
+        if not isinstance(name, str) or not name.strip():
+            continue
+        if isinstance(forms, str):
+            forms = [forms]
+        if not isinstance(forms, list):
+            continue
+        current = list(merged.get(name.strip()) or [])
+        for form in forms:
+            if not isinstance(form, str):
+                continue
+            cleaned = form.strip()
+            if len(cleaned) < 2 or cleaned not in blob or cleaned in current:
+                continue
+            current.append(cleaned)
+        if current:
+            merged[name.strip()] = current
+    return merged
+
+
 def collect_protected_renderings(
     protected_terms: Optional[List[str]],
     texts: Optional[List[str]],
@@ -527,7 +766,7 @@ def collect_protected_renderings(
         if written:
             rendered[term] = written
     for text in texts or []:
-        for span in names_after_honorifics(text or "") + names_after_labels(text or ""):
+        for span in names_after_honorifics(text or "") + names_after_labels(text or "") + names_after_roles(text or ""):
             rendered.setdefault(span, [])
             if span not in rendered[span]:
                 rendered[span].append(span)
