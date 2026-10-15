@@ -183,7 +183,7 @@ export default function ReadingScreen({
   }, [])
   const [variant] = useState<ReadingLetter>(() =>
     pickReadingVariant({
-      photo: files.some((f) => f.type.startsWith('image/')),
+      photo: files.some((f) => f.type.startsWith('image/') || /\.(jpe?g|png|heic|webp)$/i.test(f.name)),
       fileCount: files.length,
       language: lang,
     })

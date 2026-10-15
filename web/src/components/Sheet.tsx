@@ -56,6 +56,11 @@ export default function Sheet({
         if (focusables.length === 0) return
         const first = focusables[0]
         const last = focusables[focusables.length - 1]
+        if (!sheetRef.current.contains(document.activeElement)) {
+          e.preventDefault()
+          ;(e.shiftKey ? last : first).focus()
+          return
+        }
         if (e.shiftKey) {
           if (document.activeElement === first) {
             e.preventDefault()
@@ -130,7 +135,7 @@ export default function Sheet({
       <div
         ref={sheetRef}
         tabIndex={-1}
-        className={`relative z-10 w-full max-w-[430px] mx-auto bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] flex flex-col overflow-hidden outline-none ${maxHeight} sheet-enter`}
+        className={`sv-sheet relative z-10 w-full max-w-[430px] mx-auto bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] flex flex-col overflow-hidden outline-none ${maxHeight} sheet-enter`}
         style={{
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
           transition: dragOffset > 0 ? 'none' : undefined,

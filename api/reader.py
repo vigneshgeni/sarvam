@@ -709,6 +709,43 @@ def read_document_single_attempt(
             if not result.language:
                 result.language = lang
 
+    if norm_lang == "en" and not result.unreadable:
+        indic_letters = []
+        all_letters = []
+        for piece in [result.title, *result.summary, *(action.text for action in result.actions)]:
+            for ch in piece or "":
+                if ch.isalpha():
+                    all_letters.append(ch)
+                    if "\u0900" <= ch <= "\u0D7F":
+                        indic_letters.append(ch)
+        if len(all_letters) >= 8 and len(indic_letters) / len(all_letters) > 0.2:
+            logger.warning("read_document: English was requested but the reading is in another script. Retrying.")
+            strict_prompt = (
+                prompt
+                + "\nThe person asked for English. Write every user-facing sentence in English, "
+                + "even when the document is in another language. Do not leave the title, summary, "
+                + "actions, warnings, or facts in the document's language."
+            )
+            retry_resp = call_gemini_with_retry(
+                client=client,
+                model=FALLBACK_MODEL_ID,
+                contents=contents[:-1] + [strict_prompt],
+                config=config,
+                endpoint="explain",
+                deadline=time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN,
+                attempt_timeout_sec=FALLBACK_TIMEOUT,
+                fallback_model=FALLBACK_MODEL_ID,
+            )
+            if isinstance(retry_resp.parsed, GeminiReaderResponse):
+                result = lift_reader_result(retry_resp.parsed)
+            else:
+                result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
+            result.language = "en"
+            if not result.document_type or result.document_type == "other":
+                if result.doc_type and result.doc_type in DOCUMENT_TYPES:
+                    result.document_type = result.doc_type
+            result.doc_type = result.document_type
+
     # Code safety net: filter out generic office terms from protected_terms
     if result.protected_terms:
         result.protected_terms = filter_protected_terms(result.protected_terms)

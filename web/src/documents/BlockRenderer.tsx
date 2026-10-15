@@ -35,7 +35,7 @@ function Specific({
     case 'howToContest':
       return <WaysToPayBlock result={result} t={t} />
     case 'consequence':
-      return <ConsequenceBlock result={result} />
+      return <ConsequenceBlock result={result} t={t} />
     case 'items':
       return <ItemsBlock result={result} t={t} />
     case 'warranty':

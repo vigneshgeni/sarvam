@@ -46,16 +46,20 @@ const english: FeedbackCopy = {
   tryAgain: 'Try again',
 }
 
+function copy(prompt: string, yes: string, no: string, whatWasWrong: string): FeedbackCopy {
+  return { ...english, prompt, yes, no, whatWasWrong }
+}
+
 export const feedbackStrings: Record<FeedbackLang, FeedbackCopy> = {
   en: english,
-  ta: english,
-  hi: english,
-  te: english,
-  ml: english,
-  kn: english,
-  mr: english,
-  bn: english,
-  or: english,
+  ta: copy('இந்த விளக்கம் சரியா?', 'ஆம்', 'இல்லை', 'என்ன தவறு?'),
+  hi: copy('क्या यह व्याख्या सही थी?', 'हाँ', 'नहीं', 'क्या गलत था?'),
+  te: copy('ఈ వివరణ సరైనదేనా?', 'అవును', 'కాదు', 'ఏమి తప్పు?'),
+  ml: copy('ഈ വിശദീകരണം ശരിയാണോ?', 'അതെ', 'അല്ല', 'എന്താണ് തെറ്റ്?'),
+  kn: copy('ಈ ವಿವರಣೆ ಸರಿಯೇ?', 'ಹೌದು', 'ಅಲ್ಲ', 'ಏನು ತಪ್ಪು?'),
+  mr: copy('हे स्पष्टीकरण बरोबर होते का?', 'होय', 'नाही', 'काय चुकले?'),
+  bn: copy('এই ব্যাখ্যা কি ঠিক ছিল?', 'হ্যাঁ', 'না', 'কী ভুল ছিল?'),
+  or: copy('ଏହି ବ୍ୟାଖ୍ୟା ଠିକ ଥିଲା କି?', 'ହଁ', 'ନା', 'କଣ ଭୁଲ ଥିଲା?'),
 }
 
 export function feedbackCopy(lang: string): FeedbackCopy {

@@ -92,12 +92,12 @@ export function AdviceBlock({ result, t }: { result: ExplainResponse; t: Record<
   return <OutlineList title={t.adviceOnDischarge || 'Advice on discharge'} lines={result.profile?.advice_lines || []} />
 }
 
-export function ConsequenceBlock({ result }: { result: ExplainResponse }) {
+export function ConsequenceBlock({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
   const text = result.profile?.consequence
   if (!text) return null
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] bg-[#D9603B] p-5 text-[#1A1A1A]">
-      <h2 className="text-[16px] font-bold m-0">Watch out</h2>
+      <h2 className="text-[16px] font-bold m-0">{t.riskTitle || 'Watch out'}</h2>
       <p className="m-0 mt-2 text-[15.5px] leading-[1.45]">{text}</p>
     </section>
   )

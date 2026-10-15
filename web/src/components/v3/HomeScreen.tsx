@@ -107,52 +107,12 @@ export default function HomeScreen(props: HomeProps) {
   const indic = selectedLang !== 'en' && selectedLang !== 'auto'
   ensureOnboardingFonts()
   if (props.library) return <AllDocuments {...props} />
-  if (!props.isOnline) {
-    return (
-      <div className="sv-screen-in min-h-[100dvh] box-border bg-[#F4F5F2] text-[#1A1A1A] px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-5 justify-between">
-        <div className="flex items-center justify-between">
-          <span className="text-[26px] font-bold tracking-[-0.8px]">
-            Sarvam<span className="text-[#D9603B]">.</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 h-[34px] px-3 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold">
-            <span className="blink w-2 h-2 rounded-full bg-[#D9603B]" aria-hidden="true" />
-            {t.offlineWord || 'Offline'}
-          </span>
-        </div>
-        <div role="img" aria-label={t.offlineTitle || "You're offline"} className="h-[320px] bg-[#1A1A1A] rounded-[40px] relative overflow-hidden flex items-center justify-center">
-          <span aria-hidden="true" className="absolute w-[230px] h-[230px] rounded-full border-[1.5px] border-dashed border-[#525754]" />
-          <svg className="drift" width="180" height="140" viewBox="0 0 180 140" aria-hidden="true">
-            <path d="M48 104a28 28 0 0 1-2-56 40 40 0 0 1 76-6 26 26 0 0 1 12 62z" fill="#F4F5F2" stroke="#1A1A1A" strokeWidth="2" />
-            <path d="M30 20l120 100" stroke="#D9603B" strokeWidth="7" strokeLinecap="round" />
-            <circle cx="70" cy="76" r="4" fill="#1A1A1A" />
-            <circle cx="104" cy="76" r="4" fill="#1A1A1A" />
-            <path d="M76 92c6-5 16-5 22 0" fill="none" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-          <span className="absolute right-[34px] bottom-[34px] h-[34px] px-3 box-border border-[1.5px] border-[#F4F5F2] rounded-full bg-[#E9B44C] inline-flex items-center text-[13px] font-bold">
-            {(t.nSavedResults || '{n} saved results').replace('{n}', String(recent.length))}
-          </span>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <h1 className="sv-display m-0 text-[42px] leading-[1.02] tracking-[-0.5px]">
-            {t.offlineTitle || "You're offline"}
-            <span className="text-[#D9603B]">.</span>
-          </h1>
-          <p className="m-0 text-[16px] leading-[1.4] text-[#3B3E3C]">
-            {t.offlineBody || 'Your saved results still open. Reading a new document needs the internet.'}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <button type="button" onClick={props.onOpenLibrary} className="sv-press h-14 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] text-[17px] font-bold">
-            {t.openSavedResults || 'Open saved results'}
-          </button>
-          <button type="button" onClick={props.onRetryOnline} className="sv-press h-[52px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent text-[#1A1A1A] text-[16px] font-semibold">
-            {t.retry || 'Try again'}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
+  const offlineBanner = !props.isOnline ? (
+    <div className="rounded-[24px] border-[1.5px] border-[#1A1A1A] bg-[#FBEBC4] px-4 py-3 text-[15px] leading-snug">
+      <span className="font-bold">{t.offlineTitle || "You're offline"}. </span>
+      {t.offlineBody || 'Your saved results still open. Reading a new document needs the internet.'}
+    </div>
+  ) : null
   const shown = recent.slice(0, 4)
   return (
     <div className="sv-screen-in bg-[#F4F5F2] text-[#1A1A1A] px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4">
@@ -169,8 +129,9 @@ export default function HomeScreen(props: HomeProps) {
           <IconA11y />
         </button>
       </header>
+      {offlineBanner}
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Language">
+      <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Language">
         {SUPPORTED_LANGS.map((lang) => {
           const selected = selectedLang === lang.id
           const autoLabel = LANG_LABELS[resolveLang('auto')] || 'English'
