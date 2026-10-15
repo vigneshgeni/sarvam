@@ -548,3 +548,17 @@ class KeyedTranslateResponse(BaseModel):
 class TranslateRequest(BaseModel):
     result: ExplainResponse
     lang: str
+
+
+class RedactSpan(BaseModel):
+    text: str
+    type: Literal["person", "phone", "id", "address", "dob", "email"]
+
+
+class RedactModel(BaseModel):
+    spans: List[RedactSpan] = Field(default_factory=list)
+
+
+class RedactRequest(BaseModel):
+    text: str = ""
+    lang: str = "en"
