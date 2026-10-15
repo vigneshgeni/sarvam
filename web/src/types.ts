@@ -127,6 +127,7 @@ export interface ExplainResponse {
   unreadable_reason: string | null
   protected_terms: string[]
   protected_terms_rendered?: Record<string, string[]>
+  mask_fallback?: boolean
   glance?: GlanceSection
   places?: PlaceItem[]
   contacts?: ContactItem[]

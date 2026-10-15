@@ -90,7 +90,57 @@ export function maskPersonName(name) {
 const PERSON_TITLE =
   /^(?:mr|mrs|ms|miss|dr|shri|smt|sri|திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ)\.?$/i
 
-const NAME_PARTICLE = /^(?:का|की|के|को|में|है|हैं|இன்|மற்றும்|గారి|ആണ്|ಆಗಿದೆ|आहे|এর|ଙ୍କ)$/
+const NAME_PARTICLE = /^(?:का|की|के|को|में|है|हैं|ने|से|पर|लिए|और|या|இன்|மற்றும்|గారి|ആണ്|ಆಗಿದೆ|आहे|এর|ଙ୍କ)$/
+
+const ROLE_WORDS = [
+  'account holder', 'complainant', 'petitioner', 'respondent', 'plaintiff', 'defendant',
+  'applicant', 'accused', 'witness', 'patient', 'nominee',
+  'शिकायतकर्ता', 'याचिकाकर्ता', 'खाताधारक', 'प्रतिवादी', 'अभियुक्त', 'नामांकित', 'आवेदक',
+  'आरोपी', 'गवाह', 'मरीज़', 'मरीज', 'रोगी', 'वादी',
+  'குற்றவாளி', 'புகார்தாரர்', 'எதிர்மனுதாரர்', 'விண்ணப்பதாரர்', 'கணக்குதாரர்', 'மனுதாரர்',
+  'எதிர்வாதி', 'நோயாளி', 'நாமினி', 'சாட்சி', 'வாதி',
+  'నిందితుడు', 'దరఖాస్తుదారు', 'అభియుక్తుడు', 'ఫిర్యాది', 'ప్రతివాది', 'ఖాతాదారు',
+  'పిటిషనర్', 'నామినీ', 'సాక్షి', 'వాది', 'రోగి',
+  'ದೂರುದಾರ', 'ಖಾತೆದಾರ', 'ಪ್ರತಿವಾದಿ', 'ಅರ್ಜಿದಾರ', 'ಆರೋಪಿ', 'ನಾಮಿನಿ', 'ಸಾಕ್ಷಿ', 'ವಾದಿ', 'ರೋಗಿ',
+  'പരാതിക്കാരൻ', 'ഹർജിക്കാരൻ', 'പ്രതിവാദി', 'അപേക്ഷകൻ', 'അക്കൗണ്ട് ഉടമ', 'സാക്ഷി', 'രോഗി', 'വാദി', 'നോമിനി',
+  'तक्रारदार', 'साक्षीदार', 'नामनिर्देशित', 'खातेदार', 'अर्जदार', 'रुग्ण',
+  'অভিযোগকারী', 'আবেদনকারী', 'হিসাবধারী', 'বিবাদী', 'আসামি', 'সাক্ষী', 'মনোনীত', 'রোগী', 'বাদী',
+  'ଅଭିଯୋଗକାରୀ', 'ଆବେଦନକାରୀ', 'ପ୍ରତିବାଦୀ', 'ଖାତାଧାରୀ', 'ଅଭିଯୁକ୍ତ', 'ମନୋନୀତ', 'ସାକ୍ଷୀ', 'ରୋଗୀ', 'ବାଦୀ',
+]
+
+const ROLE_STOP = new Set([
+  'the', 'court', 'city', 'notice', 'summons', 'shall', 'should', 'must', 'this', 'that',
+  'you', 'your', 'and', 'for', 'with', 'from', 'case', 'suit', 'order', 'date', 'amount',
+  'name', 'aged', 'age', 'hall', 'no',
+])
+
+function roleLabelSource() {
+  const forms = ROLE_WORDS.flatMap((word) => {
+    if (!/[A-Za-z]/.test(word)) return [word]
+    const titled = word.replace(/(^|\s)(\S)/g, (_, gap, ch) => gap + ch.toUpperCase())
+    return [word, titled, word.toUpperCase()]
+  })
+  return forms
+    .sort((a, b) => b.length - a.length)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+}
+
+function roleNameSpan(span) {
+  const parts = String(span || '').trim().split(/\s+/).slice(0, 3)
+  const kept = []
+  for (const part of parts) {
+    if (NAME_PARTICLE.test(part)) {
+      if (kept.length) break
+      continue
+    }
+    if (ROLE_STOP.has(part.toLowerCase()) || NOT_A_NAME.has(part) || NOT_A_NAME.has(part.toLowerCase())) break
+    if (/^(?:mr|mrs|ms|dr|shri|smt|sri)\.?$/i.test(part)) continue
+    if (/[\u0900-\u0D7F]/.test(part) || /^[A-Z][A-Za-z.'’-]*$/.test(part)) kept.push(part)
+    else break
+  }
+  return kept.join(' ')
+}
 
 const NOT_A_NAME = new Set([
   'prescription', 'report', 'bill', 'receipt', 'notice', 'letter',
@@ -581,6 +631,22 @@ export function maskStringWithSegments(input, protectedTerms = [], lang, birthKe
     if (at < 0) continue
     addReplacement(titleMatch.index + at, titleMatch.index + at + spoken.length, maskPersonName(spoken))
   }
+  const roleToken = String.raw`(?:[A-Z][A-Za-z.'’-]*|[\u0900-\u0D7F]{2,})`
+  const roleHonorific = String.raw`(?:Mrs|Mr|Ms|Dr|Shri|Smt|श्रीमती|सुश्री|कुमारी|श्री|डॉ|திருமதி|திரு|செல்வி|டாக்டர்|శ్రీమతి|శ్రీ|కుమారి|డాక్టర్|ശ്രീമതി|ശ്രീ|കുമാരി|ഡോ|ಶ್ರೀಮತಿ|ಶ್ರೀ|ಕುಮಾರಿ|ಡಾ|শ্রীমতী|শ্রী|কুমারী|ডা|ଶ୍ରୀମତୀ|ଶ୍ରୀ|କୁମାରୀ|ଡା)\.?`
+  const roleName = new RegExp(
+    String.raw`(?<![\p{L}\p{N}])(?:${roleLabelSource()})(?![\p{L}\p{N}])\.?\s*:?\s*(?:${roleHonorific}\s+)?(${roleToken}(?:\s+${roleToken}){0,2})`,
+    'gu',
+  )
+  let roleMatch
+  while ((roleMatch = roleName.exec(input)) !== null) {
+    const spoken = roleNameSpan(roleMatch[1] || '')
+    if (!spoken || spoken.trim().length < 2) continue
+    if (/\d|@/.test(spoken)) continue
+    if (INSTITUTION_TERMS.some((inst) => spoken.toLowerCase().includes(inst))) continue
+    const at = roleMatch[0].indexOf(spoken)
+    if (at < 0) continue
+    addReplacement(roleMatch.index + at, roleMatch.index + at + spoken.length, maskPersonName(spoken))
+  }
   const nameTitle = String.raw`(?:திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ|श्रीमती|श्री|डॉ|శ్రీ|డాక్టర్|ശ്രീ|ഡോ|ಶ್ರೀ|ಡಾ|শ্রী|ডা|ଶ୍ରୀ|Mr|Mrs|Ms|Dr|Smt|Shri|Sri)\.?`
   const nameLabel = String.raw`patient(?:'s)?\s+name|name\s+of\s+(?:the\s+)?(?:patient|consumer|customer)|(?:रोगी|मरीज़|मरीज|ग्राहक)\s+का\s+नाम|நோயாளி(?:யின்)?\s+பெயர்|రోగి(?:\s+యొక్క)?\s+పేరు|രോഗിയുടെ\s+പേര്|ರೋಗಿಯ\s+ಹೆಸರು|रुग्णाचे\s+नाव|রোগীর\s+নাম|ରୋଗୀ(?:ଙ୍କ)?\s+ନାମ|பெயர்|नाम|పేరు|പേര്|ಹೆಸರು|नाव|নাম|ନାମ|name`
   const nameHonorific = String.raw`அவர்கள்|గారు|ಅವರು`
@@ -696,6 +762,76 @@ export function expandProtectedTerms(terms = [], rendered = null) {
   return out
 }
 
+export function privacyRemovedNote(lang) {
+  const code = (lang || 'en').toLowerCase().split('-')[0]
+  switch (code) {
+    case 'hi':
+      return 'गोपनीयता की रक्षा के लिए कुछ विवरण हटा दिए गए हैं।'
+    case 'ta':
+      return 'தனியுரிமையைக் காக்க சில விவரங்கள் நீக்கப்பட்டன.'
+    case 'te':
+      return 'గోప్యత కోసం కొన్ని వివరాలు తీసివేయబడ్డాయి.'
+    case 'ml':
+      return 'സ്വകാര്യത സംരക്ഷിക്കാൻ ചില വിവരങ്ങൾ നീക്കം ചെയ്തു.'
+    case 'kn':
+      return 'ಗೌಪ್ಯತೆಗಾಗಿ ಕೆಲವು ವಿವರಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ.'
+    case 'mr':
+      return 'गोपनीयता राखण्यासाठी काही तपशील काढून टाकले आहेत.'
+    case 'bn':
+      return 'গোপনীয়তা রক্ষায় কিছু বিবরণ সরিয়ে দেওয়া হয়েছে।'
+    case 'or':
+      return 'ଗୋପନୀୟତା ପାଇଁ କିଛି ବିବରଣୀ ହଟାଇ ଦିଆଯାଇଛି।'
+    default:
+      return 'Some details were removed to protect privacy.'
+  }
+}
+
+const SHARE_DATE = /\b(?:\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{1,2}\s+(?:जनवरी|फरवरी|फ़रवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|नवंबर|नवम्बर|दिसंबर|दिसम्बर)\s+\d{4})\b/gi
+const SHARE_AMOUNT = /(?:₹|Rs\.?|INR)\s*[\d,]+(?:\.\d{1,2})?|\b\d{1,3}(?:,\d{2}){1,4}(?:\.\d{1,2})?\b/g
+
+function uniqueMatches(blobs, pattern) {
+  const found = []
+  for (const blob of blobs) {
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`
+    const re = new RegExp(pattern.source, flags)
+    for (const match of String(blob).match(re) || []) {
+      if (!found.includes(match)) found.push(match)
+    }
+  }
+  return found
+}
+
+export function collectDatesAndAmounts(result) {
+  const blobs = []
+  const push = (value) => {
+    if (value != null && value !== '') blobs.push(String(value))
+  }
+  if (!result) return { dates: [], amounts: [] }
+  push(result.letter_date)
+  push(result.report_date)
+  push(result.report_date_iso)
+  ;(result.summary || []).forEach(push)
+  ;(result.actions || []).forEach((act) => {
+    push(act && act.text)
+    push(act && act.due_date)
+  })
+  ;(result.warnings || []).forEach((item) => push(item && (item.text || item)))
+  ;(result.facts || []).forEach((item) => push(item && (item.text || item)))
+  ;(result.conflicts || []).forEach(push)
+  if (result.glance) {
+    push(result.glance.headline)
+    ;(result.glance.key_values || []).forEach((kv) => {
+      push(kv && kv.label)
+      push(kv && kv.value)
+    })
+  }
+  ;(result.medicines || []).forEach((med) => push(med && med.strength_text))
+  return {
+    dates: uniqueMatches(blobs, SHARE_DATE),
+    amounts: uniqueMatches(blobs, SHARE_AMOUNT),
+  }
+}
+
 export function buildShare(result, options = { hidePersonal: false }) {
   const hidePersonal = !!options.hidePersonal
   const lang = options.lang || result.language || 'en'
@@ -730,6 +866,34 @@ export function buildShare(result, options = { hidePersonal: false }) {
     pushMaskedProse(result.title)
   } else {
     pushSegment(result.title)
+  }
+
+  if (hidePersonal && result.mask_fallback) {
+    pushSegment(`\n\n${privacyRemovedNote(lang)}`)
+    if (result.actions && result.actions.length > 0) {
+      pushSegment('\n\n✅ What you need to do:\n')
+      result.actions.forEach((act, idx) => {
+        pushSegment(`${idx + 1}. `)
+        pushMaskedProse(act.text)
+        if (idx < result.actions.length - 1) pushSegment('\n')
+      })
+    }
+    const { dates, amounts } = collectDatesAndAmounts(result)
+    if (dates.length > 0) {
+      pushSegment('\n\n📅 Dates:\n')
+      dates.forEach((date, idx) => {
+        pushSegment(`• ${date}`)
+        if (idx < dates.length - 1) pushSegment('\n')
+      })
+    }
+    if (amounts.length > 0) {
+      pushSegment('\n\n💰 Amounts:\n')
+      amounts.forEach((amount, idx) => {
+        pushSegment(`• ${amount}`)
+        if (idx < amounts.length - 1) pushSegment('\n')
+      })
+    }
+    return { text: segments.map((s) => s.text).join(''), title, segments }
   }
 
   // 2. Summary
@@ -891,6 +1055,52 @@ export function redactResult(result, options = { hidePersonal: false }) {
   const lang = options.lang || cloned.language || 'en'
   const protectedTerms = expandProtectedTerms(cloned.protected_terms || [], cloned.protected_terms_rendered)
   const birthKeys = collectBirthDateKeys(cloned)
+
+  if (cloned.mask_fallback) {
+    const note = privacyRemovedNote(lang)
+    const { dates, amounts } = collectDatesAndAmounts(cloned)
+    if (Array.isArray(cloned.actions)) {
+      cloned.actions = cloned.actions.map((act) => ({
+        ...act,
+        text: sanitizeProse(act.text, protectedTerms, lang, birthKeys),
+        quote: '',
+      }))
+    }
+    cloned.summary = [note]
+    cloned.report_title = ''
+    cloned.spoken_summary = ''
+    cloned.source_text = ''
+    cloned.warnings = []
+    cloned.facts = []
+    cloned.conflicts = []
+    cloned.places = []
+    cloned.contacts = []
+    cloned.parts = undefined
+    cloned.sections = undefined
+    cloned.glance = {
+      headline: note,
+      key_values: [
+        ...dates.map((value) => ({ label: 'Date', value })),
+        ...amounts.map((value) => ({ label: 'Amount', value })),
+      ],
+    }
+    if (cloned.profile) {
+      cloned.profile.parties = []
+      cloned.profile.advice_lines = []
+      cloned.profile.diagnosis_as_written = ''
+      cloned.profile.follow_up = ''
+      cloned.profile.seller = ''
+      cloned.profile.referred_by = ''
+      cloned.profile.patient_age_sex = ''
+    }
+    if (Array.isArray(cloned.medicines)) {
+      cloned.medicines = cloned.medicines.map((med) => ({ ...med, instruction_text: '' }))
+    }
+    cloned.title = getLocalisedDocTitle(cloned.doc_type || cloned.document_type || 'other', lang)
+    cloned.protected_terms = []
+    delete cloned.protected_terms_rendered
+    return cloned
+  }
 
   const mask = (str) => {
     if (!str) return str || ''

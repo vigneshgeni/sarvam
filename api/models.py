@@ -256,6 +256,10 @@ class ReaderResponse(BaseModel):
         default_factory=dict,
         description="For each protected term, the exact strings written for it in this output, including the original spelling and any other spelling or script.",
     )
+    mask_fallback: bool = Field(
+        default=False,
+        description="True when a source person name has no verified rendering. Ignored by the model; set by the server.",
+    )
     parts: Optional[List[ReaderPart]] = Field(
         default=None,
         description="Parts if upload contains 2+ distinct documents, else null",
@@ -424,6 +428,10 @@ class ExplainResponse(BaseModel):
         default_factory=dict,
         description="For each protected term, the exact strings written for it in this output, including the original spelling and any other spelling or script.",
     )
+    mask_fallback: bool = Field(
+        default=False,
+        description="True when a source person name has no verified rendering. Share then keeps only actions, dates and amounts.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -517,9 +525,19 @@ class TranslatePayload(BaseModel):
         default_factory=dict,
         description="For each protected term, the exact strings written in the translation, original spelling and any other spelling.",
     )
+    mask_fallback: bool = Field(
+        default=False,
+        description="True when a source person name has no verified rendering.",
+    )
 
 
 # Keyed String Translation Model for Shrunk Translate Input (Item 2)
+class NameRenderingFill(BaseModel):
+    """Short reply listing the exact strings already written for each source name."""
+
+    renderings: Dict[str, List[str]] = Field(default_factory=dict)
+
+
 class KeyedTranslateResponse(BaseModel):
     strings: Dict[str, str] = Field(
         default_factory=dict,

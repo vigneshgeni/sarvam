@@ -947,6 +947,7 @@ async def explain(
         source_text=("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
         protected_terms=filter_protected_terms(reader_result.protected_terms),
         protected_terms_rendered=reader_result.protected_terms_rendered or {},
+        mask_fallback=bool(getattr(reader_result, "mask_fallback", False)),
     )
 
 
@@ -1096,6 +1097,7 @@ async def translate(
 
     # Run Shrunk Translate in AnyIO thread pool so event loop remains unblocked
     rendered_terms: dict = {}
+    mask_fallback = False
     try:
         if (
             isinstance(translate_result_text, unittest.mock.MagicMock)
@@ -1103,6 +1105,7 @@ async def translate(
         ):
             translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang, deadline)
             rendered_terms = getattr(translated_payload, "protected_terms_rendered", None) or {}
+            mask_fallback = bool(getattr(translated_payload, "mask_fallback", False))
             trans_title = translated_payload.title
             trans_report_title = translated_payload.report_title
             trans_summary = translated_payload.summary
@@ -1134,6 +1137,7 @@ async def translate(
             if isinstance(translated_raw, dict) and isinstance(translated_raw.get("strings"), dict):
                 translated_dict = translated_raw["strings"]
                 rendered_terms = translated_raw.get("protected_terms_rendered") or {}
+                mask_fallback = bool(translated_raw.get("mask_fallback"))
             else:
                 translated_dict = translated_raw or {}
             trans_title = translated_dict.get("title", orig.title)
@@ -1472,6 +1476,7 @@ async def translate(
         source_text=orig.source_text,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
         protected_terms_rendered=rendered_terms or {},
+        mask_fallback=mask_fallback,
     )
 
 
