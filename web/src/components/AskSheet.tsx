@@ -54,6 +54,7 @@ export default function AskSheet({
   const [recordSeconds, setRecordSeconds] = useState(0)
   const threadKey = resultId || `title:${result.title}`
   const clearedRef = useRef(false)
+  const clearedKeyRef = useRef('')
   const sampleThread = isSampleResultId(resultId)
 
   useEffect(() => {
@@ -73,6 +74,12 @@ export default function AskSheet({
     }
     if (initialAsks?.length) setTurns(initialAsks)
   }, [threadKey, sampleThread])
+
+  useEffect(() => {
+    if (clearedKeyRef.current === threadKey) return
+    if (turns.length) return
+    if (initialAsks?.length) setTurns(initialAsks)
+  }, [threadKey, initialAsks, turns.length])
 
   useEffect(() => {
     if (!turns.length && !clearedRef.current) return
@@ -262,6 +269,7 @@ export default function AskSheet({
                 type="button"
                 onClick={() => {
                   clearedRef.current = true
+                  clearedKeyRef.current = threadKey
                   setTurns([])
                 }}
                 className="self-start mt-1 text-[13px] font-semibold text-[#575B58] underline"

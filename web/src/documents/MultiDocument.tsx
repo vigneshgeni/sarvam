@@ -157,7 +157,7 @@ export default function MultiDocument({
 
       {flags.length > 0 && (
         <section className="bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-4 flex flex-col gap-2.5">
-          <h2 className="sv-display text-[26px] leading-none m-0">
+          <h2 className="sv-card-heading sv-display m-0 min-w-0">
             {t.lookFirst || 'Look at these first'}<span className="text-[#D9603B]">.</span>
           </h2>
           <div className="bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[24px] px-3.5">

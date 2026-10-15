@@ -250,6 +250,7 @@
   "email": "ইমেল",
   "calendarDefaultAlertNote": "ক্যালেন্ডার নোটিফিকেশন",
   "medicineReminders": "ওষুধের রিমাইন্ডার",
+  "reminderSlots": "মনে করিয়ে দেওয়ার সময়:",
   "medicineCheckWarning": "ওষুধ গ্রহণের আগে দয়া করে ডাক্তারের পরামর্শ নিন",
   "takeOnlyWhenNeeded": "কেবল প্রয়োজন হলে নিন",
   "chooseDuration": "সময়কাল বেছে নিন",

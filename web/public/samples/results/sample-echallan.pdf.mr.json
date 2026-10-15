@@ -279,5 +279,8 @@
     "0422-000-0000",
     "echallan@anandnagartraffic.example",
     "pay.anandnagartraffic.example"
-  ]
+  ],
+  "protected_terms_rendered": {
+    "Suresh Raman": ["सुरेश Raman", "Suresh Raman"]
+  }
 }

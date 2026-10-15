@@ -250,6 +250,7 @@
   "email": "ईमेल",
   "calendarDefaultAlertNote": "कॅलेंडर सूचना",
   "medicineReminders": "औषध स्मरणपत्रे",
+  "reminderSlots": "आठवणीचे वेळ:",
   "medicineCheckWarning": "औषधे घेण्यापूर्वी कृपया डॉक्टरांचा सल्ला घ्या",
   "takeOnlyWhenNeeded": "फक्त गरज असेल तेव्हा घ्या",
   "chooseDuration": "कालावधी निवडा",

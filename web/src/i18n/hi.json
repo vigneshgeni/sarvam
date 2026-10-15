@@ -145,6 +145,7 @@
   "addToGoogleCalendar": "गूगल कैलेंडर में जोड़ें",
   "calendarDefaultAlertNote": "अलर्ट आपके कैलेंडर डिफॉल्ट का उपयोग करते हैं",
   "medicineReminders": "दवा अनुस्मारक",
+  "reminderSlots": "याद दिलाने के समय:",
   "medicineCheckWarning": "जोड़ने से पहले अपने पर्चे से इनकी जांच करें",
   "takeOnlyWhenNeeded": "केवल आवश्यकता पड़ने पर लें, कोई अनुस्मारक नहीं",
   "chooseDuration": "अवधि चुनें (दिन):",

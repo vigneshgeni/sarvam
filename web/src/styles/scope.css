@@ -61,6 +61,47 @@
   line-height: 1.35;
   font-weight: 650;
 }
+.sv-card-heading {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#sv-result .sv-display.sv-card-heading {
+  font-size: clamp(20px, 6.2vw, 28px);
+  line-height: 1.2;
+}
+#sv-result[data-indic="true"] .sv-card-heading {
+  font-family: var(--sv-indic-family, "DM Sans"), "DM Sans", sans-serif;
+  font-size: clamp(15px, 4.2vw, 20px);
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.sv-bottom-actions {
+  min-width: 0;
+  width: 100%;
+}
+.sv-bottom-action {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  font-size: 17px;
+}
+.sv-bottom-action.sv-indic {
+  font-size: 13px;
+}
+.sv-bottom-action > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sv-bottom-share {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+}
 .sv-med-slots {
   display: flex;
   flex-wrap: wrap;

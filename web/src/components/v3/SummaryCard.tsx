@@ -387,7 +387,7 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
     <div className="flex flex-col gap-3">
       {flagged.length > 0 && (
         <div className="rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-2.5">
-          <h2 className="sv-display text-[22px] m-0">{t.lookFirst || 'Look at these first'}<span className="text-[#D9603B]">.</span></h2>
+          <h2 className="sv-card-heading sv-display m-0 min-w-0">{t.lookFirst || 'Look at these first'}<span className="text-[#D9603B]">.</span></h2>
           {flagged.map((v, i) => (
             <div key={v.label + i} className="flex items-center justify-between gap-2">
               <span className="min-w-0">
@@ -484,7 +484,7 @@ function PartPanel({ part, index, t }: { part: Part; index: number; t: Record<st
           {index + 1}
         </span>
         <div className="min-w-0">
-          <h2 className="sv-display text-[26px] leading-[1.05] m-0">{part.title}</h2>
+          <h2 className="sv-card-heading sv-display m-0 min-w-0">{part.title}</h2>
           <p className="m-0 mt-1 text-[13px] text-[#575B58]">
             {part.issuer ? `${part.issuer} · ` : ''}
             {t.pages || 'Pages'} {part.pages[0]}–{part.pages[1]}

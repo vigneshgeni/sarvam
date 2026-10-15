@@ -3,6 +3,8 @@
  * Consumed by TypeScript components and Node.js test runner.
  */
 
+import { SAMPLE_NAME_RENDERING_LIST } from './sampleNames.js'
+
 export const INSTITUTION_TERMS = [
   'shield health insurance',
   'city diagnostics',
@@ -90,11 +92,20 @@ export function maskPersonName(name) {
 const PERSON_TITLE =
   /^(?:mr|mrs|ms|miss|dr|shri|smt|sri|திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ)\.?$/i
 
-const NAME_PARTICLE = /^(?:का|की|के|को|में|है|हैं|ने|से|पर|लिए|और|या|இன்|மற்றும்|గారి|ആണ്|ಆಗಿದೆ|आहे|এর|ଙ୍କ)$/
+const NAME_PARTICLE = /^(?:का|की|के|को|में|है|हैं|ने|से|पर|लिए|और|या|இன்|மற்றும்|గారి|ആണ്|ಆಗಿದೆ|आहे|आहेत|यांना|यांनी|এর|ଙ୍କ)$/
 
 const ROLE_WORDS = [
-  'account holder', 'complainant', 'petitioner', 'respondent', 'plaintiff', 'defendant',
-  'applicant', 'accused', 'witness', 'patient', 'nominee',
+  'registered owner', 'vehicle owner', 'account holder', 'complainant', 'petitioner',
+  'respondent', 'plaintiff', 'defendant', 'applicant', 'accused', 'witness', 'patient',
+  'nominee', 'owner',
+  'पंजीकृत मालिक', 'रजिस्टर्ड मालिक', 'वाहन मालिक', 'मालिक',
+  'பதிவுசெய்யப்பட்ட உரிமையாளர்', 'வாகன உரிமையாளர்', 'உரிமையாளர்',
+  'నమోదైన యజమాని', 'వాహన యజమాని', 'యజమాని',
+  'രജിസ്റ്റർ ചെയ്ത ഉടമ', 'വാഹന ഉടമ', 'ഉടമ',
+  'ನೋಂದಾಯಿತ ಮಾಲೀಕ', 'ವಾಹನ ಮಾಲೀಕ', 'ಮಾಲೀಕ',
+  'नोंदणीकृत मालक', 'वाहन मालक', 'मालक',
+  'নিবন্ধিত মালিক', 'যানবাহনের মালিক', 'মালিক',
+  'ପଞ୍ଜୀକୃତ ମାଲିକ', 'ଯାନ ମାଲିକ', 'ମାଲିକ',
   'शिकायतकर्ता', 'याचिकाकर्ता', 'खाताधारक', 'प्रतिवादी', 'अभियुक्त', 'नामांकित', 'आवेदक',
   'आरोपी', 'गवाह', 'मरीज़', 'मरीज', 'रोगी', 'वादी',
   'குற்றவாளி', 'புகார்தாரர்', 'எதிர்மனுதாரர்', 'விண்ணப்பதாரர்', 'கணக்குதாரர்', 'மனுதாரர்',
@@ -576,6 +587,12 @@ export function maskStringWithSegments(input, protectedTerms = [], lang, birthKe
 
   // 5. Personal Names
   const allNames = [...KNOWN_PERSONAL_NAMES]
+  for (const rendering of SAMPLE_NAME_RENDERING_LIST) {
+    if (!rendering || rendering.trim().length < 2) continue
+    if (isKeptInstitution(rendering)) continue
+    if (/\b(?:nagar|road|street|hospital|clinic|court|police)\b/i.test(rendering)) continue
+    if (!allNames.includes(rendering)) allNames.push(rendering)
+  }
   for (const term of protectedTerms) {
     if (!term || term.trim().length < 2) continue
     const lower = term.toLowerCase().trim()

@@ -726,7 +726,7 @@ export default function ResultScreen({
         </button>
       </div>
 
-      <div id="sv-result" className="flex flex-col gap-5 pt-3 w-full">
+      <div id="sv-result" data-indic={contentLang !== 'en' ? 'true' : 'false'} className="flex flex-col gap-5 pt-3 w-full">
         {/* Back to all reports button if viewing a report from multi-report set */}
         {multiReports && multiReports.length > 1 && (
           <button
@@ -863,11 +863,11 @@ export default function ResultScreen({
         />
         {result.summary && result.summary.length > 0 && (
           <section data-export="summary" className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
                 <SparklesIcon className="w-5 h-5 text-[#E9B44C]" />
               </div>
-              <h2 className="sv-display text-[28px] text-[#1A1A1A] m-0">
+              <h2 className="sv-card-heading sv-display text-[#1A1A1A] m-0 min-w-0 flex-1">
                 {t.summaryTitle || 'In simple words'}<span className="text-[#D9603B]">.</span>
               </h2>
             </div>
@@ -904,8 +904,8 @@ export default function ResultScreen({
         {result.actions && result.actions.length > 0 && (
           <section data-export="summary" className="sv-card-in bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3.5">
             {/* Header with 28px icon tile & Progress Ring (WEB-5) */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="sv-display text-[25px] text-[#1A1A1A] m-0 whitespace-nowrap">
+            <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+              <h2 className="sv-card-heading sv-display text-[#1A1A1A] m-0 min-w-0 flex-1">
                 {t.actionsTitle || 'What you need to do'}<span className="text-[#D9603B]">.</span>
               </h2>
 
@@ -1165,7 +1165,7 @@ export default function ResultScreen({
         {/* 4. KEY FACTS (First 5 + Show all disclosure per WEB-5) */}
         {result.facts && result.facts.length > 0 && (
           <section className="sv-card-in bg-[#1A1A1A] text-[#F4F5F2] rounded-[40px] p-5 flex flex-col gap-1">
-            <h2 className="sv-display text-[28px] text-[#F4F5F2] m-0 mb-2">
+            <h2 className="sv-card-heading sv-display text-[#F4F5F2] m-0 mb-2 min-w-0">
               {t.factsTitle || 'Key facts'}<span className="text-[#D9603B]">.</span>
             </h2>
 
@@ -1273,7 +1273,7 @@ export default function ResultScreen({
 
       {/* Frosted Bottom Action Bar (WEB-5) */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-[#F4F5F2] border-t-[1.5px] border-[#1A1A1A] pt-3.5 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center">
-        <div className="w-full max-w-[430px] flex items-center gap-3">
+        <div className="sv-bottom-actions max-w-[430px] flex items-center gap-2">
           {/* Listen Button (Primary Filled Indigo) */}
           <button
             type="button"
@@ -1283,7 +1283,9 @@ export default function ResultScreen({
             }}
             title={contentLang === 'or' ? (t.odiaAudioUnavailable || 'Audio playback is not available for Odia yet') : undefined}
             aria-disabled={contentLang === 'or'}
-            className={`sv-press flex-[1.2] h-14 bg-[#1A1A1A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-full font-bold text-[17px] flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`sv-press sv-bottom-action flex-[1.2] min-w-0 h-14 bg-[#1A1A1A] text-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-full font-bold flex items-center justify-center gap-2 px-3 disabled:opacity-40 disabled:cursor-not-allowed ${
+              contentLang !== 'en' ? 'sv-indic' : ''
+            } ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1300,7 +1302,9 @@ export default function ResultScreen({
             type="button"
             disabled={isTranslating}
             onClick={() => openOverlay('ask')}
-            className={`sv-press flex-1 h-14 bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] rounded-full font-bold text-[17px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`sv-press sv-bottom-action flex-1 min-w-0 h-14 bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] rounded-full font-bold flex items-center justify-center gap-2 px-3 disabled:opacity-50 disabled:cursor-not-allowed ${
+              contentLang !== 'en' ? 'sv-indic' : ''
+            } ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >
@@ -1314,7 +1318,7 @@ export default function ResultScreen({
             disabled={isTranslating}
             onClick={() => openOverlay('share')}
             aria-label={t.share || 'Share'}
-            className={`sv-press w-14 h-14 box-border bg-transparent border-[1.5px] border-[#1A1A1A] rounded-full text-[#1A1A1A] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`sv-press sv-bottom-share h-14 box-border bg-transparent border-[1.5px] border-[#1A1A1A] rounded-full text-[#1A1A1A] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
               isTranslating ? 'cursor-not-allowed' : ''
             }`}
           >

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { INSTITUTION_TERMS, buildShare, emailShareUrl, redactResult, whatsAppShareUrl } from '../src/utils/shareCore.js'
+import { INSTITUTION_TERMS, buildShare, emailShareUrl, expandProtectedTerms, redactResult, sanitizeProse, whatsAppShareUrl } from '../src/utils/shareCore.js'
+import { SAMPLE_NAME_RENDERINGS } from '../src/utils/sampleNames.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const resultsDir = join(here, '../public/samples/results')
@@ -88,6 +89,13 @@ function renderingsIn(result) {
   return [...found]
 }
 
+function exportSurface(result, lang) {
+  const terms = expandProtectedTerms(result.protected_terms || [], result.protected_terms_rendered)
+  const pieces = []
+  walkStrings(result, pieces)
+  return pieces.map((text) => sanitizeProse(text, terms, lang)).join('\n')
+}
+
 function visibleShare(result, lang) {
   const share = buildShare(result, { hidePersonal: true, lang })
   const unmasked = (share.segments || []).filter((segment) => !segment.masked).map((segment) => segment.text).join('\n')
@@ -105,6 +113,7 @@ test('saved sample shares hide personal facts and the names written after a titl
   const files = names.filter((name) => /\.[a-z]{2}\.json$/.test(name))
   const stems = new Set(files.map((name) => name.replace(/\.[a-z]{2}\.json$/, '')))
   assert.equal(stems.size, 11)
+  assert.equal(files.length, 96)
   const leaks = []
   let checked = 0
   for (const name of files) {
@@ -121,8 +130,13 @@ test('saved sample shares hide personal facts and the names written after a titl
       whatsapp: decodeURIComponent(whatsAppShareUrl(share.text)),
       email: decodeURIComponent(emailShareUrl(share.title, share.text)),
       image: JSON.stringify(redactResult(result, { hidePersonal: true, lang })),
+      exportDom: exportSurface(result, lang),
     }
-    const secrets = new Set([...(secretsByFile.get(stem) || []), ...renderingsIn(result)])
+    const secrets = new Set([
+      ...(secretsByFile.get(stem) || []),
+      ...renderingsIn(result),
+      ...(SAMPLE_NAME_RENDERINGS[stem] || []),
+    ])
     for (const secret of secrets) {
       for (const [channel, value] of Object.entries(channels)) {
         if (value.includes(secret)) leaks.push(`${name} ${channel}: ${secret}`)
@@ -131,5 +145,11 @@ test('saved sample shares hide personal facts and the names written after a titl
     checked += 1
   }
   assert.equal(leaks.join('\n'), '')
-  assert.ok(checked >= 11)
+  assert.equal(checked, 96)
+  const marathi = JSON.parse(readFileSync(join(resultsDir, 'sample-echallan.pdf.mr.json'), 'utf8'))
+  const hidden = visibleShare(marathi, 'mr')
+  assert.equal(hidden.text.includes('सुरेश Raman'), false)
+  assert.equal(hidden.text.includes('Suresh Raman'), false)
+  assert.equal(exportSurface(marathi, 'mr').includes('सुरेश Raman'), false)
+  assert.ok(hidden.text.includes('ANAND NAGAR') || hidden.text.toLowerCase().includes('anand nagar'))
 })

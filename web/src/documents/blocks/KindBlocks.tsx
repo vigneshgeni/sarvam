@@ -33,7 +33,7 @@ export function ItemsBlock({ result, t }: { result: ExplainResponse; t: Record<s
   const shown = open ? items : items.slice(0, 5)
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] p-5 flex flex-col gap-2">
-      <h2 className="sv-display text-[26px] leading-none m-0">
+      <h2 className="sv-card-heading sv-display m-0 min-w-0">
         {t.itemsTitle || 'Items'}<span className="text-[#D9603B]">.</span>
       </h2>
       {shown.map((item, i) => (
@@ -59,7 +59,7 @@ export function WarrantyBlock({ result, t }: { result: ExplainResponse; t: Recor
   if (!until) return null
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0] p-5">
-      <h2 className="sv-display text-[26px] leading-none m-0">
+      <h2 className="sv-card-heading sv-display m-0 min-w-0">
         {(t.warrantyUntil || 'Warranty until {date}').replace('{date}', until)}<span className="text-[#D9603B]">.</span>
       </h2>
       {isUpcoming(until) && (
@@ -80,7 +80,7 @@ export function DiagnosisBlock({ result, t }: { result: ExplainResponse; t: Reco
   if (!text) return null
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] p-5">
-      <h2 className="sv-display text-[26px] leading-none m-0">
+      <h2 className="sv-card-heading sv-display m-0 min-w-0">
         {t.diagnosisAsWritten || 'Diagnosis as written'}<span className="text-[#D9603B]">.</span>
       </h2>
       <p className="m-0 mt-3 text-[16px] leading-[1.5] italic">“{text}”</p>
@@ -115,7 +115,7 @@ export function LoanTermsBlock({ result, t }: { result: ExplainResponse; t: Reco
   if (!rows.length) return null
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] p-5 flex flex-col gap-2">
-      <h2 className="sv-display text-[26px] leading-none m-0">
+      <h2 className="sv-card-heading sv-display m-0 min-w-0">
         {t.loanTerms || 'Loan terms'}<span className="text-[#D9603B]">.</span>
       </h2>
       {rows.map(([label, value]) => (

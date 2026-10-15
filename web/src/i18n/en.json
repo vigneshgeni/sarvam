@@ -145,6 +145,7 @@
   "addToGoogleCalendar": "Add to Google Calendar",
   "calendarDefaultAlertNote": "Alerts use your calendar defaults",
   "medicineReminders": "Medicine reminders",
+  "reminderSlots": "Reminder slots:",
   "medicineCheckWarning": "Check these against your prescription before adding",
   "takeOnlyWhenNeeded": "Take only when needed, no reminder",
   "chooseDuration": "Choose duration (days):",

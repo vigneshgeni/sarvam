@@ -8,7 +8,7 @@ export default function OutlineList({
   if (!lines.length) return null
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] p-5 flex flex-col gap-3">
-      <h2 className="sv-display text-[26px] leading-none m-0">
+      <h2 className="sv-card-heading sv-display m-0 min-w-0">
         {title}<span className="text-[#D9603B]">.</span>
       </h2>
       <ol className="m-0 pl-0 list-none flex flex-col gap-2.5">

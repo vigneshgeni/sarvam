@@ -32,6 +32,17 @@ const DEFAULT_SLOT_TIMES: Record<MedicineSlot, string> = {
 
 const DURATION_CHIPS = [3, 5, 7, 10, 14, 30]
 
+function slotLabel(slot: string, t: Record<string, string>) {
+  const full = slot === 'morning' ? (t.slotMorning || 'Morning')
+    : slot === 'afternoon' ? (t.slotAfternoon || 'Afternoon')
+    : slot === 'evening' ? (t.slotEvening || 'Evening')
+    : slot === 'night' ? (t.slotNight || 'Night')
+    : slot === 'bedtime' ? (t.slotBedtime || 'Bedtime')
+    : slot === 'as_needed' ? (t.slotAsNeeded || 'As needed')
+    : slot
+  return full.replace(/\s*\([^)]*\)\s*$/, '')
+}
+
 export default function MedicineCard({
   medicines,
   resultId,
@@ -157,11 +168,11 @@ export default function MedicineCard({
     <>
       {/* Medicine Reminders Overview Card */}
       <section className="bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-3 px-1">
+        <div className="flex items-center gap-3 px-1 min-w-0">
           <span className="w-10 h-10 rounded-full bg-[#034F46] flex items-center justify-center shrink-0">
             <PillIcon className="w-5 h-5 text-[#F4F5F2]" />
           </span>
-          <h2 className="sv-display text-[26px] m-0">
+          <h2 className="sv-card-heading sv-display m-0 min-w-0 flex-1">
             {t.medicineReminders || 'Medicine reminders'}<span className="text-[#D9603B]">.</span>
           </h2>
         </div>
@@ -185,7 +196,7 @@ export default function MedicineCard({
                 <div className="flex flex-wrap gap-1.5">
                   {med.slots.map((slot) => (
                     <span key={slot} className={`inline-flex items-center h-[30px] px-2.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[12.5px] font-bold text-[#1A1A1A] ${slot === 'morning' ? 'bg-[#E9B44C]' : slot === 'afternoon' ? 'bg-[#F8D9CB]' : 'bg-[#E4DFF0]'}`}>
-                      {slot} {DEFAULT_SLOT_TIMES[slot]?.replace(/^0/, '')}
+                      {slotLabel(slot, t)} {DEFAULT_SLOT_TIMES[slot]?.replace(/^0/, '')}
                     </span>
                   ))}
                 </div>
@@ -262,7 +273,7 @@ export default function MedicineCard({
                   ) : (
                     <div className="flex flex-col gap-2 pt-1">
                       <span className="text-xs font-medium text-[#5E636B]">
-                        Reminder slots:
+                        {t.reminderSlots || 'Reminder slots:'}
                       </span>
                       <div className="sv-med-slots">
                         {med.slots?.map((slot) => {
@@ -282,8 +293,8 @@ export default function MedicineCard({
                                   onChange={() => handleToggleSlot(mIdx, slot)}
                                   className="w-4 h-4 shrink-0 text-[#034F46] rounded border-[#E6E6E1] focus:ring-0"
                                 />
-                                <span className="text-xs capitalize font-medium">
-                                  {slot}
+                                <span className="text-xs font-medium">
+                                  {slotLabel(slot, t)}
                                 </span>
                               </div>
 

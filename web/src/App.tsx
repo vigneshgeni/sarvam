@@ -144,7 +144,8 @@ export default function App() {
   // Session refs
   const activeFilesRef = useRef<File[]>([])
   const retryActionRef = useRef<(() => void) | null>(null)
-  const currentResultIdRef = useRef<string | null>(null)
+  const currentResultIdRef = useRef<string | null>(loadActiveSession()?.currentResultId || null)
+  const asksRef = useRef<AskTurn[]>(loadActiveSession()?.asks || [])
   const activityTimer = useRef<number | null>(null)
   const activitySnapshot = useRef<DocumentActivity>(emptyActivity())
   const [sessionActivity, setSessionActivity] = useState<DocumentActivity>(emptyActivity())
@@ -215,6 +216,7 @@ export default function App() {
       setResultData(saved.result)
       originalResultRef.current = saved.originalResult || saved.result
       currentResultIdRef.current = saved.currentResultId || null
+      if (Array.isArray(saved.asks)) asksRef.current = saved.asks
       if (saved.multiReports) setMultiReportsData(saved.multiReports)
       if (saved.lang) setSelectedLang(saved.lang)
 
@@ -247,6 +249,7 @@ export default function App() {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
         currentResultIdRef.current = saved.currentResultId || null
+        if (Array.isArray(saved.asks)) asksRef.current = saved.asks
         if (saved.multiReports) setMultiReportsData(saved.multiReports)
         if (saved.lang) setSelectedLang(saved.lang)
         setScreen(next.screen)
@@ -277,6 +280,7 @@ export default function App() {
         lang: selectedLang,
         originalResult: originalResultRef.current,
         currentResultId: currentResultIdRef.current,
+        asks: asksRef.current,
         screen: 'result',
         overlay: loadActiveSession()?.overlay || null,
       })
@@ -291,6 +295,7 @@ export default function App() {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
         currentResultIdRef.current = saved.currentResultId || null
+        if (Array.isArray(saved.asks)) asksRef.current = saved.asks
         if (saved.multiReports) setMultiReportsData(saved.multiReports)
         if (saved.lang) setSelectedLang(saved.lang)
         setScreen('result')
@@ -405,6 +410,11 @@ export default function App() {
   }
 
   const saveAsks = async (asks: AskTurn[]) => {
+    asksRef.current = asks
+    const active = loadActiveSession()
+    if (active?.result) {
+      saveActiveSession({ ...active, asks, currentResultId: currentResultIdRef.current, screen: 'result' })
+    }
     let id = currentResultIdRef.current
     const result = originalResultRef.current || resultData
     if (!id || !result || !isSaveRecentEnabled()) return
@@ -445,6 +455,7 @@ export default function App() {
 
   const handleOpenRecent = async (item: RecentResult) => {
     currentResultIdRef.current = item.id
+    asksRef.current = item.asks || []
     originalResultRef.current = item.result
     translationCacheRef.current.clear()
 
@@ -1474,7 +1485,10 @@ export default function App() {
             multiReports={multiReportsData || undefined}
             onRetrySingleReport={handleRetrySingleReport}
             resultId={currentResultIdRef.current || undefined}
-            asks={recentResults.find((item) => item.id === currentResultIdRef.current)?.asks}
+            asks={(() => {
+              const saved = recentResults.find((item) => item.id === currentResultIdRef.current)?.asks
+              return saved?.length ? saved : asksRef.current
+            })()}
             activity={sessionActivity}
             displayName={sessionName}
             savedTitle={sessionTitle}
