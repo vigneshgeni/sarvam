@@ -252,6 +252,10 @@ class ReaderResponse(BaseModel):
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
+    protected_terms_rendered: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="For each protected term, the exact strings written for it in this output, including the original spelling and any other spelling or script.",
+    )
     parts: Optional[List[ReaderPart]] = Field(
         default=None,
         description="Parts if upload contains 2+ distinct documents, else null",
@@ -416,6 +420,10 @@ class ExplainResponse(BaseModel):
         default_factory=list,
         description="Person names (with title), organisation/hospital/lab/company names, street addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses copied exactly as printed in original script. Never generic office or department terms.",
     )
+    protected_terms_rendered: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="For each protected term, the exact strings written for it in this output, including the original spelling and any other spelling or script.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -504,6 +512,10 @@ class TranslatePayload(BaseModel):
     protected_terms: List[str] = Field(
         default_factory=list,
         description="Protected terms copied verbatim in original script without translation or transliteration",
+    )
+    protected_terms_rendered: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="For each protected term, the exact strings written in the translation, original spelling and any other spelling.",
     )
 
 
