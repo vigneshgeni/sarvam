@@ -12,6 +12,8 @@ import {
 import { askDocument, transcribeAudio } from '../api'
 import { saveRecentAsks } from '../utils/db'
 import { resolveLang } from '../i18n'
+import { starterChipKeys } from '../utils/askChips'
+import { isSampleResultId } from '../utils/activity'
 
 interface AskSheetProps {
   isOpen: boolean
@@ -22,6 +24,7 @@ interface AskSheetProps {
   t: Record<string, string>
   resultId?: string
   initialAsks?: AskTurn[]
+  onSaveAsks?: (asks: AskTurn[]) => void
   onSpeakAnswer?: (text: string) => void
 }
 
@@ -34,6 +37,7 @@ export default function AskSheet({
   t,
   resultId,
   initialAsks,
+  onSaveAsks,
   onSpeakAnswer,
 }: AskSheetProps) {
   const [question, setQuestion] = useState('')
@@ -49,8 +53,14 @@ export default function AskSheet({
   const silenceTimerRef = useRef<number | null>(null)
   const [recordSeconds, setRecordSeconds] = useState(0)
   const threadKey = resultId || `title:${result.title}`
+  const clearedRef = useRef(false)
+  const sampleThread = isSampleResultId(resultId)
 
   useEffect(() => {
+    if (sampleThread) {
+      if (initialAsks?.length) setTurns(initialAsks)
+      return
+    }
     try {
       const raw = sessionStorage.getItem(`sarvam.ask.${threadKey}`)
       if (raw) {
@@ -62,17 +72,22 @@ export default function AskSheet({
       /* keep the saved result thread */
     }
     if (initialAsks?.length) setTurns(initialAsks)
-  }, [threadKey])
+  }, [threadKey, sampleThread])
 
   useEffect(() => {
-    if (!turns.length) return
-    try {
-      sessionStorage.setItem(`sarvam.ask.${threadKey}`, JSON.stringify(turns))
-    } catch {
-      /* the saved result still holds the thread */
+    if (!turns.length && !clearedRef.current) return
+    clearedRef.current = false
+    if (!sampleThread) {
+      try {
+        if (turns.length) sessionStorage.setItem(`sarvam.ask.${threadKey}`, JSON.stringify(turns))
+        else sessionStorage.removeItem(`sarvam.ask.${threadKey}`)
+      } catch {
+        /* the saved result still holds the thread */
+      }
     }
-    if (resultId) void saveRecentAsks(resultId, turns)
-  }, [turns, threadKey, resultId])
+    if (onSaveAsks) onSaveAsks(turns)
+    else if (resultId && !sampleThread) void saveRecentAsks(resultId, turns)
+  }, [turns, threadKey, resultId, sampleThread])
 
   // Track 15s loading timer
   useEffect(() => {
@@ -200,11 +215,16 @@ export default function AskSheet({
       setTurns((prev) => [...prev, {
         question: targetQ,
         answer: resp.not_found ? (t.askNotFound || "This document doesn't say") : resp.answer,
+        points: resp.points || [],
+        steps: resp.steps || [],
+        facts: resp.facts || [],
+        follow_ups: resp.follow_ups || [],
         quote: resp.quote || undefined,
         page: resp.page ?? undefined,
         not_found: resp.not_found,
         evidence: resp.evidence,
         answered_from: resp.answered_from,
+        lang: resolveLang(lang),
       }])
     } catch (err: any) {
       setQuestion(targetQ)
@@ -218,11 +238,9 @@ export default function AskSheet({
     }
   }
 
-  const suggestionChips = [
-    t.askChip1 || 'What do I need to pay?',
-    t.askChip2 || 'When is the deadline?',
-    t.askChip3 || 'Who do I contact?',
-  ]
+  const suggestionChips = turns.length
+    ? []
+    : starterChipKeys(result.document_kind || result.doc_type).map((key) => t[key]).filter(Boolean)
 
   return (
     <Sheet
@@ -239,6 +257,18 @@ export default function AskSheet({
               {t.askBtnLabel || 'Ask'}<span className="text-[#D9603B]">.</span>
             </h2>
             <span className="text-[14px] text-[#575B58]">{t.askHint || 'Type or speak, in any of 9 languages'}</span>
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearedRef.current = true
+                  setTurns([])
+                }}
+                className="self-start mt-1 text-[13px] font-semibold text-[#575B58] underline"
+              >
+                {t.clearChat || 'Clear chat'}
+              </button>
+            )}
           </div>
           <button type="button" onClick={onClose} className="sv-press w-11 h-11 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center" aria-label={t.close || 'Close'}>
             <CloseIcon className="w-[18px] h-[18px]" />
@@ -337,6 +367,26 @@ export default function AskSheet({
                       <span className="text-[12px] font-semibold text-[#575B58]">{t.askAnsweredFromSummary || 'Answering from the summary'}</span>
                     )}
                     <p className="m-0 text-[15.5px] leading-[1.45] text-[#1A1A1A] break-words">{turn.answer}</p>
+                    {!!turn.points?.length && (
+                      <ul className="m-0 pl-4 flex flex-col gap-1 text-[14px] leading-snug text-[#1A1A1A]">
+                        {turn.points.map((point) => <li key={point}>{point}</li>)}
+                      </ul>
+                    )}
+                    {!!turn.steps?.length && (
+                      <ol className="m-0 pl-4 flex flex-col gap-1 text-[14px] leading-snug text-[#1A1A1A]">
+                        {turn.steps.map((step) => <li key={step}>{step}</li>)}
+                      </ol>
+                    )}
+                    {!!turn.facts?.length && (
+                      <div className="flex flex-col gap-1 bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-2xl px-3 py-2">
+                        {turn.facts.map((fact) => (
+                          <div key={`${fact.label}-${fact.value}`} className="flex justify-between gap-3 text-[13px]">
+                            <span className="text-[#575B58]">{fact.label}</span>
+                            <span className="font-semibold text-right">{fact.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {turn.answered_from !== 'general' && turn.quote && (
                       <p className="m-0 text-[13px] text-[#3B3E3C]">“{turn.quote}”{turn.page ? ` · ${turn.page}` : ''}</p>
                     )}
@@ -352,6 +402,16 @@ export default function AskSheet({
                           : (t.fromYourDocument || 'From your document')}
                       </span>
                       )}
+                      {index === turns.length - 1 && !!turn.follow_ups?.length && turn.follow_ups.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => handleAskSubmit(chip)}
+                          className="sv-press h-8 px-2.5 rounded-[16px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]"
+                        >
+                          {chip}
+                        </button>
+                      ))}
                       {!turn.not_found && onSpeakAnswer && (
                         <button type="button" onClick={() => onSpeakAnswer(turn.answer)} className="sv-press inline-flex items-center gap-1 h-[30px] px-2.5 rounded-[15px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]">
                           <PlayIcon className="w-3 h-3" />

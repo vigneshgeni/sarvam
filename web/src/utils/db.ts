@@ -182,7 +182,7 @@ export async function saveRecentAsks(id: string, asks: AskTurn[]): Promise<void>
       getReq.onsuccess = () => {
         const item = getReq.result as RecentResult | undefined
         if (item) {
-          item.asks = asks.slice(-12)
+          item.asks = asks.slice(-40)
           store.put(item)
         }
       }

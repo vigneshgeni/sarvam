@@ -726,8 +726,17 @@ class ErrorResponse(BaseModel):
     message_local: str
 
 
+class AskFactItem(BaseModel):
+    label: str = ""
+    value: str = ""
+
+
 class AskResponse(BaseModel):
     answer: str
+    points: List[str] = Field(default_factory=list)
+    steps: List[str] = Field(default_factory=list)
+    facts: List[AskFactItem] = Field(default_factory=list)
+    follow_ups: List[str] = Field(default_factory=list)
     quote: Optional[str] = None
     page: Optional[int] = None
     evidence: str = "none"  # matched | check_original | none

@@ -15,6 +15,7 @@ import type {
   AppErrorInfo,
   RecentResult,
   MultiReportCard,
+  AskTurn,
 } from './types'
 import {
   isHeicFile,
@@ -32,6 +33,7 @@ import {
   saveOriginalFiles,
   getOriginalFiles,
   updateRecentFields,
+  saveRecentAsks,
 } from './utils/db'
 import { defaultDocumentName, emptyActivity, isSampleResultId, mergeActivity, type DocumentActivity } from './utils/activity'
 import ReadingScreen from './components/ReadingScreen'
@@ -400,6 +402,32 @@ export default function App() {
       return
     }
     await updateRecentFields(id, { activity: next, lang: next.lang || resolveLang(selectedLang) })
+  }
+
+  const saveAsks = async (asks: AskTurn[]) => {
+    let id = currentResultIdRef.current
+    const result = originalResultRef.current || resultData
+    if (!id || !result || !isSaveRecentEnabled()) return
+    if (isSampleResultId(id)) {
+      const copyId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const title = cleanerTitle(result)
+      currentResultIdRef.current = copyId
+      setSessionTitle(title)
+      await saveRecentResult({
+        id: copyId,
+        title,
+        fileCount: Math.max(activeFilesRef.current.length, 1),
+        fileNames: activeFilesRef.current.map((file) => file.name),
+        lang: resolveLang(selectedLang),
+        result,
+        activity: activitySnapshot.current,
+        asks,
+      })
+      await loadRecents()
+      return
+    }
+    await saveRecentAsks(id, asks)
+    await loadRecents()
   }
 
   const queueActivity = (next: DocumentActivity) => {
@@ -1451,6 +1479,7 @@ export default function App() {
             displayName={sessionName}
             savedTitle={sessionTitle}
             onActivityChange={queueActivity}
+            onSaveAsks={(asks) => { void saveAsks(asks) }}
             onRename={(name) => {
               const id = currentResultIdRef.current
               if (!id) return

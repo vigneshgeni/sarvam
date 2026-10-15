@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { SUPPORTED_LANGS, getDictionary, resolveLang, LANG_LABELS } from '../i18n'
-import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
+import type { ExplainResponse, AppErrorInfo, MultiReportCard, AskTurn } from '../types'
 import { formatDate, isDatePassed } from '../utils/date'
 import { presentActionDate } from '../utils/actionChips.mjs'
 import { formatAmountsInText } from '../utils/currency'
@@ -77,6 +77,7 @@ interface ResultScreenProps {
   savedTitle?: string
   onActivityChange?: (activity: DocumentActivity) => void
   onRename?: (name: string) => void
+  onSaveAsks?: (asks: AskTurn[]) => void
 }
 
 export default function ResultScreen({
@@ -101,6 +102,7 @@ export default function ResultScreen({
   savedTitle = '',
   onActivityChange,
   onRename,
+  onSaveAsks,
 }: ResultScreenProps) {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(activity?.reportIndex ?? null)
   const activityRef = useRef<DocumentActivity>(mergeActivity(activity))
@@ -1345,6 +1347,7 @@ export default function ResultScreen({
         t={t}
         resultId={resultId}
         initialAsks={asks}
+        onSaveAsks={onSaveAsks}
         onSpeakAnswer={(_text) => {
           closeOverlay('ask')
           openOverlay('listen')

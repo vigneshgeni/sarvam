@@ -269,8 +269,17 @@ export interface Part {
   summary_lines?: string[]
 }
 
+export interface AskFact {
+  label: string
+  value: string
+}
+
 export interface AskResponse {
   answer: string
+  points?: string[]
+  steps?: string[]
+  facts?: AskFact[]
+  follow_ups?: string[]
   quote: string | null
   page: number | null
   evidence: 'matched' | 'check_original' | 'none'
@@ -332,11 +341,16 @@ export interface MultiReportCard {
 export interface AskTurn {
   question: string
   answer: string
+  points?: string[]
+  steps?: string[]
+  facts?: AskFact[]
+  follow_ups?: string[]
   quote?: string
   page?: number | null
   not_found?: boolean
   evidence?: string
   answered_from?: string
+  lang?: string
 }
 
 export interface RecentResult {
