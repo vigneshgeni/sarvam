@@ -213,6 +213,7 @@
   "reminderTime": "समय",
   "calendarLineHint": "कैलेंडर में यह छोटी पंक्ति दिखेगी।",
   "calendarOneLine": "सर्वम रिमाइंडर।",
+  "checkingPrivacy": "गोपनीयता जाँची जा रही है…",
   "takeMedicineLine": "{name} लें",
   "offlineNotice": "आप ऑफ़लाइन हैं: सहेजे गए परिणाम खुलेंगे, स्कैनिंग के लिए इंटरनेट चाहिए",
   "fileTooLarge": "फ़ाइल बहुत बड़ी है. अधिकतम 25 एमबी.",

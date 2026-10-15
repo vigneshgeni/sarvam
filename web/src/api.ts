@@ -473,6 +473,23 @@ export async function extractDocumentText(
   }
 }
 
+export async function redactText(
+  text: string,
+  lang: string,
+  signal?: AbortSignal
+): Promise<{ spans: { text: string; type: string }[] }> {
+  const res = await fetch(`${API_BASE}/api/redact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang }),
+    signal,
+  })
+  if (!res.ok) throw new Error('redact failed')
+  const data = await res.json()
+  const spans = Array.isArray(data?.spans) ? data.spans : []
+  return { spans }
+}
+
 export async function transcribeAudio(blob: Blob, lang: string): Promise<string> {
   const formData = new FormData()
   formData.append('lang', lang)

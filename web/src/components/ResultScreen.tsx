@@ -40,7 +40,9 @@ import {
 } from '../utils/ics'
 
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
-import { expandProtectedTerms } from '../utils/shareCore.js'
+import { expandProtectedTerms, maskPlain, shareFromRedact } from '../utils/shareCore.js'
+import { privacyCacheKey, readPrivacyCache, writePrivacyCache } from '../utils/privacyCache.js'
+import { redactText } from '../api'
 import { prepareExportNode, exportHasHiddenPaint } from '../utils/shareImage.js'
 import { clearTicks, emptyActivity, mergeActivity, type DocumentActivity } from '../utils/activity'
 import { calendarDraftEvent, reminderSummary } from '../utils/reminders'
@@ -315,6 +317,12 @@ export default function ResultScreen({
 
   // Share state
   const [hidePersonal, setHidePersonal] = useState(true)
+  const [checkedShare, setCheckedShare] = useState<{
+    key: string
+    closed: boolean
+    spans: { text: string; type: string }[]
+    share: { text: string; title: string; segments: { text: string; masked: boolean }[] }
+  } | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
@@ -480,10 +488,49 @@ export default function ResultScreen({
     }
   }
 
-  const shared = buildShare(result, { hidePersonal, lang: contentLang })
-  const sharedText = shared.text
+  const askAnswers = (asks || []).map((turn) => turn.answer).filter((answer): answer is string => !!answer)
+  const privacyKey = privacyCacheKey(resultId || result?.title || '', contentLang)
+  const plainShare = buildShare(result, { hidePersonal, lang: contentLang })
+  const waitingForPrivacy = hidePersonal && (isShareOpen || isSaveImageOpen) && checkedShare?.key !== privacyKey
+  const shared = hidePersonal && checkedShare?.key === privacyKey ? checkedShare.share : plainShare
+  const sharedText = waitingForPrivacy ? '' : shared.text
+
+  useEffect(() => {
+    if (!hidePersonal || (!isShareOpen && !isSaveImageOpen)) return
+    const hit = readPrivacyCache(privacyKey)
+    if (hit?.key === privacyKey) {
+      setCheckedShare((prev) => (prev?.key === privacyKey ? prev : hit))
+      return
+    }
+    let cancelled = false
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), 16000)
+    const built = buildShare(result, { hidePersonal: true, lang: contentLang })
+    const text = askAnswers.length ? `${built.text}\n${askAnswers.join('\n')}` : built.text
+    redactText(text, contentLang, controller.signal)
+      .then((data) => {
+        if (cancelled) return
+        const share = shareFromRedact(result, contentLang, { ok: true, spans: data.spans }, askAnswers)
+        const value = { key: privacyKey, closed: !!share.closed, spans: data.spans || [], share }
+        writePrivacyCache(privacyKey, value)
+        setCheckedShare(value)
+      })
+      .catch(() => {
+        if (cancelled) return
+        const share = shareFromRedact(result, contentLang, { ok: false }, askAnswers)
+        const value = { key: privacyKey, closed: true, spans: [], share }
+        writePrivacyCache(privacyKey, value)
+        setCheckedShare(value)
+      })
+    return () => {
+      cancelled = true
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [hidePersonal, isShareOpen, isSaveImageOpen, privacyKey, contentLang, result, asks])
 
   const handleCopyShared = async () => {
+    if (waitingForPrivacy || !sharedText) return
     const ok = await copyToClipboard(sharedText)
     if (ok) {
       setCopySuccess(true)
@@ -510,7 +557,8 @@ export default function ResultScreen({
     node.style.display = 'flex'
     node.style.flexDirection = 'column'
     node.style.gap = '20px'
-    if (hidePersonal && result.mask_fallback) {
+    if (hidePersonal) {
+      if (waitingForPrivacy || !sharedText) return
       const safe = document.createElement('div')
       safe.style.cssText = 'padding:24px;white-space:pre-wrap;font:16px/1.45 sans-serif;color:#1A1A1A'
       safe.textContent = sharedText
@@ -528,7 +576,7 @@ export default function ResultScreen({
     node.querySelectorAll('.fixed').forEach((el) => el.remove())
     prepareExportNode(node)
     if (exportHasHiddenPaint(node)) prepareExportNode(node)
-    if (hidePersonal) {
+    if (hidePersonal && checkedShare?.key === privacyKey && !checkedShare.closed) {
       const terms = expandProtectedTerms(result.protected_terms || [], result.protected_terms_rendered)
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
       const texts: Text[] = []
@@ -539,7 +587,8 @@ export default function ResultScreen({
       }
       const birthKeys = collectBirthDateKeys(result)
       for (const text of texts) {
-        if (text.data.trim()) text.data = sanitizeProse(text.data, terms, contentLang, birthKeys)
+        if (!text.data.trim()) continue
+        text.data = maskPlain(sanitizeProse(text.data, terms, contentLang, birthKeys), checkedShare.spans, contentLang)
       }
     }
     host.appendChild(node)
@@ -1407,7 +1456,9 @@ export default function ResultScreen({
               {t.whatWillBeShared || 'WHAT WILL BE SHARED'}
             </span>
             <div className="rounded-[24px] border-[1.5px] border-[#1A1A1A] p-3.5 text-[14px] leading-relaxed whitespace-pre-wrap">
-              {shared.segments.map((seg, i) =>
+              {waitingForPrivacy ? (
+                <p className="m-0 text-[15px] font-semibold" role="status">{t.checkingPrivacy || 'Checking privacy…'}</p>
+              ) : shared.segments.map((seg, i) =>
                 seg.masked ? (
                   <span key={i} className="inline-block mx-0.5 px-2 py-0.5 rounded-md border border-dashed border-[#1A1A1A] bg-[rgba(233,180,76,.22)] font-mono text-[13px]">
                     {seg.text}
@@ -1420,7 +1471,7 @@ export default function ResultScreen({
           </div>
 
           <div className="grid grid-cols-4 gap-2 pt-1">
-            <button type="button" onClick={() => shareToWhatsApp(sharedText)} className="sv-press flex flex-col items-center gap-1.5">
+            <button type="button" disabled={waitingForPrivacy} onClick={() => { if (!waitingForPrivacy) shareToWhatsApp(sharedText) }} className="sv-press flex flex-col items-center gap-1.5 disabled:opacity-40">
               <span className="w-14 h-14 rounded-full bg-[#25D366] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-white">
                 <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
                   <path fill="currentColor" d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.44 1.34 4.94L2 22l5.39-1.41a10 10 0 0 0 4.65 1.18h.01c5.46 0 9.89-4.4 9.89-9.83C21.94 6.4 17.5 2 12.04 2zm5.76 13.87c-.24.68-1.4 1.25-1.94 1.33-.5.08-1.12.11-1.81-.11-.41-.14-.95-.31-1.63-.61-2.87-1.24-4.74-4.13-4.88-4.32-.14-.19-1.15-1.53-1.15-2.92s.73-2.07 1-2.35c.24-.28.64-.41 1.02-.41.12 0 .23 0 .33.01.3.01.44.03.64.49.24.57.82 1.98.89 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.28.71 1.17 1.52 1.89 1.05.93 1.93 1.22 2.2 1.36.28.14.44.12.6-.07.16-.19.69-.8.87-1.08.19-.28.37-.23.62-.14.26.09 1.63.77 1.91.91.28.14.46.21.53.33.07.12.07.68-.17 1.36z"/>
@@ -1428,17 +1479,17 @@ export default function ResultScreen({
               </span>
               <span className="text-[12px] font-semibold">{t.shareViaWhatsApp || 'WhatsApp'}</span>
             </button>
-            <button type="button" onClick={() => shareToEmail(shared.title, sharedText)} className="sv-press flex flex-col items-center gap-1.5">
+            <button type="button" disabled={waitingForPrivacy} onClick={() => { if (!waitingForPrivacy) shareToEmail(shared.title, sharedText) }} className="sv-press flex flex-col items-center gap-1.5 disabled:opacity-40">
               <span className="w-14 h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">@</span>
               <span className="text-[12px] font-semibold">{t.shareViaEmail || 'Email'}</span>
             </button>
-            <button type="button" onClick={handleCopyShared} className="sv-press flex flex-col items-center gap-1.5">
+            <button type="button" disabled={waitingForPrivacy} onClick={handleCopyShared} className="sv-press flex flex-col items-center gap-1.5 disabled:opacity-40">
               <span className="w-14 h-14 rounded-full bg-[#D9603B] border-[1.5px] border-[#1A1A1A] flex items-center justify-center">
                 <CopyIcon className="w-5 h-5 text-[#1A1A1A]" />
               </span>
               <span className="text-[12px] font-semibold">{copySuccess ? t.copied || 'Copied' : t.copyText || 'Copy text'}</span>
             </button>
-            <button type="button" onClick={() => setIsSaveImageOpen(true)} className="sv-press flex flex-col items-center gap-1.5">
+            <button type="button" disabled={waitingForPrivacy} onClick={() => { if (!waitingForPrivacy) setIsSaveImageOpen(true) }} className="sv-press flex flex-col items-center gap-1.5 disabled:opacity-40">
               <span className="w-14 h-14 rounded-full bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] flex items-center justify-center text-[13px] font-bold">IMG</span>
               <span className="text-[12px] font-semibold">{t.saveImage || 'Save image'}</span>
             </button>

@@ -1290,6 +1290,88 @@ export function emailShareUrl(subject, text) {
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
 }
 
+const REDACT_SPAN_TYPES = new Set(['person', 'phone', 'id', 'address', 'dob', 'email'])
+
+export function maskSpan(text, type, lang) {
+  if (type === 'phone') return maskPhone(text)
+  if (type === 'email') return maskEmail(text)
+  if (type === 'id') return maskIdToken(text)
+  if (type === 'person') return maskPersonName(text)
+  return getHiddenLabel(lang)
+}
+
+function redactHits(source, spans) {
+  const hits = []
+  const sorted = [...(spans || [])]
+    .filter((span) => span && REDACT_SPAN_TYPES.has(span.type) && typeof span.text === 'string' && span.text.length >= 2 && source.includes(span.text))
+    .sort((a, b) => b.text.length - a.text.length)
+  for (const span of sorted) {
+    let from = 0
+    while (from < source.length) {
+      const at = source.indexOf(span.text, from)
+      if (at < 0) break
+      const end = at + span.text.length
+      const overlaps = hits.some((hit) => at < hit.end && end > hit.start)
+      if (!overlaps) hits.push({ start: at, end, type: span.type, text: span.text })
+      from = end
+    }
+  }
+  hits.sort((a, b) => a.start - b.start)
+  return hits
+}
+
+export function applyRedactSpans(share, spans, lang) {
+  const source = String(share?.text || '')
+  const hits = redactHits(source, spans)
+  if (!hits.length) {
+    return {
+      text: source,
+      title: share?.title || '',
+      segments: share?.segments?.length ? share.segments : [{ text: source, masked: false }],
+    }
+  }
+  const segments = []
+  let cursor = 0
+  for (const hit of hits) {
+    if (hit.start > cursor) segments.push({ text: source.slice(cursor, hit.start), masked: false })
+    segments.push({ text: maskSpan(hit.text, hit.type, lang), masked: true })
+    cursor = hit.end
+  }
+  if (cursor < source.length) segments.push({ text: source.slice(cursor), masked: false })
+  return { text: segments.map((part) => part.text).join(''), title: share?.title || '', segments }
+}
+
+export function maskPlain(text, spans, lang) {
+  return applyRedactSpans({ text: String(text || ''), title: '', segments: [] }, spans, lang).text
+}
+
+export function failClosedShare(result, lang) {
+  return buildShare({ ...(result || {}), mask_fallback: true }, { hidePersonal: true, lang })
+}
+
+export function sharedAskText(answer, lang, response) {
+  if (!response || response.ok === false) return privacyRemovedNote(lang)
+  return maskPlain(answer, response.spans || [], lang)
+}
+
+export function shareFromRedact(result, lang, response, askAnswers = []) {
+  if (!response || response.ok === false) {
+    return { ...failClosedShare(result, lang), closed: true, askText: privacyRemovedNote(lang) }
+  }
+  const spans = response.spans || []
+  const share = applyRedactSpans(buildShare(result, { hidePersonal: true, lang }), spans, lang)
+  const answers = (askAnswers || []).map((answer) => sharedAskText(answer, lang, response)).filter(Boolean)
+  const askText = answers.join('\n')
+  if (!askText) return { ...share, closed: false, askText: '' }
+  const addition = `\n\n${askText}`
+  const combined = applyRedactSpans(
+    { text: `${share.text}${addition}`, title: share.title, segments: [...share.segments, { text: addition, masked: false }] },
+    spans,
+    lang,
+  )
+  return { ...combined, closed: false, askText }
+}
+
 export function shareToWhatsApp(text) {
   openWithoutLeaving(whatsAppShareUrl(text))
 }
