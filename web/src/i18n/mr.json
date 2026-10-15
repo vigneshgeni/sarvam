@@ -456,5 +456,12 @@
   "today": "आज",
   "upcomingDates": "कॅलेंडरमध्ये जोडा",
   "viewDatesList": "यादी पहा",
-  "warrantyReminder": "वॉरंटी संपते"
+  "warrantyReminder": "वॉरंटी संपते",
+  "valuesOutside": "{n} मूल्ये छापलेल्या मर्यादेबाहेर आहेत",
+  "aboveRange": "मर्यादेच्या वर",
+  "belowRange": "मर्यादेच्या खाली",
+  "flagHigh": "जास्त",
+  "flagLow": "कमी",
+  "flagInRange": "मर्यादेत",
+  "amountPaid": "भरलेले"
 }

@@ -380,5 +380,12 @@
   "today": "ಇಂದು",
   "upcomingDates": "ಕ್ಯಾಲೆಂಡರ್‌ಗೆ ಸೇರಿಸಿ",
   "viewDatesList": "ಪಟ್ಟಿ ನೋಡಿ",
-  "warrantyReminder": "ವಾರಂಟಿ ಮುಗಿಯುತ್ತದೆ"
+  "warrantyReminder": "ವಾರಂಟಿ ಮುಗಿಯುತ್ತದೆ",
+  "valuesOutside": "{n} ಮೌಲ್ಯಗಳು ಮುದ್ರಿತ ವ್ಯಾಪ್ತಿಯ ಹೊರಗಿವೆ",
+  "aboveRange": "ವ್ಯಾಪ್ತಿಗಿಂತ ಮೇಲೆ",
+  "belowRange": "ವ್ಯಾಪ್ತಿಗಿಂತ ಕೆಳಗೆ",
+  "flagHigh": "ಹೆಚ್ಚು",
+  "flagLow": "ಕಡಿಮೆ",
+  "flagInRange": "ವ್ಯಾಪ್ತಿಯಲ್ಲಿ",
+  "amountPaid": "ಪಾವತಿಸಿದ್ದು"
 }

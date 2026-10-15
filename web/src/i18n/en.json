@@ -380,5 +380,12 @@
   "today": "Today",
   "upcomingDates": "Add to calendar",
   "viewDatesList": "View list",
-  "warrantyReminder": "Warranty ends"
+  "warrantyReminder": "Warranty ends",
+  "valuesOutside": "{n} values are outside the printed range",
+  "aboveRange": "Above range",
+  "belowRange": "Below range",
+  "flagHigh": "High",
+  "flagLow": "Low",
+  "flagInRange": "In range",
+  "amountPaid": "Paid"
 }

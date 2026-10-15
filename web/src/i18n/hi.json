@@ -380,5 +380,12 @@
   "today": "आज",
   "upcomingDates": "कैलेंडर में जोड़ें",
   "viewDatesList": "सूची देखें",
-  "warrantyReminder": "वारंटी खत्म"
+  "warrantyReminder": "वारंटी खत्म",
+  "valuesOutside": "{n} मान छपी सीमा से बाहर हैं",
+  "aboveRange": "सीमा से ऊपर",
+  "belowRange": "सीमा से नीचे",
+  "flagHigh": "अधिक",
+  "flagLow": "कम",
+  "flagInRange": "सीमा में",
+  "amountPaid": "भुगतान"
 }

@@ -380,5 +380,12 @@
   "today": "ഇന്ന്",
   "upcomingDates": "കലണ്ടറിൽ ചേർക്കുക",
   "viewDatesList": "പട്ടിക കാണുക",
-  "warrantyReminder": "വാറന്റി അവസാനിക്കുന്നു"
+  "warrantyReminder": "വാറന്റി അവസാനിക്കുന്നു",
+  "valuesOutside": "{n} മൂല്യങ്ങൾ അച്ചടിച്ച പരിധിക്ക് പുറത്താണ്",
+  "aboveRange": "പരിധിക്ക് മുകളിൽ",
+  "belowRange": "പരിധിക്ക് താഴെ",
+  "flagHigh": "കൂടുതൽ",
+  "flagLow": "കുറവ്",
+  "flagInRange": "പരിധിയിൽ",
+  "amountPaid": "അടച്ചത്"
 }

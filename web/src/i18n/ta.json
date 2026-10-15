@@ -380,5 +380,12 @@
   "today": "இன்று",
   "upcomingDates": "நாள்காட்டியில் சேர்",
   "viewDatesList": "பட்டியலைப் பார்",
-  "warrantyReminder": "உத்தரவாதம் முடியும்"
+  "warrantyReminder": "உத்தரவாதம் முடியும்",
+  "valuesOutside": "{n} மதிப்புகள் அச்சிடப்பட்ட வரம்புக்கு வெளியே உள்ளன",
+  "aboveRange": "வரம்புக்கு மேல்",
+  "belowRange": "வரம்புக்கு கீழ்",
+  "flagHigh": "அதிகம்",
+  "flagLow": "குறைவு",
+  "flagInRange": "வரம்பில்",
+  "amountPaid": "செலுத்தியது"
 }

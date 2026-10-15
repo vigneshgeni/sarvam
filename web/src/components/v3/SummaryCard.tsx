@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ExplainResponse, GlanceKeyValue, Part, Section } from '../../types'
 import { getLocalisedDocType } from '../../i18n'
 import { amountDue, isMoneyValue, pickGlance, visualForDocument, type GlanceKind } from '../../design/catalog'
+import { assessLabValue, countOutside, titleCaseHeading, type LabAssessment } from '../../documents/labFlag'
 import { DocIcon } from '../../ui/icons'
 import { formatAmountValue } from '../../utils/currency'
 
@@ -29,6 +30,51 @@ function formatChipDate(iso: string | null | undefined, lang: string): string | 
   } catch {
     return iso
   }
+}
+
+function flagWords(label: string, t: Record<string, string>): string {
+  if (label === 'High') return t.flagHigh || 'High'
+  if (label === 'Low') return t.flagLow || 'Low'
+  if (label === 'In range') return t.flagInRange || 'In range'
+  if (label === 'Above range') return t.aboveRange || 'Above range'
+  if (label === 'Below range') return t.belowRange || 'Below range'
+  return label
+}
+
+function flagClass(label: string): string {
+  if (/high|above|toxic/i.test(label)) return 'bg-[#D9603B]'
+  if (/low|below|deficien/i.test(label)) return 'bg-[#F8D9CB]'
+  if (/insufficien|borderline/i.test(label)) return 'bg-[#FBEBC4]'
+  return 'bg-[#CFE5E0]'
+}
+
+function FlagChips({ status, t }: { status: LabAssessment | null; t: Record<string, string> }) {
+  if (!status?.label) return null
+  return (
+    <span className="flex flex-wrap gap-1">
+      <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${flagClass(status.label)}`}>
+        {flagWords(status.label, t)}
+      </span>
+      {status.calculated && (
+        <span className="self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2]">
+          {t.calculated || 'Calculated'}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function ClampText({ text, className }: { text: string; className: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen((value) => !value)}
+      className={`${className} ${open ? '' : 'line-clamp-3'} text-left break-words [overflow-wrap:anywhere]`}
+    >
+      {text}
+    </button>
+  )
 }
 
 function Tick({ label }: { label: string }) {
@@ -81,7 +127,11 @@ export default function SummaryCard({
   })
   const typeLabel = getLocalisedDocType(lang, docType) || docType
   const dateLabel = formatChipDate(result.report_date_iso || result.letter_date, lang)
-  const headline = result.glance?.headline || result.title
+  const outsideCount = countOutside([...(result.sections || []), ...(result.parts || []).flatMap((part) => part.sections || [])])
+  const headline = outsideCount > 0
+    ? (t.valuesOutside || '{n} values are outside the printed range').replace('{n}', String(outsideCount))
+    : (result.glance?.headline || result.title)
+  const paid = paidAmounts(result)
   const kvs = result.glance?.key_values || []
   const amounts = kvs.filter((k) => isMoneyValue(k.kind, k.value))
   const allMatched = kvs.length > 0 && kvs.every((k) => k.evidence === 'matched')
@@ -109,6 +159,14 @@ export default function SummaryCard({
       <h1 className={`m-0 text-[34px] leading-[1.05] tracking-[-0.4px] ${lang !== 'en' ? 'sv-indic text-[26px] font-semibold' : 'sv-display'}`}>
         {headline}
       </h1>
+      {paid.length > 0 && kind !== 'B' && (
+        <div className="rounded-[24px] bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
+          <span className="text-[12px] font-bold tracking-[1.2px]">{t.amountPaid || 'PAID'}</span>
+          {paid.map((item) => (
+            <span key={item.label + item.value} className="sv-display text-[32px] leading-none tabular-nums">{formatAmountValue(item.value)}</span>
+          ))}
+        </div>
+      )}
       {kind === 'A' && <SplitAmounts amounts={amounts} t={t} allMatched={allMatched} />}
       {kind === 'B' && <AmountToPay result={result} amounts={amounts} t={t} lang={lang} />}
       {kind === 'C' && <Deadline result={result} t={t} lang={lang} />}
@@ -215,6 +273,20 @@ function Deadline({ result, t, lang }: { result: ExplainResponse; t: Record<stri
   )
 }
 
+function paidAmounts(result: ExplainResponse): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = []
+  const take = (items?: GlanceKeyValue[]) => {
+    for (const item of items || []) {
+      if (!isMoneyValue(item.kind, item.value) || !/paid|received/i.test(item.label || '')) continue
+      if (rows.some((row) => row.value === item.value)) continue
+      rows.push({ label: item.label, value: item.value })
+    }
+  }
+  take(result.glance?.key_values)
+  for (const part of result.parts || []) take(part.glance?.key_values)
+  return rows
+}
+
 function ValueTiles({
   result,
   kvs,
@@ -232,16 +304,7 @@ function ValueTiles({
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-2.5">
           {sectionValues.slice(0, 4).map((v, i) => (
-            <div key={v.label + i} className="rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3.5 flex flex-col gap-1">
-              <span className="text-[12px] font-semibold text-[#575B58]">{v.label}</span>
-              <span className="sv-display text-[28px] leading-none tabular-nums">
-                {v.value} {v.unit && <span className="text-[16px]">{v.unit}</span>}
-              </span>
-              {v.ref_range && <span className="text-[12px] text-[#575B58]">{v.ref_range}</span>}
-              {v.flag_printed ? (
-                <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${v.flag_printed === 'High' ? 'bg-[#D9603B]' : v.flag_printed === 'Low' ? 'bg-[#F8D9CB]' : 'bg-[#CFE5E0]'}`}>{v.flag_printed}</span>
-              ) : null}
-            </div>
+            <LabTile key={v.label + i} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} t={t} />
           ))}
         </div>
         {allMatched && <Tick label={t.allValuesFound || 'All values found in your document'} />}
@@ -260,9 +323,35 @@ function ValueTiles({
   )
 }
 
-function printedFlag(flag?: string | null): 'High' | 'Low' | 'In range' | null {
-  if (flag === 'High' || flag === 'Low' || flag === 'In range') return flag
-  return null
+function LabTile({
+  label,
+  value,
+  unit,
+  range,
+  printed,
+  t,
+}: {
+  label: string
+  value: string
+  unit?: string
+  range?: string
+  printed?: string | null
+  t: Record<string, string>
+}) {
+  const status = assessLabValue(value, range, printed)
+  return (
+    <div className={`min-w-0 overflow-hidden rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3 flex flex-col gap-1 ${status?.outside ? 'bg-[#F8D9CB]' : ''}`}>
+      <ClampText text={label} className="text-[12px] font-semibold leading-snug text-[#575B58]" />
+      <span className="sv-display text-[26px] leading-none break-words [overflow-wrap:anywhere]">{value}</span>
+      {unit && <span className="text-[12px] font-semibold leading-snug break-words [overflow-wrap:anywhere]">{unit}</span>}
+      {range && <span className="text-[12px] leading-snug text-[#575B58] break-words [overflow-wrap:anywhere]">{range}</span>}
+      <FlagChips status={status} t={t} />
+    </div>
+  )
+}
+
+function rowStatus(value: { value?: string | null; ref_range?: string | null; range?: string | null; flag_printed?: string | null }) {
+  return assessLabValue(value.value || '', value.ref_range || value.range, value.flag_printed)
 }
 
 export function LabValues({ result, t }: { result: ExplainResponse; t: Record<string, string> }) {
@@ -276,13 +365,13 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
   const ordered = sections
   const flagged = ordered.flatMap((s) =>
     s.values
-      .filter((v) => printedFlag(v.flag_printed) === 'High' || printedFlag(v.flag_printed) === 'Low')
+      .filter((v) => rowStatus(v)?.outside)
       .map((v) => ({ ...v, heading: s.heading, page: s.page }))
   )
   const [open, setOpen] = useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {}
     ordered.forEach((s, i) => {
-      if (s.values.some((v) => printedFlag(v.flag_printed) === 'High' || printedFlag(v.flag_printed) === 'Low')) init[i] = true
+      if (s.values.some((v) => rowStatus(v)?.outside)) init[i] = true
     })
     return init
   })
@@ -306,25 +395,23 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
         {t.valuesAsPrinted || 'Values and flags exactly as printed'}
       </p>
       {ordered.map((s, i) => {
-        const outside = s.values.filter((v) => {
-          const flag = printedFlag(v.flag_printed)
-          return flag === 'High' || flag === 'Low'
-        }).length
-        const allPrintedInRange = s.values.length > 0 && s.values.every((v) => printedFlag(v.flag_printed) === 'In range')
+        const outside = s.values.filter((v) => rowStatus(v)?.outside).length
+        const decided = s.values.filter((v) => rowStatus(v)).length
+        const allInRange = decided > 0 && outside === 0
         return (
           <div key={s.heading + i} className="rounded-[28px] border-[1.5px] border-[#1A1A1A] overflow-hidden">
             <button type="button" className="w-full text-left p-3.5 flex items-center gap-3" aria-expanded={!!open[i]} onClick={() => setOpen((o) => ({ ...o, [i]: !o[i] }))}>
               <span className="flex-1 min-w-0">
-                <span className="block text-[16px] font-bold">{s.heading}</span>
+                <span className="block text-[16px] font-bold break-words">{titleCaseHeading(s.heading)}</span>
                 {s.heading_printed && s.heading_printed !== s.heading && (
                   <span className="block text-[12px] text-[#575B58]">{s.heading_printed}</span>
                 )}
                 <span className="block text-[13px] text-[#575B58]">{s.values.length} values · page {s.page}</span>
               </span>
-              <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : allPrintedInRange ? 'bg-[#CFE5E0]' : 'bg-[#F4F5F2]'}`}>
+              <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : allInRange ? 'bg-[#CFE5E0]' : 'bg-[#F4F5F2]'}`}>
                 {outside
                   ? (t.nOutside || '{n} outside').replace('{n}', String(outside))
-                  : allPrintedInRange
+                  : allInRange
                     ? (t.allInRange || 'All in range')
                     : (t.nValues || '{n} values').replace('{n}', String(s.values.length))}
               </span>
@@ -332,16 +419,7 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
             {open[i] && (
               <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
                 {s.values.map((v, j) => (
-                  <div key={v.label + j} className="rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3 flex flex-col gap-1">
-                    <span className="block text-[12px] font-semibold text-[#575B58]">{v.label}</span>
-                    <span className="sv-display text-[22px] leading-none">{v.value} {v.unit}</span>
-                    {(v.ref_range || v.range) && <span className="text-[12px] text-[#575B58]">{v.ref_range || v.range}</span>}
-                    {printedFlag(v.flag_printed) && (
-                      <span className={`self-start text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A] ${v.flag_printed === 'High' ? 'bg-[#D9603B]' : v.flag_printed === 'Low' ? 'bg-[#F8D9CB]' : 'bg-[#CFE5E0]'}`}>
-                        {printedFlag(v.flag_printed)}
-                      </span>
-                    )}
-                  </div>
+                  <LabTile key={v.label + j} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} t={t} />
                 ))}
               </div>
             )}

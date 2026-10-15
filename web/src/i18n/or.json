@@ -456,5 +456,12 @@
   "today": "ଆଜି",
   "upcomingDates": "କ୍ୟାଲେଣ୍ଡରରେ ଯୋଡନ୍ତୁ",
   "viewDatesList": "ତାଲିକା ଦେଖନ୍ତୁ",
-  "warrantyReminder": "ୱାରେଣ୍ଟି ଶେଷ"
+  "warrantyReminder": "ୱାରେଣ୍ଟି ଶେଷ",
+  "valuesOutside": "{n} ମୂଲ୍ୟ ମୁଦ୍ରିତ ସୀମା ବାହାରେ",
+  "aboveRange": "ସୀମା ଉପରେ",
+  "belowRange": "ସୀମା ତଳେ",
+  "flagHigh": "ଅଧିକ",
+  "flagLow": "କମ",
+  "flagInRange": "ସୀମା ମଧ୍ୟରେ",
+  "amountPaid": "ପ୍ରଦତ୍ତ"
 }

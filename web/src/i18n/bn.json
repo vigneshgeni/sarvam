@@ -456,5 +456,12 @@
   "today": "আজ",
   "upcomingDates": "ক্যালেন্ডারে যোগ করুন",
   "viewDatesList": "তালিকা দেখুন",
-  "warrantyReminder": "ওয়ারেন্টি শেষ"
+  "warrantyReminder": "ওয়ারেন্টি শেষ",
+  "valuesOutside": "{n}টি মান ছাপা সীমার বাইরে",
+  "aboveRange": "সীমার উপরে",
+  "belowRange": "সীমার নিচে",
+  "flagHigh": "বেশি",
+  "flagLow": "কম",
+  "flagInRange": "সীমার মধ্যে",
+  "amountPaid": "পরিশোধিত"
 }

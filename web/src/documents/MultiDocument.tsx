@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { ExplainResponse, Part } from '../types'
 import { partAsResult } from './kinds'
+import { assessLabValue } from './labFlag'
 import { resolveProfile } from './profiles'
 
 function span(part: Part): [number, number] {
@@ -15,13 +16,13 @@ function flagged(parts: Part[]) {
   for (const part of parts) {
     for (const section of part.sections || []) {
       for (const value of section.values || []) {
-        const flag = value.flag_printed
-        if (flag === 'High' || flag === 'Low') {
+        const status = assessLabValue(value.value, value.ref_range || value.range, value.flag_printed)
+        if (status?.outside) {
           rows.push({
             label: value.name || value.label || '',
             value: value.value,
             unit: value.unit || '',
-            flag,
+            flag: status.label,
             section: section.heading || section.title || part.title,
             page: section.page || span(part)[0],
           })

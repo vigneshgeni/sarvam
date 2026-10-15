@@ -380,5 +380,12 @@
   "today": "ఈరోజు",
   "upcomingDates": "క్యాలెండర్‌కు జోడించండి",
   "viewDatesList": "జాబితా చూడండి",
-  "warrantyReminder": "వారంటీ ముగుస్తుంది"
+  "warrantyReminder": "వారంటీ ముగుస్తుంది",
+  "valuesOutside": "{n} విలువలు ముద్రించిన పరిధికి బయట ఉన్నాయి",
+  "aboveRange": "పరిధి కంటే ఎక్కువ",
+  "belowRange": "పరిధి కంటే తక్కువ",
+  "flagHigh": "ఎక్కువ",
+  "flagLow": "తక్కువ",
+  "flagInRange": "పరిధిలో",
+  "amountPaid": "చెల్లించినది"
 }
