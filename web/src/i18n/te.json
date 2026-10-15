@@ -387,5 +387,10 @@
   "flagHigh": "ఎక్కువ",
   "flagLow": "తక్కువ",
   "flagInRange": "పరిధిలో",
-  "amountPaid": "చెల్లించినది"
+  "amountPaid": "చెల్లించినది",
+  "valuesOnPage": "{n} విలువలు · పేజీ {p}",
+  "moreReports": "{title} + మరో {n}",
+  "noDatesInDocument": "ఈ పత్రంలో తేదీలు లేవు",
+  "document": "పత్రం",
+  "micUnavailable": "మైక్రోఫోన్ ప్రారంభం కాలేదు. మీరు టైప్ చేయవచ్చు."
 }

@@ -229,6 +229,7 @@ export interface ExplainResponse {
 
 export interface SectionValue {
   label: string
+  label_printed?: string
   name?: string
   value: string
   unit?: string
@@ -328,6 +329,16 @@ export interface MultiReportCard {
   status: 'pending' | 'ready' | 'error'
 }
 
+export interface AskTurn {
+  question: string
+  answer: string
+  quote?: string
+  page?: number | null
+  not_found?: boolean
+  evidence?: string
+  answered_from?: string
+}
+
 export interface RecentResult {
   id: string
   timestamp: number
@@ -338,6 +349,7 @@ export interface RecentResult {
   result: ExplainResponse
   translations?: Record<string, ExplainResponse>
   multiReports?: MultiReportCard[]
+  asks?: AskTurn[]
 }
 
 export type AppScreen = 'home' | 'tray' | 'reading' | 'result'

@@ -463,5 +463,10 @@
   "flagHigh": "जास्त",
   "flagLow": "कमी",
   "flagInRange": "मर्यादेत",
-  "amountPaid": "भरलेले"
+  "amountPaid": "भरलेले",
+  "valuesOnPage": "{n} मूल्ये · पान {p}",
+  "moreReports": "{title} + आणखी {n}",
+  "noDatesInDocument": "या दस्तऐवजात तारखा नाहीत",
+  "document": "दस्तऐवज",
+  "micUnavailable": "मायक्रोफोन सुरू झाला नाही. तुम्ही टाइप करू शकता."
 }

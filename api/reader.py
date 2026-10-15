@@ -980,6 +980,7 @@ def ask_document_single_attempt(
     deadline: Optional[float] = None,
     timeout: Optional[float] = None,
     attempt_idx: int = 1,
+    history: Optional[str] = None,
 ) -> AskResponse:
     lang_name = resolve_language_name(lang)
     prompt = ASK_PROMPT_TEMPLATE.format(
@@ -989,6 +990,12 @@ def ask_document_single_attempt(
     )
     if pdf_pages_text:
         prompt += f"\n\nVerbatim Document Text:\n{' '.join(pdf_pages_text)}\n"
+    if history:
+        prompt += (
+            "\n\nEarlier questions and answers, oldest first. Use them only to understand a follow-up. "
+            "Answer only from this document. If the document does not say, say so.\n"
+            + history[:4000]
+        )
 
     client = get_client()
     contents = []
@@ -1052,6 +1059,49 @@ def ask_document_single_attempt(
 
     ask_res.language = lang
     return ask_res
+
+
+def transcribe_audio(
+    audio: bytes,
+    mime_type: str,
+    lang: str,
+    deadline: Optional[float] = None,
+) -> str:
+    """Speech to text. The audio and transcript are not stored."""
+    lang_name = resolve_language_name(lang)
+    prompt = (
+        f"Transcribe this speech in {lang_name}. "
+        'Return JSON {"text": "..."} containing only the spoken words. '
+        "Do not answer, translate, or add anything that was not spoken."
+    )
+    client = get_client()
+    contents = [
+        types.Part.from_bytes(data=audio, mime_type=mime_type or "audio/webm"),
+        prompt,
+    ]
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json",
+        max_output_tokens=512,
+        http_options=types.HttpOptions(timeout=20000),
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+    response = call_gemini_with_retry(
+        client=client,
+        model=MODEL_ID,
+        contents=contents,
+        config=config,
+        endpoint="transcribe",
+        deadline=deadline,
+        attempt_timeout_sec=20,
+    )
+    raw = response.text or "{}"
+    try:
+        data = json.loads(raw)
+        text = data.get("text") if isinstance(data, dict) else ""
+    except Exception:
+        text = ""
+    return (text or "").strip()[:500]
 
 
 def ask_document(

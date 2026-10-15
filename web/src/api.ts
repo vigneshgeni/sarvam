@@ -296,12 +296,14 @@ export async function askDocument(params: {
   result: ExplainResponse
   files?: File[]
   password?: string
+  history?: string
   signal?: AbortSignal
 }): Promise<AskResponse> {
   const formData = new FormData()
   formData.append('question', params.question)
   formData.append('lang', params.lang)
   formData.append('result', JSON.stringify(params.result))
+  if (params.history) formData.append('history', params.history)
 
   if (params.files && params.files.length > 0) {
     for (const f of params.files) {
@@ -469,5 +471,15 @@ export async function extractDocumentText(
       signal.removeEventListener('abort', onAbort)
     }
   }
+}
+
+export async function transcribeAudio(blob: Blob, lang: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('lang', lang)
+  formData.append('audio', blob, 'question.webm')
+  const res = await fetch(`${API_BASE}/api/transcribe`, { method: 'POST', body: formData })
+  if (!res.ok) return ''
+  const data = await res.json()
+  return typeof data?.text === 'string' ? data.text.slice(0, 500) : ''
 }
 

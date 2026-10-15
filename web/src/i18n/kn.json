@@ -387,5 +387,10 @@
   "flagHigh": "ಹೆಚ್ಚು",
   "flagLow": "ಕಡಿಮೆ",
   "flagInRange": "ವ್ಯಾಪ್ತಿಯಲ್ಲಿ",
-  "amountPaid": "ಪಾವತಿಸಿದ್ದು"
+  "amountPaid": "ಪಾವತಿಸಿದ್ದು",
+  "valuesOnPage": "{n} ಮೌಲ್ಯಗಳು · ಪುಟ {p}",
+  "moreReports": "{title} + ಇನ್ನೂ {n}",
+  "noDatesInDocument": "ಈ ದಾಖಲೆಯಲ್ಲಿ ದಿನಾಂಕಗಳಿಲ್ಲ",
+  "document": "ದಾಖಲೆ",
+  "micUnavailable": "ಮೈಕ್ರೊಫೋನ್ ಆರಂಭವಾಗಲಿಲ್ಲ. ನೀವು ಟೈಪ್ ಮಾಡಬಹುದು."
 }

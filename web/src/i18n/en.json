@@ -387,5 +387,10 @@
   "flagHigh": "High",
   "flagLow": "Low",
   "flagInRange": "In range",
-  "amountPaid": "Paid"
+  "amountPaid": "Paid",
+  "valuesOnPage": "{n} values · page {p}",
+  "moreReports": "{title} + {n} more",
+  "noDatesInDocument": "No dates in this document",
+  "document": "Document",
+  "micUnavailable": "Microphone could not be started. You can still type."
 }

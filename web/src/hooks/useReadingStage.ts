@@ -48,6 +48,7 @@ export function readingProgress(elapsedSec: number, expectedSec: number): {
 
 export function useReadingStage(options?: ReadingStageOptions): ReadingStageResult {
   const files = options?.files || []
+  const fileKey = files.map((file) => `${file.name}:${file.size}:${file.lastModified}`).join('|')
   const targetLanguage = options?.targetLanguage || 'en'
   const fileCount = Math.max(1, files.length)
   const isPdf = files.some(
@@ -78,14 +79,14 @@ export function useReadingStage(options?: ReadingStageOptions): ReadingStageResu
     return () => {
       cancelled = true
     }
-  }, [files, fileCount, isPdf, options?.pageCount])
+  }, [fileKey, fileCount, isPdf, options?.pageCount])
 
   useEffect(() => {
     if (options?.arrived) return
     const started = Date.now()
     const timer = setInterval(() => setElapsed((Date.now() - started) / 1000), 100)
     return () => clearInterval(timer)
-  }, [files, options?.arrived])
+  }, [fileKey, options?.arrived])
 
   const expectedSeconds = expectedReadingSeconds(photos, pageCount)
   const live = options?.arrived

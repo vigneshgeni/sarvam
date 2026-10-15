@@ -463,5 +463,10 @@
   "flagHigh": "ଅଧିକ",
   "flagLow": "କମ",
   "flagInRange": "ସୀମା ମଧ୍ୟରେ",
-  "amountPaid": "ପ୍ରଦତ୍ତ"
+  "amountPaid": "ପ୍ରଦତ୍ତ",
+  "valuesOnPage": "{n} ମୂଲ୍ୟ · ପୃଷ୍ଠା {p}",
+  "moreReports": "{title} + ଆଉ {n}",
+  "noDatesInDocument": "ଏହି ଦଲିଲରେ କୌଣସି ତାରିଖ ନାହିଁ",
+  "document": "ଦଲିଲ",
+  "micUnavailable": "ମାଇକ୍ରୋଫୋନ୍ ଆରମ୍ଭ ହେଲା ନାହିଁ. ଆପଣ ଟାଇପ୍ କରିପାରିବେ."
 }

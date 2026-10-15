@@ -463,5 +463,10 @@
   "flagHigh": "বেশি",
   "flagLow": "কম",
   "flagInRange": "সীমার মধ্যে",
-  "amountPaid": "পরিশোধিত"
+  "amountPaid": "পরিশোধিত",
+  "valuesOnPage": "{n}টি মান · পৃষ্ঠা {p}",
+  "moreReports": "{title} + আরও {n}",
+  "noDatesInDocument": "এই নথিতে কোনো তারিখ নেই",
+  "document": "নথি",
+  "micUnavailable": "মাইক্রোফোন চালু হয়নি. আপনি টাইপ করতে পারেন."
 }

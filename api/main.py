@@ -1042,9 +1042,15 @@ async def translate(
         for j, section in enumerate(part.sections or []):
             if section.heading:
                 strings_to_translate[f"part_{i}_section_{j}"] = section.heading
+            for k, value in enumerate(section.values or []):
+                if value.label:
+                    strings_to_translate[f"part_{i}_section_{j}_value_{k}_label"] = value.label
     for i, section in enumerate(orig.sections or []):
         if section.heading:
             strings_to_translate[f"section_{i}_heading"] = section.heading
+        for k, value in enumerate(section.values or []):
+            if value.label:
+                strings_to_translate[f"section_{i}_value_{k}_label"] = value.label
 
     # Legacy payload constructed for mock compatibility
     actions_payload = [
@@ -1488,6 +1494,27 @@ async def translate(
             )
         stitched_profile = orig.profile.model_copy(update={"form_fields": fields})
 
+    def kept_label(original: str, translated: str) -> str:
+        if not translated or translated == original:
+            return original
+        if verify_translation_guard(original, translated):
+            return translated
+        return original
+
+    def stitch_values(section, prefix: str):
+        values = []
+        for k, value in enumerate(section.values or []):
+            translated = kept_label(value.label, translated_dict.get(f"{prefix}_value_{k}_label", value.label))
+            values.append(
+                value.model_copy(
+                    update={
+                        "label": translated,
+                        "label_printed": value.label if translated != value.label else "",
+                    }
+                )
+            )
+        return values
+
     stitched_sections = orig.sections
     if orig.sections and "translated_dict" in locals():
         stitched_sections = []
@@ -1498,6 +1525,7 @@ async def translate(
                     update={
                         "heading": translated_dict.get(f"section_{i}_heading", section.heading),
                         "heading_printed": printed,
+                        "values": stitch_values(section, f"section_{i}"),
                     }
                 )
             )
@@ -1520,6 +1548,7 @@ async def translate(
                             update={
                                 "heading": translated_dict.get(f"part_{i}_section_{j}", section.heading),
                                 "heading_printed": printed,
+                                "values": stitch_values(section, f"part_{i}_section_{j}"),
                             }
                         )
                     )
@@ -1654,6 +1683,7 @@ async def ask(
     result: str = Form(...),
     files: Optional[List[UploadFile]] = File(None),
     password: Optional[str] = Form(None),
+    history: Optional[str] = Form(None),
 ):
     start_time = time.time()
     deadline = start_time + 45.0  # 45s server deadline for ask
@@ -1756,6 +1786,9 @@ async def ask(
                 file_data_list or None,
                 pdf_pages_text,
                 deadline,
+                None,
+                1,
+                (history or "")[:4000] or None,
             )
         return ask_res
     except AskUnverifiedError:
@@ -1770,6 +1803,38 @@ async def ask(
             or time.time() >= deadline - 1.0
         ):
             return make_error_response(504, "timeout", lang)
+        return make_error_response(503, "service_busy", lang)
+    finally:
+        GEMINI_SEMAPHORE.release()
+
+
+@app.post("/api/transcribe")
+async def transcribe(
+    request: Request,
+    lang: str = Form("en"),
+    audio: UploadFile = File(...),
+):
+    """Turn a short recording into text. Nothing is stored."""
+    start_time = time.time()
+    deadline = start_time + 25.0
+    client_ip = get_client_ip(request)
+    allowed, retry_after = check_rate_limit("ask", client_ip, ASK_RATE_LIMIT)
+    if not allowed:
+        return make_error_response(429, "rate_limit", lang, headers={"Retry-After": str(retry_after)})
+    content = await audio.read()
+    if not content or len(content) > 1_500_000:
+        return make_error_response(400, "invalid_file_type", lang, custom_message="Recording must be under 30 seconds.")
+    mime_type = audio.content_type or "audio/webm"
+    if mime_type not in ("audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4a-latm"):
+        mime_type = "audio/webm"
+    try:
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=min(15.0, deadline - time.time()))
+    except (asyncio.TimeoutError, TimeoutError):
+        return make_error_response(503, "service_busy", lang)
+    try:
+        text = await run_in_threadpool(reader.transcribe_audio, content, mime_type, lang, deadline)
+        return {"text": text}
+    except Exception:
         return make_error_response(503, "service_busy", lang)
     finally:
         GEMINI_SEMAPHORE.release()

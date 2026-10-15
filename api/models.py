@@ -627,6 +627,7 @@ class MedicineInfo(BaseModel):
 
 class ExplainSectionValue(BaseModel):
     label: str
+    label_printed: str = ""
     value: str
     unit: Optional[str] = None
     ref_range: Optional[str] = None

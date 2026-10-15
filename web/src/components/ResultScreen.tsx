@@ -66,6 +66,8 @@ interface ResultScreenProps {
   onA11yClick: () => void
   multiReports?: MultiReportCard[]
   onRetrySingleReport?: (index: number) => void
+  resultId?: string
+  asks?: import('../types').AskTurn[]
 }
 
 export default function ResultScreen({
@@ -83,6 +85,8 @@ export default function ResultScreen({
   onA11yClick,
   multiReports,
   onRetrySingleReport,
+  resultId,
+  asks,
 }: ResultScreenProps) {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(null)
 
@@ -502,6 +506,18 @@ export default function ResultScreen({
     }
   }
 
+  const upcomingActions = (result.actions || []).filter(
+    (act) => !isDatePassed(act.due_date) && act.date_status !== 'passed' && (act.due_date || act.recurrence),
+  )
+  const packetTitle = (() => {
+    const first = multiReports?.find((card) => card.result?.title)?.result?.title || multiReports?.[0]?.title
+    const count = multiReports?.length || 0
+    if (first && count > 1 && !/^\d+\s+reports?$/i.test(first)) {
+      return (t.moreReports || '{title} + {n} more').replace('{title}', first).replace('{n}', String(count - 1))
+    }
+    return (t.reportsCount || '{count} reports').replace('{count}', String(count))
+  })()
+
   const factsToDisplay = showAllFacts
     ? result.facts || []
     : (result.facts || []).slice(0, 5)
@@ -523,10 +539,7 @@ export default function ResultScreen({
               <CloseIcon className="w-5 h-5" />
             </button>
             <h1 className="font-heading font-bold text-xl text-[#15171A]">
-              {(t.reportsCount || '{count} reports').replace(
-                '{count}',
-                String(multiReports.length)
-              )}
+              {packetTitle}
             </h1>
           </div>
 
@@ -542,15 +555,17 @@ export default function ResultScreen({
                 }}
                 className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                   card.status === 'ready'
-                    ? 'bg-white border-[#E6E6E1] cursor-pointer hover:border-[#5B52D6] shadow-sm'
+                    ? 'bg-white border-[#E6E6E1] cursor-pointer hover:border-[#034F46] shadow-sm'
                     : 'bg-[#FFF4DE] border-[#F4DDB0]'
                 }`}
               >
-                <div>
-                  <h3 className="font-bold text-sm text-[#15171A]">
-                    {card.title || card.fileName}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-sm text-[#15171A] break-words [overflow-wrap:anywhere]">
+                    {card.result?.title || card.title || (t.document || 'Document')}
                   </h3>
-                  <p className="text-xs text-[#5E636B]">{card.fileName}</p>
+                  <p className="text-xs text-[#575B58]">
+                    {card.result?.glance?.key_values?.find((item) => /date/i.test(item.label || ''))?.value || ''}
+                  </p>
                 </div>
                 {card.status === 'ready' ? (
                   <ChevronRightIcon className="w-5 h-5 text-[#5E636B]" />
@@ -561,7 +576,7 @@ export default function ResultScreen({
                       e.stopPropagation()
                       onRetrySingleReport?.(i)
                     }}
-                    className="px-3 py-1 bg-[#146B4E] text-white text-xs font-semibold rounded-lg"
+                    className="px-3 py-1 bg-[#034F46] text-white text-xs font-semibold rounded-lg"
                   >
                     {t.retry || 'Retry'}
                   </button>
@@ -633,7 +648,7 @@ export default function ResultScreen({
           <button
             type="button"
             onClick={() => setSelectedReportIndex(null)}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#146B4E] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#034F46] hover:underline"
           >
             <ChevronRightIcon className="w-4 h-4 rotate-180" />
             <span>{t.backToReports || 'Back to all reports'}</span>
@@ -762,7 +777,7 @@ export default function ResultScreen({
                         onClick={() => toggleActionDone(i)}
                         className={`hit-44 w-6 h-6 rounded-lg border-2 mt-0.5 flex items-center justify-center shrink-0 transition-colors btn-press ${
                           isDone
-                            ? 'bg-[#146B4E] border-[#146B4E]'
+                            ? 'bg-[#034F46] border-[#034F46]'
                             : 'bg-white border-[#D8D8D2]'
                         }`}
                         aria-label={`Mark done: ${act.text}`}
@@ -812,7 +827,7 @@ export default function ResultScreen({
                               className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
                                 isPassed
                                   ? 'bg-[#F0F0EB] text-[#5E636B]'
-                                  : 'bg-[#E8F1FB] text-[#1D5FA8]'
+                                  : 'bg-[#CFE5E0] text-[#034F46]'
                               }`}
                             >
                               <CalendarIcon className="w-3.5 h-3.5" />
@@ -827,7 +842,7 @@ export default function ResultScreen({
                           )}
 
                           {dateChips.evidenceChip?.kind === 'calculated' && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F1ECFB] text-[#6D45C9]">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#CFE5E0] text-[#034F46]">
                               {dateChips.evidenceChip.text}
                             </span>
                           )}
@@ -837,7 +852,7 @@ export default function ResultScreen({
                             <button
                               type="button"
                               onClick={() => handleAddActionToCalendar(act, i)}
-                              className="hit-44 btn-press text-[11px] font-semibold text-[#5B52D6] bg-[#ECEBFA] hover:bg-[#D8D4EF] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                              className="hit-44 btn-press text-[11px] font-semibold text-[#034F46] bg-[#CFE5E0] hover:bg-[#CFE5E0] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
                             >
                               <CalendarIcon className="w-3 h-3" />
                               {t.addToCalendar || 'Add to calendar'}
@@ -868,7 +883,7 @@ export default function ResultScreen({
 
                         {/* Accordion Quote Box */}
                         {isQuoteOpen && act.quote && (
-                          <div className="mt-2 p-2.5 bg-[#FBF7EF] border-l-2 border-[#5B52D6] rounded-r-xl text-xs text-[#15171A]">
+                          <div className="mt-2 p-2.5 bg-[#FBF7EF] border-l-2 border-[#034F46] rounded-r-xl text-xs text-[#15171A]">
                             <span className="font-semibold text-[#5E636B]">
                               Page {act.page}:
                             </span>
@@ -882,13 +897,13 @@ export default function ResultScreen({
               })}
             </div>
 
-            {/* Add all dates button (WEB-8) */}
+            {upcomingActions.length > 0 && (
             <div className="pt-2 flex flex-col gap-1.5 border-t border-[#F0F0EB]">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleAddAllDates()}
-                  className="hit-44 btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B52D6] hover:underline"
+                  className="hit-44 btn-press inline-flex items-center gap-1.5 text-xs font-semibold text-[#034F46] hover:underline"
                 >
                   <CalendarIcon className="w-4 h-4" />
                   {t.addAllDates || 'Add all dates (.ics)'}
@@ -907,6 +922,7 @@ export default function ResultScreen({
                 </p>
               )}
             </div>
+            )}
           </section>
         )}
 
@@ -1042,7 +1058,7 @@ export default function ResultScreen({
                           </div>
                         ) : fact.evidence === 'calculated' ? (
                           <div className="pt-1">
-                            <span className="inline-flex items-center text-[11px] font-medium text-[#6D45C9] bg-[#F1ECFB] px-2 py-0.5 rounded-md">
+                            <span className="inline-flex items-center text-[11px] font-medium text-[#034F46] bg-[#CFE5E0] px-2 py-0.5 rounded-md">
                               {t.calculatedChip || 'Calculated'}
                             </span>
                           </div>
@@ -1079,7 +1095,7 @@ export default function ResultScreen({
                 <button
                   type="button"
                   onClick={() => setShowAllFacts(!showAllFacts)}
-                  className="btn-press text-xs font-bold text-[#5B52D6] hover:underline py-1"
+                  className="btn-press text-xs font-bold text-[#034F46] hover:underline py-1"
                 >
                   {showAllFacts
                     ? t.showLess || 'Show less'
@@ -1175,6 +1191,8 @@ export default function ResultScreen({
         files={files}
         lang={contentLang}
         t={t}
+        resultId={resultId}
+        initialAsks={asks}
         onSpeakAnswer={(_text) => {
           closeOverlay('ask')
           openOverlay('listen')
@@ -1362,6 +1380,10 @@ export default function ResultScreen({
               {t.upcomingDates || 'Add to calendar'}<span className="text-[#D9603B]">.</span>
             </h2>
           </div>
+          {upcomingActions.length === 0 ? (
+            <p className="text-[16px] text-[#575B58]">{t.noDatesInDocument || 'No dates in this document'}</p>
+          ) : (
+          <>
           <div className="border-[1.5px] border-[#1A1A1A] rounded-[28px] px-4">
             {result.actions
               ?.map((act, idx) => ({ act, idx }))
@@ -1403,9 +1425,15 @@ export default function ResultScreen({
             </div>
           </div>
           <div className="flex flex-col gap-2.5">
-            <button type="button" onClick={() => void handleAddAllDates(true)} className="sv-press h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] font-bold text-[17px]">
-              {(t.addNToCalendar || 'Add {n} to my calendar').replace('{n}', String(result.actions?.filter((a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && pickedDates[idx] !== false).length || 0))}
-            </button>
+            {(() => {
+              const picked = result.actions?.filter((a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && pickedDates[idx] !== false).length || 0
+              if (!picked) return null
+              return (
+                <button type="button" onClick={() => void handleAddAllDates(true)} className="sv-press h-14 rounded-[28px] border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] font-bold text-[17px]">
+                  {(t.addNToCalendar || 'Add {n} to my calendar').replace('{n}', String(picked))}
+                </button>
+              )
+            })()}
             <button
               type="button"
               onClick={() => {
@@ -1422,6 +1450,8 @@ export default function ResultScreen({
               {copyDatesSuccess ? (t.copied || 'Copied') : (t.copyAllDates || 'Copy all dates')}
             </button>
           </div>
+          </>
+          )}
         </div>
       </Sheet>
 

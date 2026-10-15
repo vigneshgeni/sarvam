@@ -387,5 +387,10 @@
   "flagHigh": "കൂടുതൽ",
   "flagLow": "കുറവ്",
   "flagInRange": "പരിധിയിൽ",
-  "amountPaid": "അടച്ചത്"
+  "amountPaid": "അടച്ചത്",
+  "valuesOnPage": "{n} മൂല്യങ്ങൾ · പേജ് {p}",
+  "moreReports": "{title} + {n} കൂടി",
+  "noDatesInDocument": "ഈ രേഖയിൽ തീയതികളില്ല",
+  "document": "രേഖ",
+  "micUnavailable": "മൈക്രോഫോൺ തുടങ്ങിയില്ല. നിങ്ങൾക്ക് ടൈപ്പ് ചെയ്യാം."
 }

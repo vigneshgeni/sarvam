@@ -90,7 +90,7 @@ export const HOME_SAMPLES: HomeSample[] = [
   { file: 'sample-lab-report.pdf', titleKey: 'sampleLabName', title: 'Lab report', subKey: 'sampleLabOrg', sub: 'City Diagnostics', kind: 'PDF', icon: 'flask', bg: '#034F46', ink: '#F4F5F2' },
   { file: 'sample-insurance-letter.pdf', titleKey: 'sampleInsuranceName', title: 'Insurance letter', subKey: 'sampleInsuranceOrg', sub: 'Health insurer', kind: 'PDF', icon: 'shield', bg: '#E9B44C', ink: '#1A1A1A' },
   { file: 'sample-pension-notice.jpg', titleKey: 'samplePensionName', title: 'Pension notice', subKey: 'samplePensionOrg', sub: 'Social Welfare Dept.', kind: 'PHOTO', icon: 'rupee', bg: '#D9603B', ink: '#1A1A1A' },
-  { file: 'sample-invoice-warranty.pdf', titleKey: 'sampleInvoiceName', title: 'Phone invoice & warranty', subKey: 'sampleInvoiceOrg', sub: 'Retail store', kind: 'PDF', icon: 'phone', bg: '#1A1A1A', ink: '#F4F5F2' },
+  { file: 'sample-invoice-warranty.pdf', titleKey: 'sampleInvoiceName', title: 'Phone invoice & warranty', subKey: 'sampleInvoiceOrg', sub: 'Retail store', kind: 'PDF', icon: 'receipt', bg: '#E9B44C', ink: '#1A1A1A' },
   { file: 'sample-property-tax-notice.pdf', titleKey: 'sampleTaxName', title: 'Property tax notice', subKey: 'sampleTaxOrg', sub: 'City municipality', kind: 'PDF', icon: 'house', bg: '#CFE5E0', ink: '#1A1A1A' },
   { file: 'sample-echallan.pdf', titleKey: 'sampleChallanName', title: 'Traffic e-challan', subKey: 'sampleChallanOrg', sub: 'Traffic Police', kind: 'PDF', icon: 'car', bg: '#D9603B', ink: '#FFFFFF' },
   { file: 'sample-prescription.jpg', titleKey: 'sampleRxName', title: 'Prescription', subKey: 'sampleRxOrg', sub: 'Neighbourhood clinic', kind: 'PHOTO', icon: 'pill', bg: '#CFE5E0', ink: '#1A1A1A' },

@@ -416,10 +416,7 @@ export default function App() {
     setDeleteConfirm({
       type: 'single',
       id: item.id,
-      title:
-        item.fileCount > 1
-          ? t.reportsCount?.replace('{count}', String(item.fileCount)) || `${item.fileCount} reports`
-          : item.title,
+      title: item.title,
     })
   }
 
@@ -432,6 +429,7 @@ export default function App() {
     if (deleteConfirm.type === 'single' && deleteConfirm.id) {
       await deleteRecentResult(deleteConfirm.id)
       forgetReadResult(deleteConfirm.id)
+      try { sessionStorage.removeItem(`sarvam.ask.${deleteConfirm.id}`) } catch { /* already gone */ }
       const active = loadActiveSession()
       if (active?.currentResultId === deleteConfirm.id) {
         clearActiveSession()
@@ -439,6 +437,11 @@ export default function App() {
     } else if (deleteConfirm.type === 'all') {
       await clearAllRecentResults()
       forgetReadMemory()
+      try {
+        for (const key of Object.keys(sessionStorage)) {
+          if (key.startsWith('sarvam.ask.')) sessionStorage.removeItem(key)
+        }
+      } catch { /* already gone */ }
       clearActiveSession()
     }
     setDeleteConfirm(null)
@@ -596,8 +599,11 @@ export default function App() {
 
         if (isSaveRecentEnabled()) {
           const fileCount = filesToExplain.length
+          const firstTitle = updatedCards.find((card) => card.result?.title)?.result?.title
           const displayTitle =
-            t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+            firstTitle && fileCount > 1
+              ? (t.moreReports || '{title} + {n} more').replace('{title}', firstTitle).replace('{n}', String(fileCount - 1))
+              : t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
           const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           currentResultIdRef.current = multiId
 
@@ -639,8 +645,9 @@ export default function App() {
       if (outputNeedsTranslation(result, targetLang)) {
         try {
           result = await translateDocument(result, targetLang, controller.signal)
+          if (outputNeedsTranslation(result, targetLang)) setTranslateFailedLang(targetLang)
         } catch {
-          /* keep the first reading if translation is busy */
+          setTranslateFailedLang(targetLang)
         }
       }
 
@@ -667,8 +674,8 @@ export default function App() {
       const fileCount = filesToExplain.length
       const displayTitle =
         fileCount > 1
-          ? t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
-          : result.title || filesToExplain[0]?.name || 'Document'
+          ? (t.moreReports || '{title} + {n} more').replace('{title}', result.title || (t.document || 'Document')).replace('{n}', String(fileCount - 1))
+          : result.title || (t.document || 'Document')
 
       if (isSaveRecentEnabled()) {
         await saveRecentResult({
@@ -1050,6 +1057,7 @@ export default function App() {
 
       translationCacheRef.current.set(cacheKey, translated)
       setResultData(translated)
+      setTranslateFailedLang(outputNeedsTranslation(translated, targetLang) ? targetLang : null)
       if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, translated, resultId)
       setIsTranslating(false)
       console.log('telemetry: translate_ok', { status: 200 })
@@ -1068,6 +1076,7 @@ export default function App() {
 
         translationCacheRef.current.set(cacheKey, retried)
         setResultData(retried)
+        setTranslateFailedLang(outputNeedsTranslation(retried, targetLang) ? targetLang : null)
         if (fileHashRef.current) await rememberRead(fileHashRef.current, targetLang, retried, resultId)
         setIsTranslating(false)
         console.log('telemetry: translate_retry_ok', { status: 200 })
@@ -1358,6 +1367,8 @@ export default function App() {
             onA11yClick={handleOpenA11y}
             multiReports={multiReportsData || undefined}
             onRetrySingleReport={handleRetrySingleReport}
+            resultId={currentResultIdRef.current || undefined}
+            asks={recentResults.find((item) => item.id === currentResultIdRef.current)?.asks}
           />
         )}
       </main>

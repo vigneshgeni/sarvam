@@ -214,7 +214,7 @@ export default function MedicineCard({
 
                   {/* Food Note */}
                   {med.food_timing && (
-                    <span className="text-xs font-medium text-[#5B52D6]">
+                    <span className="text-xs font-medium text-[#034F46]">
                       {med.food_timing === 'before_food'
                         ? t.beforeFood || 'Before food'
                         : t.afterFood || 'After food'}
@@ -247,7 +247,7 @@ export default function MedicineCard({
                                   type="checkbox"
                                   checked={isTicked}
                                   onChange={() => handleToggleSlot(mIdx, slot)}
-                                  className="w-4 h-4 text-[#5B52D6] rounded border-[#E6E6E1] focus:ring-0"
+                                  className="w-4 h-4 text-[#034F46] rounded border-[#E6E6E1] focus:ring-0"
                                 />
                                 <span className="text-xs capitalize font-medium text-[#15171A]">
                                   {slot}

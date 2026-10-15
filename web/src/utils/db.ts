@@ -1,4 +1,4 @@
-import type { RecentResult, ExplainResponse } from '../types'
+import type { RecentResult, ExplainResponse, AskTurn } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
@@ -117,6 +117,7 @@ export async function saveRecentResult(
       result: entry.result, // Result JSON only
       translations: entry.translations || {},
       multiReports: entry.multiReports,
+      asks: entry.asks,
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -142,6 +143,29 @@ export async function saveRecentResult(
     })
   } catch {
     // Non-fatal if IndexedDB write fails
+  }
+}
+
+export async function saveRecentAsks(id: string, asks: AskTurn[]): Promise<void> {
+  if (!isSaveRecentEnabled() || !id) return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+      getReq.onsuccess = () => {
+        const item = getReq.result as RecentResult | undefined
+        if (item) {
+          item.asks = asks.slice(-12)
+          store.put(item)
+        }
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal
   }
 }
 

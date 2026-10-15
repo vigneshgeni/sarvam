@@ -387,5 +387,10 @@
   "flagHigh": "अधिक",
   "flagLow": "कम",
   "flagInRange": "सीमा में",
-  "amountPaid": "भुगतान"
+  "amountPaid": "भुगतान",
+  "valuesOnPage": "{n} मान · पृष्ठ {p}",
+  "moreReports": "{title} + {n} और",
+  "noDatesInDocument": "इस दस्तावेज़ में कोई तारीख नहीं है",
+  "document": "दस्तावेज़",
+  "micUnavailable": "माइक्रोफ़ोन शुरू नहीं हुआ. आप टाइप कर सकते हैं."
 }

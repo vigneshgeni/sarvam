@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import type { ExplainResponse, AskResponse } from '../types'
+import type { ExplainResponse, AskResponse, AskTurn } from '../types'
 import Sheet from './Sheet'
 import {
   MicIcon,
@@ -10,7 +10,8 @@ import {
   CheckIcon,
   AlertTriangleIcon,
 } from './icons'
-import { askDocument } from '../api'
+import { askDocument, transcribeAudio } from '../api'
+import { saveRecentAsks } from '../utils/db'
 import { resolveLang } from '../i18n'
 
 interface AskSheetProps {
@@ -20,6 +21,8 @@ interface AskSheetProps {
   files?: File[]
   lang: string
   t: Record<string, string>
+  resultId?: string
+  initialAsks?: AskTurn[]
   onSpeakAnswer?: (text: string) => void
 }
 
@@ -30,6 +33,8 @@ export default function AskSheet({
   files,
   lang,
   t,
+  resultId,
+  initialAsks,
   onSpeakAnswer,
 }: AskSheetProps) {
   const [question, setQuestion] = useState('')
@@ -37,11 +42,37 @@ export default function AskSheet({
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isStillWorking, setIsStillWorking] = useState(false)
-  const [answerData, setAnswerData] = useState<AskResponse | null>(null)
+  const [turns, setTurns] = useState<AskTurn[]>(initialAsks || [])
   const [askError, setAskError] = useState<string | null>(null)
 
   const recognitionRef = useRef<any>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
   const silenceTimerRef = useRef<number | null>(null)
+  const threadKey = resultId || `title:${result.title}`
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`sarvam.ask.${threadKey}`)
+      if (raw) {
+        const saved = JSON.parse(raw) as AskTurn[]
+        if (Array.isArray(saved) && saved.length) setTurns(saved)
+        return
+      }
+    } catch {
+      /* keep the saved result thread */
+    }
+    if (initialAsks?.length) setTurns(initialAsks)
+  }, [threadKey])
+
+  useEffect(() => {
+    if (!turns.length) return
+    try {
+      sessionStorage.setItem(`sarvam.ask.${threadKey}`, JSON.stringify(turns))
+    } catch {
+      /* the saved result still holds the thread */
+    }
+    if (resultId) void saveRecentAsks(resultId, turns)
+  }, [turns, threadKey, resultId])
 
   // Track 15s loading timer
   useEffect(() => {
@@ -69,6 +100,9 @@ export default function AskSheet({
       } catch {}
       recognitionRef.current = null
     }
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      try { recorderRef.current.stop() } catch {}
+    }
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
       silenceTimerRef.current = null
@@ -77,7 +111,7 @@ export default function AskSheet({
   }
 
   // Handle SpeechRecognition
-  const handleToggleMic = () => {
+  const handleToggleMic = async () => {
     setSpeechError(null)
 
     if (isListening) {
@@ -89,9 +123,30 @@ export default function AskSheet({
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (!SpeechRec) {
-      setSpeechError(
-        'Voice input is not supported in this browser. Please use your keyboard microphone.'
-      )
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const recorder = new MediaRecorder(stream)
+        const chunks: Blob[] = []
+        recorder.ondataavailable = (event) => {
+          if (event.data.size) chunks.push(event.data)
+        }
+        recorder.onstop = () => {
+          stream.getTracks().forEach((track) => track.stop())
+          const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+          void transcribeAudio(blob, resolveLang(lang)).then((text) => {
+            if (text) setQuestion((prev) => (prev ? `${prev} ${text}` : text).slice(0, 500))
+          })
+          setIsListening(false)
+        }
+        recorderRef.current = recorder
+        recorder.start()
+        setIsListening(true)
+        window.setTimeout(() => {
+          if (recorder.state === 'recording') recorder.stop()
+        }, 30000)
+      } catch {
+        setSpeechError(t.micUnavailable || 'Microphone could not be started. You can still type.')
+      }
       return
     }
 
@@ -161,18 +216,39 @@ export default function AskSheet({
     stopVoiceRecognition()
     setIsLoading(true)
     setAskError(null)
-    setAnswerData(null)
+    setQuestion('')
+
+    const history = turns
+      .slice(-6)
+      .map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`)
+      .join('\n')
+    const askOnce = () => askDocument({
+      question: targetQ,
+      lang: resolveLang(lang),
+      result,
+      files: files && files.length > 0 ? files : undefined,
+      history: history || undefined,
+    })
 
     try {
-      const resp = await askDocument({
+      let resp: AskResponse
+      try {
+        resp = await askOnce()
+      } catch (err: any) {
+        if (err?.statusCode === 503) resp = await askOnce()
+        else throw err
+      }
+      setTurns((prev) => [...prev, {
         question: targetQ,
-        lang: resolveLang(lang),
-        result,
-        files: files && files.length > 0 ? files : undefined,
-      })
-      setAnswerData(resp)
+        answer: resp.not_found ? (t.askNotFound || "This document doesn't say") : resp.answer,
+        quote: resp.quote || undefined,
+        page: resp.page ?? undefined,
+        not_found: resp.not_found,
+        evidence: resp.evidence,
+        answered_from: resp.answered_from,
+      }])
     } catch (err: any) {
-      setAnswerData(null)
+      setQuestion(targetQ)
       if (err.errorCode === 'ask_unverified') {
         setAskError(t.askUnverified || "I couldn't verify an answer. Check the original.")
       } else {
@@ -228,46 +304,43 @@ export default function AskSheet({
 
         {/* Input Bar with Mic and Counter */}
         <div className="flex flex-col gap-1">
-          <div className="relative flex items-center">
-            <input
-              type="text"
+          <div className="flex items-end gap-2">
+            <textarea
               value={question}
               maxLength={500}
+              rows={2}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
                   handleAskSubmit()
                 }
               }}
               placeholder={t.askPlaceholder || 'Type your question…'}
               aria-label={t.askPlaceholder || 'Your question'}
-              className="w-full bg-transparent border-[1.5px] border-[#1A1A1A] rounded-[32px] pl-[18px] pr-[116px] h-14 text-[15.5px] font-medium text-[#1A1A1A] placeholder-[#575B58] outline-none"
+              className="min-w-0 flex-1 resize-none bg-transparent border-[1.5px] border-[#1A1A1A] rounded-[24px] px-[18px] py-3 text-[15.5px] font-medium leading-snug text-[#1A1A1A] placeholder-[#575B58] outline-none"
             />
-
-            <div className="absolute right-1.5 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleToggleMic}
-                className={`w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#1A1A1A] text-[#F4F5F2]' : 'bg-[#D9603B] text-[#1A1A1A]'}`}
-                aria-label={isListening ? 'Stop listening' : 'Speak your question'}
-              >
-                {isListening ? <MicOffIcon className="w-5 h-5" /> : <MicIcon className="w-5 h-5" />}
-              </button>
-              <button
-                type="button"
-                disabled={!question.trim() || isLoading}
-                onClick={() => handleAskSubmit()}
-                className="sv-press w-12 h-12 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"
-                aria-label="Send"
-              >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <SendIcon className="w-4 h-4" />
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => void handleToggleMic()}
+              className={`w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#1A1A1A] text-[#F4F5F2]' : 'bg-[#D9603B] text-[#1A1A1A]'}`}
+              aria-label={isListening ? 'Stop listening' : 'Speak your question'}
+            >
+              {isListening ? <MicOffIcon className="w-5 h-5" /> : <MicIcon className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              disabled={!question.trim() || isLoading}
+              onClick={() => handleAskSubmit()}
+              className="sv-press w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"
+              aria-label="Send"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <SendIcon className="w-4 h-4" />
+              )}
+            </button>
           </div>
 
           {/* Character Counter (visible from 450) */}
@@ -285,47 +358,47 @@ export default function AskSheet({
         {/* Loading Indicator with "Still working..." after 15s */}
         {isLoading && (
           <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F6F6F3] border border-[#E6E6E1] text-xs text-[#5E636B] animate-card-in">
-            <div className="w-3.5 h-3.5 border-2 border-[#5B52D6]/30 border-t-[#5B52D6] rounded-full animate-spin shrink-0" />
+            <div className="w-3.5 h-3.5 border-2 border-[#034F46]/30 border-t-[#034F46] rounded-full animate-spin shrink-0" />
             <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askLoading || 'Looking up answer in document...')}</span>
           </div>
         )}
 
         {/* Answer Display Card (never displayed if error is present) */}
-        {!askError && answerData && (
-          <div className="flex flex-col gap-3">
-            {question.trim() && (
-              <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35]">
-                {question}
+        {turns.length > 0 && (
+          <div className="flex flex-col gap-3 max-h-[42vh] overflow-y-auto">
+            {turns.map((turn, index) => (
+              <div key={`${index}-${turn.question.slice(0, 24)}`} className="flex flex-col gap-3">
+                <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35] break-words">
+                  {turn.question}
+                </div>
+                <div className="self-start flex gap-2.5 max-w-[94%]">
+                  <span aria-hidden="true" className="w-[34px] h-[34px] shrink-0 box-border rounded-full bg-[#034F46] border-[1.5px] border-[#1A1A1A] text-[#F4F5F2] flex items-center justify-center text-[15px] font-bold">S<span className="text-[#D9603B]">.</span></span>
+                  <div className="flex flex-col gap-2.5 bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] px-4 py-3 rounded-[6px_24px_24px_24px]">
+                    {turn.answered_from === 'summary' && (
+                      <span className="text-[12px] font-semibold text-[#575B58]">{t.askAnsweredFromSummary || 'Answering from the summary'}</span>
+                    )}
+                    <p className="m-0 text-[15.5px] leading-[1.45] text-[#1A1A1A] break-words">{turn.answer}</p>
+                    {turn.quote && (
+                      <p className="m-0 text-[13px] text-[#3B3E3C]">“{turn.quote}”{turn.page ? ` · ${turn.page}` : ''}</p>
+                    )}
+                    <span className="flex gap-2 flex-wrap items-center">
+                      <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold">
+                        <CheckIcon className="w-3.5 h-3.5 text-[#034F46]" />
+                        {turn.evidence === 'check_original'
+                          ? (t.checkAgainstOriginal || 'Check against original')
+                          : (t.fromYourDocument || 'From your document')}
+                      </span>
+                      {!turn.not_found && onSpeakAnswer && (
+                        <button type="button" onClick={() => onSpeakAnswer(turn.answer)} className="sv-press inline-flex items-center gap-1 h-[30px] px-2.5 rounded-[15px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]">
+                          <PlayIcon className="w-3 h-3" />
+                          {t.play || 'Play'}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
-            <div className="self-start flex gap-2.5 max-w-[94%]">
-              <span aria-hidden="true" className="w-[34px] h-[34px] shrink-0 box-border rounded-full bg-[#034F46] border-[1.5px] border-[#1A1A1A] text-[#F4F5F2] flex items-center justify-center text-[15px] font-bold">S<span className="text-[#D9603B]">.</span></span>
-              <div className="flex flex-col gap-2.5 bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] px-4 py-3 rounded-[6px_24px_24px_24px]">
-                {answerData.answered_from === 'summary' && (
-                  <span className="text-[12px] font-semibold text-[#575B58]">{t.askAnsweredFromSummary || 'Answering from the summary'}</span>
-                )}
-                <p className="m-0 text-[15.5px] leading-[1.45] text-[#1A1A1A]">
-                  {answerData.not_found ? (t.askNotFound || "This document doesn't say") : answerData.answer}
-                </p>
-                {answerData.quote && (
-                  <p className="m-0 text-[13px] text-[#3B3E3C]">“{answerData.quote}”{answerData.page ? ` · ${answerData.page}` : ''}</p>
-                )}
-                <span className="flex gap-2 flex-wrap items-center">
-                  <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold">
-                    <CheckIcon className="w-3.5 h-3.5 text-[#034F46]" />
-                    {answerData.evidence === 'check_original'
-                      ? (t.checkAgainstOriginal || 'Check against original')
-                      : (t.fromYourDocument || 'From your document')}
-                  </span>
-                  {!answerData.not_found && onSpeakAnswer && (
-                    <button type="button" onClick={() => onSpeakAnswer(answerData.answer)} className="sv-press inline-flex items-center gap-1 h-[30px] px-2.5 rounded-[15px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]">
-                      <PlayIcon className="w-3 h-3" />
-                      {t.play || 'Play'}
-                    </button>
-                  )}
-                </span>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 

@@ -387,5 +387,10 @@
   "flagHigh": "அதிகம்",
   "flagLow": "குறைவு",
   "flagInRange": "வரம்பில்",
-  "amountPaid": "செலுத்தியது"
+  "amountPaid": "செலுத்தியது",
+  "valuesOnPage": "{n} மதிப்புகள் · பக்கம் {p}",
+  "moreReports": "{title} + மேலும் {n}",
+  "noDatesInDocument": "இந்த ஆவணத்தில் தேதிகள் இல்லை",
+  "document": "ஆவணம்",
+  "micUnavailable": "மைக்ரோஃபோன் தொடங்கவில்லை. நீங்கள் தட்டச்சு செய்யலாம்."
 }

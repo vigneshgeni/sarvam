@@ -154,7 +154,7 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              className="focus-ring min-h-[44px] min-w-[44px] rounded-full border-2 border-[#146B4E] bg-[#146B4E] px-3 text-base font-bold text-white disabled:opacity-60"
+              className="focus-ring min-h-[44px] min-w-[44px] rounded-full border-2 border-[#034F46] bg-[#034F46] px-3 text-base font-bold text-white disabled:opacity-60"
               onClick={onYes}
               disabled={busy}
               aria-pressed={pending?.rating === 'up' && phase !== 'ask'}

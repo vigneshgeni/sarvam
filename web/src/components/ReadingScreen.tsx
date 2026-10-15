@@ -39,8 +39,8 @@ function ProgressRing({ percent, still }: { percent: number; still: boolean }) {
           style={still ? undefined : { transition: 'stroke-dashoffset 180ms linear' }}
         />
       </svg>
-      <span className="sv-display pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] tabular-nums text-[#1A1A1A]">
-        {shown}
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center font-sans text-[15px] font-bold tabular-nums text-[#1A1A1A]">
+        {shown}%
       </span>
     </div>
   )

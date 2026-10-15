@@ -304,7 +304,7 @@ function ValueTiles({
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-2.5">
           {sectionValues.slice(0, 4).map((v, i) => (
-            <LabTile key={v.label + i} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} t={t} />
+            <LabTile key={v.label + i} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} printedName={v.label_printed} t={t} />
           ))}
         </div>
         {allMatched && <Tick label={t.allValuesFound || 'All values found in your document'} />}
@@ -329,6 +329,7 @@ function LabTile({
   unit,
   range,
   printed,
+  printedName,
   t,
 }: {
   label: string
@@ -336,12 +337,16 @@ function LabTile({
   unit?: string
   range?: string
   printed?: string | null
+  printedName?: string
   t: Record<string, string>
 }) {
   const status = assessLabValue(value, range, printed)
   return (
     <div className={`min-w-0 overflow-hidden rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3 flex flex-col gap-1 ${status?.outside ? 'bg-[#F8D9CB]' : ''}`}>
       <ClampText text={label} className="text-[12px] font-semibold leading-snug text-[#575B58]" />
+      {printedName && printedName !== label && (
+        <span className="text-[11px] leading-snug text-[#575B58] break-words [overflow-wrap:anywhere]">{printedName}</span>
+      )}
       <span className="sv-display text-[26px] leading-none break-words [overflow-wrap:anywhere]">{value}</span>
       {unit && <span className="text-[12px] font-semibold leading-snug break-words [overflow-wrap:anywhere]">{unit}</span>}
       {range && <span className="text-[12px] leading-snug text-[#575B58] break-words [overflow-wrap:anywhere]">{range}</span>}
@@ -406,7 +411,7 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
                 {s.heading_printed && s.heading_printed !== s.heading && (
                   <span className="block text-[12px] text-[#575B58]">{s.heading_printed}</span>
                 )}
-                <span className="block text-[13px] text-[#575B58]">{s.values.length} values · page {s.page}</span>
+                <span className="block text-[13px] text-[#575B58]">{(t.valuesOnPage || '{n} values · page {p}').replace('{n}', String(s.values.length)).replace('{p}', String(s.page))}</span>
               </span>
               <span className={`text-[12px] font-bold px-2 py-1 rounded-full border-[1.5px] border-[#1A1A1A] ${outside ? 'bg-[#F8D9CB]' : allInRange ? 'bg-[#CFE5E0]' : 'bg-[#F4F5F2]'}`}>
                 {outside
@@ -419,7 +424,7 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
             {open[i] && (
               <div className="grid grid-cols-2 gap-2.5 px-3.5 pb-3.5">
                 {s.values.map((v, j) => (
-                  <LabTile key={v.label + j} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} t={t} />
+                  <LabTile key={v.label + j} label={v.label} value={v.value} unit={v.unit} range={v.ref_range || v.range} printed={v.flag_printed} printedName={v.label_printed} t={t} />
                 ))}
               </div>
             )}
