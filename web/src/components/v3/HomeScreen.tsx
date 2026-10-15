@@ -1,7 +1,6 @@
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import type { RecentResult } from '../../types'
 import type { ReminderRow } from '../../utils/reminders'
-import Sheet from '../Sheet'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
 import { chipFont, ensureOnboardingFonts } from '../../design/indicFont'
@@ -184,21 +183,101 @@ function ReminderList({
   empty: string
   onOpen: (recentId: string) => void
 }) {
-  if (!rows.length) return <p className="m-0 text-[14px] text-[#575B58]">{empty}</p>
+  if (!rows.length) return <p className="m-0 text-[15px] text-[#575B58]">{empty}</p>
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       {rows.map((row) => (
         <button
           key={row.id}
           type="button"
           onClick={() => onOpen(row.recentId)}
-          className="sv-press flex flex-col gap-0.5 px-3.5 py-3 rounded-[22px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] text-left text-[#1A1A1A]"
+          className="sv-press flex items-center gap-3 py-3 pr-3 pl-3 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F4F5F2] text-left text-[#1A1A1A]"
         >
-          <span className="text-[15px] font-semibold leading-[1.3]">{row.summary}</span>
-          <span className="text-[13px] text-[#575B58]">{formatWhen(row.date, row.time, lang)}</span>
-          <span className="text-[13px] text-[#575B58] truncate">{row.documentName}</span>
+          <span className="w-[46px] h-[46px] shrink-0 box-border rounded-2xl border-[1.5px] border-[#1A1A1A] bg-[#F8D9CB] flex items-center justify-center">
+            <IconCalendar size={22} stroke="#1A1A1A" />
+          </span>
+          <span className="flex flex-col gap-[3px] flex-1 min-w-0">
+            <span className="text-[15.5px] font-semibold leading-[1.3] line-clamp-2">{row.summary}</span>
+            <span className="text-[13px] text-[#575B58] truncate">
+              {formatWhen(row.date, row.time, lang)}
+              {row.documentName ? ` · ${row.documentName}` : ''}
+            </span>
+          </span>
+          <IconChevron size={18} stroke="#1A1A1A" className="shrink-0" />
         </button>
       ))}
+    </div>
+  )
+}
+
+function RemindersPage({
+  t,
+  lang,
+  indic,
+  tab,
+  onTab,
+  upcoming,
+  past,
+  onBack,
+  onOpen,
+}: {
+  t: Record<string, string>
+  lang: string
+  indic: boolean
+  tab: 'upcoming' | 'past'
+  onTab: (tab: 'upcoming' | 'past') => void
+  upcoming: ReminderRow[]
+  past: ReminderRow[]
+  onBack: () => void
+  onOpen: (recentId: string) => void
+}) {
+  const tabs = [
+    { id: 'upcoming' as const, label: t.upcomingTab || 'Upcoming' },
+    { id: 'past' as const, label: t.pastTab || 'Past' },
+  ]
+  return (
+    <div className="sv-screen-in bg-[#F4F5F2] text-[#1A1A1A] px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] flex flex-col gap-4 min-h-[100dvh]">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-label={t.backHome || 'Back to Home'}
+          onClick={onBack}
+          className="sv-press w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center bg-transparent"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+      </div>
+      <h1 className={indic ? 'sv-indic m-0 text-[30px] leading-[1.35] font-semibold break-words' : 'sv-display m-0 text-[42px] leading-none tracking-[-0.5px]'}>
+        {t.remindersTitle || 'Reminders'}
+        <span className="text-[#D9603B]">.</span>
+      </h1>
+      <div className="flex gap-2" role="tablist">
+        {tabs.map((item) => {
+          const on = tab === item.id
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => onTab(item.id)}
+              className="sv-press shrink-0 h-10 px-4 rounded-full border-[1.5px] border-[#1A1A1A] text-[14px] text-[#1A1A1A]"
+              style={{
+                background: on ? '#E9B44C' : 'transparent',
+                fontWeight: on ? 700 : 600,
+                fontFamily: indic ? chipFont(lang) : undefined,
+              }}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
+      {tab === 'upcoming' ? (
+        <ReminderList rows={upcoming} lang={lang} empty={t.noUpcomingReminders || 'Nothing coming up.'} onOpen={onOpen} />
+      ) : (
+        <ReminderList rows={past} lang={lang} empty={t.noPastReminders || 'No past reminders.'} onOpen={onOpen} />
+      )}
     </div>
   )
 }
@@ -210,7 +289,25 @@ export default function HomeScreen(props: HomeProps) {
   const [reminderTab, setReminderTab] = useState<'upcoming' | 'past'>('upcoming')
   const indic = selectedLang !== 'en' && selectedLang !== 'auto'
   ensureOnboardingFonts()
+  useEffect(() => {
+    if (remindersOpen) window.scrollTo(0, 0)
+  }, [remindersOpen])
   if (props.library) return <AllDocuments {...props} />
+  if (remindersOpen) {
+    return (
+      <RemindersPage
+        t={t}
+        lang={selectedLang}
+        indic={indic}
+        tab={reminderTab}
+        onTab={setReminderTab}
+        upcoming={props.upcomingReminders}
+        past={props.pastReminders}
+        onBack={() => setRemindersOpen(false)}
+        onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
+      />
+    )
+  }
   const offlineBanner = !props.isOnline ? (
     <div className="rounded-[24px] border-[1.5px] border-[#1A1A1A] bg-[#FBEBC4] px-4 py-3 text-[15px] leading-snug">
       <span className="font-bold">{t.offlineTitle || "You're offline"}. </span>
@@ -306,7 +403,7 @@ export default function HomeScreen(props: HomeProps) {
                 onClick={() => { setReminderTab('upcoming'); setRemindersOpen(true) }}
                 className="text-[12px] font-bold underline px-1 pb-1"
               >
-                {(t.viewAllCount || 'View all ({n})').replace('{n}', String(props.upcomingCount))}
+                {t.viewAllCount || 'View all'}
               </button>
             )}
           </span>
@@ -485,42 +582,6 @@ export default function HomeScreen(props: HomeProps) {
         </div>
       </section>
 
-      <Sheet
-        isOpen={remindersOpen}
-        onClose={() => setRemindersOpen(false)}
-        title={t.remindersTitle || 'Reminders'}
-      >
-        <div className="flex flex-col gap-3 pt-1">
-          <div className="grid grid-cols-2 gap-2">
-            {(['upcoming', 'past'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                aria-pressed={reminderTab === tab}
-                onClick={() => setReminderTab(tab)}
-                className={`sv-press h-11 rounded-full border-[1.5px] border-[#1A1A1A] text-[14px] ${reminderTab === tab ? 'bg-[#E9B44C] font-bold' : 'bg-transparent font-semibold'}`}
-              >
-                {tab === 'upcoming' ? (t.upcomingTab || 'Upcoming') : (t.pastTab || 'Past')}
-              </button>
-            ))}
-          </div>
-          {reminderTab === 'upcoming' ? (
-            <ReminderList
-              rows={props.upcomingReminders}
-              lang={selectedLang}
-              empty={t.noUpcomingReminders || 'Nothing coming up.'}
-              onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
-            />
-          ) : (
-            <ReminderList
-              rows={props.pastReminders}
-              lang={selectedLang}
-              empty={t.noPastReminders || 'No past reminders.'}
-              onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
-            />
-          )}
-        </div>
-      </Sheet>
       <RenameDialog
         key={renameItem?.id || 'none'}
         item={renameItem}
