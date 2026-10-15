@@ -382,12 +382,14 @@ export default function AskSheet({
                       <p className="m-0 text-[13px] text-[#3B3E3C]">“{turn.quote}”{turn.page ? ` · ${turn.page}` : ''}</p>
                     )}
                     <span className="flex gap-2 flex-wrap items-center">
+                      {!turn.not_found && (
                       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold">
                         <CheckIcon className="w-3.5 h-3.5 text-[#034F46]" />
                         {turn.evidence === 'check_original'
                           ? (t.checkAgainstOriginal || 'Check against original')
                           : (t.fromYourDocument || 'From your document')}
                       </span>
+                      )}
                       {!turn.not_found && onSpeakAnswer && (
                         <button type="button" onClick={() => onSpeakAnswer(turn.answer)} className="sv-press inline-flex items-center gap-1 h-[30px] px-2.5 rounded-[15px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] font-semibold text-[12.5px]">
                           <PlayIcon className="w-3 h-3" />

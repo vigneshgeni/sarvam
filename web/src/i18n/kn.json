@@ -392,5 +392,17 @@
   "moreReports": "{title} + ಇನ್ನೂ {n}",
   "noDatesInDocument": "ಈ ದಾಖಲೆಯಲ್ಲಿ ದಿನಾಂಕಗಳಿಲ್ಲ",
   "document": "ದಾಖಲೆ",
-  "micUnavailable": "ಮೈಕ್ರೊಫೋನ್ ಆರಂಭವಾಗಲಿಲ್ಲ. ನೀವು ಟೈಪ್ ಮಾಡಬಹುದು."
+  "micUnavailable": "ಮೈಕ್ರೊಫೋನ್ ಆರಂಭವಾಗಲಿಲ್ಲ. ನೀವು ಟೈಪ್ ಮಾಡಬಹುದು.",
+  "nDocuments": "{n} ದಾಖಲೆಗಳು",
+  "doctype_prescription": "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್",
+  "doctype_discharge_summary": "ಡಿಸ್ಚಾರ್ಜ್ ಸಾರಾಂಶ",
+  "doctype_hospital_bill": "ಆಸ್ಪತ್ರೆ ಬಿಲ್",
+  "doctype_investment": "ಹೂಡಿಕೆ",
+  "doctype_loan": "ಸಾಲ",
+  "doctype_salary_slip": "ಸಂಬಳ ಸ್ಲಿಪ್",
+  "doctype_form": "ಫಾರ್ಮ್",
+  "doctype_invoice": "ಇನ್‌ವಾಯ್ಸ್",
+  "doctype_pension_notice": "ಪಿಂಚಣಿ ಸೂಚನೆ",
+  "doctype_tax_notice": "ತೆರಿಗೆ ಸೂಚನೆ",
+  "doctype_bank_statement": "ಬ್ಯಾಂಕ್ ಸ್ಟೇಟ್ಮೆಂಟ್"
 }

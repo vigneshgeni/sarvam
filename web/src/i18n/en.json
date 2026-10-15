@@ -392,5 +392,17 @@
   "moreReports": "{title} + {n} more",
   "noDatesInDocument": "No dates in this document",
   "document": "Document",
-  "micUnavailable": "Microphone could not be started. You can still type."
+  "micUnavailable": "Microphone could not be started. You can still type.",
+  "nDocuments": "{n} documents",
+  "doctype_prescription": "Prescription",
+  "doctype_discharge_summary": "Discharge summary",
+  "doctype_hospital_bill": "Hospital bill",
+  "doctype_investment": "Investment",
+  "doctype_loan": "Loan",
+  "doctype_salary_slip": "Salary slip",
+  "doctype_form": "Form",
+  "doctype_invoice": "Invoice",
+  "doctype_pension_notice": "Pension notice",
+  "doctype_tax_notice": "Tax notice",
+  "doctype_bank_statement": "Bank statement"
 }

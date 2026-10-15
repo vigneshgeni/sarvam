@@ -392,5 +392,17 @@
   "moreReports": "{title} + {n} കൂടി",
   "noDatesInDocument": "ഈ രേഖയിൽ തീയതികളില്ല",
   "document": "രേഖ",
-  "micUnavailable": "മൈക്രോഫോൺ തുടങ്ങിയില്ല. നിങ്ങൾക്ക് ടൈപ്പ് ചെയ്യാം."
+  "micUnavailable": "മൈക്രോഫോൺ തുടങ്ങിയില്ല. നിങ്ങൾക്ക് ടൈപ്പ് ചെയ്യാം.",
+  "nDocuments": "{n} രേഖകൾ",
+  "doctype_prescription": "കുറിപ്പടി",
+  "doctype_discharge_summary": "ഡിസ്ചാർജ് സംഗ്രഹം",
+  "doctype_hospital_bill": "ആശുപത്രി ബിൽ",
+  "doctype_investment": "നിക്ഷേപം",
+  "doctype_loan": "വായ്പ",
+  "doctype_salary_slip": "ശമ്പള സ്ലിപ്പ്",
+  "doctype_form": "ഫോം",
+  "doctype_invoice": "ഇൻവോയ്സ്",
+  "doctype_pension_notice": "പെൻഷൻ അറിയിപ്പ്",
+  "doctype_tax_notice": "നികുതി അറിയിപ്പ്",
+  "doctype_bank_statement": "ബാങ്ക് സ്റ്റേറ്റ്മെന്റ്"
 }

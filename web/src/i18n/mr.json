@@ -130,10 +130,10 @@
   "notDoctorAdvice": "हा वैद्यकीय सल्ला नाही. डॉक्टरांचा सल्ला घ्या.",
   "notLegalAdvice": "हा कायदेशीर सल्ला नाही. वकिलांचा सल्ला घ्या.",
   "doctype_prescription": "प्रिस्क्रिप्शन",
-  "doctype_invoice": "बील / पावती",
+  "doctype_invoice": "इनव्हॉइस",
   "doctype_receipt": "पावती",
   "doctype_notice": "सरकारी सूचना",
-  "doctype_tax_notice": "कर सूचना",
+  "doctype_tax_notice": "कर नोटीस",
   "doctype_bill": "बील",
   "doctype_letter": "पत्र",
   "doctype_report": "अहवाल",
@@ -468,5 +468,14 @@
   "moreReports": "{title} + आणखी {n}",
   "noDatesInDocument": "या दस्तऐवजात तारखा नाहीत",
   "document": "दस्तऐवज",
-  "micUnavailable": "मायक्रोफोन सुरू झाला नाही. तुम्ही टाइप करू शकता."
+  "micUnavailable": "मायक्रोफोन सुरू झाला नाही. तुम्ही टाइप करू शकता.",
+  "nDocuments": "{n} दस्तऐवज",
+  "doctype_discharge_summary": "डिस्चार्ज सारांश",
+  "doctype_hospital_bill": "रुग्णालय बिल",
+  "doctype_investment": "गुंतवणूक",
+  "doctype_loan": "कर्ज",
+  "doctype_salary_slip": "पगार स्लिप",
+  "doctype_form": "फॉर्म",
+  "doctype_pension_notice": "पेन्शन नोटीस",
+  "doctype_bank_statement": "बँक स्टेटमेंट"
 }

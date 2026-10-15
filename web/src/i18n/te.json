@@ -392,5 +392,17 @@
   "moreReports": "{title} + మరో {n}",
   "noDatesInDocument": "ఈ పత్రంలో తేదీలు లేవు",
   "document": "పత్రం",
-  "micUnavailable": "మైక్రోఫోన్ ప్రారంభం కాలేదు. మీరు టైప్ చేయవచ్చు."
+  "micUnavailable": "మైక్రోఫోన్ ప్రారంభం కాలేదు. మీరు టైప్ చేయవచ్చు.",
+  "nDocuments": "{n} పత్రాలు",
+  "doctype_prescription": "ప్రిస్క్రిప్షన్",
+  "doctype_discharge_summary": "డిశ్చార్జ్ సారాంశం",
+  "doctype_hospital_bill": "ఆసుపత్రి బిల్లు",
+  "doctype_investment": "పెట్టుబడి",
+  "doctype_loan": "రుణం",
+  "doctype_salary_slip": "జీతం స్లిప్",
+  "doctype_form": "ఫారం",
+  "doctype_invoice": "ఇన్‌వాయిస్",
+  "doctype_pension_notice": "పెన్షన్ నోటీసు",
+  "doctype_tax_notice": "పన్ను నోటీసు",
+  "doctype_bank_statement": "బ్యాంక్ స్టేట్‌మెంట్"
 }

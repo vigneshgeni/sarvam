@@ -392,5 +392,17 @@
   "moreReports": "{title} + {n} और",
   "noDatesInDocument": "इस दस्तावेज़ में कोई तारीख नहीं है",
   "document": "दस्तावेज़",
-  "micUnavailable": "माइक्रोफ़ोन शुरू नहीं हुआ. आप टाइप कर सकते हैं."
+  "micUnavailable": "माइक्रोफ़ोन शुरू नहीं हुआ. आप टाइप कर सकते हैं.",
+  "nDocuments": "{n} दस्तावेज़",
+  "doctype_prescription": "पर्ची",
+  "doctype_discharge_summary": "डिस्चार्ज सारांश",
+  "doctype_hospital_bill": "अस्पताल बिल",
+  "doctype_investment": "निवेश",
+  "doctype_loan": "ऋण",
+  "doctype_salary_slip": "वेतन पर्ची",
+  "doctype_form": "फॉर्म",
+  "doctype_invoice": "चालान",
+  "doctype_pension_notice": "पेंशन नोटिस",
+  "doctype_tax_notice": "कर नोटिस",
+  "doctype_bank_statement": "बैंक स्टेटमेंट"
 }

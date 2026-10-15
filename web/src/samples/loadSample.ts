@@ -33,10 +33,35 @@ export function resolveSampleOpen(
   return { file: exact, lang: code, url: sampleResultUrl(exact, code) }
 }
 
-export async function fetchSampleResult(file: string, lang: string): Promise<ExplainResponse> {
-  const response = await fetch(sampleResultUrl(file, lang))
-  if (!response.ok) {
-    throw new Error(`Sample result is not on this phone (${response.status})`)
+/** A bundled sample is JSON. A missing file on hosting comes back as the app page. */
+export function parseSampleBody(text: string): ExplainResponse | null {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('{')) return null
+  try {
+    const data = JSON.parse(trimmed) as ExplainResponse
+    if (!data || typeof data !== 'object' || !data.title) return null
+    return data
+  } catch {
+    return null
   }
-  return response.json() as Promise<ExplainResponse>
+}
+
+export function sampleLanguagesToTry(lang: string): string[] {
+  const code = (lang || 'en').toLowerCase().split('-')[0] || 'en'
+  return code === 'en' ? ['en'] : [code, 'en']
+}
+
+async function readSample(file: string, lang: string): Promise<ExplainResponse | null> {
+  const response = await fetch(sampleResultUrl(file, lang))
+  if (!response.ok) return null
+  return parseSampleBody(await response.text())
+}
+
+/** Opens the language file, or the English sample when that language was not bundled. */
+export async function fetchSampleResult(file: string, lang: string): Promise<{ result: ExplainResponse; shownLang: string }> {
+  for (const code of sampleLanguagesToTry(lang)) {
+    const result = await readSample(file, code)
+    if (result) return { result, shownLang: code }
+  }
+  throw new Error('Sample result is not on this phone')
 }

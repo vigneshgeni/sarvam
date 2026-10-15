@@ -130,10 +130,10 @@
   "notDoctorAdvice": "ଏହା ଡାକ୍ତରୀ ପରାମର୍ଶ ନୁହେଁ। ଡାକ୍ତରଙ୍କ ସହିତ ପରାମର୍ଶ କରନ୍ତୁ।",
   "notLegalAdvice": "ଏହା ଆଇନଗତ ପରାମର୍ଶ ନୁହେଁ। ଓକିଲଙ୍କ ସହିତ ପରାମର୍ଶ କରନ୍ତୁ।",
   "doctype_prescription": "ପ୍ରେସକ୍ରିପସନ୍",
-  "doctype_invoice": "ଇନଭଏସ୍ / ବିଲ୍",
+  "doctype_invoice": "ଇନଭଏସ୍",
   "doctype_receipt": "ରସିଦ",
   "doctype_notice": "ସରକାରୀ ନୋଟିସ୍",
-  "doctype_tax_notice": "ଟ୍ୟାକ୍ସ ନୋଟିସ୍",
+  "doctype_tax_notice": "କର ନୋଟିସ୍",
   "doctype_bill": "ବିଲ୍",
   "doctype_letter": "ଚିଠି",
   "doctype_report": "ରିପୋର୍ଟ",
@@ -468,5 +468,14 @@
   "moreReports": "{title} + ଆଉ {n}",
   "noDatesInDocument": "ଏହି ଦଲିଲରେ କୌଣସି ତାରିଖ ନାହିଁ",
   "document": "ଦଲିଲ",
-  "micUnavailable": "ମାଇକ୍ରୋଫୋନ୍ ଆରମ୍ଭ ହେଲା ନାହିଁ. ଆପଣ ଟାଇପ୍ କରିପାରିବେ."
+  "micUnavailable": "ମାଇକ୍ରୋଫୋନ୍ ଆରମ୍ଭ ହେଲା ନାହିଁ. ଆପଣ ଟାଇପ୍ କରିପାରିବେ.",
+  "nDocuments": "{n} ଦଲିଲ",
+  "doctype_discharge_summary": "ଡିସଚାର୍ଜ ସାରାଂଶ",
+  "doctype_hospital_bill": "ଡାକ୍ତରଖାନା ବିଲ୍",
+  "doctype_investment": "ନିବେଶ",
+  "doctype_loan": "ଋଣ",
+  "doctype_salary_slip": "ଦରମା ସ୍ଲିପ୍",
+  "doctype_form": "ଫର୍ମ",
+  "doctype_pension_notice": "ପେନ୍ସନ୍ ନୋଟିସ୍",
+  "doctype_bank_statement": "ବ୍ୟାଙ୍କ ଷ୍ଟେଟମେଣ୍ଟ"
 }

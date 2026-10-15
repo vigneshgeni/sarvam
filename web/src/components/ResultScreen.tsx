@@ -741,6 +741,25 @@ export default function ResultScreen({
           onOpenDocumentPreview={handleOpenPreview}
           layout={resolveProfile(result).glanceLayout}
         />
+        {result.summary && result.summary.length > 0 && (
+          <section className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
+                <SparklesIcon className="w-5 h-5 text-[#E9B44C]" />
+              </div>
+              <h2 className="sv-display text-[28px] text-[#1A1A1A] m-0">
+                {t.summaryTitle || 'In simple words'}<span className="text-[#D9603B]">.</span>
+              </h2>
+            </div>
+            <div className="flex flex-col gap-2">
+              {result.summary.map((line, i) => (
+                <p key={i} className="text-base text-[#1E1838] leading-relaxed">
+                  {formatAmountsInText(line)}
+                </p>
+              ))}
+            </div>
+          </section>
+        )}
         <BlockRenderer result={result} t={t} />
 
         {/* 1. WHAT YOU NEED TO DO */}
@@ -927,29 +946,7 @@ export default function ResultScreen({
           </section>
         )}
 
-        {/* 2. IN SIMPLE WORDS (Indigo Tint per WEB-5) */}
-        {result.summary && result.summary.length > 0 && (
-          <section className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
-                <SparklesIcon className="w-5 h-5 text-[#E9B44C]" />
-              </div>
-              <h2 className="sv-display text-[28px] text-[#1A1A1A] m-0">
-                {t.summaryTitle || 'In simple words'}<span className="text-[#D9603B]">.</span>
-              </h2>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {result.summary.map((line, i) => (
-                <p key={i} className="text-base text-[#1E1838] leading-relaxed">
-                  {formatAmountsInText(line)}
-                </p>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 3. WATCH OUT (Left accent bar with light amber tint per WEB-5) */}
+        {/* 3. WATCH OUT */}
         {result.warnings && result.warnings.length > 0 && (
           <section className="sv-card-in bg-[#D9603B] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3 text-[#1A1A1A]">
             <div className="flex items-start gap-3.5">

@@ -23,7 +23,7 @@ function emit(rel, name) {
 emit('src/design/catalog.ts', 'catalog.mjs')
 emit('src/samples/loadSample.ts', 'loadSample.mjs')
 writeFileSync(join(dir, 'types-stub.mjs'), 'export {}\n')
-const { SAMPLE_FILES, sampleResultUrl, isSampleFile, resolveSampleOpen } = await import(pathToFileURL(join(dir, 'loadSample.mjs')).href)
+const { SAMPLE_FILES, sampleResultUrl, isSampleFile, resolveSampleOpen, parseSampleBody, sampleLanguagesToTry } = await import(pathToFileURL(join(dir, 'loadSample.mjs')).href)
 
 test('every sample tile has an offline result address', () => {
   assert.equal(SAMPLE_FILES.length, 11)
@@ -61,4 +61,12 @@ test('a saved lab report does not replace the health checkup or lab sample', () 
   )
   assert.notEqual(bundled.title, saved[0].title)
   assert.equal(bundled.title.includes('Lab Report'), true)
+})
+
+test('a missing language file is not a result, so the tile can open English', () => {
+  assert.equal(parseSampleBody('<!doctype html><html></html>'), null)
+  assert.equal(parseSampleBody('not json'), null)
+  assert.equal(parseSampleBody('{"title":"Lab report"}').title, 'Lab report')
+  assert.deepEqual(sampleLanguagesToTry('hi'), ['hi', 'en'])
+  assert.deepEqual(sampleLanguagesToTry('en'), ['en'])
 })

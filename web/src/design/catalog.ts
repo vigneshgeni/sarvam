@@ -54,7 +54,17 @@ export function visualForDocument(
 ): DocVisual {
   if (opts?.multi) return VISUAL.multi
   if (opts?.billPart) return { icon: 'receipt', bg: '#E9B44C', ink: '#1A1A1A' }
-  const type = (docType || 'other').toLowerCase()
+  const aliases: Record<string, string> = {
+    loan: 'bank',
+    salary_slip: 'bank',
+    bank_statement: 'bank',
+    hospital_bill: 'receipt',
+    discharge_summary: 'medical',
+    tax_notice: 'tax_receipt',
+    pension_notice: 'pension',
+    invoice: 'receipt',
+  }
+  const type = aliases[(docType || 'other').toLowerCase()] || (docType || 'other').toLowerCase()
   if (opts?.medicines || type === 'prescription') return VISUAL.prescription
   if (type === 'government_notice' && /pension/i.test(opts?.title || '')) return VISUAL.pension
   return VISUAL[type] || VISUAL.other
@@ -171,23 +181,32 @@ export type GlanceKind = 'A' | 'B' | 'C' | 'D' | 'Dplus' | 'F' | 'E' | 'multi'
 const SPLIT_TYPES = new Set(['insurance', 'utility_bill', 'telecom_bill', 'tax_receipt', 'receipt'])
 
 function dueLabel(label: string): boolean {
-  return /amount due|total payable|to pay|premium|emi|fine|balance/i.test(label)
+  return /total due|amount due|total payable|to pay|net payable|grand total|amount payable|premium|emi|fine|balance/i.test(label)
+}
+
+function rentalLabel(label: string): boolean {
+  return /rental|monthly rent|plan rent/i.test(label)
+}
+
+function moneyText(value?: string | null): string {
+  if (!value || !isMoneyValue('amount', value)) return ''
+  return value
 }
 
 /** The figure and date for the TO PAY glance. Empty when the page did not print one. */
 export function amountDue(result: ExplainResponse): { value: string; due: string } {
   const profile = result.profile
   const kvs = result.glance?.key_values || []
-  const labeled = kvs.find((item) => dueLabel(item.label) && isMoneyValue(item.kind, item.value))
-  const quoted = profile?.amounts?.find((item) => item.value && dueLabel(item.label || ''))
+  const labeled = kvs.find((item) => dueLabel(item.label) && !rentalLabel(item.label) && isMoneyValue(item.kind, item.value))
+  const quoted = profile?.amounts?.find((item) => item.value && dueLabel(item.label || '') && isMoneyValue('amount', item.value))
   const value =
-    profile?.emi_amount ||
-    profile?.premium ||
-    profile?.paid_or_due ||
-    quoted?.value ||
     labeled?.value ||
-    profile?.total ||
-    kvs.find((item) => isMoneyValue(item.kind, item.value))?.value ||
+    quoted?.value ||
+    moneyText(profile?.emi_amount) ||
+    moneyText(profile?.premium) ||
+    moneyText(profile?.paid_or_due) ||
+    moneyText(profile?.total) ||
+    kvs.find((item) => !rentalLabel(item.label) && isMoneyValue(item.kind, item.value))?.value ||
     ''
   const actionDue = (result.actions || []).find((action) => action.due_date && action.date_status !== 'passed')?.due_date
   const due = profile?.due_date || profile?.next_emi_date || actionDue || ''

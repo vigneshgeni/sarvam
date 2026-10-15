@@ -130,10 +130,10 @@
   "notDoctorAdvice": "এটি চিকিৎসকের পরামর্শ নয়। চিকিৎসকের সাথে পরামর্শ করুন।",
   "notLegalAdvice": "এটি আইনি পরামর্শ নয়। আইনজীবীর সাথে পরামর্শ করুন।",
   "doctype_prescription": "প্রেসক্রিপশন",
-  "doctype_invoice": "ইনভয়েস / বিল",
+  "doctype_invoice": "ইনভয়েস",
   "doctype_receipt": "রসিদ",
   "doctype_notice": "সরকারি নোটিশ",
-  "doctype_tax_notice": "ট্যাক্স নোটিশ",
+  "doctype_tax_notice": "কর নোটিশ",
   "doctype_bill": "বিল",
   "doctype_letter": "চিঠি",
   "doctype_report": "রিপোর্ট",
@@ -468,5 +468,14 @@
   "moreReports": "{title} + আরও {n}",
   "noDatesInDocument": "এই নথিতে কোনো তারিখ নেই",
   "document": "নথি",
-  "micUnavailable": "মাইক্রোফোন চালু হয়নি. আপনি টাইপ করতে পারেন."
+  "micUnavailable": "মাইক্রোফোন চালু হয়নি. আপনি টাইপ করতে পারেন.",
+  "nDocuments": "{n}টি নথি",
+  "doctype_discharge_summary": "ডিসচার্জ সারাংশ",
+  "doctype_hospital_bill": "হাসপাতালের বিল",
+  "doctype_investment": "বিনিয়োগ",
+  "doctype_loan": "ঋণ",
+  "doctype_salary_slip": "বেতন স্লিপ",
+  "doctype_form": "ফর্ম",
+  "doctype_pension_notice": "পেনশন নোটিশ",
+  "doctype_bank_statement": "ব্যাংক স্টেটমেন্ট"
 }

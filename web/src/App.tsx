@@ -957,7 +957,9 @@ export default function App() {
     setMultiReportsData(null)
     try {
       setCurrentError(null)
-      const result = await fetchSampleResult(choice.file, choice.lang)
+      const loaded = await fetchSampleResult(choice.file, choice.lang)
+      const result = loaded.result
+      setTranslateFailedLang(loaded.shownLang === targetLang ? null : targetLang)
       const res = await fetch(`/samples/${choice.file}`)
       const files: File[] = []
       if (res.ok) {
@@ -995,16 +997,21 @@ export default function App() {
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
 
-    const sampleFile = activeFilesRef.current.find((file) => isSampleFile(file.name))
-    if (sampleFile) {
+    const sampleFromFiles = activeFilesRef.current.find((file) => isSampleFile(file.name))?.name
+    const sampleFromId = (currentResultIdRef.current || '').startsWith('sample-')
+      ? (currentResultIdRef.current || '').slice('sample-'.length)
+      : ''
+    const sampleName = sampleFromFiles || (isSampleFile(sampleFromId) ? sampleFromId : '')
+    if (sampleName) {
       setIsTranslating(true)
       try {
-        const translated = await fetchSampleResult(sampleFile.name, targetLang)
-        const resultId = currentResultIdRef.current || `sample-${sampleFile.name}`
+        const loaded = await fetchSampleResult(sampleName, targetLang)
+        const resultId = currentResultIdRef.current || `sample-${sampleName}`
         currentResultIdRef.current = resultId
-        translationCacheRef.current.set(`${resultId}:${targetLang}`, translated)
-        setResultData(translated)
+        translationCacheRef.current.set(`${resultId}:${loaded.shownLang}`, loaded.result)
+        setResultData(loaded.result)
         setTranslateError(null)
+        setTranslateFailedLang(loaded.shownLang === targetLang ? null : targetLang)
       } catch (err: unknown) {
         setTranslateError({
           message: err instanceof Error ? err.message : 'Sample translation is not ready',

@@ -65,10 +65,16 @@ export function indicFamily(lang: string): string | null {
   return FAMILIES[lang]?.family ?? null
 }
 
-/** Load only the script in use. English loads nothing. */
-export function ensureIndicFont(lang: string): void {
+/** Load a script. The active family follows the selected language, not the last font loaded. */
+export function ensureIndicFont(lang: string, apply = true): void {
+  if (typeof document === 'undefined') return
   const item = FAMILIES[lang]
-  if (!item || loaded.has(item.family) || typeof document === 'undefined') return
+  if (!item) {
+    if (apply) document.documentElement.style.setProperty('--sv-indic-family', "'DM Sans'")
+    return
+  }
+  if (apply) document.documentElement.style.setProperty('--sv-indic-family', `'${item.family}'`)
+  if (loaded.has(item.family)) return
   loaded.add(item.family)
   const css = item.files
     .map(
@@ -80,11 +86,10 @@ export function ensureIndicFont(lang: string): void {
   style.dataset.indic = lang
   style.textContent = css
   document.head.appendChild(style)
-  document.documentElement.style.setProperty('--sv-indic-family', `'${item.family}'`)
 }
 
 export function ensureOnboardingFonts(): void {
-  for (const code of Object.keys(FAMILIES)) ensureIndicFont(code)
+  for (const code of Object.keys(FAMILIES)) ensureIndicFont(code, false)
 }
 
 export function chipFont(langId: string): string {

@@ -119,13 +119,16 @@ export default function SummaryCard({
   layout?: GlanceKind
 }) {
   const kind = layout || pickGlance(result)
-  const docType = result.doc_type || (result.document_type as string) || 'other'
+  const docType = result.document_kind || result.doc_type || (result.document_type as string) || 'other'
+  const partCount = result.parts?.length || 0
   const visual = visualForDocument(docType, {
-    medicines: (result.medicines?.length || 0) > 0,
+    medicines: (result.medicines?.length || 0) > 0 || docType === 'prescription',
     title: result.title,
-    multi: kind === 'multi',
+    multi: kind === 'multi' || partCount > 1,
   })
-  const typeLabel = getLocalisedDocType(lang, docType) || docType
+  const typeLabel = partCount > 1
+    ? (t.nDocuments || '{n} documents').replace('{n}', String(partCount))
+    : (getLocalisedDocType(lang, docType) || docType)
   const dateLabel = formatChipDate(result.report_date_iso || result.letter_date, lang)
   const outsideCount = countOutside([...(result.sections || []), ...(result.parts || []).flatMap((part) => part.sections || [])])
   const headline = outsideCount > 0
