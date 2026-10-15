@@ -481,5 +481,12 @@
   "doctype_salary_slip": "বেতন স্লিপ",
   "doctype_form": "ফর্ম",
   "doctype_pension_notice": "পেনশন নোটিশ",
-  "doctype_bank_statement": "ব্যাংক স্টেটমেন্ট"
+  "doctype_bank_statement": "ব্যাংক স্টেটমেন্ট",
+  "rename": "নাম বদলান",
+  "renameTitle": "এই নথির নাম বদলান",
+  "renameSave": "সংরক্ষণ",
+  "renameCancel": "বাতিল",
+  "clearTicks": "টিক মুছুন",
+  "added": "যোগ করা হয়েছে",
+  "askTyping": "লিখছে…"
 }

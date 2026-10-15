@@ -23,10 +23,17 @@ function Specific({
   id,
   result,
   t,
+  medicine,
 }: {
   id: BlockId
   result: ExplainResponse
   t: Record<string, string>
+  medicine?: {
+    saved?: { slots: Record<string, boolean>; times: Record<string, string>; durations: Record<string, number> }
+    onChange?: (next: { slots: Record<string, boolean>; times: Record<string, string>; durations: Record<string, number> }) => void
+    reminderAdded?: boolean
+    onReminderAdded?: () => void
+  }
 }) {
   switch (id) {
     case 'directions':
@@ -46,7 +53,7 @@ function Specific({
       return <NotADiagnosisBlock t={t} />
     case 'medicines':
       return result.medicines?.length ? (
-        <MedicineCard medicines={result.medicines} resultId={result.title || 'med'} t={t} onCheckOriginal={() => undefined} />
+        <MedicineCard medicines={result.medicines} resultId={result.title || 'med'} t={t} onCheckOriginal={() => undefined} saved={medicine?.saved} onChange={medicine?.onChange} reminderAdded={medicine?.reminderAdded} onReminderAdded={medicine?.onReminderAdded} />
       ) : null
     case 'diagnosis':
       return <DiagnosisBlock result={result} t={t} />
@@ -72,9 +79,16 @@ const COMMON = new Set<BlockId>(['simpleWords', 'actions', 'watchOut', 'places',
 export default function BlockRenderer({
   result,
   t,
+  medicine,
 }: {
   result: ExplainResponse
   t: Record<string, string>
+  medicine?: {
+    saved?: { slots: Record<string, boolean>; times: Record<string, string>; durations: Record<string, number> }
+    onChange?: (next: { slots: Record<string, boolean>; times: Record<string, string>; durations: Record<string, number> }) => void
+    reminderAdded?: boolean
+    onReminderAdded?: () => void
+  }
 }) {
   if ((result.parts?.length || 0) > 1) {
     return (
@@ -84,7 +98,7 @@ export default function BlockRenderer({
         renderBlocks={(partResult) => (
           <>
             {resolveProfile(partResult).blocks.filter((id) => !COMMON.has(id)).map((id) => (
-              <Specific key={id} id={id} result={partResult} t={t} />
+              <Specific key={id} id={id} result={partResult} t={t} medicine={medicine} />
             ))}
           </>
         )}
@@ -96,7 +110,7 @@ export default function BlockRenderer({
   return (
     <>
       {profile.blocks.filter((id) => !COMMON.has(id)).map((id) => (
-        <Specific key={id} id={id} result={result} t={t} />
+        <Specific key={id} id={id} result={result} t={t} medicine={medicine} />
       ))}
     </>
   )

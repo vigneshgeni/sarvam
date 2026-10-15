@@ -408,5 +408,12 @@
   "doctype_invoice": "விலைப்பட்டியல்",
   "doctype_pension_notice": "ஓய்வூதிய அறிவிப்பு",
   "doctype_tax_notice": "வரி அறிவிப்பு",
-  "doctype_bank_statement": "வங்கி அறிக்கை"
+  "doctype_bank_statement": "வங்கி அறிக்கை",
+  "rename": "பெயரை மாற்று",
+  "renameTitle": "இந்த ஆவணத்தின் பெயரை மாற்று",
+  "renameSave": "சேமி",
+  "renameCancel": "வேண்டாம்",
+  "clearTicks": "குறிகளை அழி",
+  "added": "சேர்க்கப்பட்டது",
+  "askTyping": "எழுதிக்கொண்டிருக்கிறது…"
 }

@@ -408,5 +408,12 @@
   "doctype_invoice": "ఇన్‌వాయిస్",
   "doctype_pension_notice": "పెన్షన్ నోటీసు",
   "doctype_tax_notice": "పన్ను నోటీసు",
-  "doctype_bank_statement": "బ్యాంక్ స్టేట్‌మెంట్"
+  "doctype_bank_statement": "బ్యాంక్ స్టేట్‌మెంట్",
+  "rename": "పేరు మార్చు",
+  "renameTitle": "ఈ పత్రం పేరు మార్చు",
+  "renameSave": "సేవ్",
+  "renameCancel": "రద్దు",
+  "clearTicks": "గుర్తులు తీసివేయి",
+  "added": "జోడించబడింది",
+  "askTyping": "రాస్తోంది…"
 }

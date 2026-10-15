@@ -408,5 +408,12 @@
   "doctype_invoice": "Invoice",
   "doctype_pension_notice": "Pension notice",
   "doctype_tax_notice": "Tax notice",
-  "doctype_bank_statement": "Bank statement"
+  "doctype_bank_statement": "Bank statement",
+  "rename": "Rename",
+  "renameTitle": "Rename this document",
+  "renameSave": "Save",
+  "renameCancel": "Cancel",
+  "clearTicks": "Clear ticks",
+  "added": "Added",
+  "askTyping": "Writing…"
 }

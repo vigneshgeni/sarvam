@@ -1,5 +1,5 @@
 from models import AskResponse
-from reader import ASK_PROMPT_TEMPLATE, _with_doctor_note
+from reader import ASK_PROMPT_TEMPLATE, _with_doctor_note, last_ask_turns
 
 
 def test_ask_prompt_allows_general_knowledge():
@@ -17,6 +17,17 @@ def test_health_answer_ends_with_a_doctor_note():
     assert again.count("Please check with your doctor.") == 1
     plain = _with_doctor_note("when is the deadline?", "The document says 12 November.", "en")
     assert "doctor" not in plain
+
+
+def test_ask_keeps_the_last_eight_turns_and_a_short_answer():
+    text = ASK_PROMPT_TEMPLATE.format(LANG="English", QUESTION="why is it high?", ANALYSIS_JSON="{}")
+    assert "120 words" in text
+    assert '"it"' in text
+    history = "\n".join(f"Q: question {i}\nA: answer {i}" for i in range(12))
+    kept = last_ask_turns(history)
+    assert "question 4" in kept
+    assert "question 3" not in kept
+    assert kept.count("Q: ") == 8
 
 
 def test_general_ask_response_can_omit_a_quote():

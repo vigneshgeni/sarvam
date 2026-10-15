@@ -408,5 +408,12 @@
   "doctype_invoice": "चालान",
   "doctype_pension_notice": "पेंशन नोटिस",
   "doctype_tax_notice": "कर नोटिस",
-  "doctype_bank_statement": "बैंक स्टेटमेंट"
+  "doctype_bank_statement": "बैंक स्टेटमेंट",
+  "rename": "नाम बदलें",
+  "renameTitle": "इस दस्तावेज़ का नाम बदलें",
+  "renameSave": "सहेजें",
+  "renameCancel": "रद्द करें",
+  "clearTicks": "निशान हटाएँ",
+  "added": "जोड़ दिया",
+  "askTyping": "लिख रहा है…"
 }

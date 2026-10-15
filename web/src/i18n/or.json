@@ -481,5 +481,12 @@
   "doctype_salary_slip": "ଦରମା ସ୍ଲିପ୍",
   "doctype_form": "ଫର୍ମ",
   "doctype_pension_notice": "ପେନ୍ସନ୍ ନୋଟିସ୍",
-  "doctype_bank_statement": "ବ୍ୟାଙ୍କ ଷ୍ଟେଟମେଣ୍ଟ"
+  "doctype_bank_statement": "ବ୍ୟାଙ୍କ ଷ୍ଟେଟମେଣ୍ଟ",
+  "rename": "ନାମ ବଦଳାନ୍ତୁ",
+  "renameTitle": "ଏହି ଦଲିଲର ନାମ ବଦଳାନ୍ତୁ",
+  "renameSave": "ସେଭ୍",
+  "renameCancel": "ବାତିଲ୍",
+  "clearTicks": "ଟିକ୍ ହଟାନ୍ତୁ",
+  "added": "ଯୋଡ଼ାଗଲା",
+  "askTyping": "ଲେଖୁଛି…"
 }

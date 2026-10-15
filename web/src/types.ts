@@ -343,6 +343,7 @@ export interface RecentResult {
   id: string
   timestamp: number
   title: string
+  displayName?: string
   fileCount: number
   fileNames: string[]
   lang: string
@@ -350,6 +351,7 @@ export interface RecentResult {
   translations?: Record<string, ExplainResponse>
   multiReports?: MultiReportCard[]
   asks?: AskTurn[]
+  activity?: import('./utils/activity').DocumentActivity
 }
 
 export type AppScreen = 'home' | 'tray' | 'reading' | 'result'

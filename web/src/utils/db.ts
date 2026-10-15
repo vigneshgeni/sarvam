@@ -111,6 +111,7 @@ export async function saveRecentResult(
       id: entry.id || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       timestamp: entry.timestamp || Date.now(),
       title: entry.title,
+      displayName: entry.displayName || '',
       fileCount: entry.fileCount,
       fileNames: entry.fileNames || [],
       lang: entry.lang,
@@ -118,6 +119,7 @@ export async function saveRecentResult(
       translations: entry.translations || {},
       multiReports: entry.multiReports,
       asks: entry.asks,
+      activity: entry.activity,
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -143,6 +145,29 @@ export async function saveRecentResult(
     })
   } catch {
     // Non-fatal if IndexedDB write fails
+  }
+}
+
+export async function updateRecentFields(
+  id: string,
+  fields: Partial<Pick<RecentResult, 'activity' | 'displayName' | 'lang' | 'title'>>
+): Promise<void> {
+  if (!isSaveRecentEnabled() || !id) return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const getReq = store.get(id)
+      getReq.onsuccess = () => {
+        const item = getReq.result as RecentResult | undefined
+        if (item) store.put({ ...item, ...fields })
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal
   }
 }
 

@@ -1788,7 +1788,7 @@ async def ask(
                 deadline,
                 None,
                 1,
-                (history or "")[:4000] or None,
+                reader.last_ask_turns(history or "") or None,
             )
         return ask_res
     except AskUnverifiedError:

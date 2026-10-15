@@ -408,5 +408,12 @@
   "doctype_invoice": "ഇൻവോയ്സ്",
   "doctype_pension_notice": "പെൻഷൻ അറിയിപ്പ്",
   "doctype_tax_notice": "നികുതി അറിയിപ്പ്",
-  "doctype_bank_statement": "ബാങ്ക് സ്റ്റേറ്റ്മെന്റ്"
+  "doctype_bank_statement": "ബാങ്ക് സ്റ്റേറ്റ്മെന്റ്",
+  "rename": "പേര് മാറ്റുക",
+  "renameTitle": "ഈ രേഖയുടെ പേര് മാറ്റുക",
+  "renameSave": "സേവ്",
+  "renameCancel": "റദ്ദാക്കുക",
+  "clearTicks": "ടിക്കുകൾ മാറ്റുക",
+  "added": "ചേർത്തു",
+  "askTyping": "എഴുതുന്നു…"
 }

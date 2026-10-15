@@ -4,11 +4,21 @@ import { PillIcon, EyeIcon, CalendarIcon, AlertTriangleIcon } from './icons'
 import Sheet from './Sheet'
 import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
 
+interface MedicineActivityState {
+  slots: Record<string, boolean>
+  times: Record<string, string>
+  durations: Record<string, number>
+}
+
 interface MedicineCardProps {
   medicines?: MedicineItem[]
   resultId: string
   t: Record<string, string>
   onCheckOriginal?: (quote?: string, page?: number) => void
+  saved?: MedicineActivityState
+  onChange?: (next: MedicineActivityState) => void
+  reminderAdded?: boolean
+  onReminderAdded?: () => void
 }
 
 const DEFAULT_SLOT_TIMES: Record<MedicineSlot, string> = {
@@ -27,10 +37,15 @@ export default function MedicineCard({
   resultId,
   t,
   onCheckOriginal,
+  saved,
+  onChange,
+  reminderAdded = false,
+  onReminderAdded,
 }: MedicineCardProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [userDurations, setUserDurations] = useState<Record<number, number>>({})
+  const [userDurations, setUserDurations] = useState<Record<number, number>>(() => saved?.durations || {})
   const [selectedSlots, setSelectedSlots] = useState<Record<string, boolean>>(() => {
+    if (saved && Object.keys(saved.slots || {}).length) return saved.slots
     // Initialize slot ticks: unticked unless evidence === 'matched' and decoded === true
     const initial: Record<string, boolean> = {}
     if (medicines) {
@@ -46,7 +61,12 @@ export default function MedicineCard({
     return initial
   })
 
+  const publish = (slots: Record<string, boolean>, times: Record<string, string>, durations: Record<string, number>) => {
+    onChange?.({ slots, times, durations })
+  }
+
   const [slotTimes, setSlotTimes] = useState<Record<string, string>>(() => {
+    if (saved && Object.keys(saved.times || {}).length) return saved.times
     const initial: Record<string, string> = {}
     if (medicines) {
       medicines.forEach((med, mIdx) => {
@@ -65,16 +85,28 @@ export default function MedicineCard({
   // Check if any medicine is unverified or check_original
   const handleToggleSlot = (mIdx: number, slot: string) => {
     const key = `${mIdx}-${slot}`
-    setSelectedSlots((prev) => ({ ...prev, [key]: !prev[key] }))
+    setSelectedSlots((prev) => {
+      const slots = { ...prev, [key]: !prev[key] }
+      publish(slots, slotTimes, userDurations)
+      return slots
+    })
   }
 
   const handleTimeChange = (mIdx: number, slot: string, time: string) => {
     const key = `${mIdx}-${slot}`
-    setSlotTimes((prev) => ({ ...prev, [key]: time }))
+    setSlotTimes((prev) => {
+      const times = { ...prev, [key]: time }
+      publish(selectedSlots, times, userDurations)
+      return times
+    })
   }
 
   const handleSetDuration = (mIdx: number, days: number) => {
-    setUserDurations((prev) => ({ ...prev, [mIdx]: days }))
+    setUserDurations((prev) => {
+      const durations = { ...prev, [mIdx]: days }
+      publish(selectedSlots, slotTimes, durations)
+      return durations
+    })
   }
 
   const handleExportIcs = () => {
@@ -117,6 +149,7 @@ export default function MedicineCard({
 
     const icsContent = generateIcs(events)
     downloadIcs('medicine-reminders.ics', icsContent)
+    onReminderAdded?.()
     setIsSheetOpen(false)
   }
 
@@ -165,8 +198,8 @@ export default function MedicineCard({
             </div>
           )
         })}
-        <button type="button" onClick={() => setIsSheetOpen(true)} className="sv-press h-[52px] mx-1 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[16px] font-bold">
-          {t.setMedicineReminders || 'Set medicine reminders'}
+        <button type="button" onClick={() => { if (!reminderAdded) setIsSheetOpen(true) }} className="sv-press h-[52px] mx-1 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[16px] font-bold">
+          {reminderAdded ? (t.added || 'Added') : (t.setMedicineReminders || 'Set medicine reminders')}
         </button>
       </section>
 

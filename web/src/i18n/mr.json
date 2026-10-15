@@ -481,5 +481,12 @@
   "doctype_salary_slip": "पगार स्लिप",
   "doctype_form": "फॉर्म",
   "doctype_pension_notice": "पेन्शन नोटीस",
-  "doctype_bank_statement": "बँक स्टेटमेंट"
+  "doctype_bank_statement": "बँक स्टेटमेंट",
+  "rename": "नाव बदला",
+  "renameTitle": "या दस्तऐवजाचे नाव बदला",
+  "renameSave": "जतन करा",
+  "renameCancel": "रद्द करा",
+  "clearTicks": "खुणा काढा",
+  "added": "जोडले",
+  "askTyping": "लिहित आहे…"
 }

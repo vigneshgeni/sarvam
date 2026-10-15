@@ -25,6 +25,7 @@ interface HomeProps {
   recent: RecentResult[]
   onOpenRecent: (item: RecentResult) => void
   onRemoveRecent: (e: MouseEvent, item: RecentResult) => void
+  onRenameRecent?: (item: RecentResult, name: string) => void
   onDeleteAll: () => void
   saveEnabled: boolean
   onToggleSave: (on: boolean) => void
@@ -43,11 +44,15 @@ function RecentRow({
   lang,
   onOpen,
   onRemove,
+  onRename,
+  renameLabel,
 }: {
   item: RecentResult
   lang: string
   onOpen: () => void
   onRemove: (e: MouseEvent) => void
+  onRename?: (e: MouseEvent) => void
+  renameLabel?: string
 }) {
   const doc = item.result?.doc_type || item.result?.document_type
   const visual = visualForDocument(String(doc || ''), {
@@ -69,12 +74,17 @@ function RecentRow({
           <DocIcon name={visual.icon} stroke={visual.ink} />
         </span>
         <span className="flex flex-col gap-[3px] flex-1 min-w-0">
-          <span className="text-[15.5px] font-semibold leading-[1.3] line-clamp-2">{item.title}</span>
+          <span className="text-[15.5px] font-semibold leading-[1.3] line-clamp-2">{item.displayName || item.title}</span>
           <span className="text-[13px] text-[#575B58]">
             {type} · {date}
           </span>
         </span>
       </button>
+      {onRename && (
+        <button type="button" onClick={onRename} className="sv-press h-11 px-2 text-[13px] font-semibold text-[#034F46]">
+          {renameLabel}
+        </button>
+      )}
       <button
         type="button"
         aria-label="Remove"
@@ -102,8 +112,50 @@ function groupLabel(ts: number, t: Record<string, string>, lang: string): string
   return month.toUpperCase()
 }
 
+function RenameDialog({
+  item,
+  t,
+  onClose,
+  onSave,
+}: {
+  item: RecentResult | null
+  t: Record<string, string>
+  onClose: () => void
+  onSave: (name: string) => void
+}) {
+  const [value, setValue] = useState(item?.displayName || item?.title || '')
+  if (!item) return null
+  return (
+    <div className="fixed inset-0 z-50 bg-[#1A1A1A]/40 flex items-end" onClick={onClose}>
+      <form
+        className="w-full bg-[#F4F5F2] rounded-t-[28px] border-t-[1.5px] border-[#1A1A1A] p-5 flex flex-col gap-3"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault()
+          onSave(value.trim().slice(0, 60))
+        }}
+      >
+        <h2 className="m-0 text-[22px] font-bold">{t.renameTitle || 'Rename this document'}</h2>
+        <input
+          value={value}
+          maxLength={60}
+          autoFocus
+          onChange={(event) => setValue(event.target.value.slice(0, 60))}
+          aria-label={t.renameTitle || 'Rename this document'}
+          className="h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-[16px] bg-transparent"
+        />
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="sv-press h-12 flex-1 rounded-full border-[1.5px] border-[#1A1A1A] font-semibold">{t.renameCancel || 'Cancel'}</button>
+          <button type="submit" className="sv-press h-12 flex-1 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] font-bold">{t.renameSave || 'Save'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function HomeScreen(props: HomeProps) {
   const { t, selectedLang, recent } = props
+  const [renameItem, setRenameItem] = useState<RecentResult | null>(null)
   const indic = selectedLang !== 'en' && selectedLang !== 'auto'
   ensureOnboardingFonts()
   if (props.library) return <AllDocuments {...props} />
@@ -297,6 +349,8 @@ export default function HomeScreen(props: HomeProps) {
               lang={selectedLang}
               onOpen={() => props.onOpenRecent(item)}
               onRemove={(e) => props.onRemoveRecent(e, item)}
+              renameLabel={t.rename || 'Rename'}
+              onRename={props.onRenameRecent ? (e) => { e.stopPropagation(); setRenameItem(item) } : undefined}
             />
           ))}
           {recent.length >= 5 && (
@@ -360,6 +414,16 @@ export default function HomeScreen(props: HomeProps) {
         <span aria-hidden="true" className="w-2 h-2 rounded-full bg-[#D9603B]" />
         sarvam-510715.web.app
       </a>
+      <RenameDialog
+        key={renameItem?.id || 'none'}
+        item={renameItem}
+        t={t}
+        onClose={() => setRenameItem(null)}
+        onSave={(name) => {
+          if (renameItem) props.onRenameRecent?.(renameItem, name)
+          setRenameItem(null)
+        }}
+      />
     </div>
   )
 }
@@ -376,6 +440,7 @@ const FILTERS: { id: 'all' | FilterGroup; key: string; label: string }[] = [
 
 function AllDocuments(props: HomeProps) {
   const [q, setQ] = useState('')
+  const [renameItem, setRenameItem] = useState<RecentResult | null>(null)
   const [filter, setFilter] = useState<'all' | FilterGroup>('all')
   const { t, recent, selectedLang } = props
   const counts = { all: recent.length, health: 0, money: 0, bills: 0, notices: 0, legal: 0, forms: 0 }
@@ -390,7 +455,8 @@ function AllDocuments(props: HomeProps) {
     if (filter !== 'all' && g !== filter) return false
     if (!query) return true
     const type = getLocalisedDocType(selectedLang, doc).toLowerCase()
-    return item.title.toLowerCase().includes(query) || type.includes(query) || doc.includes(query)
+    const name = `${item.displayName || ''} ${item.title}`.toLowerCase()
+    return name.includes(query) || type.includes(query) || doc.includes(query)
   })
   const groups: { label: string; items: RecentResult[] }[] = []
   for (const item of filtered) {
@@ -462,10 +528,22 @@ function AllDocuments(props: HomeProps) {
               lang={selectedLang}
               onOpen={() => props.onOpenRecent(item)}
               onRemove={(e) => props.onRemoveRecent(e, item)}
+              renameLabel={t.rename || 'Rename'}
+              onRename={props.onRenameRecent ? (e) => { e.stopPropagation(); setRenameItem(item) } : undefined}
             />
           ))}
         </div>
       ))}
+      <RenameDialog
+        key={renameItem?.id || 'none'}
+        item={renameItem}
+        t={t}
+        onClose={() => setRenameItem(null)}
+        onSave={(name) => {
+          if (renameItem) props.onRenameRecent?.(renameItem, name)
+          setRenameItem(null)
+        }}
+      />
     </div>
   )
 }

@@ -18,6 +18,8 @@ interface FeedbackBlockProps {
   result: ExplainResponse
   lang: string
   files: { name: string }[]
+  initialRating?: 'up' | 'down' | ''
+  onRated?: (rating: 'up' | 'down') => void
 }
 
 type Phase = 'ask' | 'reasons' | 'sending' | 'sent' | 'error'
@@ -44,7 +46,7 @@ function rememberRating(key: string, rating: 'up' | 'down'): void {
   }
 }
 
-export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProps) {
+export default function FeedbackBlock({ result, lang, files, initialRating = '', onRated }: FeedbackBlockProps) {
   const ratingLang = storedLang(lang)
   const copy = feedbackCopy(ratingLang)
   const docType = result.doc_type || result.document_type || ''
@@ -62,11 +64,11 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
   const sendGenRef = useRef(0)
 
   useEffect(() => {
-    setPhase(readRated(storageKey) ? 'sent' : 'ask')
+    setPhase(initialRating === 'up' || initialRating === 'down' || readRated(storageKey) ? 'sent' : 'ask')
     setSelected([])
     setPending(null)
     sendGenRef.current += 1
-  }, [storageKey])
+  }, [storageKey, initialRating])
 
   async function send(payload: FeedbackPayload) {
     const gen = ++sendGenRef.current
@@ -89,6 +91,7 @@ export default function FeedbackBlock({ result, lang, files }: FeedbackBlockProp
       })
       if (gen !== sendGenRef.current) return
       rememberRating(storageKey, payload.rating)
+      onRated?.(payload.rating)
       setPhase('sent')
     } catch {
       if (gen !== sendGenRef.current) return

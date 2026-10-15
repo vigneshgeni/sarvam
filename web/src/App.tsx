@@ -5,6 +5,7 @@ import {
   getStoredLanguage,
   setStoredLanguage,
   getLocalFallbackError,
+  getLocalisedDocType,
   resolveLang,
 } from './i18n'
 import type {
@@ -30,7 +31,9 @@ import {
   saveRecentTranslation,
   saveOriginalFiles,
   getOriginalFiles,
+  updateRecentFields,
 } from './utils/db'
+import { defaultDocumentName, emptyActivity, isSampleResultId, mergeActivity, type DocumentActivity } from './utils/activity'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
 import TrayScreen from './components/TrayScreen'
@@ -140,6 +143,11 @@ export default function App() {
   const activeFilesRef = useRef<File[]>([])
   const retryActionRef = useRef<(() => void) | null>(null)
   const currentResultIdRef = useRef<string | null>(null)
+  const activityTimer = useRef<number | null>(null)
+  const activitySnapshot = useRef<DocumentActivity>(emptyActivity())
+  const [sessionActivity, setSessionActivity] = useState<DocumentActivity>(emptyActivity())
+  const [sessionName, setSessionName] = useState('')
+  const [sessionTitle, setSessionTitle] = useState('')
   const fileHashRef = useRef<string>('')
   const originalResultRef = useRef<ExplainResponse | null>(null)
   const translationCacheRef = useRef<Map<string, ExplainResponse>>(new Map())
@@ -364,6 +372,49 @@ export default function App() {
     setRecentResults(items)
   }
 
+  const cleanerTitle = (result: ExplainResponse) => {
+    const kind = getLocalisedDocType(resolveLang(selectedLang), result.document_kind || result.doc_type || result.document_type)
+    const issuer = result.profile?.lab_name || result.profile?.seller || ''
+    return defaultDocumentName(kind, issuer, result.report_date_iso || result.letter_date || '') || result.title || (t.document || 'Document')
+  }
+
+  const flushActivity = async (next: DocumentActivity) => {
+    let id = currentResultIdRef.current
+    const result = originalResultRef.current || resultData
+    if (!id || !result || !isSaveRecentEnabled()) return
+    if (isSampleResultId(id)) {
+      const copyId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const title = cleanerTitle(result)
+      currentResultIdRef.current = copyId
+      setSessionTitle(title)
+      await saveRecentResult({
+        id: copyId,
+        title,
+        fileCount: Math.max(activeFilesRef.current.length, 1),
+        fileNames: activeFilesRef.current.map((file) => file.name),
+        lang: next.lang || resolveLang(selectedLang),
+        result,
+        activity: next,
+      })
+      await loadRecents()
+      return
+    }
+    await updateRecentFields(id, { activity: next, lang: next.lang || resolveLang(selectedLang) })
+  }
+
+  const queueActivity = (next: DocumentActivity) => {
+    activitySnapshot.current = next
+    if (activityTimer.current) window.clearTimeout(activityTimer.current)
+    activityTimer.current = window.setTimeout(() => { void flushActivity(activitySnapshot.current) }, 300)
+  }
+
+  const handleRenameSaved = async (item: RecentResult, name: string) => {
+    const next = name.trim().slice(0, 60)
+    await updateRecentFields(item.id, { displayName: next && next !== item.title ? next : '' })
+    if (currentResultIdRef.current === item.id) setSessionName(next && next !== item.title ? next : '')
+    await loadRecents()
+  }
+
   const handleOpenRecent = async (item: RecentResult) => {
     currentResultIdRef.current = item.id
     originalResultRef.current = item.result
@@ -394,10 +445,18 @@ export default function App() {
       setActiveFiles(dummyFiles)
     }
 
-    if (item.result.language) {
+    const restored = mergeActivity(item.activity)
+    if (restored.lang) {
+      setSelectedLang(restored.lang)
+      setStoredLanguage(restored.lang)
+    } else if (item.result.language) {
       setSelectedLang(item.result.language)
       setStoredLanguage(item.result.language)
     }
+    activitySnapshot.current = restored
+    setSessionActivity(restored)
+    setSessionName(item.displayName || '')
+    setSessionTitle(item.title)
 
 
     setShowOnboarding(false)
@@ -602,8 +661,8 @@ export default function App() {
           const firstTitle = updatedCards.find((card) => card.result?.title)?.result?.title
           const displayTitle =
             firstTitle && fileCount > 1
-              ? (t.moreReports || '{title} + {n} more').replace('{title}', firstTitle).replace('{n}', String(fileCount - 1))
-              : t.reportsCount?.replace('{count}', String(fileCount)) || `${fileCount} reports`
+              ? (t.moreReports || '{title} + {n} more').replace('{title}', cleanerTitle(firstReady.result)).replace('{n}', String(fileCount - 1))
+              : cleanerTitle(firstReady.result)
           const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           currentResultIdRef.current = multiId
 
@@ -674,8 +733,13 @@ export default function App() {
       const fileCount = filesToExplain.length
       const displayTitle =
         fileCount > 1
-          ? (t.moreReports || '{title} + {n} more').replace('{title}', result.title || (t.document || 'Document')).replace('{n}', String(fileCount - 1))
-          : result.title || (t.document || 'Document')
+          ? (t.moreReports || '{title} + {n} more').replace('{title}', cleanerTitle(result)).replace('{n}', String(fileCount - 1))
+          : cleanerTitle(result)
+      const fresh = emptyActivity()
+      activitySnapshot.current = fresh
+      setSessionActivity(fresh)
+      setSessionName('')
+      setSessionTitle(displayTitle)
 
       if (isSaveRecentEnabled()) {
         await saveRecentResult({
@@ -969,6 +1033,11 @@ export default function App() {
       }
       const resultId = `sample-${choice.file}`
       currentResultIdRef.current = resultId
+      const fresh = emptyActivity()
+      activitySnapshot.current = fresh
+      setSessionActivity(fresh)
+      setSessionName('')
+      setSessionTitle(result.title || '')
       originalResultRef.current = result
       translationCacheRef.current.set(`${resultId}:${targetLang}`, result)
       activeFilesRef.current = files
@@ -996,6 +1065,9 @@ export default function App() {
 
     setSelectedLang(newLang)
     setStoredLanguage(newLang)
+    if (currentResultIdRef.current && !isSampleResultId(currentResultIdRef.current)) {
+      queueActivity(mergeActivity(activitySnapshot.current, { lang: newLang }))
+    }
 
     const sampleFromFiles = activeFilesRef.current.find((file) => isSampleFile(file.name))?.name
     const sampleFromId = (currentResultIdRef.current || '').startsWith('sample-')
@@ -1297,6 +1369,7 @@ export default function App() {
             recent={recentResults}
             onOpenRecent={handleOpenRecent}
             onRemoveRecent={handleDeleteRecentItem}
+            onRenameRecent={handleRenameSaved}
             onDeleteAll={handleDeleteAllRecent}
             saveEnabled={saveRecentEnabled}
             onToggleSave={handleToggleSaveRecent}
@@ -1374,6 +1447,27 @@ export default function App() {
             onRetrySingleReport={handleRetrySingleReport}
             resultId={currentResultIdRef.current || undefined}
             asks={recentResults.find((item) => item.id === currentResultIdRef.current)?.asks}
+            activity={sessionActivity}
+            displayName={sessionName}
+            savedTitle={sessionTitle}
+            onActivityChange={queueActivity}
+            onRename={(name) => {
+              const id = currentResultIdRef.current
+              if (!id) return
+              const trimmed = name.trim().slice(0, 60)
+              if (isSampleResultId(id)) {
+                void flushActivity(activitySnapshot.current).then(async () => {
+                  const savedId = currentResultIdRef.current
+                  if (!savedId || isSampleResultId(savedId)) return
+                  await updateRecentFields(savedId, { displayName: trimmed })
+                  setSessionName(trimmed)
+                  await loadRecents()
+                })
+                return
+              }
+              void updateRecentFields(id, { displayName: trimmed && trimmed !== sessionTitle ? trimmed : '' }).then(loadRecents)
+              setSessionName(trimmed && trimmed !== sessionTitle ? trimmed : '')
+            }}
           />
         )}
       </main>

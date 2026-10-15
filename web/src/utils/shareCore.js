@@ -1240,6 +1240,7 @@ export function redactResult(result, options = { hidePersonal: false }) {
     const p = cloned.profile
     const hideId = (value) => (value ? maskIdToken(value) : value)
     p.invoice_no = hideId(p.invoice_no)
+    p.case_or_notice_no = hideId(p.case_or_notice_no)
     p.loan_account = hideId(p.loan_account)
     p.folio = hideId(p.folio)
     p.policy_no = hideId(p.policy_no)

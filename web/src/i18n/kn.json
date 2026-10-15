@@ -408,5 +408,12 @@
   "doctype_invoice": "ಇನ್‌ವಾಯ್ಸ್",
   "doctype_pension_notice": "ಪಿಂಚಣಿ ಸೂಚನೆ",
   "doctype_tax_notice": "ತೆರಿಗೆ ಸೂಚನೆ",
-  "doctype_bank_statement": "ಬ್ಯಾಂಕ್ ಸ್ಟೇಟ್ಮೆಂಟ್"
+  "doctype_bank_statement": "ಬ್ಯಾಂಕ್ ಸ್ಟೇಟ್ಮೆಂಟ್",
+  "rename": "ಹೆಸರು ಬದಲಿಸಿ",
+  "renameTitle": "ಈ ದಾಖಲೆಯ ಹೆಸರು ಬದಲಿಸಿ",
+  "renameSave": "ಉಳಿಸಿ",
+  "renameCancel": "ರದ್ದು",
+  "clearTicks": "ಗುರುತುಗಳನ್ನು ಅಳಿಸಿ",
+  "added": "ಸೇರಿಸಲಾಗಿದೆ",
+  "askTyping": "ಬರೆಯುತ್ತಿದೆ…"
 }

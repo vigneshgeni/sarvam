@@ -173,7 +173,7 @@ export default function AskSheet({
     setQuestion('')
 
     const history = turns
-      .slice(-6)
+      .slice(-8)
       .map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`)
       .join('\n')
     const askOnce = () => askDocument({
@@ -191,6 +191,11 @@ export default function AskSheet({
       } catch (err: any) {
         if (err?.statusCode === 503) resp = await askOnce()
         else throw err
+      }
+      if (!resp.answer && !resp.not_found) {
+        setQuestion(targetQ)
+        setAskError(t.retry || 'Try again')
+        return
       }
       setTurns((prev) => [...prev, {
         question: targetQ,
@@ -313,7 +318,7 @@ export default function AskSheet({
         {isLoading && (
           <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F6F6F3] border border-[#E6E6E1] text-xs text-[#5E636B] animate-card-in">
             <div className="w-3.5 h-3.5 border-2 border-[#034F46]/30 border-t-[#034F46] rounded-full animate-spin shrink-0" />
-            <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askLoading || 'Looking up answer in document...')}</span>
+            <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askTyping || 'Writing…')}</span>
           </div>
         )}
 
@@ -373,7 +378,7 @@ export default function AskSheet({
               onClick={() => handleAskSubmit()}
               className="px-2.5 py-1 bg-white border border-[#F4DDB0] rounded font-semibold text-xs text-[#5A3500] hover:bg-neutral-50"
             >
-              Retry
+              {t.retry || 'Try again'}
             </button>
           </div>
         )}

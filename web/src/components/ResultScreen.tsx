@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SUPPORTED_LANGS, getDictionary, resolveLang, LANG_LABELS } from '../i18n'
 import type { ExplainResponse, AppErrorInfo, MultiReportCard } from '../types'
 import { formatDate, isDatePassed } from '../utils/date'
@@ -48,6 +48,7 @@ function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { expandProtectedTerms } from '../utils/shareCore.js'
 import { prepareExportNode, exportHasHiddenPaint } from '../utils/shareImage.js'
+import { clearTicks, emptyActivity, mergeActivity, type DocumentActivity } from '../utils/activity'
 import { isSampleFile } from '../samples/loadSample'
 import { outputNeedsTranslation } from '../utils/languageMatch'
 import { pushBrowserHistory } from '../utils/history'
@@ -71,6 +72,11 @@ interface ResultScreenProps {
   onRetrySingleReport?: (index: number) => void
   resultId?: string
   asks?: import('../types').AskTurn[]
+  activity?: DocumentActivity
+  displayName?: string
+  savedTitle?: string
+  onActivityChange?: (activity: DocumentActivity) => void
+  onRename?: (name: string) => void
 }
 
 export default function ResultScreen({
@@ -90,8 +96,22 @@ export default function ResultScreen({
   onRetrySingleReport,
   resultId,
   asks,
+  activity,
+  displayName = '',
+  savedTitle = '',
+  onActivityChange,
+  onRename,
 }: ResultScreenProps) {
-  const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(null)
+  const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(activity?.reportIndex ?? null)
+  const activityRef = useRef<DocumentActivity>(mergeActivity(activity))
+  const emitActivity = (patch: Partial<DocumentActivity>) => {
+    activityRef.current = mergeActivity(activityRef.current, patch)
+    onActivityChange?.(activityRef.current)
+  }
+  const chooseReport = (index: number | null) => {
+    setSelectedReportIndex(index)
+    emitActivity({ reportIndex: index })
+  }
 
   const result =
     multiReports &&
@@ -105,7 +125,12 @@ export default function ResultScreen({
   const currentLangObj = SUPPORTED_LANGS.find((l) => l.id === lang) || SUPPORTED_LANGS[1]
 
   // Action done state
-  const [doneActions, setDoneActions] = useState<Record<number, boolean>>({})
+  const [doneActions, setDoneActions] = useState<Record<string, boolean>>(() => activity?.doneActions || {})
+  const [remindersAdded, setRemindersAdded] = useState<Record<string, boolean>>(() => activity?.remindersAdded || {})
+  const [medicineActivity, setMedicineActivity] = useState(() => activity?.medicine || emptyActivity().medicine)
+  const [customName, setCustomName] = useState(displayName)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameValue, setRenameValue] = useState(displayName)
   // Open quote accordions
   const [openActionQuotes, setOpenActionQuotes] = useState<Record<number, boolean>>({})
   const [openWarningQuotes, setOpenWarningQuotes] = useState<Record<number, boolean>>({})
@@ -302,7 +327,11 @@ export default function ResultScreen({
   }, [])
 
   const toggleActionDone = (index: number) => {
-    setDoneActions((prev) => ({ ...prev, [index]: !prev[index] }))
+    setDoneActions((prev) => {
+      const done = { ...prev, [index]: !prev[index] }
+      emitActivity({ doneActions: done })
+      return done
+    })
   }
 
   const toggleActionQuote = (index: number) => {
@@ -355,6 +384,12 @@ export default function ResultScreen({
 
     const ics = generateIcs(events)
     downloadIcs(`action-${idx + 1}.ics`, ics)
+    const key = String(idx)
+    setRemindersAdded((prev) => {
+      const added = { ...prev, [key]: true }
+      emitActivity({ remindersAdded: added })
+      return added
+    })
   }
 
   const handleAddAllDates = async (onlyPicked = false) => {
@@ -388,6 +423,7 @@ export default function ResultScreen({
         const outcome = await shareIcsFile(filename, ics, result.title)
         if (outcome === 'shared') {
           setCalendarStatus('Calendar file shared successfully.')
+          markDatedReminders()
           return
         }
         // If cancelled or failed: skip step 2 and go straight to Reminders sheet
@@ -402,6 +438,19 @@ export default function ResultScreen({
     // Step 2: Download .ics file directly
     downloadIcs(filename, ics)
     setCalendarStatus('Calendar file downloaded (.ics).')
+    markDatedReminders()
+  }
+
+  const markDatedReminders = () => {
+    const keys = (result.actions || [])
+      .map((act, idx) => (act.due_date || act.recurrence ? String(idx) : ''))
+      .filter(Boolean)
+    setRemindersAdded((prev) => {
+      const added = { ...prev }
+      for (const key of keys) added[key] = true
+      emitActivity({ remindersAdded: added })
+      return added
+    })
   }
 
   const handleCopyAllDatesText = async () => {
@@ -576,7 +625,7 @@ export default function ResultScreen({
                 key={card.id || i}
                 onClick={() => {
                   if (card.status === 'ready' && card.result) {
-                    setSelectedReportIndex(i)
+                    chooseReport(i)
                   }
                 }}
                 className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
@@ -673,7 +722,7 @@ export default function ResultScreen({
         {multiReports && multiReports.length > 1 && (
           <button
             type="button"
-            onClick={() => setSelectedReportIndex(null)}
+            onClick={() => chooseReport(null)}
             className="inline-flex items-center gap-1 text-xs font-semibold text-[#034F46] hover:underline"
           >
             <ChevronRightIcon className="w-4 h-4 rotate-180" />
@@ -758,6 +807,43 @@ export default function ResultScreen({
           </div>
         )}
 
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="m-0 text-[20px] font-bold leading-tight truncate flex-1">{customName || savedTitle || result.title}</h1>
+          {onRename && (
+            <button type="button" onClick={() => { setRenameValue(customName || result.title || ''); setRenameOpen(true) }} className="sv-press h-11 px-3 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-semibold shrink-0">
+              {t.rename || 'Rename'}
+            </button>
+          )}
+        </div>
+        <Sheet isOpen={renameOpen} onClose={() => setRenameOpen(false)} title={t.renameTitle || 'Rename this document'}>
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const next = renameValue.trim().slice(0, 60)
+              setCustomName(next)
+              onRename?.(next)
+              setRenameOpen(false)
+            }}
+          >
+            <input
+              value={renameValue}
+              maxLength={60}
+              onChange={(event) => setRenameValue(event.target.value.slice(0, 60))}
+              aria-label={t.renameTitle || 'Rename this document'}
+              className="h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-[16px]"
+            />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setRenameOpen(false)} className="sv-press h-12 flex-1 rounded-full border-[1.5px] border-[#1A1A1A] font-semibold">
+                {t.renameCancel || 'Cancel'}
+              </button>
+              <button type="submit" className="sv-press h-12 flex-1 rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] font-bold">
+                {t.renameSave || 'Save'}
+              </button>
+            </div>
+          </form>
+        </Sheet>
+
         <SummaryCard
           result={result}
           t={t}
@@ -785,7 +871,25 @@ export default function ResultScreen({
             </div>
           </section>
         )}
-        <BlockRenderer result={result} t={t} />
+        <BlockRenderer
+          result={result}
+          t={t}
+          medicine={{
+            saved: medicineActivity,
+            reminderAdded: !!remindersAdded.medicine,
+            onChange: (next) => {
+              setMedicineActivity(next)
+              emitActivity({ medicine: next })
+            },
+            onReminderAdded: () => {
+              setRemindersAdded((prev) => {
+                const added = { ...prev, medicine: true }
+                emitActivity({ remindersAdded: added })
+                return added
+              })
+            },
+          }}
+        />
 
         {/* 1. WHAT YOU NEED TO DO */}
         {result.actions && result.actions.length > 0 && (
@@ -896,11 +1000,11 @@ export default function ResultScreen({
                           {dateChips.showCalendar && (
                             <button
                               type="button"
-                              onClick={() => handleAddActionToCalendar(act, i)}
+                              onClick={() => { if (!remindersAdded[i]) handleAddActionToCalendar(act, i) }}
                               className="hit-44 btn-press text-[11px] font-semibold text-[#034F46] bg-[#CFE5E0] hover:bg-[#CFE5E0] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
                             >
                               <CalendarIcon className="w-3 h-3" />
-                              {t.addToCalendar || 'Add to calendar'}
+                              {remindersAdded[i] ? (t.added || 'Added') : (t.addToCalendar || 'Add to calendar')}
                             </button>
                           )}
 
@@ -941,6 +1045,18 @@ export default function ResultScreen({
                 )
               })}
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                const cleared = clearTicks(activityRef.current)
+                setDoneActions({})
+                emitActivity({ doneActions: {} })
+                void cleared
+              }}
+              className="self-start text-[13px] font-semibold text-[#575B58] underline"
+            >
+              {t.clearTicks || 'Clear ticks'}
+            </button>
 
             {upcomingActions.length > 0 && (
             <div className="pt-2 flex flex-col gap-1.5 border-t border-[#F0F0EB]">
@@ -1137,7 +1253,13 @@ export default function ResultScreen({
           {t.disclaimer ||
             'Sarvam explains your document. It does not replace your doctor, insurer or government office.'}
         </p>
-        <FeedbackBlock result={result} lang={contentLang} files={files} />
+        <FeedbackBlock
+          result={result}
+          lang={contentLang}
+          files={files}
+          initialRating={activity?.rating}
+          onRated={(rating) => emitActivity({ rating })}
+        />
       </div>
 
       {/* Frosted Bottom Action Bar (WEB-5) */}

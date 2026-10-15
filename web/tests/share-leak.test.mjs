@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildShare, emailShareUrl, redactResult, whatsAppShareUrl } from '../src/utils/shareCore.js'
+import { INSTITUTION_TERMS, buildShare, emailShareUrl, redactResult, whatsAppShareUrl } from '../src/utils/shareCore.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const resultsDir = join(here, '../public/samples/results')
@@ -65,7 +65,11 @@ function renderingsIn(result) {
   for (const forms of Object.values(rendered)) {
     const list = Array.isArray(forms) ? forms : [forms]
     for (const form of list) {
-      if (typeof form === 'string' && form.trim().length >= 2) found.add(form.trim())
+      if (typeof form !== 'string' || form.trim().length < 2) continue
+      const trimmed = form.trim()
+      const lower = trimmed.toLowerCase()
+      if (INSTITUTION_TERMS.some((inst) => lower.includes(inst))) continue
+      found.add(trimmed)
     }
   }
   const notAName = new Set(['prescription', 'report', 'bill', 'receipt', 'notice', 'letter', 'ప్రిస్క్రిప్షన్', 'నివేదిక', 'రసీదు', 'రిజిస్ట్రేషన్', 'సంఖ్య', 'மருந்துச்சீட்டு', 'அறிக்கை', 'पर्ची', 'रिपोर्ट'])
