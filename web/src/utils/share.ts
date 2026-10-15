@@ -22,6 +22,7 @@ import {
   buildShare as coreBuildShare,
   buildSharedText as coreBuildSharedText,
   redactResult as coreRedactResult,
+  collectBirthDateKeys as coreCollectBirthDateKeys,
   shareToWhatsApp as coreShareToWhatsApp,
   shareToEmail as coreShareToEmail,
   copyToClipboard as coreCopyToClipboard,
@@ -51,6 +52,7 @@ export const maskIdToken = coreMaskIdToken
 export const isPersonalField = coreIsPersonalField
 export const maskStringWithSegments = coreMaskStringWithSegments
 export const sanitizeProse = coreSanitizeProse
+export const collectBirthDateKeys = coreCollectBirthDateKeys
 export const getLocalisedDocTitle = coreGetLocalisedDocTitle
 
 export function buildShare(

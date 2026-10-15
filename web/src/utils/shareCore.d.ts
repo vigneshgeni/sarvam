@@ -12,9 +12,11 @@ export function isPersonalField(text: string, quote?: string, isPersonalExplicit
 export function maskStringWithSegments(
   input: string,
   protectedTerms?: string[],
-  lang?: string
+  lang?: string,
+  birthKeys?: Set<string>
 ): { text: string; segments: { text: string; masked: boolean }[] }
-export function sanitizeProse(text: string, protectedTerms?: string[], lang?: string): string
+export function sanitizeProse(text: string, protectedTerms?: string[], lang?: string, birthKeys?: Set<string>): string
+export function collectBirthDateKeys(result: unknown): Set<string>
 export function getLocalisedDocTitle(docType: string, lang?: string): string
 export function buildShare(
   result: any,

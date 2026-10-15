@@ -258,7 +258,88 @@ export const KNOWN_PERSONAL_NAMES = [
   'रवि',
 ]
 
-export function maskStringWithSegments(input, protectedTerms = [], lang) {
+const BIRTH_DATE_SOURCE =
+  String.raw`(?:\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}|[0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{2,4})`
+const BIRTH_LABEL_SOURCE =
+  String.raw`date\s+of\s+birth|birth\s*date|d\.o\.b\.|dob|born(?:\s+on)?|जन्म\s*तिथि|जन्मतिथि|जन्म\s*की\s*तारीख|பிறந்த\s*தேதி|பிறந்தநாள்`
+const INDIC_DIGITS = '०१२३४५६७८९௦௧௨௩௪௫௬௭௮௯'
+const MONTH_NUMBERS = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+}
+
+function foldDigits(text) {
+  return String(text).replace(/[०-९௦-௯]/g, (ch) => String(INDIC_DIGITS.indexOf(ch) % 10))
+}
+
+function expandYear(year) {
+  const value = Number(year)
+  if (String(year).length === 2) return value >= 50 ? 1900 + value : 2000 + value
+  return value
+}
+
+function calendarKey(year, month, day) {
+  const y = Number(year)
+  const m = Number(month)
+  const d = Number(day)
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+export function dateKey(token) {
+  const text = foldDigits(token).trim()
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) return calendarKey(iso[1], iso[2], iso[3])
+  const numeric = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/)
+  if (numeric) return calendarKey(expandYear(numeric[3]), numeric[2], numeric[1])
+  const dayMonth = text.match(/^(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+([A-Za-z]+)[\s./-]+(\d{2,4})$/i)
+  if (dayMonth) {
+    const month = MONTH_NUMBERS[dayMonth[2].toLowerCase()] || MONTH_NUMBERS[dayMonth[2].slice(0, 3).toLowerCase()]
+    if (!month) return null
+    return calendarKey(expandYear(dayMonth[3]), month, dayMonth[1])
+  }
+  const monthDay = text.match(/^([A-Za-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/i)
+  if (monthDay) {
+    const month = MONTH_NUMBERS[monthDay[1].toLowerCase()] || MONTH_NUMBERS[monthDay[1].slice(0, 3).toLowerCase()]
+    if (!month) return null
+    return calendarKey(monthDay[3], month, monthDay[2])
+  }
+  return null
+}
+
+export function birthDateKeysInText(input) {
+  const keys = new Set()
+  if (!input) return keys
+  const labeled = new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${BIRTH_LABEL_SOURCE})(?![\\p{L}\\p{N}])([^\\n.।]{0,60}?)(${BIRTH_DATE_SOURCE})`,
+    'giu'
+  )
+  let match
+  while ((match = labeled.exec(input)) !== null) {
+    const key = dateKey(match[2])
+    if (key) keys.add(key)
+  }
+  return keys
+}
+
+export function collectBirthDateKeys(result) {
+  const keys = new Set()
+  const visit = (value) => {
+    if (!value) return
+    if (typeof value === 'string') {
+      for (const key of birthDateKeysInText(value)) keys.add(key)
+      return
+    }
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+    if (typeof value === 'object') Object.values(value).forEach(visit)
+  }
+  visit(result)
+  return keys
+}
+
+export function maskStringWithSegments(input, protectedTerms = [], lang, birthKeys) {
   if (!input) return { text: '', segments: [] }
 
   const hiddenLabel = getHiddenLabel(lang)
@@ -341,6 +422,23 @@ export function maskStringWithSegments(input, protectedTerms = [], lang) {
     }
   }
 
+  const localBirthKeys = new Set(birthKeys || [])
+  const labeledBirth = new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${BIRTH_LABEL_SOURCE})(?![\\p{L}\\p{N}])([^\\n.।]{0,60}?)(${BIRTH_DATE_SOURCE})`,
+    'giu'
+  )
+  while ((match = labeledBirth.exec(input)) !== null) {
+    const key = dateKey(match[2])
+    if (key) localBirthKeys.add(key)
+    const dateStart = match.index + match[0].length - match[2].length
+    addReplacement(dateStart, dateStart + match[2].length, hiddenLabel)
+  }
+  const anyDate = new RegExp(BIRTH_DATE_SOURCE, 'giu')
+  while ((match = anyDate.exec(input)) !== null) {
+    const key = dateKey(match[0])
+    if (key && localBirthKeys.has(key)) addReplacement(match.index, match.index + match[0].length, hiddenLabel)
+  }
+
   // 5. Personal Names
   const allNames = [...KNOWN_PERSONAL_NAMES]
   for (const term of protectedTerms) {
@@ -402,9 +500,9 @@ export function maskStringWithSegments(input, protectedTerms = [], lang) {
   return { text, segments }
 }
 
-export function sanitizeProse(text, protectedTerms = [], lang) {
+export function sanitizeProse(text, protectedTerms = [], lang, birthKeys) {
   if (!text) return ''
-  return maskStringWithSegments(text, protectedTerms, lang).text
+  return maskStringWithSegments(text, protectedTerms, lang, birthKeys).text
 }
 
 export function getLocalisedDocTitle(docType, lang) {
@@ -450,6 +548,7 @@ export function buildShare(result, options = { hidePersonal: false }) {
   const hidePersonal = !!options.hidePersonal
   const lang = options.lang || result.language || 'en'
   const protectedTerms = result.protected_terms || []
+  const birthKeys = hidePersonal ? collectBirthDateKeys(result) : null
 
   const segments = []
   const pushSegment = (text, masked = false) => {
@@ -457,7 +556,7 @@ export function buildShare(result, options = { hidePersonal: false }) {
   }
   const pushMaskedProse = (prose) => {
     if (hidePersonal) {
-      const res = maskStringWithSegments(prose, protectedTerms, lang)
+      const res = maskStringWithSegments(prose, protectedTerms, lang, birthKeys)
       res.segments.forEach((s) => segments.push(s))
     } else {
       pushSegment(prose, false)
@@ -608,7 +707,10 @@ export function buildShare(result, options = { hidePersonal: false }) {
           pushMaskedProse(sec.title || sec.heading || '')
           pushSegment(':\n')
           sec.values?.forEach((val) => {
-            pushSegment(`• ${val.name}: ${val.value}`)
+            pushSegment('• ')
+            pushMaskedProse(val.name || '')
+            pushSegment(': ')
+            pushMaskedProse(val.value == null ? '' : String(val.value))
             if (val.unit) pushSegment(` ${val.unit}`)
             if (val.range) pushSegment(` (${val.range})`)
             if (val.flag) pushSegment(` ${val.flag}`)
@@ -634,13 +736,15 @@ export function redactResult(result, options = { hidePersonal: false }) {
 
   const lang = options.lang || cloned.language || 'en'
   const protectedTerms = cloned.protected_terms || []
+  const birthKeys = collectBirthDateKeys(cloned)
 
   const mask = (str) => {
     if (!str) return str || ''
-    return sanitizeProse(str, protectedTerms, lang)
+    return sanitizeProse(str, protectedTerms, lang, birthKeys)
   }
 
   cloned.title = mask(cloned.title)
+  if (cloned.source_text) cloned.source_text = mask(cloned.source_text)
   if (cloned.report_title) cloned.report_title = mask(cloned.report_title)
   if (cloned.spoken_summary) cloned.spoken_summary = mask(cloned.spoken_summary)
 
@@ -711,7 +815,11 @@ export function redactResult(result, options = { hidePersonal: false }) {
       sections: part.sections ? part.sections.map((sec) => ({
         ...sec,
         title: mask(sec.title),
-        values: sec.values?.map((v) => ({ ...v })),
+        values: sec.values?.map((v) => ({
+          ...v,
+          name: mask(v.name),
+          value: v.value == null ? v.value : mask(String(v.value)),
+        })),
       })) : undefined,
     }))
   }
@@ -721,7 +829,11 @@ export function redactResult(result, options = { hidePersonal: false }) {
       ...sec,
       title: mask(sec.title),
       heading: mask(sec.heading),
-      values: sec.values?.map((v) => ({ ...v })),
+      values: sec.values?.map((v) => ({
+        ...v,
+        name: mask(v.name),
+        value: v.value == null ? v.value : mask(String(v.value)),
+      })),
     }))
   }
 

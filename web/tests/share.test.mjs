@@ -93,6 +93,54 @@ test('1A Mask format - Home addresses and dates of birth -> [hidden] (localised)
   assert.ok(resTa.text.includes('[மறைக்கப்பட்டது]'))
 })
 
+test('a date of birth in a sentence is hidden and an ordinary date stays', () => {
+  const prose =
+    'The date of birth is 15 June 1992. DOB: 15/06/1992. She was born on 15th June 1992. Submit the form by 30 November 2026.'
+  const hidden = maskStringWithSegments(prose, [], 'en')
+  assert.equal(hidden.text.includes('15 June 1992'), false)
+  assert.equal(hidden.text.includes('15/06/1992'), false)
+  assert.equal(hidden.text.includes('15th June 1992'), false)
+  assert.ok(hidden.text.includes('[hidden]'))
+  assert.ok(hidden.text.includes('30 November 2026'))
+
+  const consumer = maskStringWithSegments('Date of birth of the consumer is 15 June 1992. Pay by 30 November 2026.', [], 'en')
+  assert.equal(consumer.text.includes('15 June 1992'), false)
+  assert.ok(consumer.text.includes('30 November 2026'))
+
+  const missed = maskStringWithSegments('Date of birth is not printed. Pay by 12 March 2026.', [], 'en')
+  assert.ok(missed.text.includes('12 March 2026'))
+
+  const hindi = maskStringWithSegments('जन्म तिथि: 15/06/1992', [], 'hi')
+  assert.equal(hindi.text.includes('15/06/1992'), false)
+  assert.ok(hindi.text.includes('[छिपाया गया]'))
+
+  const tamil = maskStringWithSegments('பிறந்த தேதி: 15/06/1992', [], 'ta')
+  assert.equal(tamil.text.includes('15/06/1992'), false)
+  assert.ok(tamil.text.includes('[மறைக்கப்பட்டது]'))
+
+  const shared = buildShare(
+    {
+      title: 'KYC form',
+      doc_type: 'other',
+      summary: ['The payment date is 15 June 1992. The appointment is on 12 March 2026.'],
+      facts: [{ text: 'Date of birth of the consumer is 15/06/1992.' }],
+      source_text: 'Date of Birth: 15/06/1992',
+    },
+    { hidePersonal: true, lang: 'en' }
+  )
+  assert.equal(shared.text.includes('15 June 1992'), false)
+  assert.equal(shared.text.includes('15/06/1992'), false)
+  assert.ok(shared.text.includes('[hidden]'))
+  assert.ok(shared.text.includes('12 March 2026'))
+  assert.equal(shared.text.includes('Date of Birth: 15/06/1992'), false)
+
+  const open = buildShare(
+    { title: 'KYC form', doc_type: 'other', summary: ['Date of birth: 04-Aug-1990.'] },
+    { hidePersonal: false, lang: 'en' }
+  )
+  assert.ok(open.text.includes('04-Aug-1990'))
+})
+
 // --- All 11 sample fixtures (fictional) ---
 
 const sampleInsurance = {
