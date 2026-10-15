@@ -295,17 +295,40 @@ export const KNOWN_PERSONAL_NAMES = [
   'रवि',
 ]
 
+const NATIVE_DIGIT = String.raw`[0-9०-९০-৯୦-୯௦-௯౦-౯೦-೯൦-൯]`
+const EN_BIRTH_DATE =
+  String.raw`\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}`
+// Gregorian month names in the nine share languages. Longest first so a short name is not taken from a longer one.
+const INDIC_MONTHS = [
+  ['सितम्बर', 9], ['सितंबर', 9], ['अक्टूबर', 10], ['अक्तूबर', 10], ['नवम्बर', 11], ['नवंबर', 11], ['दिसम्बर', 12], ['दिसंबर', 12],
+  ['जनवरी', 1], ['फ़रवरी', 2], ['फरवरी', 2], ['मार्च', 3], ['अप्रैल', 4], ['जुलाई', 7], ['अगस्त', 8], ['मई', 5], ['जून', 6],
+  ['जानेवारी', 1], ['फेब्रुवारी', 2], ['नोव्हेंबर', 11], ['सप्टेंबर', 9], ['ऑक्टोबर', 10], ['डिसेंबर', 12], ['एप्रिल', 4], ['ऑगस्ट', 8], ['जुलै', 7], ['मे', 5],
+  ['பிப்ரவரி', 2], ['செப்டம்பர்', 9], ['அக்டோபர்', 10], ['நவம்பர்', 11], ['டிசம்பர்', 12], ['ஜனவரி', 1], ['ஏப்ரல்', 4], ['ஜூலை', 7], ['ஆகஸ்ட்', 8], ['மார்ச்', 3], ['ஜூன்', 6], ['மே', 5],
+  ['ఫిబ్రవరి', 2], ['సెప్టెంబర్', 9], ['అక్టోబర్', 10], ['నవంబర్', 11], ['డిసెంబర్', 12], ['జనవరి', 1], ['ఏప్రిల్', 4], ['ఆగస్టు', 8], ['మార్చి', 3], ['జూలై', 7], ['జూన్', 6], ['మే', 5],
+  ['ഫെബ്രുവരി', 2], ['സെപ്റ്റംബർ', 9], ['ഒക്ടോബർ', 10], ['നവംബർ', 11], ['ഡിസംബർ', 12], ['ജനുവരി', 1], ['ഏപ്രിൽ', 4], ['ഓഗസ്റ്റ്', 8], ['മാർച്ച്', 3], ['ജൂലൈ', 7], ['ജൂൺ', 6], ['മേയ്', 5],
+  ['ಫೆಬ್ರವರಿ', 2], ['ಸೆಪ್ಟೆಂಬರ್', 9], ['ಅಕ್ಟೋಬರ್', 10], ['ನವೆಂಬರ್', 11], ['ಡಿಸೆಂಬರ್', 12], ['ಜನವರಿ', 1], ['ಏಪ್ರಿಲ್', 4], ['ಆಗಸ್ಟ್', 8], ['ಮಾರ್ಚ್', 3], ['ಜುಲೈ', 7], ['ಜೂನ್', 6], ['ಮೇ', 5],
+  ['ফেব্রুয়ারি', 2], ['ফেব্রুয়ারি', 2], ['সেপ্টেম্বর', 9], ['অক্টোবর', 10], ['নভেম্বর', 11], ['ডিসেম্বর', 12], ['জানুয়ারি', 1], ['জানুয়ারি', 1], ['এপ্রিল', 4], ['আগস্ট', 8], ['জুলাই', 7], ['মার্চ', 3], ['জুন', 6], ['মে', 5],
+  ['ଫେବୃଆରୀ', 2], ['ସେପ୍ଟେମ୍ବର', 9], ['ଅକ୍ଟୋବର', 10], ['ନଭେମ୍ବର', 11], ['ଡିସେମ୍ବର', 12], ['ଜାନୁଆରୀ', 1], ['ମାର୍ଚ୍ଚ', 3], ['ଏପ୍ରିଲ', 4], ['ଜୁଲାଇ', 7], ['ଅଗଷ୍ଟ', 8], ['ଜୁନ', 6], ['ମଇ', 5],
+]
+const INDIC_MONTH_NUMBERS = Object.fromEntries(INDIC_MONTHS)
+const INDIC_MONTH_SOURCE = [...INDIC_MONTHS]
+  .map(([name]) => name)
+  .sort((a, b) => b.length - a.length)
+  .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|')
 const BIRTH_DATE_SOURCE =
-  String.raw`(?:\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}|[0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{2,4})`
+  `(?:${EN_BIRTH_DATE}|${NATIVE_DIGIT}{1,2}[\\s./-]+(?:${INDIC_MONTH_SOURCE})[\\s,./-]+${NATIVE_DIGIT}{2,4}|${NATIVE_DIGIT}{1,2}[./-]${NATIVE_DIGIT}{1,2}[./-]${NATIVE_DIGIT}{2,4})`
 const BIRTH_LABEL_SOURCE =
-  String.raw`date\s+of\s+birth|birth\s*date|d\.o\.b\.|dob|born(?:\s+on)?|जन्म\s*तिथि|जन्मतिथि|जन्म\s*की\s*तारीख|जन्म\s*तारीख|பிறந்த\s*தேதி|பிறந்தநாள்|పుట్టిన\s*తేదీ|పుట్టిన\s*తేది|ജനനത്തീയതി|ജനന\s*തീയതി|ಹುಟ್ಟಿದ\s*ದಿನಾಂಕ|ಜನ್ಮ\s*ದಿನಾಂಕ|জন্ম\s*তারিখ|ଜନ୍ମ\s*ତାରିଖ`
-const INDIC_DIGITS = '०१२३४५६७८९௦௧௨௩௪௫௬௭௮௯'
+  String.raw`date\s+of\s+birth|birth\s*date|d\.o\.b\.|dob|born(?:\s+on)?|जन्म\s*तिथि|जन्मतिथि|जन्म\s*की\s*तारीख|जन्म\s*तारीख|जन्म\s*दिनांक|பிறந்த\s*தேதி|பிறந்த\s*நாள்|పుట్టిన\s*తేదీ|పుట్టిన\s*తేది|జన్మ\s*తేదీ|జన్మ\s*తేది|జన్మ\s*దినం|ജനനത്തീയതി|ജനന\s*തീയതി|ജനന\s*തിയതി|ಹುಟ್ಟಿದ\s*ದಿನಾಂಕ|ಜನ್ಮ\s*ದಿನಾಂಕ|ಜನನ\s*ದಿನಾಂಕ|জন্ম\s*তারিখ|জন্ম\s*দিন|ଜନ୍ମ\s*ତାରିଖ|ଜନ୍ମ\s*ତିଥି`
 const MONTH_NUMBERS = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
 }
 
 function foldDigits(text) {
-  return String(text).replace(/[०-९௦-௯]/g, (ch) => String(INDIC_DIGITS.indexOf(ch) % 10))
+  return String(text).replace(
+    /[\u0966-\u096F\u09E6-\u09EF\u0B66-\u0B6F\u0BE6-\u0BEF\u0C66-\u0C6F\u0CE6-\u0CEF\u0D66-\u0D6F]/g,
+    (ch) => String((ch.codePointAt(0) & 0xf) - 6),
+  )
 }
 
 function expandYear(year) {
@@ -339,6 +362,11 @@ export function dateKey(token) {
     const month = MONTH_NUMBERS[monthDay[1].toLowerCase()] || MONTH_NUMBERS[monthDay[1].slice(0, 3).toLowerCase()]
     if (!month) return null
     return calendarKey(monthDay[3], month, monthDay[2])
+  }
+  const indicDay = text.match(/^(\d{1,2})[\s./-]+(.+?)[\s,./-]+(\d{2,4})$/u)
+  if (indicDay) {
+    const month = INDIC_MONTH_NUMBERS[indicDay[2]]
+    if (month) return calendarKey(expandYear(indicDay[3]), month, indicDay[1])
   }
   return null
 }

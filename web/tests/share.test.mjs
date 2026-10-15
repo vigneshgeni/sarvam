@@ -170,6 +170,71 @@ test('birth labels in the other six languages hide the date', () => {
   assert.equal(shared.text.includes('15/06/1992'), false)
 })
 
+test('birth label variants hide a month-name date, native digits, and leave a later date', () => {
+  const cases = [
+    ['hi', 'जन्म दिनांक: 14 मार्च 1971. अगली तारीख 30 नवंबर 2026.', '14 मार्च 1971', '30 नवंबर 2026'],
+    ['mr', 'जन्मदिनांक: 14 मार्च 1971. भरणा 30 November 2026.', '14 मार्च 1971', '30 November 2026'],
+    ['te', 'జన్మ తేదీ: 14 మార్చి 1971. చెల్లింపు 30 November 2026.', '14 మార్చి 1971', '30 November 2026'],
+    ['te', 'జన్మదినం: 14/03/1971. చెల్లింపు 30 November 2026.', '14/03/1971', '30 November 2026'],
+    ['ta', 'பிறந்த நாள்: 14 மார்ச் 1971. கட்டணம் 30 November 2026.', '14 மார்ச் 1971', '30 November 2026'],
+    ['ml', 'ജനന തിയതി: 14 മാർച്ച് 1971. അവസാനം 30 November 2026.', '14 മാർച്ച് 1971', '30 November 2026'],
+    ['kn', 'ಜನನ ದಿನಾಂಕ: 14 ಮಾರ್ಚ್ 1971. ಪಾವತಿ 30 November 2026.', '14 ಮಾರ್ಚ್ 1971', '30 November 2026'],
+    ['bn', 'জন্মদিন: ১৪ মার্চ ১৯৭১. পরিশোধ 30 November 2026.', '১৪ মার্চ ১৯৭১', '30 November 2026'],
+    ['or', 'ଜନ୍ମ ତିଥି: 14 ମାର୍ଚ୍ଚ 1971. ଦେୟ 30 November 2026.', '14 ମାର୍ଚ୍ଚ 1971', '30 November 2026'],
+  ]
+  for (const [lang, prose, secret, kept] of cases) {
+    const hidden = sanitizeProse(prose, [], lang)
+    assert.equal(hidden.includes(secret), false, prose)
+    assert.ok(hidden.includes(kept), prose)
+    assert.ok(hidden.includes(getHiddenLabel(lang)), lang)
+  }
+
+  const restated = sanitizeProse(
+    'பிறந்த தேதி: 14/03/1971. நாள் 14 மார்ச் 1971. கட்டணம் 30 November 2026.',
+    [],
+    'ta',
+  )
+  assert.equal(restated.includes('14/03/1971'), false)
+  assert.equal(restated.includes('14 மார்ச் 1971'), false)
+  assert.ok(restated.includes('30 November 2026'))
+
+  const hindiMonth = sanitizeProse(
+    'जन्म तिथि: 14/03/1971. फिर 14 मार्च 1971. भुगतान 30 नवंबर 2026.',
+    [],
+    'hi',
+  )
+  assert.equal(hindiMonth.includes('14/03/1971'), false)
+  assert.equal(hindiMonth.includes('14 मार्च 1971'), false)
+  assert.ok(hindiMonth.includes('30 नवंबर 2026'))
+
+  const bengaliDigits = sanitizeProse(
+    'জন্ম তারিখ: 14/03/1971. আবার ১৪/০৩/১৯৭১ এবং ১৪ মার্চ ১৯৭১. পরিশোধ 30 November 2026.',
+    [],
+    'bn',
+  )
+  assert.equal(bengaliDigits.includes('14/03/1971'), false)
+  assert.equal(bengaliDigits.includes('১৪/০৩/১৯৭১'), false)
+  assert.equal(bengaliDigits.includes('১৪ মার্চ ১৯৭১'), false)
+  assert.ok(bengaliDigits.includes('30 November 2026'))
+
+  const nativeZeros = { te: 0x0c66, ml: 0x0d66, kn: 0x0ce6, or: 0x0b66, ta: 0x0be6, hi: 0x0966 }
+  const nativeLabels = {
+    te: 'పుట్టిన తేదీ',
+    ml: 'ജനനത്തീയതി',
+    kn: 'ಹುಟ್ಟಿದ ದಿನಾಂಕ',
+    or: 'ଜନ୍ମ ତାରିଖ',
+    ta: 'பிறந்த தேதி',
+    hi: 'जन्म तिथि',
+  }
+  for (const [lang, zero] of Object.entries(nativeZeros)) {
+    const digits = '14/03/1971'.replace(/\d/g, (d) => String.fromCodePoint(zero + Number(d)))
+    const hidden = sanitizeProse(`${nativeLabels[lang]}: 14/03/1971. ${digits}. Pay 30 November 2026.`, [], lang)
+    assert.equal(hidden.includes('14/03/1971'), false, lang)
+    assert.equal(hidden.includes(digits), false, lang)
+    assert.ok(hidden.includes('30 November 2026'), lang)
+  }
+})
+
 test('share hides a protected name, a dropped initial, and a rewritten name in every language', () => {
   const cases = [
     ['ta', 'பெயர்: ராவி. Dr. Menon வந்தார். தொகை 1,200.'],
