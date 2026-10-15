@@ -140,7 +140,7 @@ export default function SummaryCard({
   const allMatched = kvs.length > 0 && kvs.every((k) => k.evidence === 'matched')
 
   return (
-    <section id="sv-summary" className="sv-card-in border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-4">
+    <section id="sv-summary" data-export="summary" className="sv-card-in border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-1.5 h-8 pl-[5px] pr-3 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold" style={{ background: visual.bg, color: visual.ink }}>
           <span className="w-[22px] h-[22px] rounded-full bg-[#1A1A1A] flex items-center justify-center">

@@ -17,6 +17,7 @@ export function maskStringWithSegments(
 ): { text: string; segments: { text: string; masked: boolean }[] }
 export function sanitizeProse(text: string, protectedTerms?: string[], lang?: string, birthKeys?: Set<string>): string
 export function collectBirthDateKeys(result: unknown): Set<string>
+export function expandProtectedTerms(terms?: string[], rendered?: Record<string, string[] | string> | null): string[]
 export function getLocalisedDocTitle(docType: string, lang?: string): string
 export function buildShare(
   result: any,

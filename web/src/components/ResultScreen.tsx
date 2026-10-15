@@ -46,6 +46,8 @@ function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
   return 'PT9H'
 }
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { expandProtectedTerms } from '../utils/shareCore.js'
+import { prepareExportNode, exportHasHiddenPaint } from '../utils/shareImage.js'
 import { isSampleFile } from '../samples/loadSample'
 import { outputNeedsTranslation } from '../utils/languageMatch'
 import { pushBrowserHistory } from '../utils/history'
@@ -431,21 +433,36 @@ export default function ResultScreen({
 
   const handleSaveImage = async (allowed = photosGranted) => {
     if (!allowed) return
-    const source = document.getElementById(snapshotMode === 'summary' ? 'sv-summary' : 'sv-result')
+    const source = document.getElementById('sv-result')
     if (!source) {
       setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
       return
     }
     const width = Math.max(source.offsetWidth, 360)
     const host = document.createElement('div')
-    host.style.cssText = `position:fixed;left:0;top:0;width:${width}px;background:#F4F5F2;z-index:-1;pointer-events:none`
-    const node = source.cloneNode(true) as HTMLElement
+    host.style.cssText = `position:fixed;left:-12000px;top:0;width:${width}px;background:#F4F5F2;pointer-events:none`
+    const node = document.createElement('div')
     node.style.width = `${width}px`
     node.style.maxHeight = 'none'
     node.style.height = 'auto'
     node.style.overflow = 'visible'
+    node.style.background = '#F4F5F2'
+    node.style.display = 'flex'
+    node.style.flexDirection = 'column'
+    node.style.gap = '20px'
+    const pieces = snapshotMode === 'summary'
+      ? [...source.querySelectorAll('[data-export="summary"]')]
+      : [source]
+    if (!pieces.length) {
+      setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
+      return
+    }
+    for (const piece of pieces) node.appendChild(piece.cloneNode(true))
+    node.querySelectorAll('.fixed').forEach((el) => el.remove())
+    prepareExportNode(node)
+    if (exportHasHiddenPaint(node)) prepareExportNode(node)
     if (hidePersonal) {
-      const terms = result.protected_terms || []
+      const terms = expandProtectedTerms(result.protected_terms || [], result.protected_terms_rendered)
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
       const texts: Text[] = []
       let current = walker.nextNode()
@@ -463,6 +480,10 @@ export default function ResultScreen({
     try {
       const { toPng } = await import('html-to-image')
       await document.fonts.ready
+      await Promise.all([...node.querySelectorAll('img')].map((img) => {
+        const image = img as HTMLImageElement
+        return image.complete ? Promise.resolve() : image.decode().catch(() => undefined)
+      }))
       await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
       const height = Math.max(node.scrollHeight, node.offsetHeight, 200)
       const dataUrl = await toPng(node, {
@@ -742,7 +763,7 @@ export default function ResultScreen({
           layout={resolveProfile(result).glanceLayout}
         />
         {result.summary && result.summary.length > 0 && (
-          <section className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
+          <section data-export="summary" className="sv-card-in bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
                 <SparklesIcon className="w-5 h-5 text-[#E9B44C]" />
@@ -764,7 +785,7 @@ export default function ResultScreen({
 
         {/* 1. WHAT YOU NEED TO DO */}
         {result.actions && result.actions.length > 0 && (
-          <section className="sv-card-in bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3.5">
+          <section data-export="summary" className="sv-card-in bg-[#F4F5F2] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3.5">
             {/* Header with 28px icon tile & Progress Ring (WEB-5) */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="sv-display text-[25px] text-[#1A1A1A] m-0 whitespace-nowrap">
@@ -948,7 +969,7 @@ export default function ResultScreen({
 
         {/* 3. WATCH OUT */}
         {result.warnings && result.warnings.length > 0 && (
-          <section className="sv-card-in bg-[#D9603B] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3 text-[#1A1A1A]">
+          <section data-export="summary" className="sv-card-in bg-[#D9603B] border-[1.5px] border-[#1A1A1A] rounded-[32px] p-5 flex flex-col gap-3 text-[#1A1A1A]">
             <div className="flex items-start gap-3.5">
               <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center shrink-0">
                 <AlertTriangleIcon className="w-5 h-5 text-[#D9603B]" />
