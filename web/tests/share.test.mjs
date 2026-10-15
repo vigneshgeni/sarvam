@@ -141,6 +141,65 @@ test('a date of birth in a sentence is hidden and an ordinary date stays', () =>
   assert.ok(open.text.includes('04-Aug-1990'))
 })
 
+test('birth labels in the other six languages hide the date', () => {
+  const cases = [
+    ['te', 'పుట్టిన తేదీ: 15/06/1992. చెల్లింపు 30 November 2026.'],
+    ['ml', 'ജനനത്തീയതി: 15/06/1992. അവസാന തീയതി 30 November 2026.'],
+    ['kn', 'ಹುಟ್ಟಿದ ದಿನಾಂಕ: 15/06/1992. ಪಾವತಿ 30 November 2026.'],
+    ['mr', 'जन्मतारीख: 15/06/1992. भरणा 30 November 2026.'],
+    ['bn', 'জন্ম তারিখ: 15/06/1992. পরিশোধ 30 November 2026.'],
+    ['or', 'ଜନ୍ମ ତାରିଖ: 15/06/1992. ଦେୟ 30 November 2026.'],
+  ]
+  for (const [lang, prose] of cases) {
+    const hidden = maskStringWithSegments(prose, [], lang)
+    assert.equal(hidden.text.includes('15/06/1992'), false, lang)
+    assert.ok(hidden.text.includes('30 November 2026'), lang)
+  }
+
+  const shared = buildShare(
+    {
+      title: 'Form',
+      doc_type: 'other',
+      language: 'te',
+      summary: ['చెల్లింపు తేదీ 15 June 1992.'],
+      facts: [{ text: 'పుట్టిన తేదీ: 15/06/1992.' }],
+    },
+    { hidePersonal: true, lang: 'te' }
+  )
+  assert.equal(shared.text.includes('15 June 1992'), false)
+  assert.equal(shared.text.includes('15/06/1992'), false)
+})
+
+test('share hides a protected name, a dropped initial, and a rewritten name in every language', () => {
+  const cases = [
+    ['ta', 'பெயர்: ராவி. Dr. Menon வந்தார். தொகை 1,200.'],
+    ['hi', 'नाम: रवि. Dr. Menon आया. राशि 1,200.'],
+    ['te', 'పేరు: రవి గారు. Dr. Menon వచ్చారు. మొత్తం 1,200.'],
+    ['ml', 'പേര്: രവി. Dr. Menon വന്നു. തുക 1,200.'],
+    ['kn', 'ಹೆಸರು: ರವಿ ಅವರು. Dr. Menon ಬಂದರು. ಮೊತ್ತ 1,200.'],
+    ['mr', 'नाव: रवि. Dr. Menon आला. रक्कम 1,200.'],
+    ['bn', 'নাম: রবি. Dr. Menon এলেন. পরিমাণ 1,200.'],
+    ['or', 'ନାମ: ରବି. Dr. Menon ଆସିଲେ. ରାଶି 1,200.'],
+  ]
+  for (const [lang, prose] of cases) {
+    const hidden = maskStringWithSegments(prose, ['Mr. Ravi Kumar', 'Dr. K. Menon'], lang)
+    assert.equal(hidden.text.includes('Menon'), false, lang)
+    assert.equal(hidden.text.includes('1,200'), true, lang)
+    assert.equal(/ராவி|रवि|రవి|രവി|ರವಿ|রবি|ରବି/.test(hidden.text), false, lang)
+  }
+})
+
+test('tamil share hides a latin name in a tamil sentence and a transliterated name', () => {
+  const prose =
+    'பெயர் திரு. Ravi Kumar அவர்கள். Dr. Menon அவர்கள் பார்த்தார். ராவி குமார் அவர்கள் வந்தார். பணம் ரூ. 1,200.'
+  const hidden = maskStringWithSegments(prose, ['Mr. Ravi Kumar', 'Dr. K. Menon'], 'ta')
+  assert.equal(hidden.text.includes('Ravi Kumar'), false)
+  assert.equal(hidden.text.includes('Menon'), false)
+  assert.equal(hidden.text.includes('ராவி குமார்'), false)
+  assert.ok(hidden.text.includes('1,200'))
+  assert.ok(hidden.text.includes('R***'))
+})
+
 // --- All 11 sample fixtures (fictional) ---
 
 const sampleInsurance = {

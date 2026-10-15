@@ -87,6 +87,40 @@ export function maskPersonName(name) {
     .join('')
 }
 
+const PERSON_TITLE =
+  /^(?:mr|mrs|ms|miss|dr|shri|smt|sri|திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ)\.?$/i
+
+function personNameWords(term) {
+  if (!term || /\d|@/.test(term)) return []
+  const lower = term.toLowerCase()
+  if (INSTITUTION_TERMS.some((inst) => lower.includes(inst))) return []
+  if (/\b(road|street|nagar|cross|hospital|clinic|bank|court|dept|department|police|municipality|fund|diagnostics|ward|flat|door)\b/i.test(lower)) {
+    return []
+  }
+  return term.split(/\s+/).flatMap((word) => {
+    const bare = word.replace(/^\.+|\.+$/g, '')
+    if (bare.length < 3 || PERSON_TITLE.test(word) || PERSON_TITLE.test(bare)) return []
+    if (!/[A-Za-z\u0900-\u0D7F]/.test(bare)) return []
+    return [word]
+  })
+}
+
+function focusSpokenName(span) {
+  const parts = span.trim().split(/\s+/)
+  const start = parts.findIndex((part) => PERSON_TITLE.test(part) || /^[A-Z]/.test(part))
+  return (start >= 0 ? parts.slice(start) : parts.slice(-3)).join(' ')
+}
+
+function maskSpokenName(span) {
+  const title = span.match(
+    /^((?:திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ|Mr|Mrs|Ms|Dr|Smt|Shri|Sri)\.?\s+)([\s\S]+)$/i
+  )
+  if (!title) return maskPersonName(span)
+  const rest = title[2].trim()
+  if (!rest) return span
+  return `${title[1]}${maskPersonName(rest)}`
+}
+
 export function maskPhone(_phone) {
   return '**********'
 }
@@ -204,6 +238,9 @@ export function isPersonalField(text, quote, isPersonalExplicit) {
     /\b\d{10}\b/.test(text) ||
     /\b\d{2}\s*y\s*\/\s*[mf]\b/i.test(lower) ||
     /\b\d{2}\s*\/\s*[mf]\b/i.test(lower) ||
+    /\b(date of birth|birth date|d\.o\.b\.|dob|born on|जन्म\s*तिथि|जन्मतिथि|பிறந்த\s*தேதி)\b/i.test(
+      lower
+    ) ||
     /@\w+\.\w+/.test(text)
   ) {
     return true
@@ -261,7 +298,7 @@ export const KNOWN_PERSONAL_NAMES = [
 const BIRTH_DATE_SOURCE =
   String.raw`(?:\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}|[0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{1,2}[./-][0-9०-९௦-௯]{2,4})`
 const BIRTH_LABEL_SOURCE =
-  String.raw`date\s+of\s+birth|birth\s*date|d\.o\.b\.|dob|born(?:\s+on)?|जन्म\s*तिथि|जन्मतिथि|जन्म\s*की\s*तारीख|பிறந்த\s*தேதி|பிறந்தநாள்`
+  String.raw`date\s+of\s+birth|birth\s*date|d\.o\.b\.|dob|born(?:\s+on)?|जन्म\s*तिथि|जन्मतिथि|जन्म\s*की\s*तारीख|जन्म\s*तारीख|பிறந்த\s*தேதி|பிறந்தநாள்|పుట్టిన\s*తేదీ|పుట్టిన\s*తేది|ജനനത്തീയതി|ജനന\s*തീയതി|ಹುಟ್ಟಿದ\s*ದಿನಾಂಕ|ಜನ್ಮ\s*ದಿನಾಂಕ|জন্ম\s*তারিখ|ଜନ୍ମ\s*ତାରିଖ`
 const INDIC_DIGITS = '०१२३४५६७८९௦௧௨௩௪௫௬௭௮௯'
 const MONTH_NUMBERS = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
@@ -448,6 +485,9 @@ export function maskStringWithSegments(input, protectedTerms = [], lang, birthKe
     if (!isInst && !allNames.includes(term)) {
       allNames.push(term)
     }
+    for (const word of personNameWords(term)) {
+      if (!allNames.includes(word)) allNames.push(word)
+    }
   }
 
   allNames.sort((a, b) => b.length - a.length)
@@ -460,13 +500,36 @@ export function maskStringWithSegments(input, protectedTerms = [], lang, birthKe
       if (hasIndic) {
         regex = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![a-zA-Z0-9])`, 'gui')
       } else {
-        regex = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gui')
+        regex = new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'giu')
       }
     } catch {
       regex = new RegExp(`\\b${escaped}\\b`, 'gi')
     }
     while ((match = regex.exec(input)) !== null) {
       addReplacement(match.index, match.index + match[0].length, maskPersonName(match[0]))
+    }
+  }
+
+  const nameToken = String.raw`(?:[A-Za-z][A-Za-z.'’-]*|[\u0900-\u0D7F]+)`
+  const nameSpan = String.raw`${nameToken}(?:\s+${nameToken}){0,3}`
+  const nameTitle = String.raw`(?:திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ|श्रीमती|श्री|डॉ|శ్రీ|డాక్టర్|ശ്രീ|ഡോ|ಶ್ರೀ|ಡಾ|শ্রী|ডা|ଶ୍ରୀ|Mr|Mrs|Ms|Dr|Smt|Shri|Sri)\.?`
+  const nameLabel = String.raw`பெயர்|नाम|పేరు|പേര്|ಹೆಸರು|नाव|নাম|ନାମ`
+  const nameHonorific = String.raw`அவர்கள்|గారు|ಅವರು`
+  const spokenNameRes = [
+    new RegExp(`(${nameSpan})\\s+(?:${nameHonorific})`, 'gu'),
+    new RegExp(`(?:${nameLabel})\\s*:?\\s*(?:${nameTitle}\\s+)?(${nameSpan})`, 'gu'),
+  ]
+  for (const nameRe of spokenNameRes) {
+    let nameMatch
+    while ((nameMatch = nameRe.exec(input)) !== null) {
+      const spoken = focusSpokenName(nameMatch[1] || '')
+      if (!spoken || spoken.trim().length < 2) continue
+      if (/\d|@/.test(spoken)) continue
+      if (INSTITUTION_TERMS.some((inst) => spoken.toLowerCase().includes(inst))) continue
+      const at = nameMatch[0].indexOf(spoken)
+      if (at < 0) continue
+      const start = nameMatch.index + at
+      addReplacement(start, start + spoken.length, maskSpokenName(spoken))
     }
   }
 
@@ -841,21 +904,42 @@ export function redactResult(result, options = { hidePersonal: false }) {
     cloned.protected_terms = cloned.protected_terms.map((t) => mask(t))
   }
 
+  if (cloned.profile) {
+    const p = cloned.profile
+    const hideId = (value) => (value ? maskIdToken(value) : value)
+    p.invoice_no = hideId(p.invoice_no)
+    p.loan_account = hideId(p.loan_account)
+    p.folio = hideId(p.folio)
+    p.policy_no = hideId(p.policy_no)
+    p.referred_by = p.referred_by ? mask(p.referred_by) : p.referred_by
+    p.patient_age_sex = p.patient_age_sex ? mask(p.patient_age_sex) : p.patient_age_sex
+    if (Array.isArray(p.parties)) {
+      p.parties = p.parties.map((party) => ({ ...party, name: mask(party.name) }))
+    }
+  }
+
   return cloned
+}
+
+function openWithoutLeaving(url) {
+  if (typeof document === 'undefined') return
+  const link = document.createElement('a')
+  link.href = url
+  link.target = '_blank'
+  link.rel = 'noopener noreferrer'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
 }
 
 export function shareToWhatsApp(text) {
   const url = `https://wa.me/?text=${encodeURIComponent(text)}`
-  if (typeof window !== 'undefined' && window.open) {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
+  openWithoutLeaving(url)
 }
 
 export function shareToEmail(subject, text) {
   const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
-  if (typeof window !== 'undefined') {
-    window.location.href = url
-  }
+  openWithoutLeaving(url)
 }
 
 export async function copyToClipboard(text) {
