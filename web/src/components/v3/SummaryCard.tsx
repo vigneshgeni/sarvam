@@ -5,6 +5,7 @@ import { amountDue, isMoneyValue, pickGlance, visualForDocument, type GlanceKind
 import { assessLabValue, countOutside, titleCaseHeading, type LabAssessment } from '../../documents/labFlag'
 import { DocIcon } from '../../ui/icons'
 import { formatAmountValue } from '../../utils/currency'
+import FitText from './FitText'
 
 function amountNumber(value: string): number | null {
   const n = Number(value.replace(/[^\d.]/g, ''))
@@ -95,9 +96,11 @@ function DateTile({ iso }: { iso: string }) {
   const day = Number.isNaN(d.getTime()) ? iso : String(d.getDate())
   const year = Number.isNaN(d.getTime()) ? '' : String(d.getFullYear())
   return (
-    <div className="w-[92px] shrink-0 rounded-[22px] border-[1.5px] border-[#1A1A1A] bg-[#1A1A1A] text-[#F4F5F2] flex flex-col items-center py-3">
+    <div className="w-[92px] shrink-0 rounded-[22px] border-[1.5px] border-[#1A1A1A] bg-[#1A1A1A] text-[#F4F5F2] flex flex-col items-center py-3 px-1.5">
       <span className="text-[12px] font-bold tracking-[1px]">{month}</span>
-      <span className="sv-display text-[48px] leading-none tabular-nums">{day}</span>
+      <span className="sv-fit-box w-full">
+        <FitText text={day} max={48} min={18} className="text-center" />
+      </span>
       <span className="text-[13px] font-semibold text-[#D3D7D2]">{year}</span>
     </div>
   )
@@ -163,10 +166,12 @@ export default function SummaryCard({
         {headline}
       </h1>
       {paid.length > 0 && kind !== 'B' && (
-        <div className="rounded-[24px] bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
+        <div className="sv-fit-box rounded-[24px] bg-[#CFE5E0] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
           <span className="text-[12px] font-bold tracking-[1.2px]">{t.amountPaid || 'PAID'}</span>
           {paid.map((item) => (
-            <span key={item.label + item.value} className="sv-display text-[32px] leading-none tabular-nums">{formatAmountValue(item.value)}</span>
+            <span key={item.label + item.value} className="sv-fit-box">
+              <FitText text={formatAmountValue(item.value)} max={32} min={16} />
+            </span>
           ))}
         </div>
       )}
@@ -212,7 +217,9 @@ function SplitAmounts({
         {amounts.map((s, i) => (
           <div key={s.label + i} className={`flex flex-col gap-1.5 p-3 min-w-0 ${i > 0 ? 'border-l-[1.5px] border-[#1A1A1A]' : ''}`}>
             <span className="text-[12px] font-semibold text-[#3B3E3C] leading-tight">{s.label}</span>
-            <span className="sv-display text-[20px] leading-[1.1] tabular-nums break-words">{formatAmountValue(s.value)}</span>
+            <span className="sv-fit-box">
+              <FitText text={formatAmountValue(s.value)} max={20} min={12} />
+            </span>
           </div>
         ))}
       </div>
@@ -238,10 +245,12 @@ function AmountToPay({
   const date = dueIso ? formatChipDate(dueIso, lang) : null
   const figure = formatAmountValue(payable.value || amounts[0]?.value || '')
   return (
-    <div className="flex gap-3 min-w-0">
-      <div className="flex-1 min-w-0 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
+    <div className="flex gap-3 min-w-0 items-stretch">
+      <div className="sv-fit-box flex-1 rounded-[24px] bg-[#F8D9CB] border-[1.5px] border-[#1A1A1A] p-4 flex flex-col gap-1">
         <span className="text-[12px] font-bold tracking-[1.2px]">{t.toPay || 'TO PAY'}</span>
-        <span className="sv-display text-[44px] leading-none tabular-nums">{figure}</span>
+        <span className="sv-fit-box">
+          <FitText text={figure} max={44} min={16} />
+        </span>
         {date && (
           <span className="text-[14px] font-semibold break-words [overflow-wrap:anywhere]">
             {(t.byDate || 'by {date}').replace('{date}', date)}
@@ -317,9 +326,11 @@ function ValueTiles({
   return (
     <div className="grid grid-cols-2 gap-2.5">
       {kvs.slice(0, 4).map((kv, i) => (
-        <div key={kv.label + i} className={`rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3.5 flex flex-col gap-1 ${kv.kind === 'date' ? 'bg-[#CFE5E0]' : ''}`}>
+        <div key={kv.label + i} className={`min-w-0 overflow-hidden rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3.5 flex flex-col gap-1 ${kv.kind === 'date' ? 'bg-[#CFE5E0]' : ''}`}>
           <span className="text-[12px] font-semibold text-[#575B58]">{kv.label}</span>
-          <span className="sv-display text-[28px] leading-none">{kv.kind === 'amount' ? formatAmountValue(kv.value) : kv.value}</span>
+          <span className="sv-fit-box">
+            <FitText text={kv.kind === 'amount' ? formatAmountValue(kv.value) : kv.value} max={28} min={14} />
+          </span>
         </div>
       ))}
     </div>
@@ -350,7 +361,9 @@ function LabTile({
       {printedName && printedName !== label && (
         <span className="text-[11px] leading-snug text-[#575B58] break-words [overflow-wrap:anywhere]">{printedName}</span>
       )}
-      <span className="sv-display text-[26px] leading-none break-words [overflow-wrap:anywhere]">{value}</span>
+      <span className="sv-fit-box">
+        <FitText text={value} max={26} min={14} />
+      </span>
       {unit && <span className="text-[12px] font-semibold leading-snug break-words [overflow-wrap:anywhere]">{unit}</span>}
       {range && <span className="text-[12px] leading-snug text-[#575B58] break-words [overflow-wrap:anywhere]">{range}</span>}
       <FlagChips status={status} t={t} />
@@ -394,7 +407,9 @@ export function SectionedValues({ sections, t }: { sections: Section[]; t: Recor
                 <span className="block text-[14px] font-semibold">{v.label}</span>
                 <span className="block text-[12px] text-[#3B3E3C]">{v.heading} · page {v.page}</span>
               </span>
-              <span className="sv-display text-[22px] leading-none tabular-nums">{v.value}</span>
+              <span className="sv-fit-box max-w-[42%] shrink-0">
+                <FitText text={v.value} max={22} min={12} />
+              </span>
             </div>
           ))}
         </div>
@@ -453,7 +468,9 @@ function AmountStrip({
         {amounts.slice(0, 3).map((s, i, arr) => (
           <div key={s.label + i} className={`flex flex-col gap-1.5 p-3 min-w-0 ${i > 0 ? 'border-l-[1.5px] border-[#1A1A1A]' : ''} ${i === arr.length - 1 ? 'bg-[#E9B44C]' : ''}`}>
             <span className="text-[12px] font-semibold text-[#3B3E3C]">{s.label}</span>
-            <span className="sv-display text-[20px] leading-none tabular-nums">{formatAmountValue(s.value)}</span>
+            <span className="sv-fit-box">
+              <FitText text={formatAmountValue(s.value)} max={20} min={12} />
+            </span>
           </div>
         ))}
       </div>

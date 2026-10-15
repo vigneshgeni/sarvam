@@ -137,6 +137,21 @@
   border: 1.5px solid #1A1A1A;
   border-radius: 8px;
 }
+.sv-fit-box {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.sv-fit-figure {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+}
 .sv-card-in {
   animation: sv-fade-up 320ms cubic-bezier(.2, .8, .2, 1) both;
 }

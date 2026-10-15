@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import FitText from '../../components/v3/FitText'
 import type { ExplainResponse } from '../../types'
 import { downloadIcs, generateIcs, hashString } from '../../utils/ics'
 import { emiRrule, isUpcoming, noticeByDate } from '../reminders'
@@ -42,7 +43,11 @@ export function ItemsBlock({ result, t }: { result: ExplainResponse; t: Record<s
             <span className="block text-[15px] font-semibold">{item.description}</span>
             {item.qty && <span className="block text-[12px] text-[#575B58]">{item.qty}</span>}
           </span>
-          {item.amount && <span className="sv-display text-[18px] shrink-0">{item.amount}</span>}
+          {item.amount && (
+            <span className="sv-fit-box shrink-0 max-w-[46%]">
+              <FitText text={item.amount} max={18} min={12} />
+            </span>
+          )}
         </div>
       ))}
       {items.length > 5 && !open && (
@@ -119,9 +124,11 @@ export function LoanTermsBlock({ result, t }: { result: ExplainResponse; t: Reco
         {t.loanTerms || 'Loan terms'}<span className="text-[#D9603B]">.</span>
       </h2>
       {rows.map(([label, value]) => (
-        <div key={String(label)} className="flex justify-between gap-3 py-2 border-t border-[#E2E5E0]">
-          <span className="text-[14px] text-[#575B58]">{label}</span>
-          <span className="text-[15px] font-semibold text-right">{value}</span>
+        <div key={String(label)} className="flex justify-between items-center gap-3 py-2 border-t border-[#E2E5E0] min-w-0">
+          <span className="text-[14px] text-[#575B58] min-w-0">{label}</span>
+          <span className="sv-fit-box max-w-[58%]">
+            <FitText text={String(value)} max={15} min={12} className="text-right" />
+          </span>
         </div>
       ))}
     </section>
@@ -135,7 +142,9 @@ export function NextEmiBlock({ result, t }: { result: ExplainResponse; t: Record
   return (
     <section className="rounded-[32px] border-[1.5px] border-[#1A1A1A] bg-[#CFE5E0] p-5">
       <p className="m-0 text-[13px] font-bold tracking-[1px]">{t.nextEmi || 'NEXT EMI'}</p>
-      <h2 className="sv-display text-[32px] leading-none m-0 mt-2">{amount || when}</h2>
+      <div className="sv-fit-box mt-2">
+        <FitText text={amount || when || ''} max={32} min={16} />
+      </div>
       {when && amount && <p className="m-0 mt-2 text-[15px]">{when}</p>}
       {when && (
         <button
@@ -163,9 +172,11 @@ export function KeyTermsBlock({ result, t }: { result: ExplainResponse; t: Recor
   return (
     <section className="grid grid-cols-2 gap-2.5">
       {tiles.map(([label, value]) => (
-        <div key={String(label)} className="rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3.5">
+        <div key={String(label)} className="min-w-0 overflow-hidden rounded-[22px] border-[1.5px] border-[#1A1A1A] p-3.5">
           <span className="block text-[12px] font-semibold text-[#575B58]">{label}</span>
-          <span className="sv-display text-[22px] leading-none">{value}</span>
+          <span className="sv-fit-box">
+            <FitText text={String(value)} max={22} min={13} />
+          </span>
         </div>
       ))}
     </section>
