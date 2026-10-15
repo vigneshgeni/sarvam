@@ -335,9 +335,9 @@ export default function HomeScreen(props: HomeProps) {
             aria-pressed={dark}
             aria-label={dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
             onClick={() => applyDarkTheme(!dark)}
-            className="sv-press w-12 h-12 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center"
+            className="sv-press w-14 h-14 box-border rounded-full border-4 border-[#FBEBC4] bg-[#E9B44C] text-[#1A1A1A] flex items-center justify-center shadow-[0_0_0_2px_#1A1A1A]"
           >
-            {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
+            {dark ? <IconMoon size={26} /> : <IconSun size={26} />}
           </button>
         <button
           type="button"

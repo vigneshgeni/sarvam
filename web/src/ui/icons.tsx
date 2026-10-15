@@ -185,17 +185,17 @@ export function IconSpark(p: P) {
 
 export function IconSun(p: P) {
   return (
-    <Svg {...p} sw={p.sw ?? 2}>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21M5.4 5.4l1.3 1.3M17.3 17.3l1.3 1.3M18.6 5.4l-1.3 1.3M6.7 17.3l-1.3 1.3" />
+    <Svg {...p} sw={p.sw ?? 2.2}>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2.4v2.3M12 19.3v2.3M2.4 12h2.3M19.3 12h2.3M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" />
     </Svg>
   )
 }
 
 export function IconMoon(p: P) {
   return (
-    <Svg {...p} sw={p.sw ?? 2}>
-      <path d="M20 14.8A7.2 7.2 0 0 1 9.2 4 6.4 6.4 0 1 0 20 14.8z" />
+    <Svg {...p} sw={p.sw ?? 2.2}>
+      <path d="M16 3.6A7.2 7.2 0 1 0 20.4 15.8 5.8 5.8 0 0 1 16 3.6z" />
     </Svg>
   )
 }

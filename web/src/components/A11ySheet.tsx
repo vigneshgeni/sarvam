@@ -186,8 +186,10 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
           className="sv-press h-14 px-4 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-between text-[16px] font-bold"
         >
           <span className="inline-flex items-center gap-2.5">
-            {dark ? <IconSun size={20} /> : <IconMoon size={20} />}
-            {dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
+            <span className="w-9 h-9 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] flex items-center justify-center">
+              {dark ? <IconMoon size={18} /> : <IconSun size={18} />}
+            </span>
+            {dark ? (t.darkTheme || 'Dark') : (t.lightTheme || 'Light')}
           </span>
           <span className="text-[13px]">{dark ? (t.onWord || 'On') : (t.offWord || 'Off')}</span>
         </button>
