@@ -731,7 +731,7 @@ class AskResponse(BaseModel):
     quote: Optional[str] = None
     page: Optional[int] = None
     evidence: str = "none"  # matched | check_original | none
-    answered_from: str = "document"  # document | summary
+    answered_from: str = "document"  # document | summary | general
     not_found: bool = False
     language: str
 

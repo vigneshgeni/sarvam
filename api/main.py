@@ -1822,7 +1822,7 @@ async def transcribe(
     if not allowed:
         return make_error_response(429, "rate_limit", lang, headers={"Retry-After": str(retry_after)})
     content = await audio.read()
-    if not content or len(content) > 1_500_000:
+    if not content or len(content) > 2_000_000:
         return make_error_response(400, "invalid_file_type", lang, custom_message="Recording must be under 30 seconds.")
     mime_type = audio.content_type or "audio/webm"
     if mime_type not in ("audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a", "audio/mp4a-latm"):

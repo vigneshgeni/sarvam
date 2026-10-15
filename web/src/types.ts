@@ -274,7 +274,7 @@ export interface AskResponse {
   quote: string | null
   page: number | null
   evidence: 'matched' | 'check_original' | 'none'
-  answered_from: 'document' | 'summary'
+  answered_from: 'document' | 'summary' | 'general'
   not_found: boolean
   language: string
 }

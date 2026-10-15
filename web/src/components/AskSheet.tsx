@@ -3,7 +3,6 @@ import type { ExplainResponse, AskResponse, AskTurn } from '../types'
 import Sheet from './Sheet'
 import {
   MicIcon,
-  MicOffIcon,
   SendIcon,
   CloseIcon,
   PlayIcon,
@@ -48,6 +47,7 @@ export default function AskSheet({
   const recognitionRef = useRef<any>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const silenceTimerRef = useRef<number | null>(null)
+  const [recordSeconds, setRecordSeconds] = useState(0)
   const threadKey = resultId || `title:${result.title}`
 
   useEffect(() => {
@@ -110,7 +110,15 @@ export default function AskSheet({
     setIsListening(false)
   }
 
-  // Handle SpeechRecognition
+  useEffect(() => {
+    if (!isListening) {
+      setRecordSeconds(0)
+      return
+    }
+    const timer = window.setInterval(() => setRecordSeconds((seconds) => seconds + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [isListening])
+
   const handleToggleMic = async () => {
     setSpeechError(null)
 
@@ -119,92 +127,38 @@ export default function AskSheet({
       return
     }
 
-    const SpeechRec =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-    if (!SpeechRec) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const recorder = new MediaRecorder(stream)
-        const chunks: Blob[] = []
-        recorder.ondataavailable = (event) => {
-          if (event.data.size) chunks.push(event.data)
-        }
-        recorder.onstop = () => {
-          stream.getTracks().forEach((track) => track.stop())
-          const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
-          void transcribeAudio(blob, resolveLang(lang)).then((text) => {
-            if (text) setQuestion((prev) => (prev ? `${prev} ${text}` : text).slice(0, 500))
-          })
-          setIsListening(false)
-        }
-        recorderRef.current = recorder
-        recorder.start()
-        setIsListening(true)
-        window.setTimeout(() => {
-          if (recorder.state === 'recording') recorder.stop()
-        }, 30000)
-      } catch {
-        setSpeechError(t.micUnavailable || 'Microphone could not be started. You can still type.')
-      }
-      return
-    }
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const mimeOrder = ios ? ['audio/mp4', 'audio/webm'] : ['audio/webm', 'audio/mp4']
+    const mime = typeof MediaRecorder !== 'undefined'
+      ? mimeOrder.find((type) => MediaRecorder.isTypeSupported(type)) || ''
+      : ''
 
     try {
-      const recognition = new SpeechRec()
-      recognitionRef.current = recognition
-      recognition.continuous = false
-      recognition.interimResults = true
-
-      // Map language code to speech code (e.g. ta-IN, hi-IN, en-IN)
-      const concreteLang = resolveLang(lang)
-      const langSpeechCodes: Record<string, string> = {
-        ta: 'ta-IN',
-        hi: 'hi-IN',
-        en: 'en-IN',
-        te: 'te-IN',
-        ml: 'ml-IN',
-        kn: 'kn-IN',
-        mr: 'mr-IN',
-        bn: 'bn-IN',
-        or: 'or-IN',
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
+      const chunks: Blob[] = []
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data)
       }
-      recognition.lang = langSpeechCodes[concreteLang] || 'en-IN'
-
-      recognition.onstart = () => {
-        setIsListening(true)
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop())
+        const blob = new Blob(chunks, { type: recorder.mimeType || mime || 'audio/webm' })
+        void transcribeAudio(blob, resolveLang(lang)).then((text) => {
+          if (text) setQuestion((prev) => (prev ? `${prev} ${text}` : text).slice(0, 500))
+        }).catch(() => {
+          /* the person can still type */
+        })
+        setIsListening(false)
       }
-
-      recognition.onresult = (event: any) => {
-        let transcript = ''
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript
-        }
-        setQuestion(transcript.slice(0, 500))
-
-        // Reset silence timer
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-        silenceTimerRef.current = window.setTimeout(() => {
-          stopVoiceRecognition()
-        }, 3000)
-      }
-
-      recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech') {
-          setSpeechError(
-            'Microphone access denied or error. Try using your keyboard microphone.'
-          )
-        }
-        stopVoiceRecognition()
-      }
-
-      recognition.onend = () => {
-        stopVoiceRecognition()
-      }
-
-      recognition.start()
-    } catch {
-      setSpeechError('Microphone could not be started.')
+      recorderRef.current = recorder
+      recorder.start()
+      setIsListening(true)
+      window.setTimeout(() => {
+        if (recorder.state === 'recording') recorder.stop()
+      }, 30000)
+    } catch (err: any) {
+      const denied = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+      if (denied) setSpeechError(t.micDenied || 'Microphone permission is off. You can still type.')
       stopVoiceRecognition()
     }
   }
@@ -323,10 +277,10 @@ export default function AskSheet({
             <button
               type="button"
               onClick={() => void handleToggleMic()}
-              className={`w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#1A1A1A] text-[#F4F5F2]' : 'bg-[#D9603B] text-[#1A1A1A]'}`}
-              aria-label={isListening ? 'Stop listening' : 'Speak your question'}
+              className={`w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#D9603B] text-[#1A1A1A] animate-pulse' : 'bg-[#F4F5F2] text-[#1A1A1A]'}`}
+              aria-label={isListening ? (t.stopListening || 'Stop') : (t.speakQuestion || 'Speak your question')}
             >
-              {isListening ? <MicOffIcon className="w-5 h-5" /> : <MicIcon className="w-5 h-5" />}
+              {isListening ? <span className="font-mono text-[13px] font-bold">{recordSeconds}</span> : <MicIcon className="w-5 h-5" />}
             </button>
             <button
               type="button"
@@ -378,11 +332,14 @@ export default function AskSheet({
                       <span className="text-[12px] font-semibold text-[#575B58]">{t.askAnsweredFromSummary || 'Answering from the summary'}</span>
                     )}
                     <p className="m-0 text-[15.5px] leading-[1.45] text-[#1A1A1A] break-words">{turn.answer}</p>
-                    {turn.quote && (
+                    {turn.answered_from !== 'general' && turn.quote && (
                       <p className="m-0 text-[13px] text-[#3B3E3C]">“{turn.quote}”{turn.page ? ` · ${turn.page}` : ''}</p>
                     )}
                     <span className="flex gap-2 flex-wrap items-center">
-                      {!turn.not_found && (
+                      {turn.answered_from === 'general' && (
+                        <span className="text-[12.5px] font-semibold text-[#3B3E3C]">{t.askGeneral || 'General information, not from your document'}</span>
+                      )}
+                      {turn.answered_from !== 'general' && !turn.not_found && (
                       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold">
                         <CheckIcon className="w-3.5 h-3.5 text-[#034F46]" />
                         {turn.evidence === 'check_original'
