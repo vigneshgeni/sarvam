@@ -46,6 +46,7 @@ from evidence import (
     verify_translation_guard,
 )
 from medicines import process_medicines
+from redact import redact_personal
 from models import (
     DOCUMENT_TYPES,
     AskResponse,
@@ -68,6 +69,7 @@ from models import (
     TranslatePayload,
     TranslateRequest,
     TranslateWarningText,
+    RedactRequest,
 )
 import reader
 from reader import (
@@ -109,6 +111,7 @@ EXPLAIN_RATE_LIMIT = 20
 TRANSLATE_RATE_LIMIT = 30
 TTS_RATE_LIMIT = 60
 ASK_RATE_LIMIT = 20
+REDACT_RATE_LIMIT = 20
 RATE_LIMIT_WINDOW = 60.0  # seconds
 
 # Auto language allowlist
@@ -1792,4 +1795,50 @@ async def extract_text(
         return {"source_text": None}
     finally:
         EXTRACT_SEMAPHORE.release()
+
+
+@app.post("/api/redact")
+async def redact(request: Request, body: RedactRequest):
+    """Find personal details in text. Nothing is stored. The text is not logged."""
+    client_ip = get_client_ip(request)
+    allowed, retry_after = check_rate_limit("redact", client_ip, REDACT_RATE_LIMIT)
+    if not allowed:
+        return make_error_response(
+            429,
+            "rate_limit",
+            body.lang or "en",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    text = body.text or ""
+    if len(text) > 20000:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Text is too long.", "message_local": "Text is too long."},
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
+    if not text.strip():
+        logger.info("redact counts found=%d kept=%d", 0, 0)
+        return {"spans": []}
+
+    try:
+        await asyncio.wait_for(GEMINI_SEMAPHORE.acquire(), timeout=2.0)
+    except (asyncio.TimeoutError, TimeoutError):
+        return JSONResponse(
+            status_code=503,
+            content={"message": "Busy. Try again.", "message_local": "Busy. Try again."},
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
+    try:
+        spans = await run_in_threadpool(redact_personal, text, body.lang or "en")
+    except Exception as exc:
+        logger.info("redact status=error kind=%s", type(exc).__name__)
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Could not check privacy.", "message_local": "Could not check privacy."},
+            headers={"X-Content-Type-Options": "nosniff"},
+        )
+    finally:
+        GEMINI_SEMAPHORE.release()
+    return {"spans": spans}
 
