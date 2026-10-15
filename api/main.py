@@ -946,6 +946,7 @@ async def explain(
         unreadable_reason=None,
         source_text=("\n\n".join(pdf_pages_text) if pdf_pages_text else None),
         protected_terms=filter_protected_terms(reader_result.protected_terms),
+        protected_terms_rendered=reader_result.protected_terms_rendered or {},
     )
 
 
@@ -1094,12 +1095,14 @@ async def translate(
     )
 
     # Run Shrunk Translate in AnyIO thread pool so event loop remains unblocked
+    rendered_terms: dict = {}
     try:
         if (
             isinstance(translate_result_text, unittest.mock.MagicMock)
             or translate_result_text is not reader.translate_result_text
         ):
             translated_payload = await run_in_threadpool(translate_result_text, payload, body.lang, deadline)
+            rendered_terms = getattr(translated_payload, "protected_terms_rendered", None) or {}
             trans_title = translated_payload.title
             trans_report_title = translated_payload.report_title
             trans_summary = translated_payload.summary
@@ -1121,13 +1124,18 @@ async def translate(
                 )
                 else reader.translate_keyed_strings
             )
-            translated_dict = await run_in_threadpool(
+            translated_raw = await run_in_threadpool(
                 trans_fn,
                 strings_to_translate,
                 body.lang,
                 orig.protected_terms,
                 deadline,
             )
+            if isinstance(translated_raw, dict) and isinstance(translated_raw.get("strings"), dict):
+                translated_dict = translated_raw["strings"]
+                rendered_terms = translated_raw.get("protected_terms_rendered") or {}
+            else:
+                translated_dict = translated_raw or {}
             trans_title = translated_dict.get("title", orig.title)
             trans_report_title = translated_dict.get("report_title") if orig.report_title else None
             trans_summary = [
@@ -1463,6 +1471,7 @@ async def translate(
         unreadable_reason=trans_unreadable_reason if orig.unreadable_reason else None,
         source_text=orig.source_text,
         protected_terms=filter_protected_terms(orig.protected_terms),    # Copied by CODE
+        protected_terms_rendered=rendered_terms or {},
     )
 
 

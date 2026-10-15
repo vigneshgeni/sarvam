@@ -90,6 +90,19 @@ export function maskPersonName(name) {
 const PERSON_TITLE =
   /^(?:mr|mrs|ms|miss|dr|shri|smt|sri|திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ)\.?$/i
 
+const NAME_PARTICLE = /^(?:का|की|के|को|में|है|हैं|இன்|மற்றும்|గారి|ആണ്|ಆಗಿದೆ|आहे|এর|ଙ୍କ)$/
+
+const NOT_A_NAME = new Set([
+  'prescription', 'report', 'bill', 'receipt', 'notice', 'letter',
+  'ప్రిస్క్రిప్షన్', 'నివేదిక', 'రసీదు',
+  'மருந்துச்சீட்டு', 'அறிக்கை',
+  'पर्ची', 'रिपोर्ट',
+  'ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್',
+  'പ്രിസ്ക്രിപ്ഷൻ',
+  'প্রেসক্রিপশন',
+  'ପ୍ରେସକ୍ରିପସନ୍',
+])
+
 function personNameWords(term) {
   if (!term || /\d|@/.test(term)) return []
   const lower = term.toLowerCase()
@@ -106,9 +119,9 @@ function personNameWords(term) {
 }
 
 function focusSpokenName(span) {
-  const parts = span.trim().split(/\s+/)
-  const start = parts.findIndex((part) => PERSON_TITLE.test(part) || /^[A-Z]/.test(part))
-  return (start >= 0 ? parts.slice(start) : parts.slice(-3)).join(' ')
+  const parts = span.trim().split(/\s+/).filter((part) => !NAME_PARTICLE.test(part))
+  const start = parts.findIndex((part) => PERSON_TITLE.test(part) || /^[A-Z]/.test(part) || /[\u0900-\u0D7F]/.test(part))
+  return (start >= 0 ? parts.slice(start, start + 3) : parts.slice(0, 3)).join(' ')
 }
 
 function maskSpokenName(span) {
@@ -286,18 +299,25 @@ export const KNOWN_PERSONAL_NAMES = [
   'கமலா தேவி',
   'சுரேஷ் ராமன்',
   'ரவி',
+  'சுரேஷ் பாபு',
+  'லட்சுமி நாராயண்',
+  'மீனா சுப்பிரமணியம்',
   'रवि कुमार',
   'लक्ष्मी आर.',
   'डॉक्टर मीना',
   'मीना सुब्रमण्यन',
+  'मीना सुब्रमण्यम',
   'कमला देवी',
   'सुरेश रमन',
+  'सुरेश बाबू',
+  'लक्ष्मी नारायण',
+  'मीरा अय्यर',
   'रवि',
 ]
 
 const NATIVE_DIGIT = String.raw`[0-9०-९০-৯୦-୯௦-௯౦-౯೦-೯൦-൯]`
 const EN_BIRTH_DATE =
-  String.raw`\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}`
+  String.raw`\d{1,2}(?:st|nd|rd|th)?(?:\s+of)?[\s,./-]+(?:\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*)[\s,./-]+\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2}`
 // Gregorian month names in the nine share languages. Longest first so a short name is not taken from a longer one.
 const INDIC_MONTHS = [
   ['सितम्बर', 9], ['सितंबर', 9], ['अक्टूबर', 10], ['अक्तूबर', 10], ['नवम्बर', 11], ['नवंबर', 11], ['दिसम्बर', 12], ['दिसंबर', 12],
@@ -351,7 +371,7 @@ export function dateKey(token) {
   if (iso) return calendarKey(iso[1], iso[2], iso[3])
   const numeric = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/)
   if (numeric) return calendarKey(expandYear(numeric[3]), numeric[2], numeric[1])
-  const dayMonth = text.match(/^(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[\s./-]+([A-Za-z]+)[\s./-]+(\d{2,4})$/i)
+  const dayMonth = text.match(/^(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[\s,./-]+([A-Za-z]+)[\s,./-]+(\d{2,4})$/i)
   if (dayMonth) {
     const month = MONTH_NUMBERS[dayMonth[2].toLowerCase()] || MONTH_NUMBERS[dayMonth[2].slice(0, 3).toLowerCase()]
     if (!month) return null
@@ -539,13 +559,34 @@ export function maskStringWithSegments(input, protectedTerms = [], lang, birthKe
   }
 
   const nameToken = String.raw`(?:[A-Za-z][A-Za-z.'’-]*|[\u0900-\u0D7F]+)`
-  const nameSpan = String.raw`${nameToken}(?:\s+${nameToken}){0,3}`
+  const nameSpan = String.raw`${nameToken}(?:\s+${nameToken}){0,2}`
+  const nameAfterTitle = String.raw`(?<![\p{L}\p{N}])(?:Mrs|Mr|Ms|Dr|Shri|Smt|श्रीमती|सुश्री|कुमारी|श्री|डॉ|திருமதி|திரு|செல்வி|டாக்டர்|శ్రీమతి|శ్రీ|కుమారి|డాక్టర్|ശ്രീമതി|ശ്രീ|കുമാരി|ഡോ|ಶ್ರೀಮತಿ|ಶ್ರೀ|ಕುಮಾರಿ|ಡಾ|শ্রীমতী|শ্রী|কুমারী|ডা|ଶ୍ରୀମତୀ|ଶ୍ରୀ|କୁମାରୀ|ଡା)\.?\s+(${nameToken}(?:\s+${nameToken}){0,2})`
+  const titledName = new RegExp(nameAfterTitle, 'gu')
+  let titleMatch
+  while ((titleMatch = titledName.exec(input)) !== null) {
+    const parts = (titleMatch[1] || '').trim().split(/\s+/).slice(0, 3)
+    const kept = []
+    for (const part of parts) {
+      if (NAME_PARTICLE.test(part)) break
+      if (/[\u0900-\u0D7F]/.test(part) || /^[A-Z][A-Za-z.'’-]*$/.test(part)) kept.push(part)
+      else break
+    }
+    if (kept.length === 0 || NOT_A_NAME.has(kept[0]) || NOT_A_NAME.has(kept[0].toLowerCase())) continue
+    if (/^(?:mr|mrs|ms|dr|shri|smt|sri)\.?$/i.test(kept[0])) continue
+    const spoken = kept.join(' ')
+    if (!spoken || spoken.trim().length < 2) continue
+    if (/\d|@/.test(spoken)) continue
+    if (INSTITUTION_TERMS.some((inst) => spoken.toLowerCase().includes(inst))) continue
+    const at = titleMatch[0].indexOf(spoken)
+    if (at < 0) continue
+    addReplacement(titleMatch.index + at, titleMatch.index + at + spoken.length, maskPersonName(spoken))
+  }
   const nameTitle = String.raw`(?:திருமதி|திரு|டாக்டர்|மருத்துவர்|ஸ்ரீ|श्रीमती|श्री|डॉ|శ్రీ|డాక్టర్|ശ്രീ|ഡോ|ಶ್ರೀ|ಡಾ|শ্রী|ডা|ଶ୍ରୀ|Mr|Mrs|Ms|Dr|Smt|Shri|Sri)\.?`
-  const nameLabel = String.raw`பெயர்|नाम|పేరు|പേര്|ಹೆಸರು|नाव|নাম|ନାମ`
+  const nameLabel = String.raw`patient(?:'s)?\s+name|name\s+of\s+(?:the\s+)?(?:patient|consumer|customer)|(?:रोगी|मरीज़|मरीज|ग्राहक)\s+का\s+नाम|நோயாளி(?:யின்)?\s+பெயர்|రోగి(?:\s+యొక్క)?\s+పేరు|രോഗിയുടെ\s+പേര്|ರೋಗಿಯ\s+ಹೆಸರು|रुग्णाचे\s+नाव|রোগীর\s+নাম|ରୋଗୀ(?:ଙ୍କ)?\s+ନାମ|பெயர்|नाम|పేరు|പേര്|ಹೆಸರು|नाव|নাম|ନାମ|name`
   const nameHonorific = String.raw`அவர்கள்|గారు|ಅವರು`
   const spokenNameRes = [
     new RegExp(`(${nameSpan})\\s+(?:${nameHonorific})`, 'gu'),
-    new RegExp(`(?:${nameLabel})\\s*:?\\s*(?:${nameTitle}\\s+)?(${nameSpan})`, 'gu'),
+    new RegExp(`(?<![\\p{L}\\p{N}])(?:${nameLabel})\\s*:?\\s*(?:${nameTitle}\\s+)?(${nameSpan})`, 'gu'),
   ]
   for (const nameRe of spokenNameRes) {
     let nameMatch
@@ -635,10 +676,32 @@ export function getLocalisedDocTitle(docType, lang) {
   return `${baseType} · Sarvam`
 }
 
+function isKeptInstitution(text) {
+  const lower = String(text || '').toLowerCase()
+  return INSTITUTION_TERMS.some((inst) => lower.includes(inst))
+}
+
+export function expandProtectedTerms(terms = [], rendered = null) {
+  const out = [...terms]
+  if (!rendered || typeof rendered !== 'object') return out
+  for (const forms of Object.values(rendered)) {
+    const list = Array.isArray(forms) ? forms : [forms]
+    for (const form of list) {
+      if (typeof form !== 'string') continue
+      const trimmed = form.trim()
+      if (trimmed.length < 2 || isKeptInstitution(trimmed)) continue
+      if (!out.includes(trimmed)) out.push(trimmed)
+    }
+  }
+  return out
+}
+
 export function buildShare(result, options = { hidePersonal: false }) {
   const hidePersonal = !!options.hidePersonal
   const lang = options.lang || result.language || 'en'
-  const protectedTerms = result.protected_terms || []
+  const protectedTerms = hidePersonal
+    ? expandProtectedTerms(result.protected_terms || [], result.protected_terms_rendered)
+    : result.protected_terms || []
   const birthKeys = hidePersonal ? collectBirthDateKeys(result) : null
 
   const segments = []
@@ -826,7 +889,7 @@ export function redactResult(result, options = { hidePersonal: false }) {
   if (!options.hidePersonal) return cloned
 
   const lang = options.lang || cloned.language || 'en'
-  const protectedTerms = cloned.protected_terms || []
+  const protectedTerms = expandProtectedTerms(cloned.protected_terms || [], cloned.protected_terms_rendered)
   const birthKeys = collectBirthDateKeys(cloned)
 
   const mask = (str) => {
@@ -901,6 +964,15 @@ export function redactResult(result, options = { hidePersonal: false }) {
       ...part,
       title: mask(part.title),
       issuer: mask(part.issuer),
+      glance: part.glance ? {
+        ...part.glance,
+        headline: mask(part.glance.headline),
+        key_values: (part.glance.key_values || []).map((kv) => ({
+          ...kv,
+          label: mask(kv.label),
+          value: kv.value == null ? kv.value : mask(String(kv.value)),
+        })),
+      } : part.glance,
       summary_lines: part.summary_lines ? part.summary_lines.map((l) => mask(l)) : undefined,
       key_points: part.key_points ? part.key_points.map((k) => mask(k)) : undefined,
       sections: part.sections ? part.sections.map((sec) => ({
@@ -931,6 +1003,28 @@ export function redactResult(result, options = { hidePersonal: false }) {
   if (cloned.protected_terms && Array.isArray(cloned.protected_terms)) {
     cloned.protected_terms = cloned.protected_terms.map((t) => mask(t))
   }
+  delete cloned.protected_terms_rendered
+
+  if (cloned.glance) {
+    cloned.glance = {
+      ...cloned.glance,
+      headline: mask(cloned.glance.headline),
+      key_values: (cloned.glance.key_values || []).map((kv) => ({
+        ...kv,
+        label: mask(kv.label),
+        value: kv.value == null ? kv.value : mask(String(kv.value)),
+      })),
+    }
+  }
+  if (cloned.profile) {
+    const lines = cloned.profile.advice_lines
+    if (Array.isArray(lines)) cloned.profile.advice_lines = lines.map((line) => mask(line))
+    if (cloned.profile.diagnosis_as_written) {
+      cloned.profile.diagnosis_as_written = mask(cloned.profile.diagnosis_as_written)
+    }
+    if (cloned.profile.follow_up) cloned.profile.follow_up = mask(cloned.profile.follow_up)
+    if (cloned.profile.seller) cloned.profile.seller = mask(cloned.profile.seller)
+  }
 
   if (cloned.profile) {
     const p = cloned.profile
@@ -960,14 +1054,20 @@ function openWithoutLeaving(url) {
   link.remove()
 }
 
+export function whatsAppShareUrl(text) {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`
+}
+
+export function emailShareUrl(subject, text) {
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+}
+
 export function shareToWhatsApp(text) {
-  const url = `https://wa.me/?text=${encodeURIComponent(text)}`
-  openWithoutLeaving(url)
+  openWithoutLeaving(whatsAppShareUrl(text))
 }
 
 export function shareToEmail(subject, text) {
-  const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
-  openWithoutLeaving(url)
+  openWithoutLeaving(emailShareUrl(subject, text))
 }
 
 export async function copyToClipboard(text) {

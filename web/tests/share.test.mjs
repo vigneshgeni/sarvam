@@ -15,6 +15,8 @@ import {
   buildSharedText,
   redactResult,
   getHiddenLabel,
+  whatsAppShareUrl,
+  emailShareUrl,
 } from '../src/utils/shareCore.js'
 
 // --- Unit tests for exact mask formats (1A §3) ---
@@ -252,6 +254,50 @@ test('share hides a protected name, a dropped initial, and a rewritten name in e
     assert.equal(hidden.text.includes('1,200'), true, lang)
     assert.equal(/ராவி|रवि|రవి|രവി|ರವಿ|রবি|ରବି/.test(hidden.text), false, lang)
   }
+})
+
+test('a rendered name, a title, and a birth date in a sentence are hidden', () => {
+  const rendered = buildShare(
+    {
+      title: 'படிவம்',
+      doc_type: 'other',
+      summary: ['வாடிக்கையாளர் சுரேஷ் பாபு வந்தார். தொகை 1,200.'],
+      protected_terms: ['Mr. Suresh Babu'],
+      protected_terms_rendered: { 'Mr. Suresh Babu': ['சுரேஷ் பாபு'] },
+    },
+    { hidePersonal: true, lang: 'ta' },
+  )
+  assert.equal(rendered.text.includes('சுரேஷ்'), false)
+  assert.equal(rendered.text.includes('பாபு'), false)
+  assert.ok(rendered.text.includes('1,200'))
+
+  const titled = [
+    ['en', 'Mrs. Anita Desai signed. Amount 1,200.'],
+    ['hi', 'श्री कमल शर्मा आए. राशि 1,200.'],
+    ['ta', 'வாடிக்கையாளர் திரு. முருகன் செல்வம். தொகை 1,200.'],
+    ['te', 'శ్రీ రవి కుమార్ వచ్చారు. మొత్తం 1,200.'],
+    ['ml', 'ശ്രീ രവി കുമാർ വന്നു. തുക 1,200.'],
+    ['kn', 'ಶ್ರೀ ರವಿ ಕುಮಾರ್ ಬಂದರು. ಮೊತ್ತ 1,200.'],
+    ['mr', 'श्रीमती कमल शर्मा आली. रक्कम 1,200.'],
+    ['bn', 'শ্রী কমল শর্মা এলেন. পরিমাণ 1,200.'],
+    ['or', 'ଶ୍ରୀ କମଳ ଶର୍ମା ଆସିଲେ. ରାଶି 1,200.'],
+  ]
+  for (const [lang, prose] of titled) {
+    const hidden = maskStringWithSegments(prose, [], lang)
+    assert.equal(/\bAnita\b|Desai|कमल|शर्मा|முருகன்|செல்வம்|రవి|కుమార్|രവി|കുമാർ|ರವಿ|ಕುಮಾರ್|কমল|କମଳ/.test(hidden.text), false, prose)
+    assert.ok(hidden.text.includes('1,200'), prose)
+  }
+
+  const born = maskStringWithSegments('She was born on 14 March 1971. Pay by 30 November 2026.', [], 'en')
+  assert.equal(born.text.includes('14 March 1971'), false)
+  assert.ok(born.text.includes('30 November 2026'))
+  const whose = maskStringWithSegments(
+    'A customer whose date of birth is 14 March, 1971 must sign. Hearing on 12 November 2026.',
+    [],
+    'en',
+  )
+  assert.equal(whose.text.includes('14 March, 1971'), false)
+  assert.ok(whose.text.includes('12 November 2026'))
 })
 
 test('tamil share hides a latin name in a tamil sentence and a transliterated name', () => {
@@ -697,4 +743,52 @@ test('1A Tamil and Hindi fixtures hide personal names without literal [*]', () =
   assert.ok(!resHi.text.includes('SH/IND/22/559102'))
   assert.ok(!resHi.text.includes('[*]'))
   assert.ok(resHi.text.includes('31,200'))
+})
+
+test('the four live name leaks are hidden in preview, copy, WhatsApp, email and the image text', () => {
+  const cases = [
+    ['hi', 'lab report', {
+      title: 'प्रयोगशाला रिपोर्ट',
+      doc_type: 'lab_report',
+      summary: ['City Diagnostics। रोगी का नाम: श्री सुरेश बाबू। हीमोग्लोबिन 11.2।'],
+      protected_terms: ['Mr. Suresh Babu', 'City Diagnostics'],
+      protected_terms_rendered: { 'Mr. Suresh Babu': ['सुरेश बाबू'] },
+    }, ['सुरेश', 'बाबू'], '11.2'],
+    ['hi', 'invoice tile', {
+      title: 'चालान',
+      doc_type: 'receipt',
+      summary: ['ग्राहक का नाम श्रीमती मीना सुब्रमण्यम है। राशि 4,500।'],
+      protected_terms: ['Meena Subramanian'],
+    }, ['मीना', 'सुब्रमण्यम'], '4,500'],
+    ['ta', 'lab report', {
+      title: 'ஆய்வக அறிக்கை',
+      doc_type: 'lab_report',
+      summary: ['நோயாளி பெயர்: திரு. சுரேஷ் பாபு. ஹீமோகுளோபின் 11.2.'],
+      protected_terms: ['Mr. Suresh Babu'],
+      protected_terms_rendered: { 'Mr. Suresh Babu': ['சுரேஷ் பாபு'] },
+    }, ['சுரேஷ்', 'பாபு'], '11.2'],
+    ['hi', 'prescription', {
+      title: 'पर्चा',
+      doc_type: 'medical',
+      summary: ['मरीज़ का नाम: श्रीमती लक्ष्मी नारायण। दवा 1,200।'],
+      protected_terms: ['Lakshmi Narayan', 'Shanthi Family Clinic'],
+    }, ['लक्ष्मी', 'नारायण'], '1,200'],
+  ]
+  for (const [lang, label, result, forbidden, kept] of cases) {
+    const share = buildShare(result, { hidePersonal: true, lang })
+    const channels = [
+      share.text,
+      share.title,
+      decodeURIComponent(whatsAppShareUrl(share.text)),
+      decodeURIComponent(emailShareUrl(share.title, share.text)),
+      JSON.stringify(redactResult(result, { hidePersonal: true, lang })),
+    ]
+    for (const word of forbidden) {
+      for (const channel of channels) {
+        assert.equal(channel.includes(word), false, `${label} still has ${word}`)
+      }
+    }
+    assert.ok(share.text.includes(kept), label)
+    assert.ok(share.text.includes('City Diagnostics') || label !== 'lab report' || lang !== 'hi')
+  }
 })

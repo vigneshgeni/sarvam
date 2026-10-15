@@ -15,6 +15,7 @@ from errors import AskUnverifiedError
 from evidence import (
     GENERIC_OFFICE_WORDS,
     check_script_guard,
+    collect_protected_renderings,
     extract_digit_sequences,
     filter_protected_terms,
     verify_evidence,
@@ -169,6 +170,7 @@ Rules:
      * Department or office names (e.g. 'Grievance Cell', 'Claims Department')
      * Job titles (e.g. 'Claims Manager')
      * Clause, section, page labels and generic nouns (e.g. 'Clause 4.2', 'Section B')
+   - `protected_terms_rendered`: object. For every person name, ID, phone, address and date of birth, key = the protected term exactly as copied, value = every exact substring you wrote for it, in the script you used. If you wrote only the original, use a one-item list of that original. Do not list a spelling you did not write.
 8. Quotes: Every action, warning, fact, place, and contact must include "quote": text copied EXACTLY
    from the document in its original language, plus the page number.
 9. Do not invent anything. If something is not in the document, leave it out.
@@ -227,12 +229,12 @@ Rules:
 KEYED_TRANSLATE_PROMPT_TEMPLATE = """You are Sarvam. Translate the following user-facing text strings into {LANG}.
 
 Rules:
-1. Output a JSON object mapping every key from "Strings to translate" to its translated text in {LANG}.
+1. Output JSON of this shape: {{"strings": {{every key: translated text}}, "protected_terms_rendered": {{"<protected term>": ["exact strings you wrote for it"]}}}}.
 2. Translate all strings into {LANG}, in simple everyday words a 12-year-old understands, in short sentences.
 3. Month names, units and labels must be strictly in {LANG} (no English words mixed in).
 4. Include an English term in brackets ONLY for official names (scheme names, form names).
 5. CRITICAL NUMBER GUARD: Keep all numbers, digits, amounts, dates, ID numbers and phone numbers in Western digits (0-9) exactly as printed in the original text (e.g. use 31,200 not ௩௧,௨௦௦ or ३१,२००).
-6. CRITICAL PROTECTED TERMS GUARD: Person names, organisation/hospital/lab/company names, addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses must NEVER be translated or transliterated. Latin stays Latin.
+6. CRITICAL PROTECTED TERMS GUARD: Person names, organisation/hospital/lab/company names, addresses, place names, ID/policy/claim/account/reference numbers, phone numbers, email and web addresses must NEVER be translated or transliterated. Latin stays Latin. In protected_terms_rendered, list every exact string you actually wrote for each term. If you wrote a different spelling, include that exact string too.
    Protected terms to keep verbatim:
 {PROTECTED_TERMS_LIST}
 7. Non-protected terms (department names like Grievance Cell, Claims Department; job titles like Claims Manager; clause labels like Clause 4.2) MUST be translated into {LANG}.
@@ -609,6 +611,18 @@ def read_document_single_attempt(
     # Code safety net: filter out generic office terms from protected_terms
     if result.protected_terms:
         result.protected_terms = filter_protected_terms(result.protected_terms)
+    facing = [result.title or "", result.report_title or "", result.spoken_summary or ""]
+    facing.extend(result.summary or [])
+    facing.extend(item.text for item in (result.actions or []))
+    facing.extend(item.text for item in (result.warnings or []))
+    facing.extend(item.text for item in (result.facts or []))
+    if result.glance and result.glance.headline:
+        facing.append(result.glance.headline)
+    result.protected_terms_rendered = collect_protected_renderings(
+        result.protected_terms,
+        facing,
+        result.protected_terms_rendered,
+    )
 
     return result
 
@@ -620,6 +634,25 @@ def read_document(
 ) -> ReaderResponse:
     """Synchronous entrypoint for read_document."""
     return read_document_single_attempt(files_data, lang, deadline=deadline)
+
+
+def split_keyed_payload(raw_data: Any) -> Tuple[Dict[str, str], Dict[str, List[str]]]:
+    """Accept the wrapped shape or the older flat key-to-string map."""
+    if not isinstance(raw_data, dict):
+        return {}, {}
+    rendered = raw_data.get("protected_terms_rendered")
+    rendered_map = rendered if isinstance(rendered, dict) else {}
+    strings = raw_data.get("strings")
+    if isinstance(strings, dict) and any(isinstance(value, str) for value in strings.values()):
+        clean = {key: value for key, value in strings.items() if isinstance(value, str)}
+        return clean, rendered_map
+    clean = {}
+    for key, value in raw_data.items():
+        if key in ("strings", "protected_terms_rendered"):
+            continue
+        if isinstance(value, str):
+            clean[key] = value
+    return clean, rendered_map
 
 
 def translate_keyed_strings(
@@ -670,15 +703,12 @@ def translate_keyed_strings(
     retry_needed = (finish_reason == types.FinishReason.MAX_TOKENS)
 
     parsed_strings: Dict[str, str] = {}
+    rendered_map: Dict[str, List[str]] = {}
     if not retry_needed:
         try:
             raw_data = json.loads(response.text)
-            if isinstance(raw_data, dict):
-                if "strings" in raw_data and isinstance(raw_data["strings"], dict) and len(raw_data["strings"]) > 0:
-                    parsed_strings = raw_data["strings"]
-                else:
-                    parsed_strings = raw_data
-            else:
+            parsed_strings, rendered_map = split_keyed_payload(raw_data)
+            if not parsed_strings:
                 retry_needed = True
         except Exception:
             retry_needed = True
@@ -698,11 +728,7 @@ def translate_keyed_strings(
         )
         try:
             raw_data = json.loads(retry_resp.text)
-            if isinstance(raw_data, dict):
-                if "strings" in raw_data and isinstance(raw_data["strings"], dict) and len(raw_data["strings"]) > 0:
-                    parsed_strings = raw_data["strings"]
-                else:
-                    parsed_strings = raw_data
+            parsed_strings, rendered_map = split_keyed_payload(raw_data)
         except Exception:
             pass
 
@@ -728,23 +754,23 @@ def translate_keyed_strings(
             )
             try:
                 raw_data = json.loads(retry_resp.text)
-                if isinstance(raw_data, dict):
-                    if "strings" in raw_data and isinstance(raw_data["strings"], dict) and len(raw_data["strings"]) > 0:
-                        retry_strings = raw_data["strings"]
-                    else:
-                        retry_strings = raw_data
-                else:
-                    retry_strings = {}
+                retry_strings, retry_rendered = split_keyed_payload(raw_data)
             except Exception:
-                retry_strings = {}
+                retry_strings, retry_rendered = {}, {}
 
             passed2, ratio2 = check_script_guard(list(retry_strings.values()), norm_lang)
             if not passed2:
                 logger.error("translate_keyed_strings: script guard failed again after retry (ratio=%.2f)", ratio2)
                 raise GeminiServiceError(f"Script guard failed for language {norm_lang}", status_code=422)
             parsed_strings = retry_strings
+            rendered_map = retry_rendered
 
-    return parsed_strings
+    rendered_map = collect_protected_renderings(
+        valid_protected,
+        list(parsed_strings.values()),
+        rendered_map,
+    )
+    return {"strings": parsed_strings, "protected_terms_rendered": rendered_map}
 
 
 def ask_document_single_attempt(
@@ -890,6 +916,17 @@ def translate_result_text(
 
     if res_payload.protected_terms:
         res_payload.protected_terms = filter_protected_terms(res_payload.protected_terms)
+    texts = [res_payload.title or "", res_payload.report_title or "", res_payload.unreadable_reason or ""]
+    texts.extend(res_payload.summary or [])
+    texts.extend(item.text for item in (res_payload.actions or []))
+    texts.extend(item.text for item in (res_payload.warnings or []))
+    texts.extend(item.text for item in (res_payload.facts or []))
+    texts.extend(res_payload.conflicts or [])
+    res_payload.protected_terms_rendered = collect_protected_renderings(
+        res_payload.protected_terms,
+        texts,
+        res_payload.protected_terms_rendered,
+    )
     return res_payload
 
 

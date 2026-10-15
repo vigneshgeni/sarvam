@@ -1,6 +1,6 @@
 import io
 import re
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import unicodedata
 
 import pypdf
@@ -413,6 +413,125 @@ def verify_protected_terms_guard(
             if norm_term not in norm_trans:
                 return False
     return True
+
+
+# Titles that introduce a person name. Longer forms come first so "Mrs" wins over "Mr".
+_HONORIFIC_NAME = re.compile(
+    r"(?<!\w)(?:Mrs|Mr|Ms|Dr|Shri|Smt|श्रीमती|सुश्री|कुमारी|श्री|डॉ|"
+    r"திருமதி|திரு|செல்வி|டாக்டர்|"
+    r"శ్రీమతి|శ్రీ|కుమారి|డాక్టర్|"
+    r"ശ്രീമതി|ശ്രീ|കുമാരി|ഡോ|"
+    r"ಶ್ರೀಮತಿ|ಶ್ರೀ|ಕುಮಾರಿ|ಡಾ|"
+    r"শ্রীমতী|শ্রী|কুমারী|ডা|"
+    r"ଶ୍ରୀମତୀ|ଶ୍ରୀ|କୁମାରୀ|ଡା)\.?\s+"
+    r"((?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})"
+    r"(?:\s+(?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})){0,2})"
+)
+
+
+def _clean_rendered_map(model_map: Optional[dict]) -> Dict[str, List[str]]:
+    cleaned: Dict[str, List[str]] = {}
+    if not isinstance(model_map, dict):
+        return cleaned
+    for key, forms in model_map.items():
+        if not isinstance(key, str) or not key.strip():
+            continue
+        if isinstance(forms, str):
+            forms = [forms]
+        if not isinstance(forms, list):
+            continue
+        kept: List[str] = []
+        for form in forms:
+            if isinstance(form, str) and form.strip() and form.strip() not in kept:
+                kept.append(form.strip())
+        if kept:
+            cleaned[key.strip()] = kept
+    return cleaned
+
+
+_NOT_A_NAME = {
+    "prescription", "report", "bill", "receipt", "notice", "letter",
+    "ప్రిస్క్రిప్షన్", "నివేదిక", "రసీదు",
+    "மருந்துச்சீட்டு", "அறிக்கை",
+    "पर्ची", "रिपोर्ट",
+    "ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್",
+    "പ്രിസ്ക്രിപ്ഷൻ",
+    "প্রেসক্রিপশন",
+    "ପ୍ରେସକ୍ରିପସନ୍",
+}
+
+
+def names_after_honorifics(text: str) -> List[str]:
+    """Exact name tokens written after a title, in whatever script the model used."""
+    found: List[str] = []
+    if not text:
+        return found
+    for match in _HONORIFIC_NAME.finditer(text):
+        span = match.group(1).strip(" .।॥")
+        first = span.split()[0] if span.split() else ""
+        if not first or first in _NOT_A_NAME or first.lower() in _NOT_A_NAME:
+            continue
+        if first.rstrip(".").lower() in {"mr", "mrs", "ms", "dr", "shri", "smt", "sri"}:
+            continue
+        if len(span) < 2 or span in found:
+            continue
+        found.append(span)
+    return found
+
+
+_NAME_LABEL = re.compile(
+    r"(?<![\w])(?:"
+    r"patient(?:'s)?\s+name|name\s+of\s+(?:the\s+)?(?:patient|consumer|customer)|"
+    r"(?:रोगी|मरीज़|मरीज|ग्राहक)\s+का\s+नाम|"
+    r"நோயாளி(?:யின்)?\s+பெயர்|రోగి(?:\s+యొక్క)?\s+పేరు|രോഗിയുടെ\s+പേര്|"
+    r"ರೋಗಿಯ\s+ಹೆಸರು|रुग्णाचे\s+नाव|রোগীর\s+নাম|ରୋଗୀ(?:ଙ୍କ)?\s+ନାମ|"
+    r"பெயர்|नाम|పేరు|പേര്|ಹೆಸರು|नाव|নাম|ନାମ|name"
+    r")\s*:?\s*(?:(?:Mr|Mrs|Ms|Dr|Shri|Smt|श्री|डॉ|திரு|டாக்டர்)\.?\s+)?"
+    r"((?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})(?:\s+(?:[A-Z][A-Za-z.'’-]{0,40}|[\u0900-\u0D7F]{2,})){0,2})",
+    re.IGNORECASE,
+)
+
+
+def names_after_labels(text: str) -> List[str]:
+    """The value written after a name label, in the script the model used."""
+    found: List[str] = []
+    if not text:
+        return found
+    for match in _NAME_LABEL.finditer(text):
+        span = match.group(1).strip(" .।॥")
+        first = span.split()[0] if span.split() else ""
+        if not first or first in _NOT_A_NAME or first.lower() in _NOT_A_NAME:
+            continue
+        if len(span) < 2 or span in found:
+            continue
+        found.append(span)
+    return found
+
+
+def collect_protected_renderings(
+    protected_terms: Optional[List[str]],
+    texts: Optional[List[str]],
+    model_map: Optional[dict] = None,
+) -> Dict[str, List[str]]:
+    """
+    Map each protected term to the exact strings written for it.
+    Merges the model's own list with title-plus-name spans found in the output.
+    """
+    rendered = _clean_rendered_map(model_map)
+    terms = filter_protected_terms(protected_terms or [])
+    for term in terms:
+        written = list(rendered.get(term, []))
+        for text in texts or []:
+            if text and term in text and term not in written:
+                written.append(term)
+        if written:
+            rendered[term] = written
+    for text in texts or []:
+        for span in names_after_honorifics(text or "") + names_after_labels(text or ""):
+            rendered.setdefault(span, [])
+            if span not in rendered[span]:
+                rendered[span].append(span)
+    return rendered
 
 
 def normalize_text_for_evidence(text: str) -> str:
