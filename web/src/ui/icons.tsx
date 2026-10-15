@@ -183,6 +183,23 @@ export function IconSpark(p: P) {
   )
 }
 
+export function IconSun(p: P) {
+  return (
+    <Svg {...p} sw={p.sw ?? 2}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21M5.4 5.4l1.3 1.3M17.3 17.3l1.3 1.3M18.6 5.4l-1.3 1.3M6.7 17.3l-1.3 1.3" />
+    </Svg>
+  )
+}
+
+export function IconMoon(p: P) {
+  return (
+    <Svg {...p} sw={p.sw ?? 2}>
+      <path d="M20 14.8A7.2 7.2 0 0 1 9.2 4 6.4 6.4 0 1 0 20 14.8z" />
+    </Svg>
+  )
+}
+
 export function IconA11y({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

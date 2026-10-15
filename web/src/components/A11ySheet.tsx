@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { A11ySettings } from '../types'
 import Sheet from './Sheet'
 import { CloseIcon } from './icons'
+import { IconMoon, IconSun } from '../ui/icons'
 import { applyDarkTheme, readDarkTheme } from '../design/theme'
 
 interface A11ySheetProps {
@@ -184,7 +185,10 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
           onClick={() => applyDarkTheme(!dark)}
           className="sv-press h-14 px-4 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-between text-[16px] font-bold"
         >
-          <span>{dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}</span>
+          <span className="inline-flex items-center gap-2.5">
+            {dark ? <IconSun size={20} /> : <IconMoon size={20} />}
+            {dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
+          </span>
           <span className="text-[13px]">{dark ? (t.onWord || 'On') : (t.offWord || 'Off')}</span>
         </button>
 

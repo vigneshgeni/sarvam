@@ -5,7 +5,7 @@ import type { ReminderRow } from '../../utils/reminders'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
 import { chipFont, ensureOnboardingFonts } from '../../design/indicFont'
-import { DocIcon, IconA11y, IconArrow, IconCalendar, IconCamera, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconSearch, IconTick } from '../../ui/icons'
+import { DocIcon, IconA11y, IconArrow, IconCalendar, IconCamera, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconMoon, IconSearch, IconSun, IconTick } from '../../ui/icons'
 
 export interface NextUp {
   id: string
@@ -333,10 +333,11 @@ export default function HomeScreen(props: HomeProps) {
           <button
             type="button"
             aria-pressed={dark}
+            aria-label={dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
             onClick={() => applyDarkTheme(!dark)}
-            className="sv-press h-11 px-3.5 rounded-full border-[1.5px] border-[#1A1A1A] text-[13px] font-bold"
+            className="sv-press w-12 h-12 rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center"
           >
-            {dark ? (t.lightTheme || 'Light') : (t.darkTheme || 'Dark')}
+            {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
           </button>
         <button
           type="button"
