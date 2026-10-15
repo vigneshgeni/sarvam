@@ -3,6 +3,7 @@ import type { ExplainResponse, Part } from '../types'
 import { partAsResult } from './kinds'
 import { assessLabValue } from './labFlag'
 import { resolveProfile } from './profiles'
+import FitText from '../components/v3/FitText'
 
 function span(part: Part): [number, number] {
   const pages = part.pages || []
@@ -167,7 +168,9 @@ export default function MultiDocument({
                   <span className="block text-[15px] font-bold">{row.label}</span>
                   <span className="block text-[12px] text-[#575B58]">{row.section} · {row.page}</span>
                 </span>
-                <span className="sv-display text-[22px] leading-none">{row.value}</span>
+                <span className="sv-fit-box max-w-[42%] shrink-0">
+                  <FitText text={row.value} max={22} min={12} />
+                </span>
                 <span className="text-[12px] font-bold px-2 py-0.5 rounded-full border-[1.5px] border-[#1A1A1A]" style={{ background: row.flag === 'High' ? '#D9603B' : '#E9B44C' }}>
                   {row.flag}
                 </span>
