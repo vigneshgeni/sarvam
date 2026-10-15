@@ -1,14 +1,19 @@
 import { useState, type MouseEvent } from 'react'
 import type { RecentResult } from '../../types'
+import type { ReminderRow } from '../../utils/reminders'
+import Sheet from '../Sheet'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
 import { chipFont, ensureOnboardingFonts } from '../../design/indicFont'
 import { DocIcon, IconA11y, IconArrow, IconCalendar, IconCamera, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconSearch, IconTick } from '../../ui/icons'
 
 export interface NextUp {
-  text: string
-  formattedDate: string
-  recentItem: RecentResult
+  id: string
+  summary: string
+  date: string
+  time: string
+  documentName: string
+  recentId: string
 }
 
 interface HomeProps {
@@ -17,7 +22,12 @@ interface HomeProps {
   onSelectLang: (id: string) => void
   isOnline: boolean
   nextUp: NextUp | null
+  upcomingCount: number
+  upcomingReminders: ReminderRow[]
+  pastReminders: ReminderRow[]
   onOpenNext: () => void
+  onOpenReminder: (recentId: string) => void
+  onDismissNext: (id: string) => void
   onTakePhoto: () => void
   onChooseFiles: () => void
   onChooseFolder?: () => void
@@ -153,9 +163,51 @@ function RenameDialog({
   )
 }
 
+function formatWhen(date: string, time: string, lang: string) {
+  let formatted = date
+  try {
+    formatted = new Intl.DateTimeFormat(resolveLang(lang), { day: 'numeric', month: 'short' }).format(new Date(`${date}T00:00:00`))
+  } catch {
+    /* keep the printed date */
+  }
+  return time ? `${formatted} · ${time}` : formatted
+}
+
+function ReminderList({
+  rows,
+  lang,
+  empty,
+  onOpen,
+}: {
+  rows: ReminderRow[]
+  lang: string
+  empty: string
+  onOpen: (recentId: string) => void
+}) {
+  if (!rows.length) return <p className="m-0 text-[14px] text-[#575B58]">{empty}</p>
+  return (
+    <div className="flex flex-col gap-2">
+      {rows.map((row) => (
+        <button
+          key={row.id}
+          type="button"
+          onClick={() => onOpen(row.recentId)}
+          className="sv-press flex flex-col gap-0.5 px-3.5 py-3 rounded-[22px] border-[1.5px] border-[#1A1A1A] bg-[#F4F5F2] text-left text-[#1A1A1A]"
+        >
+          <span className="text-[15px] font-semibold leading-[1.3]">{row.summary}</span>
+          <span className="text-[13px] text-[#575B58]">{formatWhen(row.date, row.time, lang)}</span>
+          <span className="text-[13px] text-[#575B58] truncate">{row.documentName}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function HomeScreen(props: HomeProps) {
   const { t, selectedLang, recent } = props
   const [renameItem, setRenameItem] = useState<RecentResult | null>(null)
+  const [remindersOpen, setRemindersOpen] = useState(false)
+  const [reminderTab, setReminderTab] = useState<'upcoming' | 'past'>('upcoming')
   const indic = selectedLang !== 'en' && selectedLang !== 'auto'
   ensureOnboardingFonts()
   if (props.library) return <AllDocuments {...props} />
@@ -220,22 +272,45 @@ export default function HomeScreen(props: HomeProps) {
       </section>
 
       {props.nextUp && (
-        <button
-          type="button"
-          onClick={props.onOpenNext}
-          className="sv-press flex items-center gap-3.5 py-3.5 px-4 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F8D9CB] text-left text-[#1A1A1A]"
-        >
-          <span className="w-[46px] h-[46px] shrink-0 rounded-full bg-[#D9603B] border-[1.5px] border-[#1A1A1A] box-border flex items-center justify-center">
-            <IconCalendar size={22} stroke="#1A1A1A" />
-          </span>
-          <span className="flex flex-col gap-0.5 flex-1 min-w-0">
-            <span className="text-[12px] font-bold tracking-[1px]">
-              {(t.nextUp || 'NEXT UP').toUpperCase()} · {props.nextUp.formattedDate}
+        <div className="flex items-stretch gap-1 py-3.5 pl-4 pr-2 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F8D9CB] text-[#1A1A1A]">
+          <button
+            type="button"
+            onClick={props.onOpenNext}
+            className="sv-press flex items-center gap-3.5 flex-1 min-w-0 text-left"
+          >
+            <span className="w-[46px] h-[46px] shrink-0 rounded-full bg-[#D9603B] border-[1.5px] border-[#1A1A1A] box-border flex items-center justify-center">
+              <IconCalendar size={22} stroke="#1A1A1A" />
             </span>
-            <span className="text-[15px] font-medium leading-[1.3]">{props.nextUp.text}</span>
+            <span className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <span className="text-[12px] font-bold tracking-[1px]">
+                {(t.nextUp || 'Next up')} · {formatWhen(props.nextUp.date, props.nextUp.time, selectedLang)}
+              </span>
+              <span className="text-[15px] font-medium leading-[1.3] line-clamp-2">{props.nextUp.summary}</span>
+              {props.nextUp.documentName && (
+                <span className="text-[12px] text-[#575B58] truncate">{props.nextUp.documentName}</span>
+              )}
+            </span>
+          </button>
+          <span className="flex flex-col items-end justify-between shrink-0">
+            <button
+              type="button"
+              aria-label={t.dismiss || 'Dismiss'}
+              onClick={() => props.onDismissNext(props.nextUp!.id)}
+              className="sv-press w-9 h-9 rounded-full flex items-center justify-center"
+            >
+              <IconClose size={16} stroke="#1A1A1A" />
+            </button>
+            {props.upcomingCount > 1 && (
+              <button
+                type="button"
+                onClick={() => { setReminderTab('upcoming'); setRemindersOpen(true) }}
+                className="text-[12px] font-bold underline px-1 pb-1"
+              >
+                {(t.viewAllCount || 'View all ({n})').replace('{n}', String(props.upcomingCount))}
+              </button>
+            )}
           </span>
-          <IconChevron size={18} stroke="#1A1A1A" />
-        </button>
+        </div>
       )}
 
       <div className="flex flex-col gap-3">
@@ -410,10 +485,42 @@ export default function HomeScreen(props: HomeProps) {
         </div>
       </section>
 
-      <a href="https://sarvam-510715.web.app" className="self-center inline-flex items-center gap-2 h-11 px-5 rounded-full border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] text-[14px] font-semibold no-underline">
-        <span aria-hidden="true" className="w-2 h-2 rounded-full bg-[#D9603B]" />
-        sarvam-510715.web.app
-      </a>
+      <Sheet
+        isOpen={remindersOpen}
+        onClose={() => setRemindersOpen(false)}
+        title={t.remindersTitle || 'Reminders'}
+      >
+        <div className="flex flex-col gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-2">
+            {(['upcoming', 'past'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                aria-pressed={reminderTab === tab}
+                onClick={() => setReminderTab(tab)}
+                className={`sv-press h-11 rounded-full border-[1.5px] border-[#1A1A1A] text-[14px] ${reminderTab === tab ? 'bg-[#E9B44C] font-bold' : 'bg-transparent font-semibold'}`}
+              >
+                {tab === 'upcoming' ? (t.upcomingTab || 'Upcoming') : (t.pastTab || 'Past')}
+              </button>
+            ))}
+          </div>
+          {reminderTab === 'upcoming' ? (
+            <ReminderList
+              rows={props.upcomingReminders}
+              lang={selectedLang}
+              empty={t.noUpcomingReminders || 'Nothing coming up.'}
+              onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
+            />
+          ) : (
+            <ReminderList
+              rows={props.pastReminders}
+              lang={selectedLang}
+              empty={t.noPastReminders || 'No past reminders.'}
+              onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
+            />
+          )}
+        </div>
+      </Sheet>
       <RenameDialog
         key={renameItem?.id || 'none'}
         item={renameItem}

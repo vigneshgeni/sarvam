@@ -2,7 +2,9 @@ import { useState } from 'react'
 import type { MedicineItem, MedicineSlot } from '../types'
 import { PillIcon, EyeIcon, CalendarIcon, AlertTriangleIcon } from './icons'
 import Sheet from './Sheet'
-import { generateIcs, downloadIcs, hashString, type CalendarEventInput } from '../utils/ics'
+import { generateIcs, downloadIcs, hashString } from '../utils/ics'
+import { calendarDraftEvent, localDate, reminderSummary } from '../utils/reminders'
+import CalendarEditSheet, { type CalendarDose } from './CalendarEditSheet'
 
 interface MedicineActivityState {
   slots: Record<string, boolean>
@@ -54,6 +56,12 @@ export default function MedicineCard({
   onReminderAdded,
 }: MedicineCardProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [calTitle, setCalTitle] = useState('')
+  const [calDate, setCalDate] = useState('')
+  const [calTime, setCalTime] = useState('08:00')
+  const [calAlert, setCalAlert] = useState('1d')
+  const [calDoses, setCalDoses] = useState<CalendarDose[]>([])
   const [userDurations, setUserDurations] = useState<Record<number, number>>(() => saved?.durations || {})
   const [selectedSlots, setSelectedSlots] = useState<Record<string, boolean>>(() => {
     if (saved && Object.keys(saved.slots || {}).length) return saved.slots
@@ -120,47 +128,57 @@ export default function MedicineCard({
     })
   }
 
-  const handleExportIcs = () => {
-    const events: CalendarEventInput[] = []
-    const today = new Date()
-    const yyyy = today.getFullYear()
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
-    const dateStr = `${yyyy}-${mm}-${dd}`
-
-    medicines.forEach((med, mIdx) => {
-      const days = med.duration_days ?? userDurations[mIdx]
-      if (!days) return
-      const strength = med.strength_text ? ` ${med.strength_text}` : ''
-      const title = `Take ${med.name}${strength}`
-      const desc = `From your prescription. Check the original. Sarvam does not give medical advice.`
-
+  const selectedDoses = () => {
+    const doses: CalendarDose[] = []
+    ;(medicines || []).forEach((med, mIdx) => {
       med.slots?.forEach((slot) => {
         if (slot === 'as_needed') return
         const slotKey = `${mIdx}-${slot}`
         if (!selectedSlots[slotKey]) return
-
-        const time = slotTimes[slotKey] || DEFAULT_SLOT_TIMES[slot] || '08:00'
-        const [hour, min] = time.split(':')
-        const startTimestamp = `${dateStr.replace(/-/g, '')}T${hour}${min}00`
-
-        events.push({
-          uid: hashString(`${resultId}-med-${mIdx}-${slot}`),
-          title,
-          description: desc,
-          startDate: startTimestamp,
-          isAllDay: false,
-          rrule: `FREQ=DAILY;COUNT=${days}`,
-          alarmTrigger: '-PT0S',
+        doses.push({
+          key: slotKey,
+          label: `${med.name} · ${slotLabel(slot, t)}`,
+          time: slotTimes[slotKey] || DEFAULT_SLOT_TIMES[slot] || '08:00',
         })
       })
     })
+    return doses
+  }
 
-    if (events.length === 0) return
+  const openMedicineCalendar = () => {
+    const doses = selectedDoses()
+    if (!doses.length) return
+    const line = (name: string) => (t.takeMedicineLine || 'Take {name}').replace('{name}', name)
+    const names = [...new Set(doses.map((dose) => dose.label.split(' · ')[0]).filter(Boolean))]
+    setCalTitle(reminderSummary(names.map(line).join(', ')))
+    setCalDate(localDate(new Date()))
+    setCalTime(doses[0].time)
+    setCalDoses(doses)
+    setCalAlert('1d')
+    setCalendarOpen(true)
+  }
 
-    const icsContent = generateIcs(events)
-    downloadIcs('medicine-reminders.ics', icsContent)
+  const confirmMedicineCalendar = () => {
+    const doses = calDoses.length ? calDoses : [{ key: 'once', label: calTitle, time: calTime }]
+    const events = doses.map((dose) => {
+      const medIndex = Number(dose.key.split('-')[0])
+      const days = medicines?.[medIndex]?.duration_days ?? userDurations[medIndex]
+      return {
+        ...calendarDraftEvent({
+          uid: hashString(`${resultId}-med-${dose.key}`),
+          title: calTitle,
+          note: t.calendarOneLine || 'Sarvam reminder.',
+          date: calDate,
+          time: dose.time,
+          alert: calAlert,
+        }),
+        rrule: days ? `FREQ=DAILY;COUNT=${days}` : undefined,
+      }
+    })
+    if (!events.length) return
+    downloadIcs('medicine-reminders.ics', generateIcs(events))
     onReminderAdded?.()
+    setCalendarOpen(false)
     setIsSheetOpen(false)
   }
 
@@ -359,7 +377,7 @@ export default function MedicineCard({
           <div className="pt-2">
             <button
               type="button"
-              onClick={handleExportIcs}
+              onClick={openMedicineCalendar}
               className="sv-press w-full h-14 bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] text-[#1A1A1A] font-bold text-[17px] rounded-full flex items-center justify-center gap-2"
             >
               <CalendarIcon className="w-5 h-5" />
@@ -368,6 +386,24 @@ export default function MedicineCard({
           </div>
         </div>
       </Sheet>
+      <CalendarEditSheet
+        isOpen={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        t={t}
+        title={calTitle}
+        date={calDate}
+        time={calTime}
+        alert={calAlert}
+        doses={calDoses.length > 1 ? calDoses : undefined}
+        onChange={(next) => {
+          setCalTitle(next.title)
+          setCalDate(next.date)
+          setCalTime(next.time)
+          setCalAlert(next.alert)
+        }}
+        onDoseTime={(key, time) => setCalDoses((prev) => prev.map((dose) => dose.key === key ? { ...dose, time } : dose))}
+        onAdd={confirmMedicineCalendar}
+      />
     </>
   )
 }

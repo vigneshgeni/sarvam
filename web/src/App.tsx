@@ -36,6 +36,7 @@ import {
   saveRecentAsks,
 } from './utils/db'
 import { defaultDocumentName, emptyActivity, isSampleResultId, mergeActivity, type DocumentActivity } from './utils/activity'
+import { collectReminders, dismissNext, pastReminders, readDismissed, upcomingReminders, writeDismissed } from './utils/reminders'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
 import TrayScreen from './components/TrayScreen'
@@ -144,6 +145,10 @@ export default function App() {
   // Session refs
   const activeFilesRef = useRef<File[]>([])
   const retryActionRef = useRef<(() => void) | null>(null)
+  const [dismissedNext, setDismissedNext] = useState<string[]>(() => {
+    if (typeof localStorage === 'undefined') return []
+    return readDismissed(localStorage)
+  })
   const currentResultIdRef = useRef<string | null>(loadActiveSession()?.currentResultId || null)
   const asksRef = useRef<AskTurn[]>(loadActiveSession()?.asks || [])
   const activityTimer = useRef<number | null>(null)
@@ -1322,35 +1327,31 @@ export default function App() {
     setStagedFiles((prev) => [...prev, ...newStaged])
   }
 
-  // Next step from the newest saved document that still has something to do.
-  const nextUpAction = (() => {
-    const today = new Date().toISOString().slice(0, 10)
-
-    for (const item of recentResults) {
-      const upcoming = (item.result?.actions || []).filter(
-        (act) => act.due_date && act.due_date >= today && act.date_status !== 'passed'
-      )
-      if (upcoming.length === 0) continue
-      upcoming.sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))
-      const act = upcoming[0]
-      let formattedDate = act.due_date || ''
-      try {
-        formattedDate = new Intl.DateTimeFormat(resolveLang(selectedLang), {
-          day: 'numeric',
-          month: 'short',
-        }).format(new Date(act.due_date || ''))
-      } catch {
-        /* keep the printed date */
+  const reminderRows = collectReminders(recentResults, {
+    lang: resolveLang(selectedLang),
+    medicineLine: (name) => (t.takeMedicineLine || 'Take {name}').replace('{name}', name),
+  })
+  const upcomingRows = upcomingReminders(reminderRows, dismissedNext)
+  const pastRows = pastReminders(reminderRows)
+  const nextUpAction = upcomingRows[0]
+    ? {
+        id: upcomingRows[0].id,
+        summary: upcomingRows[0].summary,
+        date: upcomingRows[0].date,
+        time: upcomingRows[0].time,
+        documentName: upcomingRows[0].documentName,
+        recentId: upcomingRows[0].recentId,
       }
-      return {
-        text: act.text,
-        date: act.due_date || '',
-        formattedDate,
-        recentItem: item,
-      }
-    }
-    return null
-  })()
+    : null
+  const dismissHomeReminder = (id: string) => {
+    const next = dismissNext(dismissedNext, id)
+    setDismissedNext(next)
+    writeDismissed(localStorage, next)
+  }
+  const openReminderDoc = (recentId: string) => {
+    const item = recentResults.find((row) => row.id === recentId)
+    if (item) void handleOpenRecent(item)
+  }
 
   return (
     <div className="min-h-[100dvh] bg-bg text-ink flex justify-center">
@@ -1400,7 +1401,12 @@ export default function App() {
             onSelectLang={handleSelectLang}
             isOnline={isOnline}
             nextUp={nextUpAction}
-            onOpenNext={() => nextUpAction && handleOpenRecent(nextUpAction.recentItem)}
+            upcomingCount={upcomingRows.length}
+            upcomingReminders={upcomingRows}
+            pastReminders={pastRows}
+            onOpenNext={() => nextUpAction && openReminderDoc(nextUpAction.recentId)}
+            onOpenReminder={openReminderDoc}
+            onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
             onChooseFiles={handleChooseFileClick}
             onChooseFolder={handleChooseFolderClick}

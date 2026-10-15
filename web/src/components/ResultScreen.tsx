@@ -39,16 +39,12 @@ import {
   type CalendarEventInput,
 } from '../utils/ics'
 
-function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
-  if (choice === '1d') return '-P1D'
-  if (choice === '3d') return '-P3D'
-  if (choice === '1w') return '-P1W'
-  return 'PT9H'
-}
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { expandProtectedTerms } from '../utils/shareCore.js'
 import { prepareExportNode, exportHasHiddenPaint } from '../utils/shareImage.js'
 import { clearTicks, emptyActivity, mergeActivity, type DocumentActivity } from '../utils/activity'
+import { calendarDraftEvent, reminderSummary } from '../utils/reminders'
+import CalendarEditSheet from './CalendarEditSheet'
 import { isSampleFile } from '../samples/loadSample'
 import { outputNeedsTranslation } from '../utils/languageMatch'
 import { pushBrowserHistory } from '../utils/history'
@@ -164,6 +160,13 @@ export default function ResultScreen({
   const [isRemindersOpen, setIsRemindersOpen] = useState(false)
   const [pickedDates, setPickedDates] = useState<Record<number, boolean>>({})
   const [alertChoice, setAlertChoice] = useState<'day' | '1d' | '3d' | '1w'>('1d')
+  const [calendarEdit, setCalendarEdit] = useState<{
+    index: number
+    title: string
+    date: string
+    time: string
+    alert: 'day' | '1d' | '3d' | '1w'
+  } | null>(null)
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
   const [copyDatesSuccess, setCopyDatesSuccess] = useState(false)
   const [sourceViewer, setSourceViewer] = useState<{
@@ -359,39 +362,42 @@ export default function ResultScreen({
   const totalActions = result.actions?.length || 0
   const completedActionsCount = Object.values(doneActions).filter(Boolean).length
 
-  // Calendar export handlers
-  const handleAddActionToCalendar = (act: any, idx: number) => {
+  const openCalendarEdit = (act: { text?: string; due_date?: string | null; recurrence?: string | null; date_status?: string }, idx: number) => {
     if (isDatePassed(act.due_date) || act.date_status === 'passed') return
     if (!act.due_date && !act.recurrence) return
-    const isRecurring = !!act.recurrence
     const todayStr = new Date().toISOString().slice(0, 10)
-    const startDate = act.due_date || todayStr
+    setCalendarEdit({
+      index: idx,
+      title: reminderSummary(act.text),
+      date: act.due_date || todayStr,
+      time: '09:00',
+      alert: alertChoice,
+    })
+  }
 
-    const descParts: string[] = []
-    if (act.date_status === 'calculated') descParts.push('Calculated date.')
-    if (act.quote) descParts.push(`Quote: "${act.quote}"`)
-    descParts.push('Sarvam Document Reader.')
-
-    const events: CalendarEventInput[] = [
-      {
-        uid: hashString(`${result.title}-act-${idx}`),
-        title: act.text,
-        description: descParts.join(' '),
-        startDate: startDate,
-        isAllDay: true,
-        rrule: isRecurring ? 'FREQ=MONTHLY' : undefined,
-        alarmTrigger: alertTrigger(alertChoice),
-      },
-    ]
-
-    const ics = generateIcs(events)
-    downloadIcs(`action-${idx + 1}.ics`, ics)
-    const key = String(idx)
+  const confirmCalendarEdit = () => {
+    if (!calendarEdit) return
+    const act = result.actions?.[calendarEdit.index]
+    const event: CalendarEventInput = {
+      ...calendarDraftEvent({
+        uid: hashString(`${result.title}-act-${calendarEdit.index}`),
+        title: calendarEdit.title,
+        note: t.calendarOneLine || 'Sarvam reminder.',
+        date: calendarEdit.date,
+        time: calendarEdit.time,
+        alert: calendarEdit.alert,
+      }),
+      rrule: act?.recurrence ? 'FREQ=MONTHLY' : undefined,
+    }
+    downloadIcs(`action-${calendarEdit.index + 1}.ics`, generateIcs([event]))
+    const key = String(calendarEdit.index)
     setRemindersAdded((prev) => {
       const added = { ...prev, [key]: true }
       emitActivity({ remindersAdded: added })
       return added
     })
+    setAlertChoice(calendarEdit.alert)
+    setCalendarEdit(null)
   }
 
   const handleAddAllDates = async (onlyPicked = false) => {
@@ -403,15 +409,14 @@ export default function ResultScreen({
 
     const events: CalendarEventInput[] = validActions.map((act, idx) => {
       const todayStr = new Date().toISOString().slice(0, 10)
-      const startDate = act.due_date || todayStr
-      return {
+      return calendarDraftEvent({
         uid: hashString(`${result.title}-act-all-${idx}`),
-        title: act.text,
-        description: act.date_status === 'calculated' ? 'Calculated date.' : undefined,
-        startDate: startDate,
-        isAllDay: true,
-        alarmTrigger: alertTrigger(alertChoice),
-      }
+        title: reminderSummary(act.text),
+        note: t.calendarOneLine || 'Sarvam reminder.',
+        date: act.due_date || todayStr,
+        time: '09:00',
+        alert: alertChoice,
+      })
     })
 
     const ics = generateIcs(events)
@@ -463,9 +468,9 @@ export default function ResultScreen({
     const todayStr = new Date().toISOString().slice(0, 10)
     const text = buildDatesText(
       validActions.map((a) => ({
-        title: a.text,
+        title: reminderSummary(a.text),
         startDate: a.due_date || todayStr,
-        description: a.date_status === 'calculated' ? 'Calculated date' : undefined,
+        description: t.calendarOneLine || 'Sarvam reminder.',
       }))
     )
     const ok = await copyToClipboard(text)
@@ -1009,7 +1014,7 @@ export default function ResultScreen({
                           {dateChips.showCalendar && (
                             <button
                               type="button"
-                              onClick={() => { if (!remindersAdded[i]) handleAddActionToCalendar(act, i) }}
+                              onClick={() => { if (!remindersAdded[i]) openCalendarEdit(act, i) }}
                               className="hit-44 btn-press text-[11px] font-semibold text-[#034F46] bg-[#CFE5E0] hover:bg-[#CFE5E0] px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
                             >
                               <CalendarIcon className="w-3 h-3" />
@@ -1515,6 +1520,18 @@ export default function ResultScreen({
         </div>
       </Sheet>
 
+      <CalendarEditSheet
+        isOpen={!!calendarEdit}
+        onClose={() => setCalendarEdit(null)}
+        t={t}
+        title={calendarEdit?.title || ''}
+        date={calendarEdit?.date || ''}
+        time={calendarEdit?.time || ''}
+        alert={calendarEdit?.alert || '1d'}
+        onChange={(next) => setCalendarEdit((prev) => prev ? { ...prev, ...next, alert: next.alert as 'day' | '1d' | '3d' | '1w' } : prev)}
+        onAdd={confirmCalendarEdit}
+      />
+
       {/* Reminders / Visible Dates List Sheet (WEB-iOS Fix 2) */}
       <Sheet
         isOpen={isRemindersOpen}
@@ -1550,7 +1567,7 @@ export default function ResultScreen({
                       <span className="sv-display block text-[20px] leading-[1.2]">{when.getDate()}</span>
                     </span>
                     <span className="min-w-0 flex-1 flex flex-col">
-                      <span className="text-[15.5px] font-semibold leading-snug">{act.text}</span>
+                      <span className="text-[15.5px] font-semibold leading-snug">{reminderSummary(act.text)}</span>
                       <span className="text-[13px] text-[#575B58]">{act.recurrence ? (t.repeats || 'Repeats') : (t.allDay || 'All day')}</span>
                     </span>
                   </label>
@@ -1588,7 +1605,7 @@ export default function ResultScreen({
                 const first = result.actions?.find((a, idx) => !isDatePassed(a.due_date) && a.date_status !== 'passed' && (a.due_date || a.recurrence) && pickedDates[idx] !== false)
                 if (!first) return
                 const todayStr = new Date().toISOString().slice(0, 10)
-                window.open(getGoogleCalendarUrl(first.text, first.due_date || todayStr, first.quote), '_blank', 'noopener,noreferrer')
+                window.open(getGoogleCalendarUrl(reminderSummary(first.text), first.due_date || todayStr, t.calendarOneLine || 'Sarvam reminder.'), '_blank', 'noopener,noreferrer')
               }}
               className="sv-press h-[50px] rounded-[25px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[15px]"
             >
