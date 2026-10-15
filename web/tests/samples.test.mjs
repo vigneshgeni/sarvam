@@ -23,7 +23,7 @@ function emit(rel, name) {
 emit('src/design/catalog.ts', 'catalog.mjs')
 emit('src/samples/loadSample.ts', 'loadSample.mjs')
 writeFileSync(join(dir, 'types-stub.mjs'), 'export {}\n')
-const { SAMPLE_FILES, sampleResultUrl, isSampleFile } = await import(pathToFileURL(join(dir, 'loadSample.mjs')).href)
+const { SAMPLE_FILES, sampleResultUrl, isSampleFile, resolveSampleOpen } = await import(pathToFileURL(join(dir, 'loadSample.mjs')).href)
 
 test('every sample tile has an offline result address', () => {
   assert.equal(SAMPLE_FILES.length, 11)
@@ -36,4 +36,29 @@ test('every sample tile has an offline result address', () => {
     assert.equal(statSync(fullPath).size > 1000, true, `${file} must not be empty`)
   }
   assert.equal(isSampleFile('my-upload.pdf'), false)
+})
+
+test('a saved lab report does not replace the health checkup or lab sample', () => {
+  const saved = [
+    {
+      title: 'Laboratory Test Report',
+      doc_type: 'lab_report',
+      document_kind: 'lab_report',
+      fileNames: ['2bf6e5eb-38bb-4e73-bc9b-e78ea5943e52-1771652037979.pdf'],
+    },
+  ]
+  const health = resolveSampleOpen('sample-health-checkup.pdf', 'en', saved)
+  const lab = resolveSampleOpen('sample-lab-report.pdf', 'ta', saved)
+  assert.equal(health.file, 'sample-health-checkup.pdf')
+  assert.equal(health.url, '/samples/results/sample-health-checkup.pdf.en.json')
+  assert.equal(lab.file, 'sample-lab-report.pdf')
+  assert.equal(lab.url, '/samples/results/sample-lab-report.pdf.ta.json')
+  assert.equal(resolveSampleOpen('Laboratory Test Report', 'en', saved), null)
+  assert.equal(resolveSampleOpen('lab_report', 'en', saved), null)
+
+  const bundled = JSON.parse(
+    readFileSync(join(here, '../public/samples/results/sample-health-checkup.pdf.en.json'), 'utf8'),
+  )
+  assert.notEqual(bundled.title, saved[0].title)
+  assert.equal(bundled.title.includes('Lab Report'), true)
 })

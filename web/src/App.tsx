@@ -51,7 +51,7 @@ import {
 import { useOverlayRestore } from './hooks/useOverlayRestore'
 import { outputNeedsTranslation } from './utils/languageMatch'
 import { forgetReadMemory, forgetReadResult, recallRead, rememberRead, sha256Files } from './utils/readCache'
-import { fetchSampleResult, isSampleFile } from './samples/loadSample'
+import { fetchSampleResult, isSampleFile, resolveSampleOpen } from './samples/loadSample'
 import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 
 interface DeleteConfirmState {
@@ -934,18 +934,31 @@ export default function App() {
   // Handle "Try a sample" items (WEB-14)
   const handleSampleClick = async (sampleFilename: string) => {
     retryActionRef.current = () => handleSampleClick(sampleFilename)
+    const targetLang = resolveLang(selectedLang)
+    const choice = resolveSampleOpen(
+      sampleFilename,
+      targetLang,
+      recentResults.map((item) => ({
+        title: item.title,
+        doc_type: item.result?.doc_type,
+        document_kind: item.result?.document_kind,
+        fileNames: item.fileNames,
+      })),
+    )
+    if (!choice) return
+    fileHashRef.current = ''
+    setMultiReportsData(null)
     try {
       setCurrentError(null)
-      const targetLang = resolveLang(selectedLang)
-      const result = await fetchSampleResult(sampleFilename, targetLang)
-      const res = await fetch(`/samples/${sampleFilename}`)
+      const result = await fetchSampleResult(choice.file, choice.lang)
+      const res = await fetch(`/samples/${choice.file}`)
       const files: File[] = []
       if (res.ok) {
         const blob = await res.blob()
-        const mimeType = sampleFilename.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-        files.push(new File([blob], sampleFilename, { type: mimeType }))
+        const mimeType = choice.file.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+        files.push(new File([blob], choice.file, { type: mimeType }))
       }
-      const resultId = `sample-${sampleFilename}`
+      const resultId = `sample-${choice.file}`
       currentResultIdRef.current = resultId
       originalResultRef.current = result
       translationCacheRef.current.set(`${resultId}:${targetLang}`, result)
@@ -1126,6 +1139,7 @@ export default function App() {
     translationCacheRef.current.clear()
 
     setResultData(null)
+    setMultiReportsData(null)
     setCurrentError(null)
     setTranslateError(null)
     setIsTranslating(false)

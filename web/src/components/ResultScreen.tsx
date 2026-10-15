@@ -46,6 +46,7 @@ function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
   return 'PT9H'
 }
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
+import { isSampleFile } from '../samples/loadSample'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
 import { loadActiveSession, saveActiveSession } from '../utils/history'
@@ -506,7 +507,8 @@ export default function ResultScreen({
     : (result.facts || []).slice(0, 5)
 
   // Multi-Reports Overview Card List
-  if (multiReports && multiReports.length > 1 && selectedReportIndex === null) {
+  const sampleOnScreen = files.length > 0 && files.every((file) => isSampleFile(file.name))
+  if (multiReports && multiReports.length > 1 && selectedReportIndex === null && !sampleOnScreen) {
     return (
       <div className="flex-1 flex flex-col justify-between animate-card-in pb-16">
         <div className="flex flex-col gap-4">
