@@ -503,14 +503,21 @@ export default function ResultScreen({
     node.style.display = 'flex'
     node.style.flexDirection = 'column'
     node.style.gap = '20px'
-    const pieces = snapshotMode === 'summary'
-      ? [...source.querySelectorAll('[data-export="summary"]')]
-      : [source]
-    if (!pieces.length) {
-      setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
-      return
+    if (hidePersonal && result.mask_fallback) {
+      const safe = document.createElement('div')
+      safe.style.cssText = 'padding:24px;white-space:pre-wrap;font:16px/1.45 sans-serif;color:#1A1A1A'
+      safe.textContent = sharedText
+      node.appendChild(safe)
+    } else {
+      const pieces = snapshotMode === 'summary'
+        ? [...source.querySelectorAll('[data-export="summary"]')]
+        : [source]
+      if (!pieces.length) {
+        setImageStatus(t.imageFailed || "Couldn't make the image. Try Summary only.")
+        return
+      }
+      for (const piece of pieces) node.appendChild(piece.cloneNode(true))
     }
-    for (const piece of pieces) node.appendChild(piece.cloneNode(true))
     node.querySelectorAll('.fixed').forEach((el) => el.remove())
     prepareExportNode(node)
     if (exportHasHiddenPaint(node)) prepareExportNode(node)

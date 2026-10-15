@@ -619,6 +619,66 @@ def backup_language_prompt(prompt: str, lang_name: str) -> Optional[str]:
     )
 
 
+def finish_name_renderings(
+    terms: Optional[List[str]],
+    texts: Optional[List[str]],
+    rendered: Optional[dict],
+    deadline: Optional[float] = None,
+) -> Tuple[Dict[str, List[str]], bool]:
+    """One short call for source names that have no rendering. Still missing means mask_fallback."""
+    collected = collect_protected_renderings(terms, texts, rendered)
+    missing = missing_source_names(terms, collected, texts)
+    if not missing:
+        return collected, False
+    logger.info("renderings model=%s missing=%d", MODEL_ID, len(missing))
+    if deadline is not None and deadline - time.time() < 8:
+        logger.info("renderings status=skipped missing=%d", len(missing))
+        return collected, True
+    blob = "\n".join(text for text in (texts or []) if text)
+    if len(blob) > 6000:
+        blob = blob[:6000]
+    listed = "\n".join(f"- {name}" for name in missing[:12])
+    prompt = (
+        "These source names were copied from a document. The text below is the rewrite. "
+        "For each source name, list every exact string in the text that refers to that person, "
+        "including a different script. Copy those strings exactly. "
+        "If the text does not name that person, use an empty list. Do not invent a spelling.\n"
+        f"Source names:\n{listed}\n\nText:\n{blob}"
+    )
+    try:
+        client = get_client()
+        config = types.GenerateContentConfig(
+            temperature=0.0,
+            response_mime_type="application/json",
+            response_schema=NameRenderingFill,
+            max_output_tokens=512,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        )
+        response = call_gemini_with_retry(
+            client=client,
+            model=MODEL_ID,
+            contents=[prompt],
+            config=config,
+            endpoint="renderings",
+            deadline=deadline,
+            attempt_timeout_sec=20,
+            max_retries=0,
+            fallback_model=MODEL_ID,
+            retry_budget=22,
+        )
+        if response.parsed and isinstance(response.parsed, NameRenderingFill):
+            proposed = response.parsed.renderings
+        else:
+            proposed = NameRenderingFill.model_validate_json(response.text).renderings
+    except Exception:
+        logger.info("renderings status=failed missing=%d", len(missing))
+        return collected, True
+    merged = merge_name_renderings(collected, proposed, texts)
+    still = missing_source_names(terms, merged, texts)
+    logger.info("renderings status=%s missing=%d", "fallback" if still else "filled", len(still))
+    return merged, bool(still)
+
+
 def read_document_single_attempt(
     files_data: List[Tuple[bytes, str]],
     lang: str,
