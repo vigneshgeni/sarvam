@@ -1,6 +1,6 @@
 # Design v3 coverage
 
-Checked against `design/sarvam-v3/design/screens/` on 14 Oct 2026. "Partly" means the screen is in the app and uses the v3 colours, type and radii, and a listed piece is still short of the PNG.
+Checked against `design/sarvam-v3/design/screens/` on 14 Oct 2026, then looked at again in the local app at 390×844 on 15 Oct 2026. "Partly" means the screen is in the app and uses the v3 colours, type and radii, and a listed piece is still short of the PNG. None of these rows is a pixel match.
 
 | Screen | Elements | Matches PNG | Missing | Motion |
 |---|---|---|---|---|
@@ -31,7 +31,9 @@ Checked against `design/sarvam-v3/design/screens/` on 14 Oct 2026. "Partly" mean
 | 25 Offline | Saved results still open | partly | Home state exists; not compared pixel for pixel | yes |
 | 26 Mapping rules | Design reference | no | Not an app screen | no |
 
-0 of 26 match a PNG pixel for pixel in this check. 24 are partly built. Screen 26 is the design reference.
+0 of 26 match a PNG pixel for pixel. 24 are partly built. Screen 26 is the design reference.
+
+On 15 Oct 2026 the local app was opened at 390×844. Home showed the sample tiles in the selected language. A restored English insurance result under a Tamil screen showed the couldn't-translate banner with Retry. The Tamil lab sample opened the bundled fictional result, the headline counted values outside the printed range, and Add all dates stayed hidden because that report has no upcoming date. Ask opened with chips, a full question box, and a microphone button, without a voice-not-supported error. Listen, reading, share, and the other result kinds were not compared with the PNGs in this pass.
 
 ## New-document check
 

@@ -1355,9 +1355,7 @@ export default function App() {
             translateFailedLang={translateFailedLang}
             onChangeLanguage={handleChangeResultLang}
             onRetryTranslate={() => {
-              if (translateFailedLang) {
-                handleChangeResultLang(translateFailedLang)
-              }
+              handleChangeResultLang(translateFailedLang || selectedLang)
             }}
             onDismissTranslateError={() => {
               setTranslateError(null)

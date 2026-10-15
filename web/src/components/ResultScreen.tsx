@@ -47,6 +47,7 @@ function alertTrigger(choice: 'day' | '1d' | '3d' | '1w'): string {
 }
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { isSampleFile } from '../samples/loadSample'
+import { outputNeedsTranslation } from '../utils/languageMatch'
 import { pushBrowserHistory } from '../utils/history'
 import { useOverlayRestore } from '../hooks/useOverlayRestore'
 import { loadActiveSession, saveActiveSession } from '../utils/history'
@@ -693,12 +694,12 @@ export default function ResultScreen({
         )}
 
         {/* Translate Fail Banner (WEB-2) */}
-        {translateFailedLang && (
+        {(translateFailedLang || (!isTranslating && outputNeedsTranslation(result, contentLang) ? contentLang : null)) && (
           <div className="bg-[#FFF4DE] border border-[#F4DDB0] text-[#5A3500] p-3 rounded-2xl flex items-center justify-between gap-2 text-xs">
             <span>
-              {(t.translateFailBanner || "Couldn't translate to {lang}. Showing English.").replace(
+              {(t.translateFailBanner || "Couldn't translate, showing English.").replace(
                 '{lang}',
-                translateFailedLang.toUpperCase()
+                (translateFailedLang || contentLang).toUpperCase()
               )}
             </span>
             {onRetryTranslate && (
