@@ -1,48 +1,64 @@
 # Sarvam
 
-> Official notice & letter explainer in Indian languages · Google Cloud AI Builder Cup 2026
+Paperwork, explained in your language.
 
-Sarvam turns official notices, utility bills, insurance letters, and pension notices into clear next steps in your language (English, தமிழ், हिंदी, and more).
+Sarvam reads a notice, bill, letter or report and explains what it says and what to do next. It speaks and writes in English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi, Bengali and Odia.
 
----
+[Live app](https://sarvam-510715.web.app) · [Demo video](https://youtu.be/uju7hKk9GzU) · [Project deck](docs/Sarvam_AI_Builder_Cup_2026_Deck.pdf)
 
-## Architecture Overview
+Built for the Google Cloud AI Builder Cup 2026 by Vigneshwaran and Abraham Donald T.
 
-- **Web Frontend (`web/`)**: React 19 + Vite + TypeScript + Tailwind CSS PWA. Runs on phone browsers and desktop (max 430px centered frame).
-- **Backend API (`api/`)**: FastAPI on Python 3.12+, powered by Gemini on Google Cloud Vertex AI (with ADC). Evidence exact-matching and date computations run deterministically in code.
-- **Samples (`web/public/samples/`)**: Fictional test files for instant exploration (pension notice, insurance letter, lab report).
+![Sarvam on a phone, explaining an electricity bill](docs/screenshots/hero.jpg)
 
----
+## Screens
 
-## Running API and Web Together Locally
+| Home | A result | Listen |
+| --- | --- | --- |
+| ![Home](docs/screenshots/home.png) | ![Result](docs/screenshots/result.png) | ![Listen](docs/screenshots/listen.png) |
 
-### 1. Prerequisites
+## What it does
 
-- Python 3.12+ (or 3.13)
-- Node.js 20+ & npm
-- Google Cloud credentials set up (`gcloud auth application-default login`) with project `sarvam-510715` (or configured via `PROJECT` env variable)
+- Take a photo or choose a PDF. Several pages are read together. A health checkup can arrive as a lab report, a prescription and a bill in one file.
+- Explain the document in the language you choose, in short sentences.
+- Listen to that explanation, or ask a question by typing or by speaking.
+- Show where a fact came from. Each important value is **Found in your document**, **Calculated**, or **Check against original**.
+- Save a result on this phone, add a date to your calendar, and share a version with personal details hidden.
+- Eleven fictional samples are built in, so you can try it without uploading anything: a lab report, an insurance letter, a pension notice, a phone invoice and warranty, a property tax notice, a traffic e-challan, a prescription, a mutual fund statement, a court summons, a bank deposit slip, and a health checkup.
 
-### 2. Start the Backend API (Port 8080)
+Sarvam explains the document. It does not replace a doctor, an insurer, a lawyer or a government office.
 
-In your first terminal:
+## How we use Google Cloud
+
+```mermaid
+flowchart LR
+  phone["Phone PWA"] --> hosting["Firebase Hosting"]
+  phone --> run["Cloud Run API"]
+  run --> vertex["Vertex AI Gemini"]
+  run --> tts["Cloud Text-to-Speech"]
+  phone --> auth["Firebase Anonymous Auth"]
+  phone --> firestore["Firestore feedback"]
+```
+
+- **Gemini 3.7 Flash** on Vertex AI reads the document, translates it, answers questions and transcribes a short recording. If that call fails in a way that can be tried again, Sarvam uses **Gemini 2.5 Flash**.
+- **Cloud Run** (`asia-south1`) hosts the FastAPI service.
+- **Cloud Text-to-Speech** (Chirp 3 HD) speaks English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi and Bengali. Odia uses the phone's own voice.
+- **Firebase Hosting** serves the app. **Anonymous Auth** signs the phone in. **Firestore** stores the optional rating, not the document.
+
+## Privacy
+
+The document is sent to Vertex AI so it can be read. Sarvam does not keep a library of uploaded files. A result you choose to save stays on this phone. A microphone recording used for Ask is transcribed and then dropped. Share can hide names, numbers and other personal details before anything leaves the phone.
+
+## Run it locally
+
+You need Python 3.12 or newer, Node.js 20 or newer, and Google Cloud application-default credentials for project `sarvam-510715`.
 
 ```bash
 cd api
+python3 -m venv .venv
 source .venv/bin/activate
-# If not yet installed:
-# pip install -r requirements.txt
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8080
 ```
-
-Verify the API is healthy:
-```bash
-curl http://localhost:8080/health
-# {"status":"ok"}
-```
-
-### 3. Start the Web Frontend (Port 5173)
-
-In your second terminal:
 
 ```bash
 cd web
@@ -50,75 +66,30 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser (or use device mode at 390px/430px width).
+Open [http://localhost:5173](http://localhost:5173). The web app reads `VITE_API_URL` from `web/.env` (see `web/.env.example`). For a phone on the same Wi-Fi, use the laptop's network address instead of `localhost`. The deploy steps are in [DEPLOY.md](DEPLOY.md).
 
-### 4. Configuration
-
-The frontend connects to the API via `VITE_API_URL` defined in `web/.env`:
-
-```env
-VITE_API_URL=http://localhost:8080
-```
-
----
-
-## How to Test Locally
-
-1. **Try a sample**:
-   - On the Home screen, click any sample under **"Try a sample"** (e.g. *Pension notice*, *Blood test report*, or *Insurance claim letter*).
-   - Watch the 3-step scanner animation on the **Reading screen**.
-   - Verify the **Result screen** displays in the section 4 order:
-     1. Document title & type with evidence summary line (e.g., *Check against original* for photos, *Matched to document* for PDF quotes, or *Calculated* for relative dates).
-     2. **What you need to do** (with date chips, past date badge if applicable, evidence chips, and tap to view the verbatim source passage).
-     3. **In simple words** (plain-language summary).
-     4. **Watch out** (steady amber card, warnings directly from document).
-     5. **Key facts** (amounts, IDs, dates with *"From your document"* passage toggles).
-     6. **Conflicts** if any conflicting details exist.
-     7. **Disclaimer** and bottom bar (*Listen* + *Share*).
-   - Test changing the language via the top dropdown on the Result screen (e.g. switch between English, தமிழ், and हिंदी) — it calls the API again and renders the full explanation in the chosen language.
-
-2. **Choose file (Upload)**:
-   - Click **"Choose file"** and select a PDF or image (`.pdf`, `.jpg`, `.png`).
-   - The files stage in the review tray with thumbnail, file size, and remove button.
-   - Click **"Done"** to run the explanation flow.
-
-3. **Take photo (Camera)**:
-   - On mobile (or camera-supported devices), click **"Take photo"** to open the camera (`capture="environment"`).
-   - Capture up to 3 pages with the live page counter (`Page X of 3`).
-   - Remove individual pages or tap **"Add next page"**.
-   - Click **"Done"** to run the explanation flow. Images are automatically resized in the browser to max 1600px JPEG (~0.85 quality) before uploading.
-
-4. **Run Unit Tests**:
-   - Backend: `api/.venv/bin/pytest api`
-   - Frontend build & lint: `cd web && npm run lint && npm run build`
-
----
-
-## Networking & Deployment Notes
-
-### Why `http://localhost:8080` hung while `http://192.168.1.2:8080` worked (Verified)
-
-Empirical testing with `curl` on the running API server demonstrates:
-- `curl http://localhost:8080/health`: HTTP 200 in ~0.006s
-- `curl http://127.0.0.1:8080/health`: HTTP 200 in ~0.001s
-- `curl http://192.168.1.2:8080/health`: HTTP 200 in ~0.004s
-- `curl http://[::1]:8080/health`: Refused immediately (`Failed to connect to ::1 port 8080 after 18 ms: Couldn't connect to server`). **It does not hang.**
-
-**Actual causes of the reported hang:**
-1. **Device loopback boundary (Mobile / Phone Testing)**: When opening the web app on a phone connected to local Wi-Fi, `localhost` resolves to the **phone itself**, where no backend service is running. If `VITE_API_URL=http://localhost:8080` is configured, requests from the phone target the phone's loopback and hang/time out. Connecting via the host machine's LAN IP (`http://192.168.1.2:8080`) routes over the local network to the laptop and succeeds immediately.
-2. **Concurrent Request Blocking**: Uvicorn running a synchronous model call in a single worker process blocks incoming requests until the model call completes or times out.
-3. **Configuration Rule**: When testing on physical devices or across the local network, `VITE_API_URL` must use the laptop's LAN IP (`http://192.168.1.2:8080`) or the Cloud Run URL, not `localhost`.
-
-### Cloud Run Deployment Recommendation
-
-To safely handle multi-page PDFs and prevent memory exhaustion under concurrency, deploy the backend to Google Cloud Run with **`--concurrency 8`** and at least 1 GiB memory:
+## Tests
 
 ```bash
-gcloud run deploy sarvam-api \
-  --image gcr.io/${PROJECT_ID}/sarvam-api \
-  --platform managed \
-  --region asia-south1 \
-  --memory 1Gi \
-  --concurrency 8 \
-  --allow-unauthenticated
+cd api && .venv/bin/python -m pytest -q
+cd web && node --test
 ```
+
+`cd web && npm run build` typechecks and builds the app.
+
+## Repository
+
+| Path | What it is |
+| --- | --- |
+| `web/` | React, TypeScript and Vite phone app |
+| `api/` | FastAPI service |
+| `web/public/samples/` | Fictional sample documents |
+| `docs/` | Deck, screenshots and the original build brief |
+| `design/sarvam-v3/` | Design screens the app was built from. Tests read the expected-facts file here, so this folder stays at this path |
+| `DEPLOY.md` | How the live API and the website are deployed |
+
+## Known limits
+
+- Odia has no Chirp voice on the server. Listen for Odia uses the phone's voice when the phone has one.
+- Word files are not accepted. Use a PDF or a photo.
+- The samples are fictional. They are not real people's documents.

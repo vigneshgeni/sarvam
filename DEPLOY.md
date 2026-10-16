@@ -154,3 +154,9 @@ GOOGLE_CLOUD_PROJECT=sarvam-510715 scripts/.venv/bin/python scripts/feedback_sum
 ```
 
 The script counts `feedback` documents and skips `sample: true`. It does not read or store document text. Firestore is not added to the Explain API.
+
+## Troubleshooting a phone on the same Wi-Fi
+
+`localhost` on a phone is the phone, not the laptop. If the phone's app is pointed at `http://localhost:8080`, the request never reaches the API.
+
+Point `VITE_API_URL` at the laptop's address on the Wi-Fi network, for example `http://192.168.x.x:8080`, or at the Cloud Run URL. `127.0.0.1` on the laptop itself is fine. IPv6 `::1` is not where this API listens.

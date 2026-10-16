@@ -1,5 +1,7 @@
 # Sarvam — Build Brief v2 (7-day MVP)
 
+This is the original brief for the coding agent. It used to sit in the repository root. The project README is at the root.
+
 Team Sarvam · Google Cloud AI Builder Cup 2026 · Theme: Sustainability & Social Impact
 Team locks **11 Oct** · MVP working by **13 Oct** · Submit by **16 Oct** (deadline 18 Oct)
 
