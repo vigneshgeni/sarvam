@@ -115,8 +115,28 @@ ASK_RATE_LIMIT = 20
 REDACT_RATE_LIMIT = 20
 RATE_LIMIT_WINDOW = 60.0  # seconds
 
-# Auto language allowlist
-AUTO_LANGS_SET = set(os.environ.get("AUTO_LANGS", "en,ta,hi,te,ml,kn").split(","))
+# Auto language allowlist. All nine reading languages, unless the deploy overrides it.
+AUTO_LANGS_SET = set(os.environ.get("AUTO_LANGS", "en,ta,hi,te,ml,kn,mr,bn,or").split(","))
+
+
+def _english_spoken_fallback(title: str, actions: list) -> str:
+    first_act = actions[0].text if actions else ""
+    due = actions[0].due_date if actions else None
+    due_part = f" by {due}" if due else ""
+    return (
+        f"This is an official document regarding {title}. Please review the key details. {first_act}{due_part}."
+    )
+
+
+def _spoken_lines(lines, doc_text: Optional[str], allowed: set) -> str:
+    """Use translated summary lines for audio when every number in them is already allowed."""
+    if not lines:
+        return ""
+    text = " ".join(str(line).strip() for line in lines if line and str(line).strip())
+    if not text:
+        return ""
+    ok, _ = verify_spoken_summary_digit_guard(text, doc_text, allowed_numbers=allowed)
+    return text if ok else ""
 
 # In-memory rate limiting per endpoint and client IP: (endpoint, ip) -> timestamps
 IP_REQUESTS: Dict[Tuple[str, str], List[float]] = defaultdict(list)
@@ -804,14 +824,13 @@ async def explain(
             allowed_numbers=allowed_nums,
         )
         if not is_valid_digits:
-            # Fall back to safe summary if digit guard failed
-            first_act = explain_actions[0].text if explain_actions else ""
-            due_part = f" by {explain_actions[0].due_date}" if (explain_actions and explain_actions[0].due_date) else ""
-            spoken_summary = f"This is an official document regarding {reader_result.title}. Please review the key details. {first_act}{due_part}."
+            spoken_summary = _spoken_lines(reader_result.summary, full_doc_text, allowed_nums) or _english_spoken_fallback(reader_result.title, explain_actions)
     else:
-        first_act = explain_actions[0].text if explain_actions else ""
-        due_part = f" by {explain_actions[0].due_date}" if (explain_actions and explain_actions[0].due_date) else ""
-        spoken_summary = f"This is an official document regarding {reader_result.title}. Please review the key details. {first_act}{due_part}."
+        spoken_summary = _spoken_lines(
+            reader_result.summary,
+            " ".join(pdf_pages_text) if pdf_pages_text else "",
+            set(),
+        ) or _english_spoken_fallback(reader_result.title, explain_actions)
 
     if spoken_summary:
         spoken_summary = render_iso_dates_natural(spoken_summary, written_lang)
@@ -1466,13 +1485,21 @@ async def translate(
 
     if orig.spoken_summary and trans_spoken_summary:
         orig_nums = set(extract_all_numbers(orig.spoken_summary))
+        for line in orig.summary or []:
+            orig_nums.update(extract_all_numbers(line))
+        for act in orig.actions or []:
+            orig_nums.update(extract_all_numbers(act.text or ""))
         is_valid_trans_digits, unverified = verify_spoken_summary_digit_guard(
             trans_spoken_summary,
             None,
             allowed_numbers=orig_nums,
         )
         if not is_valid_trans_digits:
-            trans_spoken_summary = render_iso_dates_natural(orig.spoken_summary, body.lang)
+            from_summary = _spoken_lines(trans_summary, None, orig_nums)
+            trans_spoken_summary = render_iso_dates_natural(
+                from_summary or orig.spoken_summary,
+                body.lang,
+            )
 
     response.headers["X-Start"] = start_dt.strftime("%H:%M:%S.%f")[:-3]
     response.headers["X-Finish"] = finish_dt.strftime("%H:%M:%S.%f")[:-3]
