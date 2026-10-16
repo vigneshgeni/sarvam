@@ -63,9 +63,11 @@ MALAYALAM_DIGITS = "൦൧൨൩൪൫൬൭൮൯"
 INDIC_SCRIPT_RANGES = {
     "ta": (0x0B80, 0x0BFF),  # Tamil
     "hi": (0x0900, 0x097F),  # Devanagari (Hindi)
+    "mr": (0x0900, 0x097F),  # Devanagari (Marathi)
     "te": (0x0C00, 0x0C7F),  # Telugu
     "ml": (0x0D00, 0x0D7F),  # Malayalam
     "kn": (0x0C80, 0x0CFF),  # Kannada
+    "bn": (0x0980, 0x09FF),  # Bengali
 }
 
 
@@ -148,7 +150,7 @@ def verify_spoken_summary_digit_guard(
 
 def check_script_guard(texts: List[str], lang: str) -> Tuple[bool, float]:
     """
-    Script guard for target languages ta, hi, te, ml, kn.
+    Script guard for target languages ta, hi, mr, te, ml, kn, bn.
     At least 40% of the alphabetic characters across user-facing strings must be in the target script.
     Latin is allowed for protected terms, units and codes.
     Returns (passed, ratio).
