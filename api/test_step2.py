@@ -1801,6 +1801,16 @@ def test_script_guard_thresholds():
     assert passed is True
     assert ratio >= 0.40
 
+    mr_text = ["ही अधिकृत नोटीस आहे. कृपया तपशील तपासा."]
+    passed, ratio = check_script_guard(mr_text, "mr")
+    assert passed is True
+    assert ratio >= 0.40
+
+    bn_text = ["এটি একটি আনুষ্ঠানিক নোটিশ। অনুগ্রহ করে বিবরণ দেখুন।"]
+    passed, ratio = check_script_guard(bn_text, "bn")
+    assert passed is True
+    assert ratio >= 0.40
+
     # 2. English passthrough in Indic target fails script guard (< 40%)
     en_text = ["This is an official electricity bill statement. Please pay on time."]
     passed, ratio = check_script_guard(en_text, "ta")
@@ -1808,6 +1818,10 @@ def test_script_guard_thresholds():
     assert ratio < 0.40
 
     passed, ratio = check_script_guard(en_text, "hi")
+    assert passed is False
+    passed, ratio = check_script_guard(en_text, "mr")
+    assert passed is False
+    passed, ratio = check_script_guard(en_text, "bn")
     assert passed is False
 
     # 3. Target language English always passes

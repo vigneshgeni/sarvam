@@ -163,7 +163,7 @@ export default function ListenSheet({
     setSeekPreview(null)
     stopAllAudio()
 
-    if (isOpen && concreteLang !== 'or') {
+    if (isOpen) {
       setIsBuffering(true)
       if (audioElRef.current) {
         audioElRef.current.src = SILENT_WAV_URI

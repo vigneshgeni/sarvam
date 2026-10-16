@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from errors import AskUnverifiedError
 from evidence import (
     GENERIC_OFFICE_WORDS,
+    INDIC_SCRIPT_RANGES,
     check_script_guard,
     collect_protected_renderings,
     extract_digit_sequences,
@@ -168,7 +169,7 @@ Rules:
 1. Output only JSON matching the schema.
 2. Language mode:
    - Identify the primary language of the document. Return its language code in `document_language` (e.g. en, ta, hi, kn, te, ml, mr, bn, gu, pa, or, ur).
-   - If target language is 'auto': write all user-facing text in the document's own language if it is one of: English (en), Tamil (ta), Hindi (hi), Telugu (te), Malayalam (ml), Kannada (kn); otherwise write in English (en). Set `language` to the language code actually written.
+   - If target language is 'auto': write all user-facing text in the document's own language if it is one of: English (en), Tamil (ta), Hindi (hi), Telugu (te), Malayalam (ml), Kannada (kn), Marathi (mr), Bengali (bn); otherwise write in English (en). Set `language` to the language code actually written.
    - If target language is explicit ({LANG}): write all user-facing text entirely in {LANG}, in simple everyday words a 12-year-old understands, in short sentences, and set `language` to the requested code.
    - Month names, units, and labels must be strictly in the target language (no English words mixed in).
    - An English term in brackets is permitted ONLY for official names (e.g. scheme names, form names like 'வாழ்வுச் சான்றிதழ் (Life Certificate)').
@@ -693,7 +694,7 @@ def read_document_single_attempt(
 
     # Script guard check if explicit Indic language was requested
     norm_lang = (lang or "").lower().split("-")[0]
-    if norm_lang in ("ta", "hi", "te", "ml", "kn") and not result.unreadable:
+    if norm_lang in INDIC_SCRIPT_RANGES and not result.unreadable:
         texts_to_check = [result.title] + list(result.summary) + [a.text for a in result.actions]
         passed, ratio = check_script_guard(texts_to_check, norm_lang)
         if not passed:
@@ -977,9 +978,9 @@ def translate_keyed_strings(
         except Exception:
             pass
 
-    # Script guard check for Indic target languages (ta, hi, te, ml, kn)
+    # Script guard for the eight languages with a reading voice. Odia has no server voice.
     norm_lang = (lang or "").lower().split("-")[0]
-    if norm_lang in ("ta", "hi", "te", "ml", "kn") and parsed_strings:
+    if norm_lang in INDIC_SCRIPT_RANGES and parsed_strings:
         passed, ratio = check_script_guard(list(parsed_strings.values()), norm_lang)
         if not passed:
             logger.warning(
@@ -1292,24 +1293,44 @@ def ask_document_single_attempt(
     return ask_res
 
 
+_TRANSCRIBE_SCRIPT = {
+    "en": "Latin",
+    "ta": "Tamil",
+    "hi": "Devanagari",
+    "mr": "Devanagari",
+    "te": "Telugu",
+    "ml": "Malayalam",
+    "kn": "Kannada",
+    "bn": "Bengali",
+}
+
+
+def _transcript_text(raw: str) -> str:
+    try:
+        data = json.loads(raw or "{}")
+        text = data.get("text") if isinstance(data, dict) else ""
+    except Exception:
+        text = ""
+    return (text or "").strip()[:500]
+
+
 def transcribe_audio(
     audio: bytes,
     mime_type: str,
     lang: str,
     deadline: Optional[float] = None,
 ) -> str:
-    """Speech to text. The audio and transcript are not stored."""
-    lang_name = resolve_language_name(lang)
+    """Speech to text in the language the person chose. The audio and transcript are not stored."""
+    norm_lang = (lang or "en").lower().split("-")[0]
+    lang_name = resolve_language_name(norm_lang)
+    script = _TRANSCRIBE_SCRIPT.get(norm_lang, lang_name)
     prompt = (
-        f"Transcribe this speech in {lang_name}. "
-        'Return JSON {"text": "..."} containing only the spoken words. '
-        "Do not answer, translate, or add anything that was not spoken."
+        f"The person chose {lang_name}. Transcribe only the words they spoke, written in {lang_name} using {script} script. "
+        "Do not translate into English. Do not write a Latin transliteration. "
+        'Return JSON {"text": "..."} containing only the spoken words.'
     )
     client = get_client()
-    contents = [
-        types.Part.from_bytes(data=audio, mime_type=mime_type or "audio/webm"),
-        prompt,
-    ]
+    audio_part = types.Part.from_bytes(data=audio, mime_type=mime_type or "audio/webm")
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
@@ -1320,19 +1341,36 @@ def transcribe_audio(
     response = call_gemini_with_retry(
         client=client,
         model=MODEL_ID,
-        contents=contents,
+        contents=[audio_part, prompt],
         config=config,
         endpoint="transcribe",
         deadline=deadline,
         attempt_timeout_sec=20,
     )
-    raw = response.text or "{}"
-    try:
-        data = json.loads(raw)
-        text = data.get("text") if isinstance(data, dict) else ""
-    except Exception:
-        text = ""
-    return (text or "").strip()[:500]
+    text = _transcript_text(response.text or "")
+    if norm_lang not in INDIC_SCRIPT_RANGES:
+        return text
+    passed, _ratio = check_script_guard([text], norm_lang)
+    if passed:
+        return text
+    strict = (
+        f"Write the transcript in {script} script for {lang_name}. "
+        "The previous transcript was in the wrong script. "
+        "Transcribe the spoken words again. Do not translate and do not use Latin letters. "
+        'Return JSON {"text": "..."}.'
+    )
+    retry = call_gemini_with_retry(
+        client=client,
+        model=MODEL_ID,
+        contents=[audio_part, strict],
+        config=config,
+        endpoint="transcribe",
+        deadline=deadline,
+        attempt_timeout_sec=20,
+    )
+    second = _transcript_text(retry.text or "")
+    passed2, _ratio2 = check_script_guard([second], norm_lang)
+    return second if passed2 or not text else text
 
 
 def ask_document(

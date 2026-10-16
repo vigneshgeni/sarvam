@@ -9,6 +9,7 @@
  */
 
 import type { ExplainResponse } from '../types'
+import { outputNeedsTranslation } from './languageMatch'
 
 /**
  * Filter and log available voices to browser console.
@@ -45,6 +46,9 @@ export function findVoiceForLanguage(
     te: ['te-in', 'te'],
     ml: ['ml-in', 'ml'],
     kn: ['kn-in', 'kn'],
+    mr: ['mr-in', 'mr'],
+    bn: ['bn-in', 'bn'],
+    or: ['or-in', 'or'],
   }
 
   const candidates = preferredCodes[normalizedLang] || [normalizedLang]
@@ -72,6 +76,9 @@ export function prepareTextForSpeech(text: string, lang: string): string {
     te: 'డాక్టర్',
     ml: 'ഡോക്ടർ',
     kn: 'ಡಾಕ್ಟರ್',
+    mr: 'डॉक्टर',
+    bn: 'ডাক্তার',
+    or: 'ଡାକ୍ତର',
   }
   const language = lang.toLowerCase().split('-')[0]
   const doctor = doctorByLanguage[language] || doctorByLanguage.en
@@ -160,14 +167,39 @@ export function splitIntoUtteranceChunks(text: string, maxChunkLength = 180): st
   return chunks
 }
 
+function inSelectedLanguage(text: string, lang: string): boolean {
+  const spoken = text.trim()
+  if (!spoken) return false
+  return !outputNeedsTranslation({ title: spoken } as ExplainResponse, lang)
+}
+
+const ACTION_LEAD: Record<string, string> = {
+  en: 'Main action',
+  ta: 'முக்கிய நடவடிக்கை',
+  hi: 'मुख्य कार्रवाई',
+  te: 'ముఖ్యమైన చర్య',
+  ml: 'പ്രധാന നടപടി',
+  kn: 'ಮುಖ್ಯ ಕ್ರಮ',
+  mr: 'मुख्य कृती',
+  bn: 'মূল কাজ',
+  or: 'ମୁଖ୍ୟ କାମ',
+}
+
 /**
- * Builds the Quick Summary script (WEB-9):
- * Uses result.spoken_summary if present; otherwise builds a local script
- * from title + first action + glance key values.
+ * Builds the Quick Summary script (WEB-9).
+ * Uses spoken_summary when it is already in the selected language.
+ * An English script stored beside a translated result is skipped, and the
+ * translated summary is read instead.
  */
 export function buildQuickSummaryScript(result: ExplainResponse, lang: string): string {
-  if (result.spoken_summary && result.spoken_summary.trim().length > 0) {
-    return result.spoken_summary
+  const spoken = (result.spoken_summary || '').trim()
+  if (inSelectedLanguage(spoken, lang)) {
+    return spoken
+  }
+
+  const summary = (result.summary || []).filter(Boolean).join(' ')
+  if (inSelectedLanguage(summary, lang)) {
+    return summary
   }
 
   const parts: string[] = []
@@ -186,13 +218,8 @@ export function buildQuickSummaryScript(result: ExplainResponse, lang: string): 
 
   if (result.actions && result.actions.length > 0) {
     const firstAction = result.actions[0]
-    if (lang === 'ta') {
-      parts.push(`முக்கிய நடவடிக்கை: ${firstAction.text}`)
-    } else if (lang === 'hi') {
-      parts.push(`मुख्य कार्रवाई: ${firstAction.text}`)
-    } else {
-      parts.push(`Main action: ${firstAction.text}`)
-    }
+    const lead = ACTION_LEAD[lang] || ACTION_LEAD.en
+    parts.push(`${lead}: ${firstAction.text}`)
   }
 
   return parts.join('. ')
