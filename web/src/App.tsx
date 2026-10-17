@@ -36,6 +36,7 @@ import {
   saveRecentAsks,
 } from './utils/db'
 import { defaultDocumentName, emptyActivity, isSampleResultId, mergeActivity, type DocumentActivity } from './utils/activity'
+import { asksForDocument } from './utils/askThread'
 import { collectReminders, dismissNext, pastReminders, readDismissed, upcomingReminders, writeDismissed } from './utils/reminders'
 import ReadingScreen from './components/ReadingScreen'
 import ResultScreen from './components/ResultScreen'
@@ -151,6 +152,7 @@ export default function App() {
   })
   const currentResultIdRef = useRef<string | null>(loadActiveSession()?.currentResultId || null)
   const asksRef = useRef<AskTurn[]>(loadActiveSession()?.asks || [])
+  const asksOwnerRef = useRef<string | null>(loadActiveSession()?.currentResultId || null)
   const activityTimer = useRef<number | null>(null)
   const activitySnapshot = useRef<DocumentActivity>(emptyActivity())
   const [sessionActivity, setSessionActivity] = useState<DocumentActivity>(emptyActivity())
@@ -202,8 +204,11 @@ export default function App() {
         import(`./dev/fixtures/${fixtureName}.json`)
           .then((mod) => {
             const data = mod.default as ExplainResponse
+            const fixtureId = `fixture-${fixtureName}`
+            currentResultIdRef.current = fixtureId
+            asksOwnerRef.current = fixtureId
+            asksRef.current = []
             setResultData(data)
-            currentResultIdRef.current = `fixture-${fixtureName}`
             originalResultRef.current = data
             setScreen('result')
           })
@@ -221,6 +226,7 @@ export default function App() {
       setResultData(saved.result)
       originalResultRef.current = saved.originalResult || saved.result
       currentResultIdRef.current = saved.currentResultId || null
+      asksOwnerRef.current = saved.currentResultId || null
       if (Array.isArray(saved.asks)) asksRef.current = saved.asks
       if (saved.multiReports) setMultiReportsData(saved.multiReports)
       if (saved.lang) setSelectedLang(saved.lang)
@@ -254,6 +260,7 @@ export default function App() {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
         currentResultIdRef.current = saved.currentResultId || null
+        asksOwnerRef.current = saved.currentResultId || null
         if (Array.isArray(saved.asks)) asksRef.current = saved.asks
         if (saved.multiReports) setMultiReportsData(saved.multiReports)
         if (saved.lang) setSelectedLang(saved.lang)
@@ -300,6 +307,7 @@ export default function App() {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
         currentResultIdRef.current = saved.currentResultId || null
+        asksOwnerRef.current = saved.currentResultId || null
         if (Array.isArray(saved.asks)) asksRef.current = saved.asks
         if (saved.multiReports) setMultiReportsData(saved.multiReports)
         if (saved.lang) setSelectedLang(saved.lang)
@@ -416,6 +424,7 @@ export default function App() {
 
   const saveAsks = async (asks: AskTurn[]) => {
     asksRef.current = asks
+    asksOwnerRef.current = currentResultIdRef.current
     const active = loadActiveSession()
     if (active?.result) {
       saveActiveSession({ ...active, asks, currentResultId: currentResultIdRef.current, screen: 'result' })
@@ -427,6 +436,7 @@ export default function App() {
       const copyId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const title = cleanerTitle(result)
       currentResultIdRef.current = copyId
+      asksOwnerRef.current = copyId
       setSessionTitle(title)
       await saveRecentResult({
         id: copyId,
@@ -460,6 +470,7 @@ export default function App() {
 
   const handleOpenRecent = async (item: RecentResult) => {
     currentResultIdRef.current = item.id
+    asksOwnerRef.current = item.id
     asksRef.current = item.asks || []
     originalResultRef.current = item.result
     translationCacheRef.current.clear()
@@ -575,6 +586,8 @@ export default function App() {
       if (cached) {
         const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         currentResultIdRef.current = resultId
+        asksOwnerRef.current = resultId
+        asksRef.current = []
         originalResultRef.current = cached
         translationCacheRef.current.set(`${resultId}:${targetLang}`, cached)
         setActiveFiles(filesToExplain)
@@ -694,6 +707,10 @@ export default function App() {
 
       const firstReady = updatedCards.find((c) => c.status === 'ready')
       if (firstReady && firstReady.result) {
+        const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        currentResultIdRef.current = multiId
+        asksOwnerRef.current = multiId
+        asksRef.current = []
         setResultData(firstReady.result)
         setMultiReportsData(updatedCards)
         setReadingArrived(true)
@@ -707,9 +724,6 @@ export default function App() {
             firstTitle && fileCount > 1
               ? (t.moreReports || '{title} + {n} more').replace('{title}', cleanerTitle(firstReady.result)).replace('{n}', String(fileCount - 1))
               : cleanerTitle(firstReady.result)
-          const multiId = `mrep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-          currentResultIdRef.current = multiId
-
           await saveRecentResult({
             id: multiId,
             title: displayTitle,
@@ -761,6 +775,8 @@ export default function App() {
 
       const resultId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       currentResultIdRef.current = resultId
+      asksOwnerRef.current = resultId
+      asksRef.current = []
       originalResultRef.current = result
       translationCacheRef.current.clear()
       translationCacheRef.current.set(`${resultId}:${result.language || targetLang}`, result)
@@ -1077,6 +1093,8 @@ export default function App() {
       }
       const resultId = `sample-${choice.file}`
       currentResultIdRef.current = resultId
+      asksOwnerRef.current = resultId
+      asksRef.current = []
       const fresh = emptyActivity()
       activitySnapshot.current = fresh
       setSessionActivity(fresh)
@@ -1267,6 +1285,8 @@ export default function App() {
     setActiveFiles([])
     activeFilesRef.current = []
     currentResultIdRef.current = null
+    asksOwnerRef.current = null
+    asksRef.current = []
     originalResultRef.current = null
     translationCacheRef.current.clear()
 
@@ -1491,10 +1511,12 @@ export default function App() {
             multiReports={multiReportsData || undefined}
             onRetrySingleReport={handleRetrySingleReport}
             resultId={currentResultIdRef.current || undefined}
-            asks={(() => {
-              const saved = recentResults.find((item) => item.id === currentResultIdRef.current)?.asks
-              return saved?.length ? saved : asksRef.current
-            })()}
+            asks={asksForDocument(
+              currentResultIdRef.current,
+              recentResults.find((item) => item.id === currentResultIdRef.current)?.asks,
+              asksOwnerRef.current,
+              asksRef.current,
+            )}
             activity={sessionActivity}
             displayName={sessionName}
             savedTitle={sessionTitle}

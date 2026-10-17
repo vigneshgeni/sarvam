@@ -14,6 +14,7 @@ import { saveRecentAsks } from '../utils/db'
 import { resolveLang } from '../i18n'
 import { starterChipKeys } from '../utils/askChips'
 import { isSampleResultId } from '../utils/activity'
+import { turnsForThread } from '../utils/askThread'
 
 interface AskSheetProps {
   isOpen: boolean
@@ -45,7 +46,6 @@ export default function AskSheet({
   const [speechError, setSpeechError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isStillWorking, setIsStillWorking] = useState(false)
-  const [turns, setTurns] = useState<AskTurn[]>(initialAsks || [])
   const [askError, setAskError] = useState<string | null>(null)
 
   const recognitionRef = useRef<any>(null)
@@ -54,47 +54,54 @@ export default function AskSheet({
   const [recordSeconds, setRecordSeconds] = useState(0)
   const threadKey = resultId || `title:${result.title}`
   const clearedRef = useRef(false)
-  const clearedKeyRef = useRef('')
   const sampleThread = isSampleResultId(resultId)
+  const initialAsksRef = useRef(initialAsks)
+  initialAsksRef.current = initialAsks
+
+  const readStoredTurns = (key: string, sample: boolean): AskTurn[] | null => {
+    if (sample || typeof sessionStorage === 'undefined') return null
+    try {
+      const raw = sessionStorage.getItem(`sarvam.ask.${key}`)
+      if (!raw) return null
+      const saved = JSON.parse(raw) as AskTurn[]
+      return Array.isArray(saved) ? saved : null
+    } catch {
+      return null
+    }
+  }
+
+  const [thread, setThread] = useState(() => ({
+    key: threadKey,
+    turns: turnsForThread(readStoredTurns(threadKey, sampleThread), initialAsks),
+  }))
+  const turns = thread.key === threadKey ? thread.turns : []
 
   useEffect(() => {
-    if (sampleThread) {
-      if (initialAsks?.length) setTurns(initialAsks)
-      return
-    }
-    try {
-      const raw = sessionStorage.getItem(`sarvam.ask.${threadKey}`)
-      if (raw) {
-        const saved = JSON.parse(raw) as AskTurn[]
-        if (Array.isArray(saved) && saved.length) setTurns(saved)
-        return
-      }
-    } catch {
-      /* keep the saved result thread */
-    }
-    if (initialAsks?.length) setTurns(initialAsks)
+    clearedRef.current = false
+    setQuestion('')
+    setAskError(null)
+    setThread({
+      key: threadKey,
+      turns: turnsForThread(readStoredTurns(threadKey, sampleThread), initialAsksRef.current),
+    })
   }, [threadKey, sampleThread])
 
   useEffect(() => {
-    if (clearedKeyRef.current === threadKey) return
-    if (turns.length) return
-    if (initialAsks?.length) setTurns(initialAsks)
-  }, [threadKey, initialAsks, turns.length])
-
-  useEffect(() => {
-    if (!turns.length && !clearedRef.current) return
+    if (thread.key !== threadKey) return
+    if (!thread.turns.length && !clearedRef.current) return
     clearedRef.current = false
+    const owned = thread.turns
     if (!sampleThread) {
       try {
-        if (turns.length) sessionStorage.setItem(`sarvam.ask.${threadKey}`, JSON.stringify(turns))
-        else sessionStorage.removeItem(`sarvam.ask.${threadKey}`)
+        if (owned.length) sessionStorage.setItem(`sarvam.ask.${thread.key}`, JSON.stringify(owned))
+        else sessionStorage.removeItem(`sarvam.ask.${thread.key}`)
       } catch {
         /* the saved result still holds the thread */
       }
     }
-    if (onSaveAsks) onSaveAsks(turns)
-    else if (resultId && !sampleThread) void saveRecentAsks(resultId, turns)
-  }, [turns, threadKey, resultId, sampleThread])
+    if (onSaveAsks) onSaveAsks(owned)
+    else if (resultId && !sampleThread) void saveRecentAsks(resultId, owned)
+  }, [thread, threadKey, resultId, sampleThread])
 
   // Track 15s loading timer
   useEffect(() => {
@@ -219,7 +226,7 @@ export default function AskSheet({
         setAskError(t.retry || 'Try again')
         return
       }
-      setTurns((prev) => [...prev, {
+      const nextTurn: AskTurn = {
         question: targetQ,
         answer: resp.not_found ? (t.askNotFound || "This document doesn't say") : resp.answer,
         points: resp.points || [],
@@ -232,7 +239,10 @@ export default function AskSheet({
         evidence: resp.evidence,
         answered_from: resp.answered_from,
         lang: resolveLang(lang),
-      }])
+      }
+      setThread((prev) => (
+        prev.key === threadKey ? { key: threadKey, turns: [...prev.turns, nextTurn] } : prev
+      ))
     } catch (err: any) {
       setQuestion(targetQ)
       if (err.errorCode === 'ask_unverified') {
@@ -269,8 +279,7 @@ export default function AskSheet({
                 type="button"
                 onClick={() => {
                   clearedRef.current = true
-                  clearedKeyRef.current = threadKey
-                  setTurns([])
+                  setThread({ key: threadKey, turns: [] })
                 }}
                 className="self-start mt-1 text-[13px] font-semibold text-[#575B58] underline"
               >

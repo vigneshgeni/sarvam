@@ -4,6 +4,7 @@ import type { AppErrorInfo } from '../types'
 import { pickReadingVariant, type ReadingLetter } from '../design/catalog'
 import { useOverlayRestore } from '../design/contracts'
 import { useReadingStage } from '../hooks/useReadingStage'
+import { readingCountCopy } from '../utils/readingCopy'
 import ReadingArt from './v3/ReadingArt'
 
 interface ReadingScreenProps {
@@ -221,18 +222,8 @@ export default function ReadingScreen({
     }
   }, [error, files, lang])
 
-  const fileCount = files.length
-  const fileLabel =
-    fileCount > 1
-      ? t.readingSubtitlePlural?.replace('{count}', String(fileCount)) ||
-        `${fileCount} documents · Processing securely`
-      : t.readingSubtitle?.replace('{count}', String(fileCount)) ||
-        `${fileCount} document · Processing securely`
-
-  const docTitle =
-    files.length === 1 && files[0].name
-      ? files[0].name
-      : t.readingTitle || 'Reading your document'
+  const countCopy = readingCountCopy(files, t)
+  const fileLabel = countCopy.subtitle
 
   // Step labels use natural native language phrasing
   let stepWritingLabel =
@@ -291,13 +282,15 @@ export default function ReadingScreen({
       {!error && (
         <div className="text-center flex flex-col gap-1">
           <h2 className="sv-display m-0 text-[32px] tracking-[-0.3px] text-[#1A1A1A] leading-tight truncate">
-            {files.length > 1 ? `${files.length} photos` : docTitle}
+            {countCopy.heading}
           </h2>
           <p className="m-0 text-[15px] text-[#575B58]">{fileLabel}</p>
           {multiReportProgress && (
             <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-brand-soft text-brand font-semibold text-[13px] rounded-full mx-auto mt-1">
               <span>
-                {(t.reportsProgress || 'Report {ready} of {total} ready')
+                {(countCopy.photos
+                  ? t.readingPhotosProgress || 'Photo {ready} of {total} ready'
+                  : t.reportsProgress || 'Report {ready} of {total} ready')
                   .replace('{ready}', String(multiReportProgress.ready))
                   .replace('{total}', String(multiReportProgress.total))}
               </span>

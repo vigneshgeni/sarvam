@@ -1,5 +1,6 @@
 import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from './types'
 import { explainQueue } from './utils/queue'
+import { explainCanRetry } from './utils/explainRetry'
 import { getLocalFallbackError } from './i18n'
 
 const API_BASE = import.meta.env.DEV
@@ -41,117 +42,153 @@ export async function explainDocument(
 ): Promise<ExplainResponse> {
   try {
     return await explainQueue.run(async () => {
-      const formData = new FormData()
-      for (const file of files) {
-        formData.append('files', file)
-      }
-      formData.append('lang', lang)
-      if (password) {
-        formData.append('password', password)
-      }
-
       const hasPdf = files.some(
         (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
       )
       const budgetMs = hasPdf ? 150_000 : 90_000
-      const controller = new AbortController()
-      let timedOut = false
-      const timeoutId = setTimeout(() => {
-        timedOut = true
-        controller.abort('timeout')
-      }, budgetMs)
+      const started = Date.now()
 
-      const onExternalAbort = () => {
-        controller.abort(externalSignal?.reason)
-      }
+      const attemptExplain = async (remainingMs: number): Promise<ExplainResponse> => {
+        const formData = new FormData()
+        for (const file of files) {
+          formData.append('files', file)
+        }
+        formData.append('lang', lang)
+        if (password) {
+          formData.append('password', password)
+        }
 
-      if (externalSignal) {
-        if (externalSignal.aborted) {
+        const controller = new AbortController()
+        let timedOut = false
+        const timeoutId = setTimeout(() => {
+          timedOut = true
+          controller.abort('timeout')
+        }, remainingMs)
+
+        const onExternalAbort = () => {
+          controller.abort(externalSignal?.reason)
+        }
+
+        if (externalSignal) {
+          if (externalSignal.aborted) {
+            clearTimeout(timeoutId)
+            if (externalSignal.reason === 'timeout') {
+              throw new ExplainApiError(
+                'Request timed out after 90 seconds.',
+                getLocalFallbackError(lang, 'timeout'),
+                504
+              )
+            }
+            throw new DOMException('Aborted', 'AbortError')
+          }
+          externalSignal.addEventListener('abort', onExternalAbort, { once: true })
+        }
+
+        let response: Response
+        try {
+          response = await fetch(`${API_BASE}/api/explain`, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          })
+        } catch (err: unknown) {
+          if (externalSignal?.aborted) {
+            if (externalSignal.reason === 'timeout') {
+              throw new ExplainApiError(
+                'Request timed out after 90 seconds.',
+                getLocalFallbackError(lang, 'timeout'),
+                504
+              )
+            }
+            throw new DOMException('Aborted', 'AbortError')
+          }
+          if (timedOut || (err instanceof DOMException && err.name === 'AbortError' && timedOut)) {
+            throw new ExplainApiError(
+              'Request timed out after 90 seconds.',
+              getLocalFallbackError(lang, 'timeout'),
+              504
+            )
+          }
+          throw new ExplainApiError(
+            'Network error. Could not connect to Sarvam API.',
+            getLocalFallbackError(lang, 'network'),
+            0
+          )
+        } finally {
           clearTimeout(timeoutId)
-          if (externalSignal.reason === 'timeout') {
-            throw new ExplainApiError(
-              'Request timed out after 90 seconds.',
-              getLocalFallbackError(lang, 'timeout'),
-              504
-            )
+          if (externalSignal) {
+            externalSignal.removeEventListener('abort', onExternalAbort)
           }
-          throw new DOMException('Aborted', 'AbortError')
         }
-        externalSignal.addEventListener('abort', onExternalAbort, { once: true })
+
+        if (!response.ok) {
+          let retryAfter: number | undefined
+          const retryHeader = response.headers.get('retry-after')
+          if (retryHeader) {
+            const parsed = parseInt(retryHeader, 10)
+            if (!isNaN(parsed) && parsed > 0) {
+              retryAfter = parsed
+            }
+          }
+
+          let errorJson: (Partial<ApiError> & { error?: string }) | null = null
+          try {
+            errorJson = await response.json()
+          } catch {
+            // response was not JSON
+          }
+
+          let fallbackCategory: 'rate_limit' | 'busy' | 'timeout' | 'generic' = 'generic'
+          if (response.status === 429) fallbackCategory = 'rate_limit'
+          else if (response.status === 503) fallbackCategory = 'busy'
+          else if (response.status === 504) fallbackCategory = 'timeout'
+
+          const messageLocal =
+            errorJson?.message_local ||
+            getLocalFallbackError(lang, fallbackCategory)
+
+          const messageEn =
+            errorJson?.message ||
+            `Request failed with status ${response.status}`
+
+          throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter, errorJson?.error)
+        }
+
+        const data: ExplainResponse = await response.json()
+        return data
       }
 
-      let response: Response
-      try {
-        response = await fetch(`${API_BASE}/api/explain`, {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal,
-        })
-      } catch (err: unknown) {
-        if (externalSignal?.aborted) {
-          if (externalSignal.reason === 'timeout') {
-            throw new ExplainApiError(
-              'Request timed out after 90 seconds.',
-              getLocalFallbackError(lang, 'timeout'),
-              504
-            )
-          }
-          throw new DOMException('Aborted', 'AbortError')
-        }
-        if (timedOut || (err instanceof DOMException && err.name === 'AbortError' && timedOut)) {
+      let lastError: unknown
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const remaining = budgetMs - (Date.now() - started)
+        if (remaining < 1_000) {
           throw new ExplainApiError(
             'Request timed out after 90 seconds.',
             getLocalFallbackError(lang, 'timeout'),
             504
           )
         }
-        throw new ExplainApiError(
-          'Network error. Could not connect to Sarvam API.',
-          getLocalFallbackError(lang, 'network'),
-          0
-        )
-      } finally {
-        clearTimeout(timeoutId)
-        if (externalSignal) {
-          externalSignal.removeEventListener('abort', onExternalAbort)
-        }
-      }
-
-      if (!response.ok) {
-        let retryAfter: number | undefined
-        const retryHeader = response.headers.get('retry-after')
-        if (retryHeader) {
-          const parsed = parseInt(retryHeader, 10)
-          if (!isNaN(parsed) && parsed > 0) {
-            retryAfter = parsed
-          }
-        }
-
-        let errorJson: (Partial<ApiError> & { error?: string }) | null = null
         try {
-          errorJson = await response.json()
-        } catch {
-          // response was not JSON
+          return await attemptExplain(remaining)
+        } catch (err: unknown) {
+          lastError = err
+          const status = err instanceof ExplainApiError ? err.statusCode : -1
+          if (!explainCanRetry(status, attempt) || externalSignal?.aborted) throw err
+          await new Promise<void>((resolve, reject) => {
+            let timer: ReturnType<typeof setTimeout>
+            const onAbort = () => {
+              clearTimeout(timer)
+              reject(new DOMException('Aborted', 'AbortError'))
+            }
+            timer = setTimeout(() => {
+              externalSignal?.removeEventListener('abort', onAbort)
+              resolve()
+            }, 400)
+            if (externalSignal) externalSignal.addEventListener('abort', onAbort, { once: true })
+          })
         }
-
-        let fallbackCategory: 'rate_limit' | 'busy' | 'timeout' | 'generic' = 'generic'
-        if (response.status === 429) fallbackCategory = 'rate_limit'
-        else if (response.status === 503) fallbackCategory = 'busy'
-        else if (response.status === 504) fallbackCategory = 'timeout'
-
-        const messageLocal =
-          errorJson?.message_local ||
-          getLocalFallbackError(lang, fallbackCategory)
-
-        const messageEn =
-          errorJson?.message ||
-          `Request failed with status ${response.status}`
-
-        throw new ExplainApiError(messageEn, messageLocal, response.status, retryAfter, errorJson?.error)
       }
-
-      const data: ExplainResponse = await response.json()
-      return data
+      throw lastError
     }, externalSignal)
   } catch (err: unknown) {
     if (externalSignal?.aborted) {
