@@ -18,13 +18,16 @@ export DEV_SERVICE="sarvam-api-dev"
 export IMAGE_TAG="gcr.io/${PROJECT_ID}/${DEV_SERVICE}:v1"
 ```
 
-### Step 2: Build the Container via Cloud Build
+### Step 2: Build the Container via Cloud Build using requirements-agent.txt
+A dedicated dev container installs `requirements-agent.txt` (which bundles `google-adk==2.12.0` without affecting production `requirements.txt`):
 ```bash
-# Submit build from the api directory
+# Build the dev image installing requirements-agent.txt
 gcloud builds submit api/ \
   --project="${PROJECT_ID}" \
-  --tag="${IMAGE_TAG}"
+  --tag="${IMAGE_TAG}" \
+  --config=cloudbuild-agent-dev.yaml
 ```
+*(Or in a dev Dockerfile: `RUN pip install --no-cache-dir -r requirements-agent.txt`)*
 
 ### Step 3: Deploy to Cloud Run (Development)
 ```bash
@@ -51,21 +54,21 @@ curl -s "${DEV_URL}/health"
 
 ## 2. Option B: Deploying Agent to Vertex AI Agent Runtime (Reasoning Engine)
 
-This packages the ADK agent and provisions a managed serverless runtime on Vertex AI in `asia-south1`.
+This packages the ADK agent and provisions a managed serverless runtime on Vertex AI. Note: per the official [Agent Platform locations documentation](https://cloud.google.com/gemini/enterprise/agent-platform/docs/locations-agents), `asia-south1` is not currently supported for Agent Platform infrastructure; `us-central1` or European regions are required.
 
 ### Prerequisites (Requires Owner Confirmation First)
 1. Vertex AI API enabled: `aiplatform.googleapis.com`
-2. Staging Cloud Storage bucket in `asia-south1`: `gs://sarvam-agent-staging`
+2. Staging Cloud Storage bucket in `us-central1`: `gs://sarvam-agent-staging`
 
 ### Method 1: Using Google ADK CLI
 ```bash
 # 1. Authenticate with ADC
 gcloud auth application-default login
 
-# 2. Deploy via ADK CLI to asia-south1
+# 2. Deploy via ADK CLI to us-central1
 adk deploy agent_engine \
   --project="sarvam-510715" \
-  --region="asia-south1" \
+  --region="us-central1" \
   --staging_bucket="gs://sarvam-agent-staging" \
   api/agent
 ```

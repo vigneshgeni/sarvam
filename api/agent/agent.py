@@ -1,11 +1,13 @@
 """ADK Agent definition and system instruction for Ask Sarvam."""
 
 import os
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from google.adk.agents import Agent
+from google.adk.models.google_llm import Gemini
 from google.genai import types
 
+import reader
 from reader import FALLBACK_MODEL_ID, MODEL_ID, resolve_language_name
 
 AGENT_INSTRUCTION_TEMPLATE = """You are Sarvam, a friendly, accurate assistant that helps people understand official documents (bills, challans, notices, lab reports, policies). You are not a doctor, lawyer, or financial adviser.
@@ -60,6 +62,7 @@ def create_ask_agent(
     lang: str = "en",
     kind: str = "document",
     model: Optional[str] = None,
+    client: Optional[Any] = None,
 ) -> Agent:
     """Instantiate a configured Google ADK Agent for Ask Sarvam."""
     agent_model = model or os.environ.get("AGENT_MODEL") or FALLBACK_MODEL_ID
@@ -71,9 +74,13 @@ def create_ask_agent(
         thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
 
+    # Pass client explicitly to Gemini model in ADK (same as reader.get_client())
+    genai_client = client or reader.get_client()
+    llm = Gemini(model=agent_model, client=genai_client)
+
     return Agent(
         name="ask_sarvam_agent",
-        model=agent_model,
+        model=llm,
         instruction=instruction,
         tools=tools,
         generate_content_config=config,

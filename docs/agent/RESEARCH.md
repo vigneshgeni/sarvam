@@ -62,17 +62,26 @@
 
 ---
 
-## 2. Agent Runtime (Vertex AI Reasoning Engine / Agent Engine)
+## 2. Agent Runtime (Vertex AI Reasoning Engine / Agent Platform)
 
-- **Regional Availability and Mumbai (`asia-south1`):**  
-  Vertex AI Reasoning Engine / Agent Engine is supported in **`asia-south1` (Mumbai)** via the regional endpoint `https://asia-south1-aiplatform.googleapis.com`. It is also available in `us-central1`, `europe-west1`, and other major regions.  
-  Source: [Google Cloud Vertex AI Locations](https://cloud.google.com/vertex-ai/docs/general/locations#reasoning-engine)
-- **Latency from India:**  
-  Running in `asia-south1` ensures local network round-trip latency (< 20–30 ms). If deployed in `us-central1`, cross-region RTT adds 180–240 ms per network hop. In a 2–4 turn agent reasoning loop, cross-region transit adds 500–1,000 ms of pure network latency over `asia-south1`.
-- **Deployment Steps:**  
+- **Regional Availability Check for `asia-south1` (Mumbai):**  
+  While general Vertex AI model endpoints and prediction exist in `asia-south1`, the official [Supported locations for agents in Agent Platform](https://cloud.google.com/gemini/enterprise/agent-platform/docs/locations-agents) explicitly lists supported regions for agent infrastructure features (Agent Runtime, Sessions, Memory Bank):
+  > "Selecting a supported location ensures data-at-rest residency for your agent infrastructure features (agent source code, deployment packages, session history, memory bank entries, and metadata)..."
+  
+  The locations listed on this page are strictly:
+  - **Americas:** `us-central1` (Iowa), `us-east1` (South Carolina), `us-east4` (Northern Virginia), `us-west1` (Oregon)
+  - **Europe:** `europe-west1` (Belgium), `europe-west2` (London), `europe-west3` (Frankfurt), `europe-west4` (Netherlands), `europe-west6` (Zurich), `europe-west8` (Milan), `europe-southwest1` (Madrid)
+  - **Multi-region:** `us`, `eu`
+  - **Global:** `global` (for Memory Bank and Sessions only)
+  
+  **`asia-south1` (Mumbai) is NOT listed** on the official Agent Platform supported locations page. Managed Agent Runtime and Memory Bank cannot be deployed with India data-at-rest residency today.
+  Source: [Supported locations for agents in Agent Platform](https://cloud.google.com/gemini/enterprise/agent-platform/docs/locations-agents)
+- **Latency Impact:**  
+  Because `asia-south1` is not available on the managed Agent Platform, deploying an agent there would require targeting `europe-west1` or `us-central1`. Cross-region RTT adds 150–240 ms per hop. In a 2–4 turn reasoning loop, cross-region transit adds 500–1,000 ms of pure network latency over running locally in India.
+- **Deployment Steps (if deploying to a supported region like `us-central1`):**  
   - *Option 1 (ADK CLI):*  
     ```bash
-    adk deploy agent_engine --project=sarvam-510715 --region=asia-south1 api/agent
+    adk deploy agent_engine --project=sarvam-510715 --region=us-central1 api/agent
     ```
   - *Option 2 (Vertex AI Python SDK):*  
     ```python
@@ -98,8 +107,7 @@
 ## 3. Memory Bank
 
 - **What It Stores and Where:**  
-  Vertex AI Memory Bank extracts and stores structured long-term semantic user memories, entity facts, and preferences in a managed regional store (backed by Spanner/Vector search inside `asia-south1`).  
-  Source: [Vertex AI Agent Engine Memory Bank](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/memory-bank)
+  Vertex AI Memory Bank extracts and stores structured long-term semantic user memories, entity facts, and preferences. Per Google's [locations documentation](https://cloud.google.com/gemini/enterprise/agent-platform/docs/locations-agents), Memory Bank is supported in US and European regions (`us-central1`, `europe-west1`, etc.) or `global`. It is **not supported in `asia-south1`**. Memory entries stored in `global` or `us-central1` leave Indian borders.
 - **User Data Deletion:**  
   Supports criteria-based purging via API:
   ```python

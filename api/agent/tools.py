@@ -67,17 +67,22 @@ class DocumentContext:
 def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
     """Factory that creates and binds tools to a specific DocumentContext."""
 
-    def search_document(query: str) -> str:
+    def search_document(query: str = "") -> str:
         """Search the document text and structured analysis for passages matching query.
         
         Args:
             query: The search term, keyword, or question to locate in the document.
         """
         ctx.tools_used.append("search_document")
-        if not query or not query.strip():
-            return "No query provided."
+        clean_query = (query or "").strip()
+        if not clean_query:
+            # If no query provided, return first summary points or top lines
+            summary_lines = ctx.result_data.get("summary", [])
+            if summary_lines:
+                return "Document summary:\n" + "\n".join(f"- {s}" for s in summary_lines[:3])
+            return "No search query provided."
 
-        query_tokens = [t.lower() for t in query.split() if len(t) > 2]
+        query_tokens = [t.lower() for t in clean_query.split() if len(t) > 2]
         matches: List[str] = []
 
         # 1. Search verbatim passages
@@ -113,7 +118,7 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
 
         return "\n".join(matches)
 
-    def verify_quote(quote: str, page: int = 1) -> dict:
+    def verify_quote(quote: str = "", page: int = 1) -> dict:
         """Verify whether a quote appears verbatim in the document.
         
         Args:
@@ -121,7 +126,8 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
             page: 1-indexed page number where the quote is expected.
         """
         ctx.tools_used.append("verify_quote")
-        if not quote or not quote.strip():
+        clean_quote = (quote or "").strip()
+        if not clean_quote:
             return {"quote": quote, "page": page, "evidence": "none"}
 
         if ctx.is_photo:
@@ -129,29 +135,31 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
         else:
             pages = ctx.pdf_pages_text if ctx.pdf_pages_text else ([ctx.result_data.get("source_text", "")] if ctx.result_data.get("source_text") else [])
             label = evidence.verify_evidence(
-                quote=quote,
+                quote=clean_quote,
                 item_text="",
-                page=page,
+                page=page or 1,
                 pages_text=pages,
             )
 
-        ctx.last_verified_quote = quote
+        ctx.last_verified_quote = clean_quote
         ctx.last_verified_page = page
         ctx.last_evidence_label = label
         return {
-            "quote": quote,
+            "quote": clean_quote,
             "page": page,
             "evidence": label,
         }
 
-    def days_until(date_text: str) -> dict:
+    def days_until(date_text: str = "") -> dict:
         """Calculate the remaining days from today (Asia/Kolkata) until date_text.
         
         Args:
             date_text: An ISO date (YYYY-MM-DD) or printed date string (e.g. '05 Dec 2026').
         """
         ctx.tools_used.append("days_until")
-        d = dates.parse_date(date_text)
+        if not date_text or not str(date_text).strip():
+            return {"error": "No date provided"}
+        d = dates.parse_date(str(date_text))
         if not d:
             return {"error": f"Could not parse date '{date_text}'"}
 
@@ -166,7 +174,7 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
             "status": status,
         }
 
-    def relative_deadline(quote: str, anchor_date: str) -> dict:
+    def relative_deadline(quote: str = "", anchor_date: str = "") -> dict:
         """Calculate a relative deadline (e.g. 'within 30 days') from an anchor date.
         
         Args:
@@ -175,9 +183,9 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
         """
         ctx.tools_used.append("relative_deadline")
         mode, calc_date, days = dates.resolve_relative_deadline(
-            quote=quote,
+            quote=quote or "",
             text=None,
-            anchor_date_str=anchor_date,
+            anchor_date_str=anchor_date or "",
         )
         return {
             "mode": mode,
@@ -185,7 +193,7 @@ def create_agent_tools(ctx: DocumentContext) -> List[Callable]:
             "days": days,
         }
 
-    def prepare_calendar_event(title: str, date: str, note: str = "") -> dict:
+    def prepare_calendar_event(title: str = "", date: str = "", note: str = "") -> dict:
         """Draft a calendar event reminder for the user to review and confirm.
         
         Args:

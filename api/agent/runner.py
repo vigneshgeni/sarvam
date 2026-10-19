@@ -10,6 +10,7 @@ Enforces:
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -34,7 +35,7 @@ from reader import (
 logger = logging.getLogger("sarvam-agent")
 
 MAX_TOOL_STEPS = 4
-AGENT_BUDGET_SEC = 30.0
+AGENT_BUDGET_SEC = 15.0
 
 
 class AgentAskError(Exception):
@@ -49,18 +50,19 @@ def parse_agent_json(raw_text: str) -> dict:
         raise AgentAskError("Empty agent response")
 
     # Strip markdown code blocks if present
-    if "```json" in cleaned:
-        match = re.search(r"```json\s*(.*?)\s*```", cleaned, re.DOTALL)
+    candidate = cleaned
+    if "```json" in candidate:
+        match = re.search(r"```json\s*(.*?)\s*```", candidate, re.DOTALL)
         if match:
-            cleaned = match.group(1).strip()
-    elif "```" in cleaned:
-        match = re.search(r"```\s*(.*?)\s*```", cleaned, re.DOTALL)
+            candidate = match.group(1).strip()
+    elif "```" in candidate:
+        match = re.search(r"```\s*(.*?)\s*```", candidate, re.DOTALL)
         if match:
-            cleaned = match.group(1).strip()
+            candidate = match.group(1).strip()
 
     try:
-        data = json.loads(cleaned)
-        if isinstance(data, dict):
+        data = json.loads(candidate)
+        if isinstance(data, dict) and "answer" in data and str(data.get("answer", "")).strip():
             return data
     except Exception:
         pass
@@ -70,19 +72,13 @@ def parse_agent_json(raw_text: str) -> dict:
     if match:
         try:
             data = json.loads(match.group(1))
-            if isinstance(data, dict):
+            if isinstance(data, dict) and "answer" in data and str(data.get("answer", "")).strip():
                 return data
         except Exception:
             pass
 
-    # If completely unparseable as JSON, treat raw text as answer
-    return {
-        "answer": cleaned[:500],
-        "answered_from": "document",
-        "not_found": False,
-        "quote": None,
-        "page": None,
-    }
+    # Raise AgentAskError when unparseable or missing answer so fallback triggers
+    raise AgentAskError("Agent response could not be parsed as valid JSON with 'answer'")
 
 
 def validate_agent_response(
@@ -105,7 +101,11 @@ def validate_agent_response(
     quote = raw_data.get("quote")
     quote_str = str(quote).strip() if quote and isinstance(quote, str) else None
     page = raw_data.get("page")
-    page_num = int(page) if page is not None and isinstance(page, (int, float, str)) and str(page).isdigit() else 1
+    page_num = (
+        int(page)
+        if page is not None and isinstance(page, (int, float, str)) and str(page).strip().isdigit() and int(page) > 0
+        else None
+    )
 
     follow_ups = [str(f).strip() for f in raw_data.get("follow_ups", []) if str(f).strip()][:2]
     points = [str(p).strip() for p in raw_data.get("points", []) if str(p).strip()]
@@ -137,6 +137,8 @@ def validate_agent_response(
 
     context_digits = set(extract_digit_sequences(full_context))
     invented_figure = guard_ask_numbers(ask_res, context_digits)
+    if invented_figure and ask_res.answered_from != "general":
+        raise AgentAskError("Number guard failed: answer contains figures not present in document or question")
 
     # 2. Evidence validation via code
     if ask_res.answered_from == "general":
@@ -149,7 +151,8 @@ def validate_agent_response(
         ask_res.quote = None
         ask_res.answered_from = "document" if (ctx.files_data or ctx.pdf_pages_text) else "summary"
     elif ask_res.quote and ctx.pdf_pages_text:
-        ev = evidence.verify_evidence(ask_res.quote, ask_res.answer, ask_res.page or 1, ctx.pdf_pages_text)
+        target_page = ask_res.page if ask_res.page is not None else 1
+        ev = evidence.verify_evidence(ask_res.quote, ask_res.answer, target_page, ctx.pdf_pages_text)
         ask_res.evidence = ev
         ask_res.answered_from = "document"
     elif ctx.is_photo:
@@ -159,9 +162,6 @@ def validate_agent_response(
     else:
         ask_res.evidence = "check_original" if (ctx.files_data or ctx.pdf_pages_text) else "none"
         ask_res.answered_from = "document" if (ctx.files_data or ctx.pdf_pages_text) else "summary"
-
-    if invented_figure and ask_res.answered_from != "general":
-        ask_res.evidence = "check_original"
 
     # 3. Script guard check for Indic languages
     norm_lang = (lang or "en").lower().split("-")[0]
@@ -188,7 +188,7 @@ async def run_agent_turn(
     model: Optional[str] = None,
 ) -> AskResponse:
     """Execute one agent turn using ADK and validate the resulting AskResponse."""
-    budget = min(timeout or AGENT_BUDGET_SEC, 30.0)
+    budget = min(timeout or AGENT_BUDGET_SEC, 15.0)
     start_time = time.time()
 
     # Build context and tools
@@ -215,7 +215,7 @@ async def run_agent_turn(
 
     wrapped_tools = [wrap_tool(t) for t in raw_tools]
 
-    # Instantiate ADK Agent and Runner
+    # Instantiate ADK Agent and Runner (client configured inside create_ask_agent via reader.get_client())
     kind = str(ctx.result_data.get("document_kind") or ctx.result_data.get("doc_type") or "document")
     agent = create_ask_agent(tools=wrapped_tools, lang=lang, kind=kind, model=model)
     runner = InMemoryRunner(agent=agent, app_name="sarvam")

@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+pytest.importorskip("google.adk", reason="ADK not installed in main venv")
 from fastapi.testclient import TestClient
 
 from agent.tools import DocumentContext, create_agent_tools
@@ -143,11 +144,35 @@ class TestAgentRunnerAndValidation(unittest.TestCase):
         # Challan document must have legal closing
         self.assertIn("lawyer", res.answer.lower())
 
-    def test_validate_invented_number_downgrades_evidence(self):
+    def test_parse_agent_json_unparseable_raises_error(self):
+        with self.assertRaises(AgentAskError):
+            parse_agent_json("Plain unstructured text without JSON object")
+
+    def test_parse_agent_json_missing_answer_raises_error(self):
+        with self.assertRaises(AgentAskError):
+            parse_agent_json('{"status": "success", "note": "No answer key here"}')
+
+    def test_validate_invented_number_raises_agent_ask_error(self):
         raw = {
             "answer": "The fine is Rs. 99,999.",
             "quote": "Fine Rs. 1,000",
             "page": 1,
+            "answered_from": "document",
+            "not_found": False,
+        }
+        with self.assertRaises(AgentAskError):
+            validate_agent_response(
+                raw_data=raw,
+                ctx=self.ctx,
+                question="What is the fine?",
+                lang="en",
+                kind="challan",
+            )
+
+    def test_validate_agent_response_defaults_page_to_none_when_omitted(self):
+        raw = {
+            "answer": "The fine is Rs. 1,000 and due on 05 Dec 2026.",
+            "quote": "Fine Rs. 1,000",
             "answered_from": "document",
             "not_found": False,
         }
@@ -158,7 +183,7 @@ class TestAgentRunnerAndValidation(unittest.TestCase):
             lang="en",
             kind="challan",
         )
-        self.assertEqual(res.evidence, "check_original")
+        self.assertIsNone(res.page)
 
     def test_validate_script_guard_failure_raises_error(self):
         # Asking in Tamil but answer returned in English
@@ -251,6 +276,78 @@ class TestMainEndpointFlagAndFallback(unittest.TestCase):
                     self.assertEqual(resp.status_code, 200)
                     self.assertEqual(resp.json()["answer"], "Fallback answer")
                     mock_legacy.assert_called_once()
+
+    def test_agent_skipped_when_less_than_30s_remain(self):
+        """When deadline - now < 30s, agent is skipped and legacy ask runs immediately."""
+        with patch.dict(os.environ, {"AGENT_ASK": "1"}):
+            with patch("agent.runner.run_agent_turn", new_callable=AsyncMock) as mock_agent:
+                with patch("reader.ask_document_single_attempt") as mock_legacy:
+                    mock_legacy.return_value = AskResponse(
+                        answer="Legacy answer after skip",
+                        language="en",
+                        answered_from="document",
+                    )
+                    t = [1000.0]
+                    def fake_time():
+                        val = t[0]
+                        t[0] += 6.0
+                        return val
+
+                    with patch("time.time", side_effect=fake_time):
+                        resp = self.client.post(
+                            "/api/ask",
+                            data={
+                                "question": "What is the fine?",
+                                "lang": "en",
+                                "result": self.sample_result,
+                            },
+                        )
+                        self.assertEqual(resp.status_code, 200)
+                        mock_agent.assert_not_called()
+                        mock_legacy.assert_called_once()
+
+    def test_agent_timeout_capped_at_15s(self):
+        """Agent timeout is capped at min(15.0, deadline - now - 25.0)."""
+        with patch.dict(os.environ, {"AGENT_ASK": "1"}):
+            with patch("agent.runner.run_agent_turn", new_callable=AsyncMock) as mock_agent:
+                mock_agent.return_value = AskResponse(
+                    answer="Fast agent answer",
+                    language="en",
+                    answered_from="document",
+                )
+                resp = self.client.post(
+                    "/api/ask",
+                    data={
+                        "question": "What is the fine?",
+                        "lang": "en",
+                        "result": self.sample_result,
+                    },
+                )
+                self.assertEqual(resp.status_code, 200)
+                mock_agent.assert_called_once()
+                call_kwargs = mock_agent.call_args[1]
+                self.assertLessEqual(call_kwargs["timeout"], 15.0)
+
+    def test_ask_works_without_adk_installed_when_flag_off(self):
+        """When google-adk is unavailable and AGENT_ASK=0, /api/ask succeeds."""
+        with patch.dict(os.environ, {"AGENT_ASK": "0"}):
+            with patch.dict("sys.modules", {"google.adk": None, "agent.runner": None}):
+                with patch("reader.ask_document_single_attempt") as mock_legacy:
+                    mock_legacy.return_value = AskResponse(
+                        answer="Legacy without ADK",
+                        language="en",
+                        answered_from="document",
+                    )
+                    resp = self.client.post(
+                        "/api/ask",
+                        data={
+                            "question": "What is the fine?",
+                            "lang": "en",
+                            "result": self.sample_result,
+                        },
+                    )
+                    self.assertEqual(resp.status_code, 200)
+                    self.assertEqual(resp.json()["answer"], "Legacy without ADK")
 
 
 if __name__ == "__main__":
