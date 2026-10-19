@@ -7,6 +7,8 @@ interface SheetProps {
   ariaLabel?: string
   children: React.ReactNode
   maxHeight?: string
+  /** Fill the screen so a child can pin a composer under a scrolling thread. */
+  fill?: boolean
 }
 
 export default function Sheet({
@@ -16,6 +18,7 @@ export default function Sheet({
   ariaLabel,
   children,
   maxHeight = 'max-h-[88vh]',
+  fill = false,
 }: SheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -116,6 +119,12 @@ export default function Sheet({
 
   if (!isOpen) return null
 
+  const dragProps = {
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col justify-end isolate"
@@ -135,22 +144,26 @@ export default function Sheet({
       <div
         ref={sheetRef}
         tabIndex={-1}
-        className={`sv-sheet relative z-10 w-full max-w-[430px] mx-auto bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] flex flex-col overflow-hidden outline-none ${maxHeight} sheet-enter`}
+        className={`sv-sheet relative z-10 w-full max-w-[430px] mx-auto bg-[#F4F5F2] rounded-t-[40px] border-t-[1.5px] border-[#1A1A1A] flex flex-col overflow-hidden outline-none sheet-enter ${fill ? 'h-[100dvh] max-h-[100dvh] pt-[env(safe-area-inset-top)]' : maxHeight}`}
         style={{
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
           transition: dragOffset > 0 ? 'none' : undefined,
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        {...(fill ? {} : dragProps)}
       >
-        {/* Drag handle */}
-        <div className="w-full pt-3 pb-2 flex justify-center items-center cursor-grab active:cursor-grabbing">
+        {/* Drag handle. A full chat only dismisses from here, so the thread can scroll. */}
+        <div
+          className="w-full pt-3 pb-2 flex justify-center items-center cursor-grab active:cursor-grabbing shrink-0"
+          {...(fill ? dragProps : {})}
+        >
           <div className="w-11 h-[5px] rounded-[3px] bg-[#1A1A1A] opacity-25" />
         </div>
 
         {/* Content wrapper */}
-        <div className="flex-1 overflow-y-auto px-5 pt-1 pb-[max(2rem,calc(1.5rem+env(safe-area-inset-bottom)))]">{children}</div>
+        <div className={fill
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
+          : 'flex-1 overflow-y-auto px-5 pt-1 pb-[max(2rem,calc(1.5rem+env(safe-area-inset-bottom)))]'
+        }>{children}</div>
       </div>
     </div>
   )
