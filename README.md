@@ -8,6 +8,8 @@ Sarvam reads a notice, bill, letter or report and explains what it says and what
 
 Built for the Google Cloud AI Builder Cup 2026 by Vigneswaran (team leader) and Abraham Donald T.
 
+Built with the help of AI coding assistants, including Google Antigravity.
+
 ![Sarvam on a phone, explaining an electricity bill](docs/screenshots/hero.jpg)
 
 ## Screens
