@@ -463,5 +463,11 @@
   "askForm3": "ఎక్కడ సమర్పించాలి?",
   "askGeneric1": "సులభమైన మాటల్లో చెప్పండి",
   "askGeneric2": "తర్వాత ఏమి చేయాలి?",
-  "askGeneric3": "ఏదైనా గడువు ఉందా?"
+  "askGeneric3": "ఏదైనా గడువు ఉందా?",
+  "checkedWith": "ధృవీకరించబడింది",
+  "toolSearchDocument": "పత్ర శోధన",
+  "toolVerifyQuote": "కోట్ ధృవీకరణ",
+  "toolDaysUntil": "తేదీ తనిఖీ",
+  "toolRelativeDeadline": "గడువు లెక్కింపు",
+  "toolCalendarDraft": "క్యాలెండర్ డ్రాఫ్ట్"
 }

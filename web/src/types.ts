@@ -274,6 +274,13 @@ export interface AskFact {
   value: string
 }
 
+export interface CalendarDraftEvent {
+  title: string
+  date: string
+  note?: string
+  action?: string
+}
+
 export interface AskResponse {
   answer: string
   points?: string[]
@@ -286,6 +293,8 @@ export interface AskResponse {
   answered_from: 'document' | 'summary' | 'general'
   not_found: boolean
   language: string
+  tools_used?: string[]
+  calendar_draft?: CalendarDraftEvent | null
 }
 
 export interface A11ySettings {
@@ -351,6 +360,8 @@ export interface AskTurn {
   evidence?: string
   answered_from?: string
   lang?: string
+  tools_used?: string[]
+  calendar_draft?: CalendarDraftEvent | null
 }
 
 export interface RecentResult {

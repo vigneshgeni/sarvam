@@ -743,6 +743,8 @@ class AskResponse(BaseModel):
     answered_from: str = "document"  # document | summary | general
     not_found: bool = False
     language: str
+    tools_used: Optional[List[str]] = None
+    calendar_draft: Optional[Dict[str, Any]] = None
 
 
 class SpeakRequest(BaseModel):

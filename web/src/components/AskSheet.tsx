@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ExplainResponse, AskResponse, AskTurn } from '../types'
 import Sheet from './Sheet'
+import CalendarEditSheet from './CalendarEditSheet'
+import { calendarDraftEvent } from '../utils/reminders'
+import { downloadIcs, generateIcs, hashString } from '../utils/ics'
 import {
   MicIcon,
   SendIcon,
@@ -41,6 +44,13 @@ export default function AskSheet({
   onSaveAsks,
   onSpeakAnswer,
 }: AskSheetProps) {
+  const isAgentAsk = import.meta.env?.VITE_AGENT_ASK === '1' || import.meta.env?.VITE_AGENT_ASK === 'true'
+  const [calendarEdit, setCalendarEdit] = useState<{
+    title: string
+    date: string
+    time: string
+    alert: 'day' | '1d' | '3d' | '1w'
+  } | null>(null)
   const [question, setQuestion] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [speechError, setSpeechError] = useState<string | null>(null)
@@ -239,6 +249,16 @@ export default function AskSheet({
         evidence: resp.evidence,
         answered_from: resp.answered_from,
         lang: resolveLang(lang),
+        tools_used: resp.tools_used,
+        calendar_draft: resp.calendar_draft,
+      }
+      if (isAgentAsk && resp.calendar_draft?.date) {
+        setCalendarEdit({
+          title: resp.calendar_draft.title || 'Document Reminder',
+          date: resp.calendar_draft.date,
+          time: '09:00',
+          alert: '1d',
+        })
       }
       setThread((prev) => (
         prev.key === threadKey ? { key: threadKey, turns: [...prev.turns, nextTurn] } : prev
@@ -436,6 +456,21 @@ export default function AskSheet({
                         </button>
                       )}
                     </span>
+                    {isAgentAsk && !!turn.tools_used?.length && (
+                      <span className="text-[11.5px] text-[#575B58] border-t border-[#1A1A1A]/10 pt-1.5 mt-0.5">
+                        {t.checkedWith || 'Checked with'}:{' '}
+                        {turn.tools_used.map((tool) => {
+                          switch (tool) {
+                            case 'search_document': return t.toolSearchDocument || 'document search'
+                            case 'verify_quote': return t.toolVerifyQuote || 'quote check'
+                            case 'days_until': return t.toolDaysUntil || 'date check'
+                            case 'relative_deadline': return t.toolRelativeDeadline || 'deadline calculation'
+                            case 'prepare_calendar_event': return t.toolCalendarDraft || 'calendar draft'
+                            default: return tool
+                          }
+                        }).join(', ')}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -460,6 +495,31 @@ export default function AskSheet({
           </div>
         )}
       </div>
+
+      {calendarEdit && (
+        <CalendarEditSheet
+          isOpen={!!calendarEdit}
+          onClose={() => setCalendarEdit(null)}
+          t={t}
+          title={calendarEdit.title}
+          date={calendarEdit.date}
+          time={calendarEdit.time}
+          alert={calendarEdit.alert}
+          onChange={(next) => setCalendarEdit((prev) => prev ? { ...prev, ...next, alert: next.alert as any } : prev)}
+          onAdd={() => {
+            const event = calendarDraftEvent({
+              uid: hashString(`ask-rem-${calendarEdit.title}-${calendarEdit.date}`),
+              title: calendarEdit.title,
+              note: t.calendarOneLine || 'Sarvam reminder.',
+              date: calendarEdit.date,
+              time: calendarEdit.time,
+              alert: calendarEdit.alert,
+            })
+            downloadIcs(`reminder-${calendarEdit.date}.ics`, generateIcs([event]))
+            setCalendarEdit(null)
+          }}
+        />
+      )}
     </Sheet>
   )
 }

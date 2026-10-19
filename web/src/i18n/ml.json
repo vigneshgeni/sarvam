@@ -463,5 +463,11 @@
   "askForm3": "എവിടെ സമർപ്പിക്കണം?",
   "askGeneric1": "ലളിതമായ വാക്കുകളിൽ പറയുക",
   "askGeneric2": "അടുത്തത് എന്ത് ചെയ്യണം?",
-  "askGeneric3": "എന്തെങ്കിലും അവസാന തീയതി ഉണ്ടോ?"
+  "askGeneric3": "എന്തെങ്കിലും അവസാന തീയതി ഉണ്ടോ?",
+  "checkedWith": "പരിശോധിച്ചത്",
+  "toolSearchDocument": "രേഖാ തിരയൽ",
+  "toolVerifyQuote": "ഉദ്ധരണി പരിശോധന",
+  "toolDaysUntil": "തീയതി പരിശോധന",
+  "toolRelativeDeadline": "സമയപരിധി കണക്കുകൂട്ടൽ",
+  "toolCalendarDraft": "കലണ്ടർ ഡ്രാഫ്റ്റ്"
 }

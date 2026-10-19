@@ -463,5 +463,11 @@
   "askForm3": "Where do I submit it?",
   "askGeneric1": "Explain this in simple words",
   "askGeneric2": "What should I do next?",
-  "askGeneric3": "Is there any deadline?"
+  "askGeneric3": "Is there any deadline?",
+  "checkedWith": "Checked with",
+  "toolSearchDocument": "document search",
+  "toolVerifyQuote": "quote check",
+  "toolDaysUntil": "date check",
+  "toolRelativeDeadline": "deadline calculation",
+  "toolCalendarDraft": "calendar draft"
 }

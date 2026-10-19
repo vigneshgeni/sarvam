@@ -535,5 +535,11 @@
   "askForm3": "कुठे जमा करायचे?",
   "askGeneric1": "सोप्या शब्दांत समजावून सांगा",
   "askGeneric2": "पुढे काय करायचे?",
-  "askGeneric3": "काही शेवटची तारीख आहे का?"
+  "askGeneric3": "काही शेवटची तारीख आहे का?",
+  "checkedWith": "तपासले",
+  "toolSearchDocument": "दस्तऐवज शोध",
+  "toolVerifyQuote": "कोट तपासणी",
+  "toolDaysUntil": "दिनांक तपासणी",
+  "toolRelativeDeadline": "मुदत गणना",
+  "toolCalendarDraft": "कॅलेंडर मसुदा"
 }
