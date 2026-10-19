@@ -2,11 +2,13 @@
 
 Paperwork, explained in your language.
 
-Sarvam reads a notice, bill, letter or report and explains what it says and what to do next. It speaks and writes in English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi, Bengali and Odia.
+Sarvam reads a notice, bill, letter or report and explains what it says and what to do next. It speaks and writes in English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi, Bengali and Odia (spoken audio is not available for Odia yet).
 
 [Live app](https://sarvam-510715.web.app) · [Demo video](https://youtu.be/uju7hKk9GzU) · [Project deck](docs/Sarvam_AI_Builder_Cup_2026_Deck.pdf)
 
 Built for the Google Cloud AI Builder Cup 2026 by Vigneswaran (team leader) and Abraham Donald T.
+
+Built with the help of AI coding assistants, including Google Antigravity.
 
 ![Sarvam on a phone, explaining an electricity bill](docs/screenshots/hero.jpg)
 
@@ -37,25 +39,27 @@ Built for the Google Cloud AI Builder Cup 2026 by Vigneswaran (team leader) and 
 
 Ask uses the language you chose. Try தமிழ் or हिंदी.
 
+Ask follows instructions given to Gemini, so the wording can vary a little from the expected results above.
+
 ### Try these too
 
-- **Listen**: Chirp 3 HD in 8 languages. Odia uses the phone's voice.
+- **Listen**: Chirp 3 HD in 8 languages. Spoken audio is not available for Odia yet.
 - **Hide personal details** on: names, phones and IDs are masked.
 - **Pension notice** in Tamil: life certificate by 30 Nov 2026, plus the days left.
 
 ### Where the facts come from, and the guardrails
 
 - Only the file you give. No web search. Saved results stay on the phone (IndexedDB). Firestore stores only an optional rating, and it cannot be read back.
-- Code sets the label (`verify_evidence` in `api/evidence.py`): **Found in your document**, **Calculated**, or **Check against original**. A PDF is Found only when the quote and its numbers are in the text (`extract_critical_tokens`). A photo is never Found.
-- A number missing from the document is not Found (`verify_translation_guard`, `verify_spoken_summary_digit_guard`). Lab flags are only High, Low, H, L or an arrow printed on the page.
-- `check_script_guard` checks the script and asks again if it fails. Masking runs on the phone and at `/api/redact` (`api/redact.py`). If it fails, the share is shorter (`failClosedShare`).
+- Code sets the label (`verify_evidence` in `api/evidence.py`): **Found in your document**, **Calculated**, or **Check against original**. A PDF is Found only when the quote and its numbers are in the text (`extract_critical_tokens`). A photo is never Found. In a PDF, amounts, dates and phone numbers inside a quote are checked against the page text. A lab value is checked as its label plus its value on the page.
+- A number missing from the document is not Found (`verify_translation_guard`, `verify_spoken_summary_digit_guard`). A flag printed on the report (High, Low, H, L or an arrow) wins. If the report prints none, the phone compares the value with the range printed on the report and can show Above range or Below range. A translation must keep the original numbers (`verify_translation_guard`), and a spoken summary that adds a number is replaced (`verify_spoken_summary_digit_guard`).
+- `check_script_guard` checks the script and asks again if it fails. It covers Tamil, Hindi, Marathi, Telugu, Malayalam, Kannada and Bengali. Odia is checked on the phone. Masking runs on the phone and at `/api/redact` (`api/redact.py`). If it fails, the share is shorter (`failClosedShare`).
 - `cd api && .venv/bin/python -m pytest -q` and `cd web && node --test`. Evals: `api/evals/`.
 
 ### How we kept it fast and cheap
 
 - Written in the chosen language. Translation runs only if `outputNeedsTranslation` says the text is still wrong.
 - Cached by SHA-256, language and reader version (`web/src/utils/readCache.ts`). The same file again makes no AI call. Samples are pre-explained in 9 languages (`web/public/samples/results/`). Cloud Run keeps one warm instance.
-- Live, 14–15 Oct 2026: 211/211 facts. 16/17 uploads (one Hindi PDF timed out at 90 s). English median 17 s (n=7); 1-page PDF 13 s; Hindi 15.6 s; Tamil 17.0 s; 5-page PDF 45 s; photo 71 s. Ask median 7.5 s (n=3). Hide on: 0 leaks (96 results + 4 uploads). 96/99 languages open. Again: about 0.5 s, 0 AI calls, vs about 23 s (15 Oct). Lighthouse mobile 85, 94, 100. Tests 252 (131 API, 121 web).
+- Live, 14–15 Oct 2026: 211/211 facts. 16/17 uploads (one Hindi PDF timed out at 90 s). English median 17 s (n=7); 1-page PDF 13 s; Hindi 15.6 s; Tamil 17.0 s; 5-page PDF 45 s; photo 71 s. Ask median 7.5 s (n=3). Hide on: 0 leaks (96 results + 4 uploads). 96/99 languages open. Again: about 0.5 s, 0 AI calls, vs about 23 s (15 Oct). Lighthouse mobile 85, 94, 100. Tests: 252 at the 14–15 Oct check (131 API, 121 web).
 
 Small samples; measured by automated end-to-end tests on the deployed app, 14–15 Oct 2026.
 
@@ -64,7 +68,7 @@ Small samples; measured by automated end-to-end tests on the deployed app, 14–
 - Per IP each minute: Explain 20, Ask 20, Translate 30, Listen 60.
 - PDF 20 MB; total 25 MB; 10 photos or 5 PDFs. No Word files. A locked PDF asks for the password.
 - Explain: 80 s on the server; the phone waits 90 s (photo) or 150 s (PDF). Ask: 45 s on the server. Cloud Run: up to 4 instances.
-- Busy Gemini (503 or 429): retry, then Gemini 2.5 Flash. Samples still open.
+- Busy Gemini (503 or 429): switches to Gemini 2.5 Flash and retries there. Samples still open.
 
 ## What it does
 
@@ -91,7 +95,7 @@ flowchart LR
 
 - **Gemini 3.7 Flash** on Gemini Enterprise Agent Platform (formerly Vertex AI) reads the document, translates it, answers questions and transcribes a short recording. If that call fails in a way that can be tried again, Sarvam uses **Gemini 2.5 Flash**.
 - **Cloud Run** (`asia-south1`) hosts the FastAPI service.
-- **Cloud Text-to-Speech** (Chirp 3 HD) speaks English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi and Bengali. Odia uses the phone's own voice.
+- **Cloud Text-to-Speech** (Chirp 3 HD) speaks English, Tamil, Hindi, Telugu, Malayalam, Kannada, Marathi and Bengali. Spoken audio is not available for Odia yet.
 - **Firebase Hosting** serves the app. **Anonymous Auth** signs the phone in. **Firestore** stores the optional rating, not the document.
 
 ## Privacy
@@ -140,7 +144,7 @@ cd web && node --test
 
 ## Known limits
 
-- Odia has no Chirp voice on the server. Listen for Odia uses the phone's voice when the phone has one.
+- Spoken audio is not available for Odia yet. Odia has no Chirp voice on the server. For the other eight languages, if Chirp fails, Listen falls back to the phone's own voice.
 - Word files are not accepted. Use a PDF or a photo.
 - The samples are fictional. They are not real people's documents.
 - A 5-page PDF can take about 45 s, and a photo about 71 s (measured 14–15 Oct 2026).
