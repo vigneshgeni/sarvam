@@ -463,5 +463,11 @@
   "askForm3": "எங்கே சமர்ப்பிப்பது?",
   "askGeneric1": "இதை எளிய சொற்களில் சொல்",
   "askGeneric2": "அடுத்து என்ன செய்ய வேண்டும்?",
-  "askGeneric3": "ஏதேனும் கடைசி நாள் உள்ளதா?"
+  "askGeneric3": "ஏதேனும் கடைசி நாள் உள்ளதா?",
+  "checkedWith": "சரிபார்க்கப்பட்டது",
+  "toolSearchDocument": "ஆவணத் தேடல்",
+  "toolVerifyQuote": "மேற்கோள் சரிபார்ப்பு",
+  "toolDaysUntil": "தேதி சரிபார்ப்பு",
+  "toolRelativeDeadline": "காலக்கெடு கணக்கீடு",
+  "toolCalendarDraft": "நாள்காட்டி வரைவு"
 }

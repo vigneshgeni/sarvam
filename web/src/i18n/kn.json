@@ -463,5 +463,11 @@
   "askForm3": "ಎಲ್ಲಿ ಸಲ್ಲಿಸಬೇಕು?",
   "askGeneric1": "ಸರಳ ಮಾತುಗಳಲ್ಲಿ ಹೇಳಿ",
   "askGeneric2": "ಮುಂದೆ ಏನು ಮಾಡಬೇಕು?",
-  "askGeneric3": "ಯಾವುದೇ ಕೊನೆಯ ದಿನಾಂಕ ಇದೆಯೇ?"
+  "askGeneric3": "ಯಾವುದೇ ಕೊನೆಯ ದಿನಾಂಕ ಇದೆಯೇ?",
+  "checkedWith": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+  "toolSearchDocument": "ದಾಖಲೆ ಹುಡುಕಾಟ",
+  "toolVerifyQuote": "ಉಲ್ಲೇಖ ಪರಿಶೀಲನೆ",
+  "toolDaysUntil": "ದಿನಾಂಕ ಪರಿಶೀಲನೆ",
+  "toolRelativeDeadline": "ಗಡುವು ಲೆಕ್ಕಾಚಾರ",
+  "toolCalendarDraft": "ಕ್ಯಾಲೆಂಡರ್ ಕರಡು"
 }

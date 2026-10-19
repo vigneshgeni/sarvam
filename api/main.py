@@ -1791,6 +1791,26 @@ async def ask(
     )
 
     try:
+        if os.environ.get("AGENT_ASK", "0") in ("1", "true", "True"):
+            try:
+                from agent.runner import run_agent_turn
+
+                agent_timeout = min(30.0, max(5.0, deadline - time.time() - 2.0))
+                ask_res = await run_agent_turn(
+                    question=question,
+                    lang=lang,
+                    result_json=result,
+                    files_data=file_data_list or None,
+                    pdf_pages_text=pdf_pages_text,
+                    history=history,
+                    deadline=deadline,
+                    timeout=agent_timeout,
+                )
+                return ask_res
+            except Exception as e:
+                reason_code = type(e).__name__
+                logger.info("agent_ask_fallback: reason=%s", reason_code)
+
         if (
             isinstance(ask_document, unittest.mock.MagicMock)
             or ask_document is not reader.ask_document

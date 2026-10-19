@@ -463,5 +463,11 @@
   "askForm3": "कहाँ जमा करूँ?",
   "askGeneric1": "आसान शब्दों में समझाएँ",
   "askGeneric2": "आगे क्या करना है?",
-  "askGeneric3": "कोई आखिरी तारीख है?"
+  "askGeneric3": "कोई आखिरी तारीख है?",
+  "checkedWith": "जाँचा गया",
+  "toolSearchDocument": "दस्तावेज़ खोज",
+  "toolVerifyQuote": "उद्धरण जाँच",
+  "toolDaysUntil": "तारीख जाँच",
+  "toolRelativeDeadline": "समय सीमा गणना",
+  "toolCalendarDraft": "कैलेंडर ड्राफ्ट"
 }

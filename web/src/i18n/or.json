@@ -535,5 +535,11 @@
   "askForm3": "କେଉଁଠି ଜମା କରିବି?",
   "askGeneric1": "ସହଜ କଥାରେ କୁହନ୍ତୁ",
   "askGeneric2": "ପରେ କଣ କରିବାକୁ ହେବ?",
-  "askGeneric3": "କିଛି ଶେଷ ତାରିଖ ଅଛି କି?"
+  "askGeneric3": "କିଛି ଶେଷ ତାରିଖ ଅଛି କି?",
+  "checkedWith": "ଯାଞ୍ଚ ହୋଇଛି",
+  "toolSearchDocument": "ଦଲିଲ ଅନୁସନ୍ଧାନ",
+  "toolVerifyQuote": "ଉଦ୍ଧୃତି ଯାଞ୍ଚ",
+  "toolDaysUntil": "ତାରିଖ ଯାଞ୍ଚ",
+  "toolRelativeDeadline": "ସମୟସୀମା ଗଣନା",
+  "toolCalendarDraft": "କ୍ୟାଲେଣ୍ଡର ଡ୍ରାଫ୍ଟ"
 }

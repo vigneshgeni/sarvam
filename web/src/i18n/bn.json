@@ -535,5 +535,11 @@
   "askForm3": "কোথায় জমা দেব?",
   "askGeneric1": "সহজ কথায় বলুন",
   "askGeneric2": "এরপর কী করতে হবে?",
-  "askGeneric3": "কোনো শেষ তারিখ আছে?"
+  "askGeneric3": "কোনো শেষ তারিখ আছে?",
+  "checkedWith": "যাচাই করা হয়েছে",
+  "toolSearchDocument": "নথি অনুসন্ধান",
+  "toolVerifyQuote": "উদ্ধৃতি যাচাই",
+  "toolDaysUntil": "তারিখ পরীক্ষা",
+  "toolRelativeDeadline": "সময়সীমা গণনা",
+  "toolCalendarDraft": "ক্যালেন্ডার খসড়া"
 }
