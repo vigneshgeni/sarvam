@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sarvam · Voice-First Ask Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:opsz,wght@9..144,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../sarvam-v3/design/fonts/fonts.css">
+<style>
+:root {
+  --sv-bg: #F4F5F2;
+  --sv-ink: #1A1A1A;
+  --sv-coral: #D9603B;
+  --sv-coral-soft: #F8D9CB;
+  --sv-teal: #034F46;
+  --sv-teal-soft: #CFE5E0;
+  --sv-mustard: #E9B44C;
+  --sv-lavender: #F0D7FF;
+  --sv-hairline: #E2E5E0;
+  --sv-muted: #575B58;
+  --sv-body-2: #3B3E3C;
+  --sv-canvas: #E8EAE7;
+  --sv-font-display: 'Fraunces', Georgia, serif;
+  --sv-font-body: 'DM Sans', system-ui, sans-serif;
+  --sv-font-tamil: 'Noto Sans Tamil', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--sv-canvas);
+  font-family: var(--sv-font-body);
+  color: var(--sv-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tamil-text {
+  font-family: var(--sv-font-tamil), var(--sv-font-body);
+}
+
+.phone-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: var(--sv-bg);
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 44px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.12);
+}
+
+.demo-controls {
+  width: 390px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.demo-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: 1.5px solid var(--sv-ink);
+  background: var(--sv-bg);
+  font-family: var(--sv-font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.demo-btn:hover { background: #E2E5E0; }
+.demo-btn:active { transform: scale(0.97); }
+.demo-btn.active { background: var(--sv-mustard); }
+
+.sv-press {
+  transition: transform 120ms ease-out;
+}
+.sv-press:active {
+  transform: scale(0.97);
+}
+
+/* Animations */
+@keyframes sv-ring {
+  0% { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes sv-pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 96, 59, 0.4); }
+  50% { box-shadow: 0 0 0 16px rgba(217, 96, 59, 0); }
+}
+
+@keyframes sv-eq-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes sv-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sv-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mic-hero-btn {
+  width: 104px;
+  height: 104px;
+  border-radius: 52px;
+  border: 2px solid var(--sv-ink);
+  background: var(--sv-mustard);
+  color: var(--sv-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(233,180,76,0.4);
+  position: relative;
+  transition: all 200ms ease;
+}
+.mic-hero-btn:hover {
+  transform: scale(1.03);
+}
+.mic-hero-btn:active {
+  transform: scale(0.96);
+}
+
+.mic-hero-btn.listening {
+  background: var(--sv-coral);
+  color: #FFFFFF;
+  animation: sv-pulse-border 1.5s infinite;
+}
+
+.eq-bar {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--sv-teal);
+  animation: sv-eq-bar 1s ease-in-out infinite;
+}
+.eq-bar:nth-child(2) { animation-delay: 0.15s; height: 32px; background: var(--sv-coral); }
+.eq-bar:nth-child(3) { animation-delay: 0.3s; height: 18px; }
+.eq-bar:nth-child(4) { animation-delay: 0.45s; height: 28px; background: var(--sv-mustard); }
+.eq-bar:nth-child(5) { animation-delay: 0.2s; height: 22px; }
+
+.suggestion-chip {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  border: 1.5px solid var(--sv-ink);
+  background: transparent;
+  font-family: var(--sv-font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--sv-ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 140ms ease;
+  white-space: nowrap;
+}
+.suggestion-chip:hover {
+  background: #E2E5E0;
+}
+.suggestion-chip:active {
+  transform: scale(0.97);
+}
+
+.sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.45);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sv-sheet {
+  background: var(--sv-bg);
+  border-top: 1.5px solid var(--sv-ink);
+  border-radius: 40px 40px 0 0;
+  padding: 12px 20px 28px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: sv-sheet-up 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+html[data-high-contrast="true"] .phone-frame {
+  filter: contrast(1.18);
+}
+html[data-text-size="large"] .phone-frame {
+  font-size: 115%;
+}
+</style>
+</head>
+<body>
+
+<div class="phone-wrapper">
+  <!-- Interactive demo controls for testing/judging -->
+  <aside class="demo-controls" aria-label="Prototype controls">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:12px; color:var(--sv-muted);">Screen 3</span>
+      <button type="button" class="demo-btn" id="langToggleBtn" onclick="toggleLanguage()">
+        <span id="langIndicator">தமிழ்</span>
+      </button>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="demo-btn" id="toggleDeniedBtn" onclick="toggleMicDenied()" title="Toggle mic permission denied">
+        <span>Mic denied</span>
+      </button>
+      <button type="button" class="demo-btn" onclick="resetAskScreen()" title="Reset to start">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <span>Reset</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 390x844 Screen Frame -->
+  <main class="phone-frame" id="phoneContainer" role="region" aria-label="Voice-first Ask screen">
+    
+    <!-- Top Bar -->
+    <header style="padding: 16px 20px 8px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+      <button type="button" aria-label="Back" class="sv-press" onclick="window.history.back()" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sv-ink)" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+
+      <!-- Document Context Chip -->
+      <div style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 17px; border: 1.5px solid var(--sv-ink); background: #FFFFFF; font-size: 13px; font-weight: 600;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span id="txtContextDoc">Pension notice</span>
+      </div>
+
+      <!-- In-app language toggle chip -->
+      <button type="button" class="sv-press" onclick="toggleLanguage()" style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-size: 13px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+        <span id="appLangChip">EN</span>
+      </button>
+    </header>
+
+    <!-- MAIN CHAT / VOICE THREAD -->
+    <div id="threadScroll" style="flex: 1; overflow-y: auto; padding: 10px 20px 16px; display: flex; flex-direction: column; gap: 16px;">
+      
+      <!-- HERO SECTION: Shown initially before asking, or collapsed during conversation -->
+      <section id="heroSection" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; margin-top: 10px;">
+        <h1 id="txtHeroTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 32px; letter-spacing: -0.4px; line-height: 1.15;">
+          Tell me what you need<span style="color: var(--sv-coral);">.</span>
+        </h1>
+        <p id="txtHeroSub" style="margin: 0; font-size: 15px; color: var(--sv-muted); max-width: 310px; line-height: 1.4;">
+          Speak in your language. Sarvam finds answers directly from your document.
+        </p>
+
+        <!-- Big Hero Mic Button -->
+        <div style="margin: 12px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <button id="heroMicBtn" type="button" class="mic-hero-btn" onclick="startMicListening()" aria-label="Tap to speak your question">
+            <svg id="micIconNormal" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/>
+            </svg>
+            <!-- Denied Mic Icon (hidden by default) -->
+            <svg id="micIconDenied" style="display: none;" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#B3361A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="1" y1="1" x2="23" y2="23"/>
+              <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+              <path d="M17 16.95A7 7 0 0 1 5 10m14 0a7 7 0 0 1-.55 2.72"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+          </button>
+
+          <!-- Listening waveform visualizer -->
+          <div id="listeningWave" style="display: none; align-items: center; gap: 5px; height: 32px;">
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+          </div>
+
+          <span id="txtMicStatus" style="font-size: 14px; font-weight: 600; color: var(--sv-muted);">
+            Tap to speak
+          </span>
+        </div>
+
+        <!-- Initial Suggested Prompts -->
+        <div id="initialPrompts" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px;">
+          <span id="txtTryAsking" style="font-size: 12px; font-weight: 700; color: var(--sv-muted); letter-spacing: 0.8px;">
+            OR TAP A QUESTION
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button type="button" class="suggestion-chip" onclick="askQuestion(1)" style="justify-content: flex-start; height: 42px; border-radius: 21px; background: #FFFFFF;">
+              💬 <span id="txtSampleQ1" style="margin-left: 6px;">When is my life certificate due?</span>
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askQuestion(2)" style="justify-content: flex-start; height: 42px; border-radius: 21px; background: #FFFFFF;">
+              💬 <span id="txtSampleQ2" style="margin-left: 6px;">What documents do I need to bring?</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIC PERMISSION DENIED WARNING CARD (Shown when denied) -->
+      <section id="micDeniedCard" style="display: none; border: 1.5px solid var(--sv-ink); border-radius: 24px; background: #FFF4DE; padding: 16px; flex-direction: column; gap: 10px; animation: sv-fade-up 240ms ease;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #B3361A; color: #FFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; font-weight: bold;">
+            !
+          </div>
+          <span id="txtDeniedHeader" style="font-size: 15px; font-weight: 700; color: #5A3500;">
+            Microphone access is blocked
+          </span>
+        </div>
+        <p id="txtDeniedBody" style="margin: 0; font-size: 13.5px; color: #5A3500; line-height: 1.45;">
+          Your browser blocked microphone permissions. Enable microphone access in settings to speak, or use the text box below to type your question.
+        </p>
+        <button type="button" class="sv-press" onclick="focusComposer()" style="height: 42px; border-radius: 21px; border: 1.5px solid var(--sv-ink); background: #FFFFFF; font-family: var(--sv-font-body); font-size: 13.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; align-self: flex-start; padding: 0 16px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+          <span id="txtTypeInsteadBtn">Type instead</span>
+        </button>
+      </section>
+
+      <!-- CONVERSATION THREAD (DYNAMICALLY REVEALED) -->
+      <div id="chatThread" style="display: none; flex-direction: column; gap: 16px; width: 100%;">
+        
+        <!-- TURN 1: Document Question & Answer -->
+        <div id="turnDocAnswer" style="display: none; flex-direction: column; gap: 12px; animation: sv-fade-up 280ms ease;">
+          <!-- User Question Bubble (Black) -->
+          <div style="align-self: flex-end; max-width: 82%; background: var(--sv-ink); color: #F4F5F2; padding: 12px 16px; border-radius: 24px 24px 6px 24px; font-size: 15.5px; line-height: 1.35; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+            <span id="txtUserTranscript1">When do I need to submit my life certificate?</span>
+          </div>
+
+          <!-- Sarvam Answer Card (Lavender) -->
+          <div style="align-self: flex-start; display: flex; gap: 10px; max-width: 95%;">
+            <!-- Sarvam Avatar -->
+            <span style="width: 36px; height: 36px; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; background: var(--sv-teal); border: 1.5px solid var(--sv-ink); color: #F4F5F2; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700;">
+              S<span style="color: var(--sv-coral);">.</span>
+            </span>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; background: var(--sv-lavender); border: 1.5px solid var(--sv-ink); padding: 14px 16px; border-radius: 6px 24px 24px 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+              <!-- Short direct answer -->
+              <span id="txtAnswerBody1" style="font-size: 15px; line-height: 1.45; color: var(--sv-ink);">
+                You must submit your life certificate by <b>30 November 2026</b> at your bank branch or nearest Common Service Centre (CSC) to avoid pension withholding.
+              </span>
+
+              <!-- Source Quote Card inside bubble -->
+              <div style="background: rgba(255,255,255,0.7); border: 1px solid var(--sv-ink); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;">
+                <span id="txtQuoteTag1" style="font-size: 11px; font-weight: 700; color: var(--sv-muted);">FROM YOUR DOCUMENT (P. 1)</span>
+                <blockquote id="txtQuoteSnippet1" style="margin: 0; font-size: 13px; font-style: italic; color: var(--sv-body-2); line-height: 1.4;">
+                  "Pensioners must submit Life Certificate on or before 30.11.2026"
+                </blockquote>
+              </div>
+
+              <!-- Evidence Badge & Action Buttons -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; pt-1;">
+                <!-- Found in your document Label -->
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--sv-teal);">
+                  <svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+                  <span id="txtEvidenceFound">Found in your document</span>
+                </span>
+
+                <!-- Listen Button -->
+                <button type="button" class="sv-press" id="btnListen1" onclick="playAudioResponse('btnListen1')" style="display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: #FFFFFF; font-size: 12.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span id="txtListenBtn1">Listen</span>
+                </button>
+
+                <!-- Add to calendar Button -->
+                <button type="button" class="sv-press" onclick="openCalendarModal()" style="display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-size: 12.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+                  <span id="txtCalBtn1">Add to calendar</span>
+                </button>
+              </div>
+
+              <!-- Two Follow-Up Suggestion Chips -->
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 10px; border-top: 1px dashed rgba(26,26,26,0.25);">
+                <span id="txtFollowUpLabel" style="font-size: 11px; font-weight: 700; color: var(--sv-muted); letter-spacing: 0.5px;">FOLLOW-UP QUESTIONS</span>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" class="suggestion-chip" onclick="askQuestion(2)" style="background: #FFFFFF; font-size: 12.5px; height: 34px;">
+                    <span id="txtFollowUp1">What documents do I need to bring?</span>
+                  </button>
+                  <button type="button" class="suggestion-chip" onclick="askQuestion(3)" style="background: #FFFFFF; font-size: 12.5px; height: 34px;">
+                    <span id="txtFollowUp2">Where is the nearest bank branch?</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TURN 2: General Information Question & Answer -->
+        <div id="turnGeneralAnswer" style="display: none; flex-direction: column; gap: 12px; animation: sv-fade-up 280ms ease;">
+          <div style="align-self: flex-end; max-width: 82%; background: var(--sv-ink); color: #F4F5F2; padding: 12px 16px; border-radius: 24px 24px 6px 24px; font-size: 15.5px; line-height: 1.35; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+            <span id="txtUserTranscript2">What documents do I need to bring?</span>
+          </div>
+
+          <div style="align-self: flex-start; display: flex; gap: 10px; max-width: 95%;">
+            <span style="width: 36px; height: 36px; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; background: var(--sv-teal); border: 1.5px solid var(--sv-ink); color: #F4F5F2; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700;">
+              S<span style="color: var(--sv-coral);">.</span>
+            </span>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; background: #FFFFFF; border: 1.5px solid var(--sv-ink); padding: 14px 16px; border-radius: 6px 24px 24px 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+              <span id="txtAnswerBody2" style="font-size: 15px; line-height: 1.45; color: var(--sv-ink);">
+                Bring your <b>Aadhaar card</b>, original <b>Pension Payment Order (PPO)</b> book, and bank passbook. If submitting via Jeevan Pramaan, biometric fingerprint or iris authentication is conducted at the counter.
+              </span>
+
+              <!-- General Information Label -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--sv-body-2); background: var(--sv-hairline); padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  <span id="txtEvidenceGeneral">General information, not from your document</span>
+                </span>
+
+                <button type="button" class="sv-press" id="btnListen2" onclick="playAudioResponse('btnListen2')" style="display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-size: 12.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span id="txtListenBtn2">Listen</span>
+                </button>
+              </div>
+
+              <!-- More suggestions -->
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                <button type="button" class="suggestion-chip" onclick="askQuestion(1)" style="font-size: 12px; height: 32px;">
+                  <span id="txtChipBackQ1">When is the submission deadline?</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM COMPOSER: TEXT INPUT & MIC CONTROL -->
+    <footer style="padding: 10px 16px 18px; border-top: 1.5px solid var(--sv-hairline); background: var(--sv-bg); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- Text Input Composer -->
+        <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 16px; border-radius: 28px; border: 1.5px solid var(--sv-ink); background: #FFFFFF;">
+          <input id="askTextInput" type="text" placeholder="Type your question…" style="flex: 1; border: 0; background: transparent; font-family: var(--sv-font-body); font-size: 15px; color: var(--sv-ink); outline: none;">
+          <button type="button" class="sv-press" onclick="handleSendText()" aria-label="Send" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); color: var(--sv-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+
+        <!-- Small Corner Mic Button in Composer -->
+        <button id="cornerMicBtn" type="button" class="sv-press" onclick="startMicListening()" aria-label="Speak" style="width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: var(--sv-coral); color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- CALENDAR SHEET (When user taps "Add to calendar") -->
+    <div id="calendarModalOverlay" class="sheet-overlay" style="display: none;" onclick="handleOverlayClick(event, 'calendarModalOverlay')">
+      <div class="sv-sheet">
+        <span style="width: 44px; height: 5px; border-radius: 3px; background: var(--sv-ink); opacity: 0.25; align-self: center;"></span>
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <h2 id="txtCalTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 26px;">Edit before adding<span style="color: var(--sv-coral);">.</span></h2>
+            <p id="txtCalSub" style="margin: 4px 0 0; font-size: 13px; color: var(--sv-muted);">Your calendar shows this short line.</p>
+          </div>
+          <button type="button" class="sv-press" onclick="closeCalendarModal()" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+            <span id="txtCalFldTitle">Title</span>
+            <input id="calFieldTitle" value="Submit Life Certificate" style="height: 46px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-size: 15px; font-weight: 500;">
+          </label>
+          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px;">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+              <span id="txtCalFldDate">Date</span>
+              <input type="date" value="2026-11-30" style="height: 46px; padding: 0 10px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-size: 14.5px; font-weight: 500;">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+              <span id="txtCalFldTime">Time</span>
+              <input type="time" value="09:00" style="height: 46px; padding: 0 10px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-size: 14.5px; font-weight: 500;">
+            </label>
+          </div>
+          <button type="button" class="sv-press" onclick="confirmCalendar()" style="height: 54px; border-radius: 27px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-size: 16.5px; font-weight: 700; cursor: pointer; margin-top: 6px;">
+            <span id="txtCalSave">Add to my calendar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const I18N_ASK = {
+  en: {
+    contextDoc: "Pension notice",
+    heroTitle: "Tell me what you need",
+    heroSub: "Speak in your language. Sarvam finds answers directly from your document.",
+    micTapToSpeak: "Tap to speak",
+    micListening: "Listening…",
+    tryAsking: "OR TAP A QUESTION",
+    sampleQ1: "When is my life certificate due?",
+    sampleQ2: "What documents do I need to bring?",
+    deniedHeader: "Microphone access is blocked",
+    deniedBody: "Your browser blocked microphone permissions. Enable microphone access in settings to speak, or use the text box below to type your question.",
+    typeInstead: "Type instead",
+    placeholder: "Type your question…",
+    userQ1: "When do I need to submit my life certificate?",
+    ans1: "You must submit your life certificate by <b>30 November 2026</b> at your bank branch or nearest Common Service Centre (CSC) to avoid pension withholding.",
+    quoteTag1: "FROM YOUR DOCUMENT (P. 1)",
+    quoteSnippet1: '"Pensioners must submit Life Certificate on or before 30.11.2026"',
+    evidenceFound: "Found in your document",
+    listenBtn: "Listen",
+    listeningPlaying: "Playing…",
+    addCalBtn: "Add to calendar",
+    followUpHeader: "FOLLOW-UP QUESTIONS",
+    followUp1: "What documents do I need to bring?",
+    followUp2: "Where is the nearest bank branch?",
+    userQ2: "What documents do I need to bring?",
+    ans2: "Bring your <b>Aadhaar card</b>, original <b>Pension Payment Order (PPO)</b> book, and bank passbook. If submitting via Jeevan Pramaan, biometric fingerprint or iris authentication is conducted at the counter.",
+    evidenceGeneral: "General information, not from your document",
+    chipBackQ1: "When is the submission deadline?",
+    calTitle: "Edit before adding",
+    calSub: "Your calendar shows this short line.",
+    calFldTitle: "Title",
+    calFldDate: "Date",
+    calFldTime: "Time",
+    calSave: "Add to my calendar",
+  },
+  ta: {
+    contextDoc: "ஓய்வூதிய அறிவிப்பு",
+    heroTitle: "உங்களுக்கு என்ன வேண்டும் என்று சொல்லுங்கள்",
+    heroSub: "உங்கள் மொழியில் பேசுங்கள். சர்வம் உங்கள் ஆவணத்திலிருந்து பதில்களை நேரடியாகக் கண்டறியும்.",
+    micTapToSpeak: "பேச தட்டவும்",
+    micListening: "கேட்கிறது…",
+    tryAsking: "அல்லது ஒரு கேள்வியைத் தட்டவும்",
+    sampleQ1: "வாழ்நாள் சான்றிதழை எப்போது சமர்ப்பிக்க வேண்டும்?",
+    sampleQ2: "நான் என்னென்ன ஆவணங்களை எடுத்துச் செல்ல வேண்டும்?",
+    deniedHeader: "மைக்ரோஃபோன் அணுகல் மறுக்கப்பட்டது",
+    deniedBody: "குரல் மூலம் கேட்க உலாவி அமைப்புகளில் மைக்கை இயக்கவும் அல்லது கீழே உள்ள பெட்டியில் தட்டச்சு செய்யவும்.",
+    typeInstead: "தட்டச்சு செய்யவும்",
+    placeholder: "உங்கள் கேள்வியைத் தட்டச்சு செய்யவும்…",
+    userQ1: "வாழ்நாள் சான்றிதழை எப்போது சமர்ப்பிக்க வேண்டும்?",
+    ans1: "ஓய்வூதியம் நிறுத்தப்படுவதைத் தவிர்க்க, உங்கள் வாழ்நாள் சான்றிதழை <b>30 நவம்பர் 2026</b>-க்குள் உங்கள் வங்கிக் கிளையிலோ அல்லது பொது சேவை மையத்திலோ (CSC) சமர்ப்பிக்க வேண்டும்.",
+    quoteTag1: "உங்கள் ஆவணத்திலிருந்து (பக்கம் 1)",
+    quoteSnippet1: '"ஓய்வூதியதாரர்கள் தங்களின் வாழ்நாள் சான்றிதழை 30.11.2026 அன்று அல்லது அதற்கு முன் சமர்ப்பிக்க வேண்டும்"',
+    evidenceFound: "உங்கள் ஆவணத்தில் உள்ளது",
+    listenBtn: "கேளுங்கள்",
+    listeningPlaying: "ஒலிக்கிறது…",
+    addCalBtn: "நாள்காட்டியில் சேர்",
+    followUpHeader: "தொடர்புடைய கேள்விகள்",
+    followUp1: "நான் என்னென்ன ஆவணங்களை எடுத்துச் செல்ல வேண்டும்?",
+    followUp2: "அருகிலுள்ள வங்கி கிளை எங்கே உள்ளது?",
+    userQ2: "நான் என்னென்ன ஆவணங்களை எடுத்துச் செல்ல வேண்டும்?",
+    ans2: "உங்கள் <b>ஆதார் அட்டை</b>, அசல் <b>ஓய்வூதிய ஆணை (PPO)</b> புத்தகம் மற்றும் வங்கிக் கணக்குப் புத்தகத்தை எடுத்துச் செல்லுங்கள். ஜீவன் பிரமாண் மூலம் சமர்ப்பித்தால் விரல்ரேகை அல்லது கருவிழி சரிபார்ப்பு செய்யப்படும்.",
+    evidenceGeneral: "பொதுவான தகவல், உங்கள் ஆவணத்திலிருந்து அல்ல",
+    chipBackQ1: "சமர்ப்பிக்க வேண்டிய கடைசி தேதி எப்போது?",
+    calTitle: "சேர்ப்பதற்கு முன் திருத்தவும்",
+    calSub: "உங்கள் நாள்காட்டி இந்த சுருக்கமான வரியைக் காட்டும்.",
+    calFldTitle: "தலைப்பு",
+    calFldDate: "தேதி",
+    calFldTime: "நேரம்",
+    calSave: "நாள்காட்டியில் சேர்",
+  }
+};
+
+let currentLang = 'en';
+let isMicDenied = false;
+let isListening = false;
+let typingTimeout = null;
+
+// Init from URL param if given
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('lang') === 'ta') {
+  currentLang = 'ta';
+}
+
+function updateTexts() {
+  const t = I18N_ASK[currentLang];
+  const isTa = currentLang === 'ta';
+
+  document.getElementById('langIndicator').textContent = isTa ? 'English' : 'தமிழ்';
+  document.getElementById('appLangChip').textContent = isTa ? 'தமிழ்' : 'EN';
+  
+  if (isTa) {
+    document.getElementById('phoneContainer').classList.add('tamil-text');
+  } else {
+    document.getElementById('phoneContainer').classList.remove('tamil-text');
+  }
+
+  document.getElementById('txtContextDoc').textContent = t.contextDoc;
+  document.getElementById('txtHeroTitle').innerHTML = t.heroTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('txtHeroSub').textContent = t.heroSub;
+  if (!isListening) {
+    document.getElementById('txtMicStatus').textContent = isMicDenied ? t.deniedHeader : t.micTapToSpeak;
+  }
+  document.getElementById('txtTryAsking').textContent = t.tryAsking;
+  document.getElementById('txtSampleQ1').textContent = t.sampleQ1;
+  document.getElementById('txtSampleQ2').textContent = t.sampleQ2;
+  
+  document.getElementById('txtDeniedHeader').textContent = t.deniedHeader;
+  document.getElementById('txtDeniedBody').textContent = t.deniedBody;
+  document.getElementById('txtTypeInsteadBtn').textContent = t.typeInstead;
+  document.getElementById('askTextInput').placeholder = t.placeholder;
+
+  // Turn 1
+  document.getElementById('txtUserTranscript1').textContent = t.userQ1;
+  document.getElementById('txtAnswerBody1').innerHTML = t.ans1;
+  document.getElementById('txtQuoteTag1').textContent = t.quoteTag1;
+  document.getElementById('txtQuoteSnippet1').textContent = t.quoteSnippet1;
+  document.getElementById('txtEvidenceFound').textContent = t.evidenceFound;
+  document.getElementById('txtListenBtn1').textContent = t.listenBtn;
+  document.getElementById('txtCalBtn1').textContent = t.addCalBtn;
+  document.getElementById('txtFollowUpLabel').textContent = t.followUpHeader;
+  document.getElementById('txtFollowUp1').textContent = t.followUp1;
+  document.getElementById('txtFollowUp2').textContent = t.followUp2;
+
+  // Turn 2
+  document.getElementById('txtUserTranscript2').textContent = t.userQ2;
+  document.getElementById('txtAnswerBody2').innerHTML = t.ans2;
+  document.getElementById('txtEvidenceGeneral').textContent = t.evidenceGeneral;
+  document.getElementById('txtListenBtn2').textContent = t.listenBtn;
+  document.getElementById('txtChipBackQ1').textContent = t.chipBackQ1;
+
+  // Calendar
+  document.getElementById('txtCalTitle').innerHTML = t.calTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('txtCalSub').textContent = t.calSub;
+  document.getElementById('txtCalFldTitle').textContent = t.calFldTitle;
+  document.getElementById('txtCalFldDate').textContent = t.calFldDate;
+  document.getElementById('txtCalFldTime').textContent = t.calFldTime;
+  document.getElementById('txtCalSave').textContent = t.calSave;
+}
+
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'ta' : 'en';
+  updateTexts();
+}
+
+function toggleMicDenied() {
+  isMicDenied = !isMicDenied;
+  const btn = document.getElementById('toggleDeniedBtn');
+  const heroBtn = document.getElementById('heroMicBtn');
+  const deniedCard = document.getElementById('micDeniedCard');
+  const micNormal = document.getElementById('micIconNormal');
+  const micDenied = document.getElementById('micIconDenied');
+
+  if (isMicDenied) {
+    btn.classList.add('active');
+    deniedCard.style.display = 'flex';
+    micNormal.style.display = 'none';
+    micDenied.style.display = 'block';
+    heroBtn.style.background = '#FFF4DE';
+    heroBtn.style.borderColor = '#B3361A';
+  } else {
+    btn.classList.remove('active');
+    deniedCard.style.display = 'none';
+    micNormal.style.display = 'block';
+    micDenied.style.display = 'none';
+    heroBtn.style.background = 'var(--sv-mustard)';
+    heroBtn.style.borderColor = 'var(--sv-ink)';
+  }
+  updateTexts();
+}
+
+function focusComposer() {
+  const input = document.getElementById('askTextInput');
+  input.focus();
+  input.style.boxShadow = '0 0 0 3px var(--sv-coral)';
+  setTimeout(() => { input.style.boxShadow = 'none'; }, 1500);
+}
+
+// Simulates speech listening & typing transcript
+function startMicListening() {
+  if (isMicDenied) {
+    focusComposer();
+    return;
+  }
+  if (isListening) return;
+
+  isListening = true;
+  const t = I18N_ASK[currentLang];
+  const heroBtn = document.getElementById('heroMicBtn');
+  const wave = document.getElementById('listeningWave');
+  const status = document.getElementById('txtMicStatus');
+
+  heroBtn.classList.add('listening');
+  wave.style.display = 'flex';
+  status.textContent = t.micListening;
+
+  // After 1.6 seconds of simulated listening, show typing transcript
+  setTimeout(() => {
+    isListening = false;
+    heroBtn.classList.remove('listening');
+    wave.style.display = 'none';
+    status.textContent = t.micTapToSpeak;
+    askQuestion(1);
+  }, 1600);
+}
+
+function askQuestion(qNum, animate = true) {
+  const thread = document.getElementById('chatThread');
+  const hero = document.getElementById('heroSection');
+  const turn1 = document.getElementById('turnDocAnswer');
+  const turn2 = document.getElementById('turnGeneralAnswer');
+
+  thread.style.display = 'flex';
+  // Shrink hero for compact view
+  hero.style.display = 'none';
+
+  if (qNum === 1) {
+    turn1.style.display = 'flex';
+    const fullText = I18N_ASK[currentLang].userQ1;
+    const el = document.getElementById('txtUserTranscript1');
+    if (!animate) {
+      el.textContent = fullText;
+    } else {
+      el.textContent = "";
+      let i = 0;
+      if (typingTimeout) clearInterval(typingTimeout);
+      typingTimeout = setInterval(() => {
+        el.textContent = fullText.slice(0, i + 1);
+        i++;
+        if (i >= fullText.length) {
+          clearInterval(typingTimeout);
+        }
+      }, 25);
+    }
+  } else if (qNum === 2) {
+    turn2.style.display = 'flex';
+    const fullText = I18N_ASK[currentLang].userQ2;
+    const el = document.getElementById('txtUserTranscript2');
+    el.textContent = fullText;
+  } else if (qNum === 3) {
+    turn2.style.display = 'flex';
+  }
+
+  // Scroll to bottom of chat
+  setTimeout(() => {
+    const scroller = document.getElementById('threadScroll');
+    scroller.scrollTop = scroller.scrollHeight;
+  }, 100);
+}
+
+function handleSendText() {
+  const input = document.getElementById('askTextInput');
+  const val = input.value.trim();
+  if (!val) return;
+
+  input.value = "";
+  askQuestion(1);
+}
+
+function playAudioResponse(btnId) {
+  const btn = document.getElementById(btnId);
+  const origText = btn.querySelector('span').textContent;
+  btn.querySelector('span').textContent = I18N_ASK[currentLang].listeningPlaying;
+  btn.style.background = 'var(--sv-mustard)';
+
+  setTimeout(() => {
+    btn.querySelector('span').textContent = origText;
+    btn.style.background = btnId === 'btnListen1' ? '#FFFFFF' : 'var(--sv-bg)';
+  }, 2200);
+}
+
+function openCalendarModal() {
+  document.getElementById('calendarModalOverlay').style.display = 'flex';
+}
+
+function closeCalendarModal() {
+  document.getElementById('calendarModalOverlay').style.display = 'none';
+}
+
+function confirmCalendar() {
+  closeCalendarModal();
+}
+
+function resetAskScreen() {
+  document.getElementById('heroSection').style.display = 'flex';
+  document.getElementById('chatThread').style.display = 'none';
+  document.getElementById('turnDocAnswer').style.display = 'none';
+  document.getElementById('turnGeneralAnswer').style.display = 'none';
+  if (isMicDenied) toggleMicDenied();
+}
+
+function handleOverlayClick(e, overlayId) {
+  if (e.target.id === overlayId) {
+    document.getElementById(overlayId).style.display = 'none';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateTexts();
+  if (urlParams.get('denied') === 'true') {
+    toggleMicDenied();
+  } else if (urlParams.get('q')) {
+    askQuestion(parseInt(urlParams.get('q'), 10), false);
+  }
+});
+</script>
+</body>
+</html>

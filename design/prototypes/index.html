@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sarvam UI Prototypes · 3 New Screens</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:opsz,wght@9..144,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../sarvam-v3/design/fonts/fonts.css">
+<style>
+:root {
+  --sv-bg: #F4F5F2;
+  --sv-ink: #1A1A1A;
+  --sv-coral: #D9603B;
+  --sv-coral-soft: #F8D9CB;
+  --sv-teal: #034F46;
+  --sv-teal-soft: #CFE5E0;
+  --sv-mustard: #E9B44C;
+  --sv-hairline: #E2E5E0;
+  --sv-muted: #575B58;
+  --sv-canvas: #E8EAE7;
+  --sv-font-display: 'Fraunces', Georgia, serif;
+  --sv-font-body: 'DM Sans', system-ui, sans-serif;
+  --sv-font-tamil: 'Noto Sans Tamil', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--sv-canvas);
+  font-family: var(--sv-font-body);
+  color: var(--sv-ink);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header & Nav */
+header.hub-header {
+  background: #FFFFFF;
+  border-bottom: 1.5px solid var(--sv-ink);
+  padding: 14px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.hub-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.hub-logo {
+  font-family: var(--sv-font-display);
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--sv-ink);
+  letter-spacing: -0.5px;
+  text-decoration: none;
+}
+.hub-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sv-muted);
+}
+
+/* Control Pills */
+.controls-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1.5px solid var(--sv-ink);
+  background: var(--sv-bg);
+  font-family: var(--sv-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sv-ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 120ms ease;
+  text-decoration: none;
+}
+.ctrl-btn:hover { background: #E2E5E0; }
+.ctrl-btn:active { transform: scale(0.97); }
+.ctrl-btn.active {
+  background: var(--sv-mustard);
+  font-weight: 700;
+}
+
+/* Main Hub Canvas */
+main.hub-canvas {
+  flex: 1;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.intro-banner {
+  max-width: 1280px;
+  width: 100%;
+  background: #FFFFFF;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 24px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.intro-text h2 {
+  margin: 0;
+  font-family: var(--sv-font-display);
+  font-size: 20px;
+  font-weight: 400;
+}
+.intro-text p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--sv-muted);
+}
+
+/* Phone Frames Row (Side-by-side) */
+.phones-gallery {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 1340px;
+  overflow-x: auto;
+  padding: 10px 10px 30px;
+}
+
+.phone-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.phone-card-header {
+  width: 390px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+}
+.phone-card-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--sv-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phone-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--sv-ink);
+  background: var(--sv-coral-soft);
+}
+
+.phone-iframe-box {
+  width: 390px;
+  height: 844px;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.14);
+  background: var(--sv-bg);
+  position: relative;
+}
+
+.phone-iframe-box iframe {
+  width: 390px;
+  height: 844px;
+  border: 0;
+  display: block;
+}
+
+/* Device Scale Classes */
+.scale-85 .phone-iframe-box {
+  transform: scale(0.85);
+  transform-origin: top center;
+  margin-bottom: -126px;
+}
+
+/* Standalone Open Link */
+.open-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sv-teal);
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.open-link:hover {
+  color: var(--sv-ink);
+}
+
+/* Accessibility classes */
+html[data-high-contrast="true"] {
+  filter: contrast(1.18);
+}
+</style>
+</head>
+<body>
+
+<!-- Header Navigation -->
+<header class="hub-header" role="banner">
+  <div class="hub-title-group">
+    <a href="index.html" class="hub-logo">Sarvam<span style="color:var(--sv-coral);">.</span></a>
+    <span class="hub-tag">UI Prototypes · 3 New Screens (Design v3)</span>
+  </div>
+
+  <div class="controls-group" role="toolbar" aria-label="Prototypes toolbar">
+    <!-- View Switcher -->
+    <div style="display:flex; border:1.5px solid var(--sv-ink); border-radius:20px; overflow:hidden; background:var(--sv-bg);">
+      <button type="button" class="ctrl-btn active" id="btnViewAll" onclick="setViewMode('all')" style="border:0; border-radius:0;">
+        All 3 Screens
+      </button>
+      <button type="button" class="ctrl-btn" id="btnView1" onclick="setViewMode('screen1')" style="border:0; border-radius:0; border-left:1px solid var(--sv-ink);">
+        1. Reading
+      </button>
+      <button type="button" class="ctrl-btn" id="btnView2" onclick="setViewMode('screen2')" style="border:0; border-radius:0; border-left:1px solid var(--sv-ink);">
+        2. What's due
+      </button>
+      <button type="button" class="ctrl-btn" id="btnView3" onclick="setViewMode('screen3')" style="border:0; border-radius:0; border-left:1px solid var(--sv-ink);">
+        3. Ask
+      </button>
+    </div>
+
+    <!-- Global Language Toggle -->
+    <button type="button" class="ctrl-btn" id="btnGlobalLang" onclick="toggleGlobalLang()" style="background:var(--sv-mustard);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+      <span id="txtGlobalLang">Language: தமிழ்</span>
+    </button>
+
+    <!-- Scale Control -->
+    <button type="button" class="ctrl-btn" id="btnScale" onclick="toggleScale()">
+      <span id="txtScale">Scale: 100%</span>
+    </button>
+
+    <!-- High Contrast Toggle -->
+    <button type="button" class="ctrl-btn" id="btnContrast" onclick="toggleHighContrast()">
+      <span>Contrast</span>
+    </button>
+  </div>
+</header>
+
+<!-- Main Stage -->
+<main class="hub-canvas" role="main">
+  
+  <!-- Info banner -->
+  <aside class="intro-banner" aria-label="Prototype description">
+    <div class="intro-text">
+      <h2>Interactive Screen Prototypes (Phone frame: 390 × 844)</h2>
+      <p>
+        Design v3 look & feel: Fraunces & DM Sans typography, cool off-white (#F4F5F2), 1.5px ink outlines, calm animations, big tap targets (44px+), and exact evidence badges.
+      </p>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <a href="1-reading-progress.html" target="_blank" class="ctrl-btn">Open 1 standalone ↗</a>
+      <a href="2-whats-due-timeline.html" target="_blank" class="ctrl-btn">Open 2 standalone ↗</a>
+      <a href="3-voice-first-ask.html" target="_blank" class="ctrl-btn">Open 3 standalone ↗</a>
+    </div>
+  </aside>
+
+  <!-- Side by side Phone Gallery -->
+  <div class="phones-gallery" id="phonesGallery">
+    
+    <!-- Screen 1: Reading Progress -->
+    <section class="phone-card" id="colScreen1" aria-labelledby="labelScreen1">
+      <div class="phone-card-header">
+        <span class="phone-card-title" id="labelScreen1">
+          <span>1. Reading Progress</span>
+          <span class="phone-badge">Replaces spinner</span>
+        </span>
+        <a href="1-reading-progress.html" target="_blank" class="open-link">Open full ↗</a>
+      </div>
+      <div class="phone-iframe-box">
+        <iframe id="iframe1" src="1-reading-progress.html" title="Screen 1: Reading Progress"></iframe>
+      </div>
+    </section>
+
+    <!-- Screen 2: What's due timeline -->
+    <section class="phone-card" id="colScreen2" aria-labelledby="labelScreen2">
+      <div class="phone-card-header">
+        <span class="phone-card-title" id="labelScreen2">
+          <span>2. "What's due" Timeline</span>
+          <span class="phone-badge" style="background:var(--sv-teal-soft); color:var(--sv-teal);">Multi-document</span>
+        </span>
+        <a href="2-whats-due-timeline.html" target="_blank" class="open-link">Open full ↗</a>
+      </div>
+      <div class="phone-iframe-box">
+        <iframe id="iframe2" src="2-whats-due-timeline.html" title="Screen 2: What's Due Timeline"></iframe>
+      </div>
+    </section>
+
+    <!-- Screen 3: Voice-first Ask -->
+    <section class="phone-card" id="colScreen3" aria-labelledby="labelScreen3">
+      <div class="phone-card-header">
+        <span class="phone-card-title" id="labelScreen3">
+          <span>3. Voice-first Ask</span>
+          <span class="phone-badge" style="background:#F0D7FF;">Voice & Tap</span>
+        </span>
+        <a href="3-voice-first-ask.html" target="_blank" class="open-link">Open full ↗</a>
+      </div>
+      <div class="phone-iframe-box">
+        <iframe id="iframe3" src="3-voice-first-ask.html" title="Screen 3: Voice-First Ask"></iframe>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+let globalLang = 'en';
+let isScaled85 = false;
+let isHighContrast = false;
+
+function setViewMode(mode) {
+  const col1 = document.getElementById('colScreen1');
+  const col2 = document.getElementById('colScreen2');
+  const col3 = document.getElementById('colScreen3');
+
+  document.querySelectorAll('#btnViewAll, #btnView1, #btnView2, #btnView3').forEach(b => b.classList.remove('active'));
+
+  if (mode === 'all') {
+    col1.style.display = 'flex';
+    col2.style.display = 'flex';
+    col3.style.display = 'flex';
+    document.getElementById('btnViewAll').classList.add('active');
+  } else if (mode === 'screen1') {
+    col1.style.display = 'flex';
+    col2.style.display = 'none';
+    col3.style.display = 'none';
+    document.getElementById('btnView1').classList.add('active');
+  } else if (mode === 'screen2') {
+    col1.style.display = 'none';
+    col2.style.display = 'flex';
+    col3.style.display = 'none';
+    document.getElementById('btnView2').classList.add('active');
+  } else if (mode === 'screen3') {
+    col1.style.display = 'none';
+    col2.style.display = 'none';
+    col3.style.display = 'flex';
+    document.getElementById('btnView3').classList.add('active');
+  }
+}
+
+function toggleGlobalLang() {
+  globalLang = globalLang === 'en' ? 'ta' : 'en';
+  const isTa = globalLang === 'ta';
+  document.getElementById('txtGlobalLang').textContent = isTa ? 'Language: English' : 'Language: தமிழ்';
+
+  const if1 = document.getElementById('iframe1');
+  const if2 = document.getElementById('iframe2');
+  const if3 = document.getElementById('iframe3');
+
+  if1.src = `1-reading-progress.html?lang=${globalLang}`;
+  if2.src = `2-whats-due-timeline.html?lang=${globalLang}`;
+  if3.src = `3-voice-first-ask.html?lang=${globalLang}`;
+}
+
+function toggleScale() {
+  isScaled85 = !isScaled85;
+  const gallery = document.getElementById('phonesGallery');
+  const btn = document.getElementById('btnScale');
+
+  if (isScaled85) {
+    gallery.classList.add('scale-85');
+    btn.classList.add('active');
+    document.getElementById('txtScale').textContent = 'Scale: 85%';
+  } else {
+    gallery.classList.remove('scale-85');
+    btn.classList.remove('active');
+    document.getElementById('txtScale').textContent = 'Scale: 100%';
+  }
+}
+
+function toggleHighContrast() {
+  isHighContrast = !isHighContrast;
+  const btn = document.getElementById('btnContrast');
+  if (isHighContrast) {
+    document.documentElement.setAttribute('data-high-contrast', 'true');
+    btn.classList.add('active');
+  } else {
+    document.documentElement.removeAttribute('data-high-contrast');
+    btn.classList.remove('active');
+  }
+}
+</script>
+</body>
+</html>

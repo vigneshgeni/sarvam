@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sarvam · What's Due Timeline Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:opsz,wght@9..144,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../sarvam-v3/design/fonts/fonts.css">
+<style>
+:root {
+  --sv-bg: #F4F5F2;
+  --sv-ink: #1A1A1A;
+  --sv-coral: #D9603B;
+  --sv-coral-soft: #F8D9CB;
+  --sv-teal: #034F46;
+  --sv-teal-soft: #CFE5E0;
+  --sv-mustard: #E9B44C;
+  --sv-lavender: #F0D7FF;
+  --sv-hairline: #E2E5E0;
+  --sv-muted: #575B58;
+  --sv-body-2: #3B3E3C;
+  --sv-canvas: #E8EAE7;
+  --sv-scrim: #8A8F8C;
+  --sv-font-display: 'Fraunces', Georgia, serif;
+  --sv-font-body: 'DM Sans', system-ui, sans-serif;
+  --sv-font-tamil: 'Noto Sans Tamil', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--sv-canvas);
+  font-family: var(--sv-font-body);
+  color: var(--sv-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tamil-text {
+  font-family: var(--sv-font-tamil), var(--sv-font-body);
+}
+
+.phone-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: var(--sv-bg);
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 44px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.12);
+}
+
+.demo-controls {
+  width: 390px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.demo-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: 1.5px solid var(--sv-ink);
+  background: var(--sv-bg);
+  font-family: var(--sv-font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.demo-btn:hover { background: #E2E5E0; }
+.demo-btn:active { transform: scale(0.97); }
+.demo-btn.active { background: var(--sv-mustard); }
+
+.sv-press {
+  transition: transform 120ms ease-out;
+}
+.sv-press:active {
+  transform: scale(0.97);
+}
+
+/* Timeline Row Card */
+.timeline-card {
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 24px;
+  background: #FFFFFF;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.timeline-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.timeline-card:active {
+  transform: scale(0.98);
+}
+
+/* Sheet animation */
+@keyframes sv-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sv-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.45);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sv-sheet {
+  background: #F4F5F2;
+  border-top: 1.5px solid var(--sv-ink);
+  border-radius: 40px 40px 0 0;
+  padding: 12px 20px 28px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: sv-sheet-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Toast message */
+.toast-msg {
+  position: absolute;
+  top: 76px;
+  left: 20px;
+  right: 20px;
+  background: var(--sv-teal);
+  color: #FFFFFF;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 20px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  animation: sv-sheet-up 200ms ease;
+}
+
+html[data-high-contrast="true"] .phone-frame {
+  filter: contrast(1.18);
+}
+html[data-text-size="large"] .phone-frame {
+  font-size: 115%;
+}
+</style>
+</head>
+<body>
+
+<div class="phone-wrapper">
+  <!-- Demo Controls -->
+  <aside class="demo-controls" aria-label="Prototype controls">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:12px; color:var(--sv-muted);">Screen 2</span>
+      <button type="button" class="demo-btn" id="langToggleBtn" onclick="toggleLanguage()">
+        <span id="langIndicator">தமிழ்</span>
+      </button>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="demo-btn" id="viewModeBtn" onclick="toggleEmptyState()" title="Toggle Empty State">
+        <span id="txtToggleView">Show empty state</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 390x844 Screen Frame -->
+  <main class="phone-frame" id="phoneContainer" role="region" aria-label="What's due timeline screen">
+    
+    <!-- Top Header -->
+    <header style="padding: 16px 20px 10px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.06);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-family: var(--sv-font-display); font-size: 24px; font-weight: 400; color: var(--sv-ink); letter-spacing: -0.5px;">
+          Sarvam<span style="color: var(--sv-coral);">.</span>
+        </span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- In-app language toggle -->
+        <button type="button" class="sv-press" onclick="toggleLanguage()" style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-size: 13px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+          <span id="appLangChip">EN</span>
+        </button>
+
+        <!-- Document icon badge -->
+        <div style="width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: #FFFFFF; display: flex; align-items: center; justify-content: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sv-ink)" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Title & Stats -->
+    <div style="padding: 16px 20px 8px; flex-shrink: 0;">
+      <h1 id="pageTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 32px; letter-spacing: -0.4px; line-height: 1.1;">
+        What's due<span style="color: var(--sv-coral);">.</span>
+      </h1>
+      <p id="pageSubtitle" style="margin: 4px 0 0; font-size: 14.5px; color: var(--sv-muted);">
+        Upcoming dates from your saved documents
+      </p>
+    </div>
+
+    <!-- MAIN TIMELINE VIEW -->
+    <div id="timelineView" style="flex: 1; overflow-y: auto; padding: 6px 20px 32px; display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Group 1: OVERDUE -->
+      <section aria-labelledby="headingOverdue" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 id="headingOverdue" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 1.1px; color: #B3361A; display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #B3361A;"></span>
+            <span id="txtGroupOverdue">OVERDUE</span>
+          </h2>
+          <span style="font-size: 12px; font-weight: 700; color: #B3361A;">1 item</span>
+        </div>
+
+        <!-- Overdue Card: Lab Report Review -->
+        <article class="timeline-card" onclick="openDetailModal('overdue_lab')" style="border-left: 5px solid #B3361A;" tabindex="0" role="button" aria-label="Overdue: Fasting blood sugar lab review">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span class="timeline-title" id="itemTitleLab" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Fasting blood sugar lab review
+              </span>
+              <span id="itemDocLab" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Health checkup
+              </span>
+            </div>
+            <!-- Days left pill -->
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: #FFF4DE; border: 1px solid #F4DDB0; color: #B3361A; font-size: 12px; font-weight: 700;">
+              <span id="pillLabDays">4 days overdue</span>
+            </span>
+          </div>
+
+          <!-- Bottom Meta & Evidence -->
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>15 Oct 2026</span>
+            </div>
+            <!-- Evidence Label -->
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgeLabEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Group 2: THIS WEEK -->
+      <section aria-labelledby="headingThisWeek" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 id="headingThisWeek" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 1.1px; color: var(--sv-coral); display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--sv-coral);"></span>
+            <span id="txtGroupThisWeek">THIS WEEK</span>
+          </h2>
+          <span style="font-size: 12px; font-weight: 700; color: var(--sv-muted);">2 items</span>
+        </div>
+
+        <!-- This Week Card 1: Clinic Follow-up -->
+        <article class="timeline-card" onclick="openDetailModal('thisweek_clinic')" tabindex="0" role="button" aria-label="This week: Clinic follow-up review">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitleClinic" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Clinic follow-up visit (Dr. Menon)
+              </span>
+              <span id="itemDocClinic" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Health checkup prescription
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: var(--sv-coral); color: #FFFFFF; font-size: 12px; font-weight: 700;">
+              <span id="pillClinicDays">Tomorrow</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>20 Oct 2026</span>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgeClinicEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+
+        <!-- This Week Card 2: Medicine Time -->
+        <article class="timeline-card" onclick="openDetailModal('thisweek_medicine')" tabindex="0" role="button" aria-label="This week: Tab. Atorvastatin 10 mg">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitleMed" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Take Tab. Atorvastatin 10 mg
+              </span>
+              <span id="itemDocMed" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Health checkup prescription
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: var(--sv-teal-soft); border: 1px solid var(--sv-teal); color: var(--sv-teal); font-size: 12px; font-weight: 700;">
+              <span id="pillMedDays">Tonight, 9 PM</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="itemSubMed">Daily after dinner</span>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgeMedEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Group 3: THIS MONTH -->
+      <section aria-labelledby="headingThisMonth" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 id="headingThisMonth" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 1.1px; color: var(--sv-body-2); display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--sv-mustard);"></span>
+            <span id="txtGroupThisMonth">THIS MONTH</span>
+          </h2>
+          <span style="font-size: 12px; font-weight: 700; color: var(--sv-muted);">1 item</span>
+        </div>
+
+        <!-- This Month Card: Insurance Review -->
+        <article class="timeline-card" onclick="openDetailModal('thismonth_insurance')" tabindex="0" role="button" aria-label="This month: Insurance review request">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitleIns" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Insurance claim review deadline
+              </span>
+              <span id="itemDocIns" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Insurance letter
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: #FBEBC4; border: 1.5px solid var(--sv-ink); color: var(--sv-ink); font-size: 12px; font-weight: 700;">
+              <span id="pillInsDays">12 days left</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>31 Oct 2026</span>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgeInsEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Group 4: LATER -->
+      <section aria-labelledby="headingLater" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 id="headingLater" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 1.1px; color: var(--sv-muted); display: flex; align-items: center; gap: 6px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--sv-muted);"></span>
+            <span id="txtGroupLater">LATER</span>
+          </h2>
+          <span style="font-size: 12px; font-weight: 700; color: var(--sv-muted);">3 items</span>
+        </div>
+
+        <!-- Later Card 1: Property Tax Objection (Calculated) -->
+        <article class="timeline-card" onclick="openDetailModal('later_proptax')" tabindex="0" role="button" aria-label="Later: File property tax objection">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitleTax" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                File property tax objection
+              </span>
+              <span id="itemDocTax" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Property tax notice
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); color: var(--sv-ink); font-size: 12px; font-weight: 700;">
+              <span id="pillTaxDays">19 days left</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>07 Nov 2026</span>
+            </div>
+            <!-- Calculated Evidence Badge -->
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--sv-teal); background: var(--sv-teal-soft); padding: 2px 7px; border-radius: 8px;">
+              <span id="badgeTaxEvidence">Calculated</span>
+            </span>
+          </div>
+        </article>
+
+        <!-- Later Card 2: Pension Life Certificate -->
+        <article class="timeline-card" onclick="openDetailModal('later_pension')" tabindex="0" role="button" aria-label="Later: Submit pension life certificate">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitlePension" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Submit life certificate (Jeevan Pramaan)
+              </span>
+              <span id="itemDocPension" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Pension notice
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); color: var(--sv-ink); font-size: 12px; font-weight: 700;">
+              <span id="pillPensionDays">42 days left</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>30 Nov 2026</span>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgePensionEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+
+        <!-- Later Card 3: e-Challan payment -->
+        <article class="timeline-card" onclick="openDetailModal('later_echallan')" tabindex="0" role="button" aria-label="Later: Pay e-challan traffic fine">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span id="itemTitleChallan" style="font-size: 16px; font-weight: 600; color: var(--sv-ink); line-height: 1.3;">
+                Pay traffic fine (Rs. 1,000)
+              </span>
+              <span id="itemDocChallan" style="font-size: 12.5px; font-weight: 500; color: var(--sv-muted);">
+                From: Traffic violation e-Challan
+              </span>
+            </div>
+            <span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 12px; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); color: var(--sv-ink); font-size: 12px; font-weight: 700;">
+              <span id="pillChallanDays">47 days left</span>
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sv-hairline);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sv-body-2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>05 Dec 2026</span>
+            </div>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--sv-teal);">
+              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span id="badgeChallanEvidence">Found in your document</span>
+            </span>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <!-- EMPTY STATE VIEW (TOGGLEABLE) -->
+    <div id="emptyView" style="display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; text-align: center; gap: 18px;">
+      <div style="width: 80px; height: 80px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid var(--sv-ink); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--sv-teal)" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; max-width: 300px;">
+        <h2 id="txtEmptyTitle" style="margin: 0; font-family: var(--sv-font-display); font-size: 26px; font-weight: 400;">
+          Nothing due<span style="color: var(--sv-coral);">.</span>
+        </h2>
+        <p id="txtEmptyDesc" style="margin: 0; font-size: 15px; color: var(--sv-muted); line-height: 1.45;">
+          Nothing due. Save a document to see its dates here.
+        </p>
+      </div>
+
+      <button type="button" class="sv-press" onclick="toggleEmptyState()" style="height: 52px; padding: 0 26px; border-radius: 26px; border: 1.5px solid var(--sv-ink); background: var(--sv-teal); color: #FFFFFF; font-family: var(--sv-font-body); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <span id="txtEmptyScanBtn">Scan a document</span>
+      </button>
+    </div>
+
+    <!-- SHEET 1: ITEM DETAIL & SOURCE QUOTE SHEET -->
+    <div id="detailSheetOverlay" class="sheet-overlay" style="display: none;" onclick="handleOverlayClick(event, 'detailSheetOverlay')">
+      <div class="sv-sheet" id="detailSheetContent">
+        <!-- Drag Handle -->
+        <span style="width: 44px; height: 5px; border-radius: 3px; background: var(--sv-ink); opacity: 0.25; align-self: center;"></span>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+          <div>
+            <h2 id="modalItemTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 24px; line-height: 1.2;">
+              Submit life certificate<span style="color: var(--sv-coral);">.</span>
+            </h2>
+            <span id="modalItemDoc" style="font-size: 13.5px; color: var(--sv-muted); margin-top: 4px; display: block;">
+              Pension notice · Page 1
+            </span>
+          </div>
+          <button type="button" aria-label="Close" class="sv-press" onclick="closeDetailModal()" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Date & Status Stripe -->
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: #FFFFFF; font-size: 13px; font-weight: 700;">
+            📅 <span id="modalItemDate">30 Nov 2026</span>
+          </span>
+          <span id="modalItemDaysPill" style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-coral-soft); font-size: 13px; font-weight: 700;">
+            42 days left
+          </span>
+          <span id="modalEvidenceBadge" style="display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-teal-soft); font-size: 13px; font-weight: 700; color: var(--sv-teal);">
+            Found in your document
+          </span>
+        </div>
+
+        <!-- Source Quote Block -->
+        <div style="border: 1.5px solid var(--sv-ink); border-radius: 24px; background: #FFFFFF; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span id="txtQuoteHeader" style="font-size: 12px; font-weight: 700; color: var(--sv-muted); letter-spacing: 0.8px;">
+            FOUND IN YOUR DOCUMENT (EXACT TEXT)
+          </span>
+          <blockquote id="modalSourceQuote" style="margin: 0; font-size: 14.5px; line-height: 1.5; font-style: italic; color: var(--sv-body-2); border-left: 3.5px solid var(--sv-teal); padding-left: 12px;">
+            "Pensioners must submit Life Certificate on or before 30.11.2026 to avoid pension withholding."
+          </blockquote>
+        </div>
+
+        <!-- Buttons: Open document & Add to calendar -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+          <button type="button" class="sv-press" onclick="openCalendarEditSheet()" style="width: 100%; height: 56px; border-radius: 28px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-family: var(--sv-font-body); font-size: 16.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+            <span id="txtAddCalendarBtn">Add to calendar</span>
+          </button>
+
+          <button type="button" class="sv-press" onclick="openDocPreviewModal()" style="width: 100%; height: 50px; border-radius: 25px; border: 1.5px solid var(--sv-ink); background: transparent; font-family: var(--sv-font-body); font-size: 15px; font-weight: 600; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span id="txtOpenDocBtn">Open document</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHEET 2: EDIT BEFORE ADDING CALENDAR SHEET (Existing-style) -->
+    <div id="calendarSheetOverlay" class="sheet-overlay" style="display: none; z-index: 60;" onclick="handleOverlayClick(event, 'calendarSheetOverlay')">
+      <div class="sv-sheet" id="calendarSheetContent">
+        <span style="width: 44px; height: 5px; border-radius: 3px; background: var(--sv-ink); opacity: 0.25; align-self: center;"></span>
+        
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <h2 id="txtCalEditTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 26px;">
+              Edit before adding<span style="color: var(--sv-coral);">.</span>
+            </h2>
+            <p id="txtCalLineHint" style="margin: 4px 0 0; font-size: 13px; color: var(--sv-muted);">
+              Your calendar shows this short line.
+            </p>
+          </div>
+          <button type="button" aria-label="Close" class="sv-press" onclick="closeCalendarEditSheet()" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 4px;">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+            <span id="txtCalLabelTitle">Title</span>
+            <input id="calInputTitle" value="Submit Life Certificate" maxlength="60" style="height: 46px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-family: var(--sv-font-body); font-size: 15px; font-weight: 500; color: var(--sv-ink); outline: none;">
+          </label>
+
+          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px;">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+              <span id="txtCalLabelDate">Date</span>
+              <input id="calInputDate" type="date" value="2026-11-30" style="height: 46px; padding: 0 10px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-family: var(--sv-font-body); font-size: 14.5px; font-weight: 500; color: var(--sv-ink); outline: none;">
+            </label>
+
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
+              <span id="txtCalLabelTime">Time</span>
+              <input id="calInputTime" type="time" value="09:00" style="height: 46px; padding: 0 10px; border-radius: 16px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); font-family: var(--sv-font-body); font-size: 14.5px; font-weight: 500; color: var(--sv-ink); outline: none;">
+            </label>
+          </div>
+
+          <!-- Alert Me Selector (4 grid items) -->
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+            <span id="txtCalAlertMe" style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--sv-muted);">ALERT ME</span>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+              <button type="button" class="demo-btn alert-pill" onclick="selectAlert(this)" style="height: 42px; border-radius: 21px; justify-content: center; font-size: 13px;">On the day, 9 AM</button>
+              <button type="button" class="demo-btn alert-pill active" onclick="selectAlert(this)" style="height: 42px; border-radius: 21px; justify-content: center; font-size: 13px;">1 day before</button>
+              <button type="button" class="demo-btn alert-pill" onclick="selectAlert(this)" style="height: 42px; border-radius: 21px; justify-content: center; font-size: 13px;">3 days before</button>
+              <button type="button" class="demo-btn alert-pill" onclick="selectAlert(this)" style="height: 42px; border-radius: 21px; justify-content: center; font-size: 13px;">1 week before</button>
+            </div>
+          </div>
+
+          <!-- Confirm Add Button -->
+          <button type="button" class="sv-press" onclick="saveToCalendar()" style="height: 56px; border-radius: 28px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-family: var(--sv-font-body); font-size: 17px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span id="txtConfirmAddBtn">Add to my calendar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCUMENT PREVIEW MODAL -->
+    <div id="docPreviewModal" class="sheet-overlay" style="display: none; z-index: 70;" onclick="handleOverlayClick(event, 'docPreviewModal')">
+      <div class="sv-sheet" style="max-height: 80vh;">
+        <span style="width: 44px; height: 5px; border-radius: 3px; background: var(--sv-ink); opacity: 0.25; align-self: center;"></span>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h2 id="txtDocPreviewTitle" style="margin: 0; font-family: var(--sv-font-display); font-size: 22px;">Original Document<span style="color: var(--sv-coral);">.</span></h2>
+          <button type="button" aria-label="Close" class="sv-press" onclick="closeDocPreviewModal()" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div style="border: 1.5px solid var(--sv-ink); border-radius: 18px; background: #FFFFFF; padding: 16px; font-family: monospace; font-size: 13px; line-height: 1.6; color: var(--sv-ink); max-height: 340px; overflow-y: auto;">
+          <div id="docPreviewText">
+            GOVERNMENT OF KARNATAKA<br>
+            DEPARTMENT OF SOCIAL WELFARE<br>
+            ----------------------------------------<br>
+            NOTICE TO PENSIONERS (OAP/BLR/2019/04417)<br>
+            Beneficiary: Smt. Kamala Devi<br>
+            Monthly pension amount: Rs. 1,200<br><br>
+            <mark style="background: var(--sv-mustard); padding: 2px 4px; font-weight: bold;">
+              Pensioners must submit Life Certificate on or before 30.11.2026 to avoid pension withholding.
+            </mark><br><br>
+            Submit at pension disbursing bank or nearest Common Service Centre (CSC). Carry Aadhaar card and Pension Passbook.
+          </div>
+        </div>
+
+        <button type="button" class="sv-press" onclick="closeDocPreviewModal()" style="height: 50px; border-radius: 25px; border: 1.5px solid var(--sv-ink); background: var(--sv-ink); color: #FFFFFF; font-size: 15px; font-weight: 700; cursor: pointer;">
+          Close preview
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastMessage" class="toast-msg" style="display: none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+      <span id="txtToastContent">Added to your calendar!</span>
+    </div>
+  </main>
+</div>
+
+<script>
+// Mock data representing the 7 items across saved documents
+const TIMELINE_DATA = {
+  overdue_lab: {
+    title: { en: "Fasting blood sugar lab review", ta: "இரத்த சர்க்கரை பரிசோதனை மறுஆய்வு" },
+    doc: { en: "From: Health checkup", ta: "ஆவணம்: உடல் நல பரிசோதனை அறிக்கை" },
+    date: "15 Oct 2026",
+    daysPill: { en: "4 days overdue", ta: "4 நாட்கள் முடிந்துவிட்டது" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: { 
+      en: '"Review fasting blood sugar and lipid profile within 7 days of report date (08 Oct 2026)."',
+      ta: '"அறிக்கை தேதிக்கு 7 நாட்களுக்குள் (08 அக். 2026) இரத்த சர்க்கரை மற்றும் கொழுப்பு பரிசோதனையை மருத்துவரிடம் காட்டவும்."'
+    },
+    docSnippet: "GREEN LEAF DIAGNOSTICS - LAB REPORT\nPatient: Mr. Prakash N., 52 Y / M\nFasting Blood Sugar: 118 mg/dL (High)\nHbA1c: 6.1 % (High)\nReview with doctor within 7 days of report date (08 Oct 2026)."
+  },
+  thisweek_clinic: {
+    title: { en: "Clinic follow-up visit (Dr. Menon)", ta: "மருத்துவமனை மறுபார்வை (Dr. மேனன்)" },
+    doc: { en: "From: Health checkup prescription", ta: "ஆவணம்: மருந்துச் சீட்டு" },
+    date: "20 Oct 2026",
+    daysPill: { en: "Tomorrow", ta: "நாளை" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: {
+      en: '"Review on 20/10/2026 with Dr. K. Menon at Shanthi Family Clinic."',
+      ta: '"சாந்தி குடும்ப மருத்துவமனையில் டாக்டர் கே. மேனனுடன் 20/10/2026 அன்று மறுபார்வை."'
+    },
+    docSnippet: "SHANTHI FAMILY CLINIC\nPatient: Prakash N.\nDiagnosis: Throat infection & Elevated Lipids\nRx: Tab. Atorvastatin 10 mg\nReview on 20/10/2026."
+  },
+  thisweek_medicine: {
+    title: { en: "Take Tab. Atorvastatin 10 mg", ta: "அட்டார்வாஸ்டாடின் 10 மிகி மாத்திரை சாப்பிடவும்" },
+    doc: { en: "From: Health checkup prescription", ta: "ஆவணம்: மருந்துச் சீட்டு" },
+    date: "Daily · 9:00 PM",
+    daysPill: { en: "Tonight, 9 PM", ta: "இன்று இரவு, 9 மணி" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: {
+      en: '"1. Tab. Atorvastatin 10 mg: 0 - 0 - 1 after food x 30 days"',
+      ta: '"1. மாத்திரை அட்டார்வாஸ்டாடின் 10 மிகி: இரவு உணவிற்குப் பின் 1 மாத்திரை x 30 நாட்கள்"'
+    },
+    docSnippet: "PRESCRIPTION - DR. K. MENON\n1. Tab. Atorvastatin 10 mg\n   0 - 0 - 1 after food x 30 days\n2. Cap. Vitamin D3 60,000 IU\n   Once weekly on Sundays"
+  },
+  thismonth_insurance: {
+    title: { en: "Insurance claim review deadline", ta: "காப்பீட்டு மறுஆய்வு கோரிக்கை கடைசி தேதி" },
+    doc: { en: "From: Insurance letter", ta: "ஆவணம்: காப்பீட்டு கடிதம்" },
+    date: "31 Oct 2026",
+    daysPill: { en: "12 days left", ta: "12 நாட்கள் உள்ளன" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: {
+      en: '"Send your review request by 31 October 2026, which is 30 days from the letter date."',
+      ta: '"கடித தேதியிலிருந்து 30 நாட்களுக்குள் (31 அக்டோபர் 2026) உங்கள் மறுஆய்வு கோரிக்கையை அனுப்பவும்."'
+    },
+    docSnippet: "NATIONAL HEALTH INSURANCE CO.\nClaim Reference: NHI/CLM/89201\nClaimed: Rs. 65,000 | Approved: Rs. 42,000\nSend your review request by 31 October 2026, which is 30 days from the letter date."
+  },
+  later_proptax: {
+    title: { en: "File property tax objection", ta: "சொத்து வரி ஆட்சேபனை தாக்கல் செய்தல்" },
+    doc: { en: "From: Property tax notice", ta: "ஆவணம்: சொத்து வரி அறிவிப்பு" },
+    date: "07 Nov 2026",
+    daysPill: { en: "19 days left", ta: "19 நாட்கள் உள்ளன" },
+    evidence: { en: "Calculated", ta: "கணக்கிடப்பட்டது" },
+    quote: {
+      en: '"4. If you disagree with the assessment, file a written objection with the Assessor within 30 days of the date of this notice."',
+      ta: '"4. மதிப்பீட்டில் முரண்பாடு இருந்தால், இந்த அறிவிப்பு தேதியிலிருந்து 30 நாட்களுக்குள் எழுத்துப்பூர்வ ஆட்சேபனையைத் தாக்கல் செய்யவும்."'
+    },
+    docSnippet: "ANAND NAGAR MUNICIPALITY - REVENUE DEPARTMENT\nDemand Notice for Property Tax 2026-27\nNotice Date: 08 Oct 2026 | Property ID: AN/07/0412/0089\n4. If you disagree with the assessment, file a written objection with the Assessor within 30 days of the date of this notice."
+  },
+  later_pension: {
+    title: { en: "Submit life certificate (Jeevan Pramaan)", ta: "வாழ்நாள் சான்றிதழை சமர்ப்பிக்கவும்" },
+    doc: { en: "From: Pension notice", ta: "ஆவணம்: ஓய்வூதிய அறிவிப்பு" },
+    date: "30 Nov 2026",
+    daysPill: { en: "42 days left", ta: "42 நாட்கள் உள்ளன" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: {
+      en: '"Pensioners must submit Life Certificate on or before 30.11.2026 to avoid pension withholding."',
+      ta: '"ஓய்வூதியம் நிறுத்தப்படுவதைத் தவிர்க்க 30.11.2026 அன்று அல்லது அதற்கு முன் வாழ்நாள் சான்றிதழை சமர்ப்பிக்க வேண்டும்."'
+    },
+    docSnippet: "OFFICE OF THE DISTRICT SOCIAL WELFARE OFFICER\nOld Age Pension Scheme - Notice to Pensioners\nPension ID: OAP/BLR/2019/04417\nPensioners must submit Life Certificate on or before 30.11.2026 to avoid pension withholding."
+  },
+  later_echallan: {
+    title: { en: "Pay traffic fine (Rs. 1,000)", ta: "போக்குவரத்து அபராதம் செலுத்தவும் (ரூ. 1,000)" },
+    doc: { en: "From: Traffic violation e-Challan", ta: "ஆவணம்: இ-சலான் அறிவிப்பு" },
+    date: "05 Dec 2026",
+    daysPill: { en: "47 days left", ta: "47 நாட்கள் உள்ளன" },
+    evidence: { en: "Found in your document", ta: "உங்கள் ஆவணத்தில் உள்ளது" },
+    quote: {
+      en: '"The fine amount of Rs. 1,000.00 must be paid or contested on or before 05 Dec 2026."',
+      ta: '"அபராதத் தொகை ரூ. 1,000-ஐ 05 டிசம்பர் 2026 அன்று அல்லது அதற்கு முன் செலுத்த வேண்டும் அல்லது ஆட்சேபிக்க வேண்டும்."'
+    },
+    docSnippet: "CITY TRAFFIC POLICE - NOTICE OF TRAFFIC VIOLATION\nChallan No: ECH/2026/0098121 | Vehicle: TN 99 AB 1234\nOffence: Riding without helmet | Fine: Rs. 1,000.00\nMust be paid or contested on or before 05 Dec 2026."
+  }
+};
+
+const I18N_T2 = {
+  en: {
+    pageTitle: "What's due",
+    pageSubtitle: "Upcoming dates from your saved documents",
+    overdue: "OVERDUE",
+    thisWeek: "THIS WEEK",
+    thisMonth: "THIS MONTH",
+    later: "LATER",
+    emptyTitle: "Nothing due",
+    emptyDesc: "Nothing due. Save a document to see its dates here.",
+    emptyScanBtn: "Scan a document",
+    toggleEmptyBtn: "Show empty state",
+    toggleTimelineBtn: "Show timeline view",
+    quoteHeader: "FOUND IN YOUR DOCUMENT (EXACT TEXT)",
+    addCalendarBtn: "Add to calendar",
+    openDocBtn: "Open document",
+    calEditTitle: "Edit before adding",
+    calLineHint: "Your calendar shows this short line.",
+    calLabelTitle: "Title",
+    calLabelDate: "Date",
+    calLabelTime: "Time",
+    calAlertMe: "ALERT ME",
+    confirmAddBtn: "Add to my calendar",
+    toastAdded: "Added to your calendar!",
+  },
+  ta: {
+    pageTitle: "வரவிருக்கும் தேதிகள்",
+    pageSubtitle: "உங்கள் சேமிக்கப்பட்ட ஆவணங்களின் வரவிருக்கும் தேதிகள்",
+    overdue: "தேதி முடிந்துவிட்டது",
+    thisWeek: "இந்த வாரம்",
+    thisMonth: "இந்த மாதம்",
+    later: "பின்னர்",
+    emptyTitle: "நிலுவையில் ஏதுமில்லை",
+    emptyDesc: "நிலுவையில் ஏதுமில்லை. இங்கே தேதிகளைப் பார்க்க ஒரு ஆவணத்தைச் சேமிக்கவும்.",
+    emptyScanBtn: "ஆவணத்தை ஸ்கேன் செய்",
+    toggleEmptyBtn: "காலி பக்கத்தைக் காட்டு",
+    toggleTimelineBtn: "காலவரிசையைக் காட்டு",
+    quoteHeader: "உங்கள் ஆவணத்தில் உள்ள வரிகள்",
+    addCalendarBtn: "நாள்காட்டியில் சேர்",
+    openDocBtn: "ஆவணத்தைப் பார்",
+    calEditTitle: "சேர்ப்பதற்கு முன் திருத்தவும்",
+    calLineHint: "உங்கள் நாள்காட்டி இந்த சுருக்கமான வரியைக் காட்டும்.",
+    calLabelTitle: "தலைப்பு",
+    calLabelDate: "தேதி",
+    calLabelTime: "நேரம்",
+    calAlertMe: "நினைவூட்டல்",
+    confirmAddBtn: "நாள்காட்டியில் சேர்",
+    toastAdded: "நாள்காட்டியில் சேர்க்கப்பட்டது!",
+  }
+};
+
+let currentLang = 'en';
+let activeItemKey = 'later_pension';
+let isEmptyState = false;
+
+// Init from URL param if given
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('lang') === 'ta') {
+  currentLang = 'ta';
+}
+
+function updateTexts() {
+  const t = I18N_T2[currentLang];
+  const isTa = currentLang === 'ta';
+
+  document.getElementById('langIndicator').textContent = isTa ? 'English' : 'தமிழ்';
+  document.getElementById('appLangChip').textContent = isTa ? 'தமிழ்' : 'EN';
+  
+  if (isTa) {
+    document.getElementById('phoneContainer').classList.add('tamil-text');
+  } else {
+    document.getElementById('phoneContainer').classList.remove('tamil-text');
+  }
+
+  document.getElementById('pageTitle').innerHTML = t.pageTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('pageSubtitle').textContent = t.pageSubtitle;
+  document.getElementById('txtGroupOverdue').textContent = t.overdue;
+  document.getElementById('txtGroupThisWeek').textContent = t.thisWeek;
+  document.getElementById('txtGroupThisMonth').textContent = t.thisMonth;
+  document.getElementById('txtGroupLater').textContent = t.later;
+  
+  // Row content update
+  document.getElementById('itemTitleLab').textContent = TIMELINE_DATA.overdue_lab.title[currentLang];
+  document.getElementById('itemDocLab').textContent = TIMELINE_DATA.overdue_lab.doc[currentLang];
+  document.getElementById('pillLabDays').textContent = TIMELINE_DATA.overdue_lab.daysPill[currentLang];
+  document.getElementById('badgeLabEvidence').textContent = TIMELINE_DATA.overdue_lab.evidence[currentLang];
+
+  document.getElementById('itemTitleClinic').textContent = TIMELINE_DATA.thisweek_clinic.title[currentLang];
+  document.getElementById('itemDocClinic').textContent = TIMELINE_DATA.thisweek_clinic.doc[currentLang];
+  document.getElementById('pillClinicDays').textContent = TIMELINE_DATA.thisweek_clinic.daysPill[currentLang];
+  document.getElementById('badgeClinicEvidence').textContent = TIMELINE_DATA.thisweek_clinic.evidence[currentLang];
+
+  document.getElementById('itemTitleMed').textContent = TIMELINE_DATA.thisweek_medicine.title[currentLang];
+  document.getElementById('itemDocMed').textContent = TIMELINE_DATA.thisweek_medicine.doc[currentLang];
+  document.getElementById('pillMedDays').textContent = TIMELINE_DATA.thisweek_medicine.daysPill[currentLang];
+  document.getElementById('badgeMedEvidence').textContent = TIMELINE_DATA.thisweek_medicine.evidence[currentLang];
+  document.getElementById('itemSubMed').textContent = currentLang === 'ta' ? 'தினமும் இரவு உணவிற்குப் பின்' : 'Daily after dinner';
+
+  document.getElementById('itemTitleIns').textContent = TIMELINE_DATA.thismonth_insurance.title[currentLang];
+  document.getElementById('itemDocIns').textContent = TIMELINE_DATA.thismonth_insurance.doc[currentLang];
+  document.getElementById('pillInsDays').textContent = TIMELINE_DATA.thismonth_insurance.daysPill[currentLang];
+  document.getElementById('badgeInsEvidence').textContent = TIMELINE_DATA.thismonth_insurance.evidence[currentLang];
+
+  document.getElementById('itemTitleTax').textContent = TIMELINE_DATA.later_proptax.title[currentLang];
+  document.getElementById('itemDocTax').textContent = TIMELINE_DATA.later_proptax.doc[currentLang];
+  document.getElementById('pillTaxDays').textContent = TIMELINE_DATA.later_proptax.daysPill[currentLang];
+  document.getElementById('badgeTaxEvidence').textContent = TIMELINE_DATA.later_proptax.evidence[currentLang];
+
+  document.getElementById('itemTitlePension').textContent = TIMELINE_DATA.later_pension.title[currentLang];
+  document.getElementById('itemDocPension').textContent = TIMELINE_DATA.later_pension.doc[currentLang];
+  document.getElementById('pillPensionDays').textContent = TIMELINE_DATA.later_pension.daysPill[currentLang];
+  document.getElementById('badgePensionEvidence').textContent = TIMELINE_DATA.later_pension.evidence[currentLang];
+
+  document.getElementById('itemTitleChallan').textContent = TIMELINE_DATA.later_echallan.title[currentLang];
+  document.getElementById('itemDocChallan').textContent = TIMELINE_DATA.later_echallan.doc[currentLang];
+  document.getElementById('pillChallanDays').textContent = TIMELINE_DATA.later_echallan.daysPill[currentLang];
+  document.getElementById('badgeChallanEvidence').textContent = TIMELINE_DATA.later_echallan.evidence[currentLang];
+
+  // Empty view
+  document.getElementById('txtEmptyTitle').innerHTML = t.emptyTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('txtEmptyDesc').textContent = t.emptyDesc;
+  document.getElementById('txtEmptyScanBtn').textContent = t.emptyScanBtn;
+  document.getElementById('txtToggleView').textContent = isEmptyState ? t.toggleTimelineBtn : t.toggleEmptyBtn;
+
+  // Modals & Calendar
+  document.getElementById('txtQuoteHeader').textContent = t.quoteHeader;
+  document.getElementById('txtAddCalendarBtn').textContent = t.addCalendarBtn;
+  document.getElementById('txtOpenDocBtn').textContent = t.openDocBtn;
+  document.getElementById('txtCalEditTitle').innerHTML = t.calEditTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('txtCalLineHint').textContent = t.calLineHint;
+  document.getElementById('txtCalLabelTitle').textContent = t.calLabelTitle;
+  document.getElementById('txtCalLabelDate').textContent = t.calLabelDate;
+  document.getElementById('txtCalLabelTime').textContent = t.calLabelTime;
+  document.getElementById('txtCalAlertMe').textContent = t.calAlertMe;
+  document.getElementById('txtConfirmAddBtn').textContent = t.confirmAddBtn;
+  document.getElementById('txtToastContent').textContent = t.toastAdded;
+
+  // Refresh active modal if open
+  if (activeItemKey && TIMELINE_DATA[activeItemKey]) {
+    populateModalData(activeItemKey);
+  }
+}
+
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'ta' : 'en';
+  updateTexts();
+}
+
+function toggleEmptyState() {
+  isEmptyState = !isEmptyState;
+  const tView = document.getElementById('timelineView');
+  const eView = document.getElementById('emptyView');
+  const btn = document.getElementById('viewModeBtn');
+
+  if (isEmptyState) {
+    tView.style.display = 'none';
+    eView.style.display = 'flex';
+    btn.classList.add('active');
+  } else {
+    tView.style.display = 'flex';
+    eView.style.display = 'none';
+    btn.classList.remove('active');
+  }
+  updateTexts();
+}
+
+function openDetailModal(key) {
+  activeItemKey = key;
+  populateModalData(key);
+  document.getElementById('detailSheetOverlay').style.display = 'flex';
+}
+
+function populateModalData(key) {
+  const item = TIMELINE_DATA[key];
+  if (!item) return;
+
+  document.getElementById('modalItemTitle').innerHTML = item.title[currentLang] + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('modalItemDoc').textContent = item.doc[currentLang];
+  document.getElementById('modalItemDate').textContent = item.date;
+  document.getElementById('modalItemDaysPill').textContent = item.daysPill[currentLang];
+  document.getElementById('modalEvidenceBadge').textContent = item.evidence[currentLang];
+  document.getElementById('modalSourceQuote').textContent = item.quote[currentLang];
+  
+  // Pre-fill calendar sheet inputs
+  document.getElementById('calInputTitle').value = item.title[currentLang];
+  if (item.date.includes('2026')) {
+    const parts = item.date.split(' ');
+    const months = { 'Oct': '10', 'Nov': '11', 'Dec': '12' };
+    const m = months[parts[1]] || '11';
+    const d = parts[0].padStart(2, '0');
+    document.getElementById('calInputDate').value = `2026-${m}-${d}`;
+  } else {
+    document.getElementById('calInputDate').value = '2026-10-20';
+  }
+  document.getElementById('docPreviewText').innerText = item.docSnippet;
+}
+
+function closeDetailModal() {
+  document.getElementById('detailSheetOverlay').style.display = 'none';
+}
+
+function openCalendarEditSheet() {
+  document.getElementById('calendarSheetOverlay').style.display = 'flex';
+}
+
+function closeCalendarEditSheet() {
+  document.getElementById('calendarSheetOverlay').style.display = 'none';
+}
+
+function selectAlert(btn) {
+  document.querySelectorAll('.alert-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function saveToCalendar() {
+  closeCalendarEditSheet();
+  closeDetailModal();
+  
+  // Show toast feedback
+  const toast = document.getElementById('toastMessage');
+  toast.style.display = 'flex';
+  setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2600);
+}
+
+function openDocPreviewModal() {
+  document.getElementById('docPreviewModal').style.display = 'flex';
+}
+
+function closeDocPreviewModal() {
+  document.getElementById('docPreviewModal').style.display = 'none';
+}
+
+function handleOverlayClick(e, overlayId) {
+  if (e.target.id === overlayId) {
+    document.getElementById(overlayId).style.display = 'none';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateTexts();
+  if (urlParams.get('empty') === 'true') {
+    toggleEmptyState();
+  } else if (urlParams.get('item')) {
+    openDetailModal(urlParams.get('item'));
+    document.getElementById('detailSheetContent').style.animation = 'none';
+  }
+});
+</script>
+</body>
+</html>

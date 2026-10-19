@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sarvam · Reading Progress Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:opsz,wght@9..144,400&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../sarvam-v3/design/fonts/fonts.css">
+<style>
+:root {
+  --sv-bg: #F4F5F2;
+  --sv-ink: #1A1A1A;
+  --sv-coral: #D9603B;
+  --sv-coral-soft: #F8D9CB;
+  --sv-teal: #034F46;
+  --sv-teal-soft: #CFE5E0;
+  --sv-mustard: #E9B44C;
+  --sv-lavender: #F0D7FF;
+  --sv-hairline: #E2E5E0;
+  --sv-muted: #575B58;
+  --sv-body-2: #3B3E3C;
+  --sv-canvas: #E8EAE7;
+  --sv-font-display: 'Fraunces', Georgia, serif;
+  --sv-font-body: 'DM Sans', system-ui, sans-serif;
+  --sv-font-tamil: 'Noto Sans Tamil', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--sv-canvas);
+  font-family: var(--sv-font-body);
+  color: var(--sv-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tamil-text {
+  font-family: var(--sv-font-tamil), var(--sv-font-body);
+}
+
+.phone-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: var(--sv-bg);
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 44px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.12);
+}
+
+/* Prototype control bar on top of the phone frame */
+.demo-controls {
+  width: 390px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--sv-ink);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.demo-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: 1.5px solid var(--sv-ink);
+  background: var(--sv-bg);
+  font-family: var(--sv-font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.demo-btn:hover { background: #E2E5E0; }
+.demo-btn:active { transform: scale(0.97); }
+.demo-btn.active { background: var(--sv-mustard); }
+
+/* Animation keyframes */
+@keyframes sv-pulse-calm {
+  0%, 100% { opacity: 0.35; transform: scaleY(0.98); }
+  50% { opacity: 0.85; transform: scaleY(1.02); }
+}
+
+@keyframes sv-scan-beam {
+  0% { transform: translateY(-10px); opacity: 0; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
+  100% { transform: translateY(180px); opacity: 0; }
+}
+
+@keyframes sv-fade-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sv-pop {
+  0% { opacity: 0; transform: scale(0.85); }
+  70% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sv-spin {
+  to { transform: rotate(360deg); }
+}
+
+.scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--sv-coral), transparent);
+  box-shadow: 0 0 12px var(--sv-coral);
+  animation: sv-scan-beam 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.step-item {
+  animation: sv-fade-up 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.sv-press {
+  transition: transform 120ms ease-out;
+}
+.sv-press:active {
+  transform: scale(0.97);
+}
+
+/* A11y modifiers */
+html[data-high-contrast="true"] .phone-frame {
+  filter: contrast(1.18);
+}
+html[data-text-size="large"] .phone-frame {
+  font-size: 115%;
+}
+</style>
+</head>
+<body>
+
+<div class="phone-wrapper">
+  <!-- Interactive demo controls for testing/judging -->
+  <aside class="demo-controls" aria-label="Prototype controls">
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="font-size:12px; color:var(--sv-muted);">Screen 1</span>
+      <button type="button" class="demo-btn" id="langToggleBtn" onclick="toggleLanguage()">
+        <span id="langIndicator">தமிழ்</span>
+      </button>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="demo-btn" onclick="restartProgress()" title="Replay reading flow">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <span>Replay</span>
+      </button>
+      <button type="button" class="demo-btn" onclick="fastForward()" title="Fast forward">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+        <span>Skip</span>
+      </button>
+      <button type="button" class="demo-btn" id="errorToggleBtn" onclick="toggleSimulateError()" title="Simulate reading error">
+        <span>Error state</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- The 390x844 Screen Frame -->
+  <main class="phone-frame" id="phoneContainer" role="region" aria-label="Reading progress screen">
+    
+    <!-- Top Bar -->
+    <header style="padding: 18px 20px 8px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+      <button type="button" aria-label="Back" class="sv-press" onclick="window.history.back()" style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sv-ink)" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+
+      <!-- Processing securely chip -->
+      <div style="display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid var(--sv-ink); background: var(--sv-teal-soft); font-size: 13px; font-weight: 700; color: var(--sv-teal);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--sv-teal)" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <span id="txtSecure">Processing securely</span>
+      </div>
+
+      <!-- Language selector badge in-app -->
+      <button type="button" class="sv-press" onclick="toggleLanguage()" style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-size: 13px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+        <span id="appLangChip">EN</span>
+      </button>
+    </header>
+
+    <!-- CONTENT: NORMAL PROGRESS VIEW -->
+    <div id="progressView" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 20px 24px; overflow-y: auto;">
+      
+      <!-- Document Thumbnail Visual Card -->
+      <section aria-label="Document scanning visual" style="background: var(--sv-teal-soft); border: 1.5px solid var(--sv-ink); border-radius: 32px; padding: 18px 16px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
+        <div class="scan-beam" id="scanBeam"></div>
+
+        <!-- 2 Page Thumbs side by side -->
+        <div style="display: flex; gap: 14px; align-items: center; justify-content: center; z-index: 2;">
+          
+          <!-- Page 1 (Main Pension Notice) -->
+          <div style="width: 130px; height: 172px; border: 1.5px solid var(--sv-ink); border-radius: 16px; background: #FFFFFF; padding: 12px 10px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); position: relative;">
+            <!-- Document emblem & header lines -->
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: var(--sv-teal); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 8px; font-weight: 800;">S</span>
+              <span style="height: 5px; flex: 1; border-radius: 3px; background: var(--sv-ink); opacity: 0.85;"></span>
+            </div>
+            <span style="height: 4px; width: 85%; border-radius: 2px; background: var(--sv-hairline); margin-top: 2px;"></span>
+            
+            <!-- Simulated text lines -->
+            <span style="height: 4px; width: 100%; border-radius: 2px; background: var(--sv-hairline);"></span>
+            <span style="height: 4px; width: 90%; border-radius: 2px; background: var(--sv-hairline);"></span>
+
+            <!-- Highlighted live findings (animated) -->
+            <div id="thumbAmountTag" style="display: none; align-items: center; gap: 3px; background: var(--sv-mustard); border: 1px solid var(--sv-ink); border-radius: 6px; padding: 2px 4px; font-size: 9px; font-weight: 700; width: fit-content; animation: sv-pop 240ms ease;">
+              <span>Rs. 1,200</span>
+            </div>
+
+            <div id="thumbDateTag" style="display: none; align-items: center; gap: 3px; background: var(--sv-coral-soft); border: 1px solid var(--sv-ink); border-radius: 6px; padding: 2px 4px; font-size: 9px; font-weight: 700; width: fit-content; animation: sv-pop 240ms ease;">
+              <span>30.11.2026</span>
+            </div>
+
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; pt-1;">
+              <span style="font-size: 10px; font-weight: 700; color: var(--sv-muted);">p. 1</span>
+              <span style="width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--sv-ink); background: #FFF4DE;"></span>
+            </div>
+          </div>
+
+          <!-- Page 2 (Acknowledgement & Instructions) -->
+          <div style="width: 130px; height: 172px; border: 1.5px solid var(--sv-ink); border-radius: 16px; background: #FFFFFF; padding: 12px 10px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); position: relative;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="height: 5px; width: 50%; border-radius: 3px; background: var(--sv-ink); opacity: 0.6;"></span>
+            </div>
+            <span style="height: 4px; width: 100%; border-radius: 2px; background: var(--sv-hairline); margin-top: 2px;"></span>
+            <span style="height: 4px; width: 75%; border-radius: 2px; background: var(--sv-hairline);"></span>
+            <span style="height: 4px; width: 92%; border-radius: 2px; background: var(--sv-hairline);"></span>
+
+            <div id="thumbCertTag" style="display: none; align-items: center; gap: 3px; background: var(--sv-teal-soft); border: 1px solid var(--sv-ink); border-radius: 6px; padding: 2px 4px; font-size: 9px; font-weight: 700; color: var(--sv-teal); width: fit-content; animation: sv-pop 240ms ease;">
+              <span>Life Certificate</span>
+            </div>
+
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10px; font-weight: 700; color: var(--sv-muted);">p. 2</span>
+              <span style="width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--sv-ink); background: #CFE5E0;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thumbnail footer tag -->
+        <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--sv-teal);" id="txtPagesCount">2 pages scanned</span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--sv-teal);"></span>
+          <span style="font-size: 12px; font-weight: 600; color: var(--sv-teal);" id="txtQuality">Clear photo</span>
+        </div>
+      </section>
+
+      <!-- Headings & Live Status -->
+      <div style="text-align: center; margin: 6px 0 2px;">
+        <h1 id="screenTitle" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 27px; letter-spacing: -0.3px; line-height: 1.15;">
+          Reading 2 pages<span style="color: var(--sv-coral);">…</span>
+        </h1>
+        <p id="screenSubtitle" style="margin: 5px 0 0; font-size: 14.5px; color: var(--sv-muted); line-height: 1.35;">
+          Finding amounts, deadlines and what to do
+        </p>
+      </div>
+
+      <!-- Step by Step Live Discovery Card -->
+      <section aria-label="Reading progress steps" style="border: 1.5px solid var(--sv-ink); border-radius: 28px; background: #FFFFFF; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+        
+        <!-- Step 1: Document Type Detection -->
+        <div id="stepDocType" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1.5px solid var(--sv-hairline);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="docTypeSpinner" style="width: 22px; height: 22px; border: 2.5px solid var(--sv-hairline); border-top-color: var(--sv-teal); border-radius: 50%; animation: sv-spin 1s linear infinite;"></span>
+            <span id="docTypeCheck" style="display: none; width: 22px; height: 22px; border-radius: 50%; background: var(--sv-teal); color: #FFF; font-size: 13px; font-weight: bold; align-items: center; justify-content: center;">✓</span>
+            <span id="txtStep1Label" style="font-size: 14.5px; font-weight: 600;">Document type</span>
+          </div>
+          <span id="badgeDocType" style="opacity: 0; transform: scale(0.9); transition: all 260ms ease; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--sv-ink); background: var(--sv-coral-soft); font-size: 12.5px; font-weight: 700; color: var(--sv-ink);">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--sv-coral);"></span>
+            <span id="txtDocTypeValue">Pension notice</span>
+          </span>
+        </div>
+
+        <!-- Step 2: Key Points streaming in one by one -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span id="txtKeyPointsHeader" style="font-size: 12px; font-weight: 700; letter-spacing: 0.8px; color: var(--sv-muted);">KEY POINTS ARRIVING</span>
+            <span id="keyPointsCounter" style="font-size: 12px; font-weight: 700; color: var(--sv-teal); opacity: 0;">0 / 3</span>
+          </div>
+
+          <!-- Key Point 1: Submit Life Certificate -->
+          <div id="keyPoint1" class="step-item" style="display: none; align-items: center; justify-content: space-between; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); border-radius: 16px; padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; background: var(--sv-teal); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">✓</span>
+              <span id="txtPoint1" style="font-size: 14px; font-weight: 600;">Submit life certificate</span>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--sv-teal); background: var(--sv-teal-soft); padding: 2px 6px; border-radius: 8px;" id="badgePoint1">Found</span>
+          </div>
+
+          <!-- Key Point 2: By 30 Nov 2026 -->
+          <div id="keyPoint2" class="step-item" style="display: none; align-items: center; justify-content: space-between; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); border-radius: 16px; padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; background: var(--sv-coral); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px;">📅</span>
+              <span id="txtPoint2" style="font-size: 14px; font-weight: 600;">By 30 Nov 2026</span>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--sv-ink); background: var(--sv-coral-soft); padding: 2px 6px; border-radius: 8px;" id="badgePoint2">Found</span>
+          </div>
+
+          <!-- Key Point 3: 42 days left -->
+          <div id="keyPoint3" class="step-item" style="display: none; align-items: center; justify-content: space-between; background: var(--sv-bg); border: 1.5px solid var(--sv-ink); border-radius: 16px; padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 20px; height: 20px; border-radius: 50%; background: var(--sv-mustard); color: var(--sv-ink); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">⏱</span>
+              <span id="txtPoint3" style="font-size: 14px; font-weight: 600;">42 days left</span>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: var(--sv-teal); background: var(--sv-teal-soft); padding: 2px 6px; border-radius: 8px;" id="badgePoint3">Calculated</span>
+          </div>
+        </div>
+
+        <!-- Progress Track -->
+        <div style="margin-top: 4px;">
+          <div style="height: 8px; border-radius: 4px; border: 1.5px solid var(--sv-ink); background: var(--sv-bg); overflow: hidden;">
+            <div id="readingProgressBar" style="width: 15%; height: 100%; background: var(--sv-coral); transition: width 400ms ease;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom Call To Action / Explanation Ready Button -->
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+        
+        <!-- Button: shown when complete -->
+        <button id="btnReady" type="button" class="sv-press" onclick="showCompletedSheet()" style="display: none; width: 100%; height: 56px; border-radius: 28px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-family: var(--sv-font-body); font-size: 17px; font-weight: 700; color: var(--sv-ink); cursor: pointer; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(233,180,76,0.35); animation: sv-fade-up 280ms ease;">
+          <span id="txtReadyBtn">Your explanation is ready</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+        <!-- Placeholder status while reading -->
+        <div id="readingStatusRow" style="display: flex; align-items: center; gap: 8px; padding: 10px 0;">
+          <span style="width: 16px; height: 16px; border: 2px solid var(--sv-muted); border-top-color: var(--sv-coral); border-radius: 50%; animation: sv-spin 1s linear infinite;"></span>
+          <span id="txtTakesTime" style="font-size: 13.5px; font-weight: 500; color: var(--sv-muted);">This takes about 15 seconds</span>
+        </div>
+
+        <button type="button" class="sv-press" onclick="restartProgress()" style="background: transparent; border: 0; font-size: 13px; font-weight: 600; color: var(--sv-muted); cursor: pointer; text-decoration: underline;">
+          <span id="txtCancel">Cancel reading</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTENT: ERROR VIEW (SIMULATED FAILURE) -->
+    <div id="errorView" style="display: none; flex: 1; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 24px 20px; gap: 20px; animation: sv-fade-up 240ms ease;">
+      <!-- Friendly Error Icon -->
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: #FFF4DE; border: 1.5px solid var(--sv-ink); display: flex; align-items: center; justify-content: center; color: #B3361A; box-shadow: 0 4px 12px rgba(179,54,26,0.15);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; max-width: 320px;">
+        <h2 id="txtErrorTitle" style="margin: 0; font-family: var(--sv-font-display); font-size: 24px; font-weight: 400; line-height: 1.2;">
+          Could not read document<span style="color: var(--sv-coral);">.</span>
+        </h2>
+        <p id="txtErrorDesc" style="margin: 0; font-size: 15px; color: var(--sv-muted); line-height: 1.45;">
+          The photo is a bit too blurry to read the pension dates clearly. Please take a clear photo in good light and try again.
+        </p>
+      </div>
+
+      <!-- Error Tips Card -->
+      <div style="width: 100%; border: 1.5px solid var(--sv-ink); border-radius: 20px; background: #FFFFFF; padding: 14px 16px; text-align: left; display: flex; flex-direction: column; gap: 8px;">
+        <span id="txtErrorTipsHeader" style="font-size: 12.5px; font-weight: 700; color: var(--sv-body-2); letter-spacing: 0.5px;">TIPS FOR A GOOD PHOTO</span>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--sv-muted);">
+          <span style="color: var(--sv-teal); font-weight: bold;">✓</span>
+          <span id="txtErrorTip1">Hold phone directly above the paper</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--sv-muted);">
+          <span style="color: var(--sv-teal); font-weight: bold;">✓</span>
+          <span id="txtErrorTip2">Avoid shadows and glare on the text</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+        <button type="button" class="sv-press" onclick="restartProgress()" style="width: 100%; height: 54px; border-radius: 27px; border: 1.5px solid var(--sv-ink); background: var(--sv-mustard); font-family: var(--sv-font-body); font-size: 16.5px; font-weight: 700; color: var(--sv-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span id="txtTryAgainBtn">Try again</span>
+        </button>
+
+        <button type="button" class="sv-press" onclick="toggleSimulateError()" style="width: 100%; height: 46px; border-radius: 23px; border: 1.5px solid var(--sv-ink); background: transparent; font-family: var(--sv-font-body); font-size: 14.5px; font-weight: 600; color: var(--sv-ink); cursor: pointer;">
+          <span id="txtBackToScanning">Back to scanning</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- FINISHED MODAL SHEET PREVIEW (When user taps "Your explanation is ready") -->
+    <div id="completedSheet" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 20; justify-content: flex-end;">
+      <div style="background: var(--sv-bg); border-top: 1.5px solid var(--sv-ink); border-radius: 40px 40px 0 0; padding: 14px 20px 28px; width: 100%; max-height: 85%; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; animation: sv-fade-up 240ms ease;">
+        <span style="width: 44px; height: 5px; border-radius: 3px; background: var(--sv-ink); opacity: 0.25; align-self: center;"></span>
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <h2 id="sheetHeadline" style="margin: 0; font-family: var(--sv-font-display); font-weight: 400; font-size: 28px;">Pension notice<span style="color: var(--sv-coral);">.</span></h2>
+            <span id="sheetSub" style="font-size: 13.5px; color: var(--sv-muted);">Ready in simple words</span>
+          </div>
+          <button type="button" aria-label="Close" class="sv-press" onclick="closeCompletedSheet()" style="width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--sv-ink); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- In simple words card -->
+        <div style="background: var(--sv-mustard); border: 1.5px solid var(--sv-ink); border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span id="sheetSimpleWordsLabel" style="font-size: 12px; font-weight: 700; color: var(--sv-ink);">IN SIMPLE WORDS</span>
+          <p id="sheetSimpleWordsBody" style="margin: 0; font-size: 15px; line-height: 1.45; font-weight: 500;">
+            To keep getting your monthly pension of Rs. 1,200, submit your life certificate to your bank branch by 30 November 2026.
+          </p>
+        </div>
+
+        <!-- Found in your document item -->
+        <div style="border: 1.5px solid var(--sv-ink); border-radius: 24px; background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--sv-teal);">
+            <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--sv-teal)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#F4F5F2" stroke-width="2.6" stroke-linecap="round"/></svg>
+            <span id="sheetEvidenceLabel">Found in your document</span>
+          </div>
+          <blockquote id="sheetQuote" style="margin: 0; font-size: 13.5px; font-style: italic; color: var(--sv-body-2); border-left: 3px solid var(--sv-teal); padding-left: 10px;">
+            "Pensioners must submit Life Certificate on or before 30.11.2026"
+          </blockquote>
+        </div>
+
+        <button type="button" class="sv-press" onclick="closeCompletedSheet()" style="height: 52px; border-radius: 26px; border: 1.5px solid var(--sv-ink); background: var(--sv-teal); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span id="sheetFullBtn">Open full explanation</span>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Script for Timers, Language, and Interactivity -->
+<script>
+// Translations Dictionary (Natural, Simple Tamil & English)
+const I18N = {
+  en: {
+    secure: "Processing securely",
+    pagesCount: "2 pages scanned",
+    quality: "Clear photo",
+    titleReading: "Reading 2 pages…",
+    titleDone: "Finished reading",
+    subtitle: "Finding amounts, deadlines and what to do",
+    step1: "Document type",
+    docType: "Pension notice",
+    keyPointsHeader: "KEY POINTS ARRIVING",
+    point1: "Submit life certificate",
+    badgePoint1: "Found",
+    point2: "By 30 Nov 2026",
+    badgePoint2: "Found",
+    point3: "42 days left",
+    badgePoint3: "Calculated",
+    readyBtn: "Your explanation is ready",
+    takesTime: "This takes about 15 seconds",
+    cancel: "Cancel reading",
+    errorTitle: "Could not read document",
+    errorDesc: "The photo is a bit too blurry to read the pension dates clearly. Please take a clear photo in good light and try again.",
+    errorTipsHeader: "TIPS FOR A GOOD PHOTO",
+    errorTip1: "Hold phone directly above the paper",
+    errorTip2: "Avoid shadows and glare on the text",
+    tryAgain: "Try again",
+    backToScanning: "Back to scanning",
+    sheetHeadline: "Pension notice",
+    sheetSub: "Ready in simple words",
+    sheetSimpleWordsLabel: "IN SIMPLE WORDS",
+    sheetSimpleWordsBody: "To keep getting your monthly pension of Rs. 1,200, submit your life certificate to your bank branch by 30 November 2026.",
+    sheetEvidence: "Found in your document",
+    sheetQuote: '"Pensioners must submit Life Certificate on or before 30.11.2026"',
+    sheetFullBtn: "Open full explanation",
+  },
+  ta: {
+    secure: "பாதுகாப்பாக செயல்படுத்தப்படுகிறது",
+    pagesCount: "2 பக்கங்கள் படிக்கப்பட்டன",
+    quality: "தெளிவான படம்",
+    titleReading: "2 பக்கங்களைப் படிக்கிறது…",
+    titleDone: "படித்து முடித்தது",
+    subtitle: "தொகை, கடைசி தேதி மற்றும் செய்ய வேண்டியவை",
+    step1: "ஆவண வகை",
+    docType: "ஓய்வூதிய அறிவிப்பு",
+    keyPointsHeader: "முக்கிய தகவல்கள் வருகின்றன",
+    point1: "வாழ்நாள் சான்றிதழை சமர்ப்பிக்கவும்",
+    badgePoint1: "ஆவணத்தில் உள்ளது",
+    point2: "30 நவம்பர் 2026-க்குள்",
+    badgePoint2: "ஆவணத்தில் உள்ளது",
+    point3: "42 நாட்கள் உள்ளன",
+    badgePoint3: "கணக்கிடப்பட்டது",
+    readyBtn: "உங்கள் விளக்கம் தயாராக உள்ளது",
+    takesTime: "இதற்கு சுமார் 15 வினாடிகள் ஆகும்",
+    cancel: "ரத்து செய்",
+    errorTitle: "ஆவணத்தைப் படிக்க முடியவில்லை",
+    errorDesc: "ஓய்வூதியத் தேதிகளைத் தெளிவாகப் படிக்கப் படம் சற்று மங்கலாக உள்ளது. நல்ல வெளிச்சத்தில் தெளிவான படம் எடுத்து மீண்டும் முயற்சிக்கவும்.",
+    errorTipsHeader: "தெளிவான படத்திற்கான குறிப்புகள்",
+    errorTip1: "காகிதத்திற்கு நேராக மேலே மொபைலைப் பிடிக்கவும்",
+    errorTip2: "எழுத்துக்கள் மீது நிழல் விழுவதைத் தவிர்க்கவும்",
+    tryAgain: "மீண்டும் முயற்சிக்கவும்",
+    backToScanning: "படித்தலுக்குத் திரும்பு",
+    sheetHeadline: "ஓய்வூதிய அறிவிப்பு",
+    sheetSub: "எளிய வார்த்தைகளில் தயார்",
+    sheetSimpleWordsLabel: "எளிய வார்த்தைகளில்",
+    sheetSimpleWordsBody: "மாதாந்திர ஓய்வூதியம் ரூ. 1,200 தொடர்ந்து கிடைக்க, உங்கள் வாழ்நாள் சான்றிதழை 30 நவம்பர் 2026-க்குள் வங்கிக் கிளையில் சமர்ப்பியுங்கள்.",
+    sheetEvidence: "உங்கள் ஆவணத்தில் உள்ளது",
+    sheetQuote: '"ஓய்வூதியதாரர்கள் தங்களின் வாழ்நாள் சான்றிதழை 30.11.2026 அன்று அல்லது அதற்கு முன் சமர்ப்பிக்க வேண்டும்"',
+    sheetFullBtn: "முழு விளக்கத்தைப் பார்",
+  }
+};
+
+let currentLang = 'en';
+let timerIds = [];
+let isErrorState = false;
+
+// Initialize language from URL parameter if present (?lang=ta)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('lang') === 'ta') {
+  currentLang = 'ta';
+}
+
+function updateTexts() {
+  const t = I18N[currentLang];
+  const isTa = currentLang === 'ta';
+
+  document.getElementById('langIndicator').textContent = isTa ? 'English' : 'தமிழ்';
+  document.getElementById('appLangChip').textContent = isTa ? 'தமிழ்' : 'EN';
+  
+  if (isTa) {
+    document.getElementById('phoneContainer').classList.add('tamil-text');
+  } else {
+    document.getElementById('phoneContainer').classList.remove('tamil-text');
+  }
+
+  document.getElementById('txtSecure').textContent = t.secure;
+  document.getElementById('txtPagesCount').textContent = t.pagesCount;
+  document.getElementById('txtQuality').textContent = t.quality;
+  document.getElementById('screenSubtitle').textContent = t.subtitle;
+  document.getElementById('txtStep1Label').textContent = t.step1;
+  document.getElementById('txtDocTypeValue').textContent = t.docType;
+  document.getElementById('txtKeyPointsHeader').textContent = t.keyPointsHeader;
+  document.getElementById('txtPoint1').textContent = t.point1;
+  document.getElementById('badgePoint1').textContent = t.badgePoint1;
+  document.getElementById('txtPoint2').textContent = t.point2;
+  document.getElementById('badgePoint2').textContent = t.badgePoint2;
+  document.getElementById('txtPoint3').textContent = t.point3;
+  document.getElementById('badgePoint3').textContent = t.badgePoint3;
+  document.getElementById('txtReadyBtn').textContent = t.readyBtn;
+  document.getElementById('txtTakesTime').textContent = t.takesTime;
+  document.getElementById('txtCancel').textContent = t.cancel;
+  
+  // Error view texts
+  document.getElementById('txtErrorTitle').innerHTML = t.errorTitle + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('txtErrorDesc').textContent = t.errorDesc;
+  document.getElementById('txtErrorTipsHeader').textContent = t.errorTipsHeader;
+  document.getElementById('txtErrorTip1').textContent = t.errorTip1;
+  document.getElementById('txtErrorTip2').textContent = t.errorTip2;
+  document.getElementById('txtTryAgainBtn').textContent = t.tryAgain;
+  document.getElementById('txtBackToScanning').textContent = t.backToScanning;
+
+  // Sheet texts
+  document.getElementById('sheetHeadline').innerHTML = t.sheetHeadline + '<span style="color:var(--sv-coral)">.</span>';
+  document.getElementById('sheetSub').textContent = t.sheetSub;
+  document.getElementById('sheetSimpleWordsLabel').textContent = t.sheetSimpleWordsLabel;
+  document.getElementById('sheetSimpleWordsBody').textContent = t.sheetSimpleWordsBody;
+  document.getElementById('sheetEvidenceLabel').textContent = t.sheetEvidence;
+  document.getElementById('sheetQuote').textContent = t.sheetQuote;
+  document.getElementById('sheetFullBtn').textContent = t.sheetFullBtn;
+}
+
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'ta' : 'en';
+  updateTexts();
+}
+
+function clearAllTimers() {
+  timerIds.forEach(id => clearTimeout(id));
+  timerIds = [];
+}
+
+// State machine for step-by-step reading flow (~12 seconds total)
+function startReadingFlow(speed = 1) {
+  clearAllTimers();
+  updateTexts();
+
+  const t = I18N[currentLang];
+  const bar = document.getElementById('readingProgressBar');
+  const title = document.getElementById('screenTitle');
+  const badgeDocType = document.getElementById('badgeDocType');
+  const docTypeSpinner = document.getElementById('docTypeSpinner');
+  const docTypeCheck = document.getElementById('docTypeCheck');
+  const kp1 = document.getElementById('keyPoint1');
+  const kp2 = document.getElementById('keyPoint2');
+  const kp3 = document.getElementById('keyPoint3');
+  const counter = document.getElementById('keyPointsCounter');
+  const btnReady = document.getElementById('btnReady');
+  const statusRow = document.getElementById('readingStatusRow');
+  const thumbAmount = document.getElementById('thumbAmountTag');
+  const thumbDate = document.getElementById('thumbDateTag');
+  const thumbCert = document.getElementById('thumbCertTag');
+
+  // Reset elements
+  title.innerHTML = (currentLang === 'ta' ? '2 பக்கங்களைப் படிக்கிறது' : 'Reading 2 pages') + '<span style="color:var(--sv-coral)">…</span>';
+  bar.style.width = '15%';
+  badgeDocType.style.opacity = '0';
+  badgeDocType.style.transform = 'scale(0.85)';
+  docTypeSpinner.style.display = 'inline-block';
+  docTypeCheck.style.display = 'none';
+  kp1.style.display = 'none';
+  kp2.style.display = 'none';
+  kp3.style.display = 'none';
+  counter.style.opacity = '0';
+  counter.textContent = '0 / 3';
+  btnReady.style.display = 'none';
+  statusRow.style.display = 'flex';
+  thumbAmount.style.display = 'none';
+  thumbDate.style.display = 'none';
+  thumbCert.style.display = 'none';
+
+  // Schedule stage 1: Document type detected (~2.5s)
+  timerIds.push(setTimeout(() => {
+    bar.style.width = '35%';
+    docTypeSpinner.style.display = 'none';
+    docTypeCheck.style.display = 'flex';
+    badgeDocType.style.opacity = '1';
+    badgeDocType.style.transform = 'scale(1)';
+    thumbCert.style.display = 'flex';
+  }, 2500 / speed));
+
+  // Schedule stage 2: Key point 1 appears (~5.2s)
+  timerIds.push(setTimeout(() => {
+    bar.style.width = '55%';
+    counter.style.opacity = '1';
+    counter.textContent = '1 / 3';
+    kp1.style.display = 'flex';
+    thumbAmount.style.display = 'flex';
+  }, 5200 / speed));
+
+  // Schedule stage 3: Key point 2 appears (~7.6s)
+  timerIds.push(setTimeout(() => {
+    bar.style.width = '75%';
+    counter.textContent = '2 / 3';
+    kp2.style.display = 'flex';
+    thumbDate.style.display = 'flex';
+  }, 7600 / speed));
+
+  // Schedule stage 4: Key point 3 appears (~9.8s)
+  timerIds.push(setTimeout(() => {
+    bar.style.width = '92%';
+    counter.textContent = '3 / 3';
+    kp3.style.display = 'flex';
+  }, 9800 / speed));
+
+  // Schedule stage 5: "Your explanation is ready" button appears (~11.8s)
+  timerIds.push(setTimeout(() => {
+    bar.style.width = '100%';
+    title.innerHTML = (currentLang === 'ta' ? 'விளக்கம் தயார்' : 'Explanation ready') + '<span style="color:var(--sv-coral)">.</span>';
+    statusRow.style.display = 'none';
+    btnReady.style.display = 'flex';
+  }, 11800 / speed));
+}
+
+function restartProgress() {
+  if (isErrorState) {
+    toggleSimulateError();
+  }
+  startReadingFlow(1);
+}
+
+function fastForward() {
+  if (isErrorState) {
+    toggleSimulateError();
+  }
+  startReadingFlow(8);
+}
+
+function toggleSimulateError() {
+  isErrorState = !isErrorState;
+  const progressView = document.getElementById('progressView');
+  const errorView = document.getElementById('errorView');
+  const errBtn = document.getElementById('errorToggleBtn');
+
+  if (isErrorState) {
+    clearAllTimers();
+    progressView.style.display = 'none';
+    errorView.style.display = 'flex';
+    errBtn.classList.add('active');
+  } else {
+    progressView.style.display = 'flex';
+    errorView.style.display = 'none';
+    errBtn.classList.remove('active');
+    startReadingFlow(1);
+  }
+}
+
+function showCompletedSheet() {
+  document.getElementById('completedSheet').style.display = 'flex';
+}
+
+function closeCompletedSheet() {
+  document.getElementById('completedSheet').style.display = 'none';
+}
+
+function renderReadyStateSync() {
+  clearAllTimers();
+  updateTexts();
+  const bar = document.getElementById('readingProgressBar');
+  const title = document.getElementById('screenTitle');
+  const badgeDocType = document.getElementById('badgeDocType');
+  const docTypeSpinner = document.getElementById('docTypeSpinner');
+  const docTypeCheck = document.getElementById('docTypeCheck');
+  const kp1 = document.getElementById('keyPoint1');
+  const kp2 = document.getElementById('keyPoint2');
+  const kp3 = document.getElementById('keyPoint3');
+  const counter = document.getElementById('keyPointsCounter');
+  const btnReady = document.getElementById('btnReady');
+  const statusRow = document.getElementById('readingStatusRow');
+  const thumbAmount = document.getElementById('thumbAmountTag');
+  const thumbDate = document.getElementById('thumbDateTag');
+  const thumbCert = document.getElementById('thumbCertTag');
+
+  bar.style.width = '100%';
+  title.innerHTML = (currentLang === 'ta' ? 'விளக்கம் தயார்' : 'Explanation ready') + '<span style="color:var(--sv-coral)">.</span>';
+  docTypeSpinner.style.display = 'none';
+  docTypeCheck.style.display = 'flex';
+  badgeDocType.style.transition = 'none';
+  badgeDocType.style.opacity = '1';
+  badgeDocType.style.transform = 'scale(1)';
+  thumbCert.style.display = 'flex';
+  thumbAmount.style.display = 'flex';
+  thumbDate.style.display = 'flex';
+  counter.style.opacity = '1';
+  counter.textContent = '3 / 3';
+  kp1.style.animation = 'none';
+  kp1.style.display = 'flex';
+  kp2.style.animation = 'none';
+  kp2.style.display = 'flex';
+  kp3.style.animation = 'none';
+  kp3.style.display = 'flex';
+  statusRow.style.display = 'none';
+  btnReady.style.animation = 'none';
+  btnReady.style.opacity = '1';
+  btnReady.style.display = 'flex';
+}
+
+// Start on page load
+window.addEventListener('DOMContentLoaded', () => {
+  updateTexts();
+  if (urlParams.get('state') === 'error') {
+    toggleSimulateError();
+  } else if (urlParams.get('state') === 'ready') {
+    renderReadyStateSync();
+  } else {
+    startReadingFlow(1);
+  }
+});
+</script>
+</body>
+</html>
