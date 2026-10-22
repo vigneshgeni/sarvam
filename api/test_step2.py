@@ -1020,8 +1020,8 @@ def test_gemini_semaphore_timeout_returns_503(client):
             res = client.post("/api/explain", files=files, data={"lang": "ta"})
             assert res.status_code == 503
             body = res.json()
-            assert "Service is busy" in body["message"]
-            assert body["message_local"] == "சேவை தற்போது பிஸியாக உள்ளது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்."
+            assert body["message"] == "Busy. Try again."
+            assert body["message_local"] == "இப்போது பிஸி. மீண்டும் முயற்சிக்கவும்."
     finally:
         # Restore semaphore value
         GEMINI_SEMAPHORE._value = original_value
@@ -1100,8 +1100,8 @@ def test_gemini_retry_exhaustion_endpoint_returns_503_message_local(client):
         res = client.post("/api/explain", files=files, data={"lang": "hi"})
         assert res.status_code == 503
         body = res.json()
-        assert "Service is busy" in body["message"]
-        assert body["message_local"] == "सेवा व्यस्त है. कृपया थोड़ी देर बाद पुनः प्रयास करें."
+        assert body["message"] == "Busy. Try again."
+        assert body["message_local"] == "अभी व्यस्त है. फिर कोशिश करें."
 
 
 def test_gemini_retry_budget_exceeded():
@@ -1179,8 +1179,8 @@ def test_deadline_hit_during_retry(client):
         res = client.post("/api/explain", files=files, data={"lang": "hi"})
         assert res.status_code == 503
         body = res.json()
-        assert "Service is busy" in body["message"]
-        assert body["message_local"] == "सेवा व्यस्त है. कृपया थोड़ी देर बाद पुनः प्रयास करें."
+        assert body["message"] == "Busy. Try again."
+        assert body["message_local"] == "अभी व्यस्त है. फिर कोशिश करें."
 
 
 # --- Step 5b-3: Protected Terms Safety Net & Generic Office Words Tests ---
@@ -2643,7 +2643,7 @@ def test_everything_fails_returns_calm_503_before_deadline(client):
         res = client.post("/api/explain", files=files, data={"lang": "en"})
         assert res.status_code == 503, f"Expected 503, got {res.status_code}: {res.text}"
         body = res.json()
-        assert "Service is busy" in body["message"]
+        assert body["message"] == "Busy. Try again."
         # Total simulated time must be <= 80s
         assert sim_time[0] <= 80.0
 
@@ -2674,7 +2674,7 @@ def test_everything_fails_returns_calm_503_before_deadline(client):
         )
         assert res.status_code == 503, f"Expected 503, got {res.status_code}: {res.text}"
         body = res.json()
-        assert "Service is busy" in body["message"]
+        assert body["message"] == "Busy. Try again."
         # Total simulated time must be <= 45s
         assert ask_sim_time[0] <= 45.0
 
