@@ -603,9 +603,10 @@ def finish_name_renderings(
     missing = missing_source_names(terms, collected, texts)
     if not missing:
         return collected, False
-    logger.info("renderings model=%s missing=%d", MODEL_ID, len(missing))
-    if deadline is not None and deadline - time.time() < 8:
-        logger.info("renderings status=skipped missing=%d", len(missing))
+    logger.info("renderings model=%s missing=%d", FALLBACK_MODEL_ID, len(missing))
+    rem_sec = (deadline - time.time()) if deadline is not None else float("inf")
+    if rem_sec < 12.0:
+        logger.info("renderings status=skipped missing=%d rem_sec=%.2f", len(missing), rem_sec)
         return collected, True
     blob = "\n".join(text for text in (texts or []) if text)
     if len(blob) > 6000:
@@ -627,17 +628,18 @@ def finish_name_renderings(
             max_output_tokens=512,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
+        timeout_sec = min(8.0, max(2.0, rem_sec - 2.0))
         response = call_gemini_with_retry(
             client=client,
-            model=MODEL_ID,
+            model=FALLBACK_MODEL_ID,
             contents=[prompt],
             config=config,
             endpoint="renderings",
             deadline=deadline,
-            attempt_timeout_sec=20,
+            attempt_timeout_sec=timeout_sec,
             max_retries=0,
-            fallback_model=MODEL_ID,
-            retry_budget=22,
+            fallback_model=FALLBACK_MODEL_ID,
+            retry_budget=min(10.0, rem_sec),
         )
         if response.parsed and isinstance(response.parsed, NameRenderingFill):
             proposed = response.parsed.renderings
@@ -719,33 +721,48 @@ def read_document_single_attempt(
         texts_to_check = [result.title] + list(result.summary) + [a.text for a in result.actions]
         passed, ratio = check_script_guard(texts_to_check, norm_lang)
         if not passed:
-            logger.warning(
-                "read_document: script guard failed (ratio=%.2f < 0.40) for %s. Retrying with reinforced prompt.",
-                ratio,
-                norm_lang,
-            )
-            strict_prompt = backup_language_prompt(prompt, target_lang) or prompt
-            retry_contents = contents[:-1] + [strict_prompt]
-            retry_resp = call_gemini_with_retry(
-                client=client,
-                model=FALLBACK_MODEL_ID,
-                contents=retry_contents,
-                config=config,
-                endpoint="explain",
-                deadline=time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN,
-                attempt_timeout_sec=FALLBACK_TIMEOUT,
-                fallback_model=FALLBACK_MODEL_ID,
-            )
-            if isinstance(retry_resp.parsed, GeminiReaderResponse):
-                result = lift_reader_result(retry_resp.parsed)
+            rem_sec = (deadline - time.time()) if deadline is not None else float("inf")
+            if rem_sec < 12.0:
+                logger.warning(
+                    "read_document: script guard failed (ratio=%.2f < 0.40) for %s but remaining time (%.2fs) is too low for retry. Keeping current result.",
+                    ratio,
+                    norm_lang,
+                    rem_sec,
+                )
             else:
-                result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
-            if not result.document_type or result.document_type == "other":
-                if result.doc_type and result.doc_type in DOCUMENT_TYPES:
-                    result.document_type = result.doc_type
-            result.doc_type = result.document_type
-            if not result.language:
-                result.language = lang
+                logger.warning(
+                    "read_document: script guard failed (ratio=%.2f < 0.40) for %s. Retrying with reinforced prompt.",
+                    ratio,
+                    norm_lang,
+                )
+                strict_prompt = backup_language_prompt(prompt, target_lang) or prompt
+                retry_contents = contents[:-1] + [strict_prompt]
+                retry_deadline = deadline if deadline is not None else (time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN)
+                retry_timeout = min(FALLBACK_TIMEOUT, max(5.0, (retry_deadline - time.time()) - 2.0))
+                try:
+                    retry_resp = call_gemini_with_retry(
+                        client=client,
+                        model=FALLBACK_MODEL_ID,
+                        contents=retry_contents,
+                        config=config,
+                        endpoint="explain",
+                        deadline=retry_deadline,
+                        attempt_timeout_sec=retry_timeout,
+                        fallback_model=FALLBACK_MODEL_ID,
+                    )
+                    if isinstance(retry_resp.parsed, GeminiReaderResponse):
+                        retry_result = lift_reader_result(retry_resp.parsed)
+                    else:
+                        retry_result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
+                    result = retry_result
+                    if not result.document_type or result.document_type == "other":
+                        if result.doc_type and result.doc_type in DOCUMENT_TYPES:
+                            result.document_type = result.doc_type
+                    result.doc_type = result.document_type
+                    if not result.language:
+                        result.language = lang
+                except Exception as e:
+                    logger.warning("read_document: script guard retry failed: %s; keeping initial result", e)
 
     if norm_lang == "en" and not result.unreadable:
         indic_letters = []
@@ -757,32 +774,45 @@ def read_document_single_attempt(
                     if "\u0900" <= ch <= "\u0D7F":
                         indic_letters.append(ch)
         if len(all_letters) >= 8 and len(indic_letters) / len(all_letters) > 0.2:
-            logger.warning("read_document: English was requested but the reading is in another script. Retrying.")
-            strict_prompt = (
-                prompt
-                + "\nThe person asked for English. Write every user-facing sentence in English, "
-                + "even when the document is in another language. Do not leave the title, summary, "
-                + "actions, warnings, or facts in the document's language."
-            )
-            retry_resp = call_gemini_with_retry(
-                client=client,
-                model=FALLBACK_MODEL_ID,
-                contents=contents[:-1] + [strict_prompt],
-                config=config,
-                endpoint="explain",
-                deadline=time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN,
-                attempt_timeout_sec=FALLBACK_TIMEOUT,
-                fallback_model=FALLBACK_MODEL_ID,
-            )
-            if isinstance(retry_resp.parsed, GeminiReaderResponse):
-                result = lift_reader_result(retry_resp.parsed)
+            rem_sec = (deadline - time.time()) if deadline is not None else float("inf")
+            if rem_sec < 12.0:
+                logger.warning(
+                    "read_document: English requested but reading in another script; remaining time (%.2fs) too low for retry.",
+                    rem_sec,
+                )
             else:
-                result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
-            result.language = "en"
-            if not result.document_type or result.document_type == "other":
-                if result.doc_type and result.doc_type in DOCUMENT_TYPES:
-                    result.document_type = result.doc_type
-            result.doc_type = result.document_type
+                logger.warning("read_document: English was requested but the reading is in another script. Retrying.")
+                strict_prompt = (
+                    prompt
+                    + "\nThe person asked for English. Write every user-facing sentence in English, "
+                    + "even when the document is in another language. Do not leave the title, summary, "
+                    + "actions, warnings, or facts in the document's language."
+                )
+                retry_deadline = deadline if deadline is not None else (time.time() + FALLBACK_TIMEOUT + SAFETY_MARGIN)
+                retry_timeout = min(FALLBACK_TIMEOUT, max(5.0, (retry_deadline - time.time()) - 2.0))
+                try:
+                    retry_resp = call_gemini_with_retry(
+                        client=client,
+                        model=FALLBACK_MODEL_ID,
+                        contents=contents[:-1] + [strict_prompt],
+                        config=config,
+                        endpoint="explain",
+                        deadline=retry_deadline,
+                        attempt_timeout_sec=retry_timeout,
+                        fallback_model=FALLBACK_MODEL_ID,
+                    )
+                    if isinstance(retry_resp.parsed, GeminiReaderResponse):
+                        retry_result = lift_reader_result(retry_resp.parsed)
+                    else:
+                        retry_result = lift_reader_result(GeminiReaderResponse.model_validate_json(retry_resp.text))
+                    result = retry_result
+                    result.language = "en"
+                    if not result.document_type or result.document_type == "other":
+                        if result.doc_type and result.doc_type in DOCUMENT_TYPES:
+                            result.document_type = result.doc_type
+                    result.doc_type = result.document_type
+                except Exception as e:
+                    logger.warning("read_document: English retry failed: %s; keeping initial result", e)
 
     # Code safety net: filter out generic office terms from protected_terms
     if result.protected_terms:
@@ -884,13 +914,14 @@ def read_document(
 
             def one(chunk: Tuple[bytes, int, int]) -> Any:
                 data, start, end = chunk
-                # Each chunk gets a full request budget. The wall clock is the
-                # slower chunk, not the sum. A failed group is kept out of the merge.
+                chunk_deadline = deadline if deadline is not None else (time.time() + REQUEST_DEADLINE)
+                if chunk_deadline is not None and time.time() >= chunk_deadline - 2.0:
+                    raise GeminiTimeoutError("Request deadline exceeded before chunk execution")
                 try:
                     result = read_document_single_attempt(
                         [(data, mime)],
                         lang,
-                        deadline=time.time() + REQUEST_DEADLINE,
+                        deadline=chunk_deadline,
                         page_start=start,
                         page_end=end,
                     )

@@ -394,3 +394,137 @@ def test_explain_endpoint_busy_message(client):
         body = res.json()
         assert body["message"] == "Busy. Try again."
         assert body["message_local"] == "अभी व्यस्त है. फिर कोशिश करें."
+
+
+# ==============================================================================
+# Verification Tests for Hindi PDF Timeout & Bounded Deadlines
+# ==============================================================================
+
+def test_hindi_script_guard_skips_retry_when_deadline_tight():
+    """When remaining deadline is < 12s, script guard does not initiate a slow retry and keeps the result."""
+    from reader import read_document_single_attempt, FALLBACK_MODEL_ID, MODEL_ID
+
+    resp = MagicMock()
+    resp.parsed = None
+    resp.usage_metadata = None
+    # Model returns English text even though Hindi was requested (script guard would normally fail)
+    resp.text = json.dumps({
+        "title": "Pension Notice",
+        "summary": ["Submit life certificate by 30 Nov."],
+        "language": "hi",
+        "document_type": "government_notice",
+        "document_language": "hi",
+        "actions": [{"text": "Submit certificate", "quote": "Submit", "page": 1}],
+    })
+
+    client = MagicMock()
+    client.models.generate_content.return_value = resp
+
+    now = time.time()
+    # Set deadline only 5s away (< 12s)
+    tight_deadline = now + 5.0
+
+    with patch("reader.get_client", return_value=client):
+        result = read_document_single_attempt(
+            files_data=[(b"%PDF-1.4...", "application/pdf")],
+            lang="hi",
+            deadline=tight_deadline,
+        )
+
+    # Exactly 1 call made (no script guard retry that would exceed the 5s deadline)
+    assert client.models.generate_content.call_count == 1
+    assert result.title == "Pension Notice"
+
+
+def test_finish_name_renderings_skips_and_falls_back_when_deadline_tight():
+    """finish_name_renderings skips Gemini call and returns mask_fallback=True when deadline < 12s."""
+    from reader import finish_name_renderings
+
+    client = MagicMock()
+    now = time.time()
+    # 8s remaining (< 12s threshold)
+    tight_deadline = now + 8.0
+
+    with patch("reader.get_client", return_value=client):
+        collected, mask_fallback = finish_name_renderings(
+            terms=["Dr. Ravi Sharma"],
+            texts=["डॉक्टर ने सलाह दी"],
+            rendered={},
+            deadline=tight_deadline,
+        )
+
+    assert mask_fallback is True
+    # Did not burn time calling model
+    assert client.models.generate_content.call_count == 0
+
+
+def test_finish_name_renderings_uses_fast_fallback_model():
+    """finish_name_renderings uses FALLBACK_MODEL_ID (gemini-2.5-flash) for rapid extraction."""
+    from reader import finish_name_renderings, FALLBACK_MODEL_ID
+
+    resp = MagicMock()
+    resp.parsed = None
+    resp.usage_metadata = None
+    resp.text = json.dumps({"renderings": {"Dr. Ravi Sharma": ["डॉ. रवि शर्मा"]}})
+
+    client = MagicMock()
+    client.models.generate_content.return_value = resp
+
+    now = time.time()
+    generous_deadline = now + 40.0
+
+    with patch("reader.get_client", return_value=client):
+        collected, mask_fallback = finish_name_renderings(
+            terms=["Dr. Ravi Sharma"],
+            texts=["डॉ. रवि शर्मा ने सलाह दी"],
+            rendered={},
+            deadline=generous_deadline,
+        )
+
+    assert client.models.generate_content.call_count == 1
+    call_kwargs = client.models.generate_content.call_args.kwargs
+    assert call_kwargs["model"] == FALLBACK_MODEL_ID
+
+
+def test_multi_chunk_pdf_inherits_caller_deadline():
+    """Multi-chunk PDF passes the caller's request deadline to chunks, not a fresh 80s."""
+    from reader import read_document, ReaderResponse
+
+    # Create dummy PDF bytes that produce > 1 chunk (e.g. 6 pages)
+    import pypdf
+    import io
+
+    writer = pypdf.PdfWriter()
+    for _ in range(6):
+        writer.add_blank_page(width=100, height=100)
+    stream = io.BytesIO()
+    writer.write(stream)
+    six_page_pdf = stream.getvalue()
+
+    passed_deadlines = []
+
+    def mock_single_attempt(files_data, lang, deadline=None, timeout=None, attempt_idx=1, page_start=1, page_end=0):
+        passed_deadlines.append(deadline)
+        return ReaderResponse(
+            doc_type="government_notice",
+            document_type="government_notice",
+            document_language="hi",
+            language="hi",
+            title="सूचना",
+            summary=["विवरण"],
+            sections=[],
+        )
+
+    caller_deadline = time.time() + 33.0
+    with patch("reader.read_document_single_attempt", side_effect=mock_single_attempt):
+        result = read_document(
+            files_data=[(six_page_pdf, "application/pdf")],
+            lang="hi",
+            deadline=caller_deadline,
+        )
+
+    assert len(passed_deadlines) >= 2
+    # All chunks must receive the caller's deadline, NOT a new time.time() + 80.0
+    for dl in passed_deadlines:
+        assert dl == caller_deadline
+
