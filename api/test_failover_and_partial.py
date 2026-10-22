@@ -528,3 +528,112 @@ def test_multi_chunk_pdf_inherits_caller_deadline():
     for dl in passed_deadlines:
         assert dl == caller_deadline
 
+
+# ==============================================================================
+# Verification Tests for Streaming Explain & Fast Initial Facts (<20s)
+# ==============================================================================
+
+def test_extract_first_facts_for_photo():
+    """extract_first_facts uses fast fallback model with 384 token budget and returns key points."""
+    from reader import extract_first_facts, FirstFactsResult, FALLBACK_MODEL_ID
+
+    resp = MagicMock()
+    resp.parsed = FirstFactsResult(
+        document_type="pension_notice",
+        document_kind="pension_notice",
+        title="Pension Life Certificate Notice",
+        headline="Submit life certificate by 30 Nov 2026",
+        key_points=["Submit life certificate", "By 30 Nov 2026", "42 days left"],
+        key_values=[{"label": "Due date", "value": "30.11.2026"}],
+        document_language="en",
+    )
+    client = MagicMock()
+    client.models.generate_content.return_value = resp
+
+    with patch("reader.get_client", return_value=client):
+        result = extract_first_facts(
+            files_data=[(b"\xff\xd8\xff...", "image/jpeg")],
+            lang="en",
+            deadline=time.time() + 30.0,
+        )
+
+    assert result is not None
+    assert result.document_type == "pension_notice"
+    assert len(result.key_points) == 3
+    assert client.models.generate_content.call_count == 1
+    call_kwargs = client.models.generate_content.call_args.kwargs
+    assert call_kwargs["model"] == FALLBACK_MODEL_ID
+
+
+def test_stream_read_document_yields_first_facts_before_complete():
+    """stream_read_document yields initial reading progress, first_facts, and complete in order."""
+    from reader import stream_read_document, FirstFactsResult, ReaderResponse
+
+    first_facts_mock = FirstFactsResult(
+        document_type="pension_notice",
+        title="Pension Notice",
+        headline="Submit certificate",
+        key_points=["Submit life certificate", "Due 30 Nov"],
+    )
+    full_reader_mock = ReaderResponse(
+        doc_type="government_notice",
+        document_type="government_notice",
+        document_language="en",
+        language="en",
+        title="Pension Notice",
+        summary=["Submit certificate"],
+    )
+
+    with patch("reader.extract_first_facts", return_value=first_facts_mock), \
+         patch("reader.read_document", return_value=full_reader_mock):
+        events = list(stream_read_document(
+            files_data=[(b"\xff\xd8\xff...", "image/jpeg")],
+            lang="en",
+        ))
+
+    steps = [e["step"] for e in events]
+    assert steps == ["start", "first_facts", "complete"]
+    assert events[1]["document_type"] == "pension_notice"
+    assert events[1]["key_points"] == ["Submit life certificate", "Due 30 Nov"]
+    assert events[2]["result"] == full_reader_mock
+
+
+def test_explain_streaming_endpoint(client):
+    """GET/POST /api/explain?stream=true returns text/event-stream with progressive events."""
+    from reader import FirstFactsResult, ReaderResponse
+
+    JPEG_BYTES = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00" + b"\x00" * 64 + b"\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9"
+    files = [("files", ("photo.jpg", JPEG_BYTES, "image/jpeg"))]
+
+    first_facts_mock = FirstFactsResult(
+        document_type="pension_notice",
+        title="Pension Notice",
+        headline="Submit certificate",
+        key_points=["Submit life certificate", "By 30 Nov 2026"],
+    )
+    full_reader_mock = ReaderResponse(
+        doc_type="government_notice",
+        document_type="government_notice",
+        document_language="en",
+        language="en",
+        title="Pension Notice",
+        summary=["Submit certificate by 30 Nov."],
+    )
+
+    with patch("reader.extract_first_facts", return_value=first_facts_mock), \
+         patch("reader.read_document", return_value=full_reader_mock):
+        res = client.post(
+            "/api/explain?stream=true",
+            files=files,
+            data={"lang": "en"},
+            headers={"Accept": "text/event-stream"},
+        )
+
+    assert res.status_code == 200
+    assert "text/event-stream" in res.headers["content-type"]
+    text = res.text
+    assert "event: start" in text
+    assert "event: first_facts" in text
+    assert "event: complete" in text
+    assert "pension_notice" in text
+

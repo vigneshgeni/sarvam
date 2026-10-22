@@ -7,7 +7,9 @@ import random
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
+
+from pydantic import BaseModel, Field
 
 import httpx
 from google import genai
@@ -1554,4 +1556,135 @@ def extract_text_document(
     except Exception as e:
         logger.warning("extract_text_document failed: %s", e)
         return None
+
+
+# ==============================================================================
+# Streaming & Fast Initial Facts for Explain (Under 20s for Photos)
+# ==============================================================================
+
+class FirstFactsResult(BaseModel):
+    document_type: str = Field(default="other", description="Coarse document type")
+    document_kind: Optional[str] = Field(default=None, description="Specific document kind")
+    title: str = Field(default="", description="Clear title in requested language")
+    headline: str = Field(default="", description="Short summary under 12 words")
+    key_points: List[str] = Field(default_factory=list, description="Top 2 to 4 key points, amounts or deadlines")
+    key_values: List[Dict[str, str]] = Field(default_factory=list, description="Top key-value pairs (label, value)")
+    document_language: Optional[str] = Field(default="en")
+
+
+FIRST_FACTS_PROMPT_TEMPLATE = """You are Sarvam. Look at this document photo and quickly extract initial facts.
+Language: {LANG}
+
+Rules:
+1. Output ONLY JSON matching schema.
+2. Identify document_type (e.g. government_notice, pension_notice, tax_notice, challan, court_legal, utility_bill, invoice, receipt, insurance, lab_report, prescription, discharge_summary, bank_statement, loan, agreement, form, salary_slip, other).
+3. title: concise title in {LANG}.
+4. headline: summary headline under 12 words.
+5. key_points: list 2 to 4 key takeaways, dates, or amounts (e.g. "Submit life certificate", "By 30 Nov 2026", "42 days left").
+6. key_values: list up to 4 important items, each with {{"label": "...", "value": "..."}}.
+"""
+
+
+def extract_first_facts(
+    files_data: List[Tuple[bytes, str]],
+    lang: str,
+    deadline: Optional[float] = None,
+) -> Optional[FirstFactsResult]:
+    """Fast initial facts extraction for photos in under 20 seconds (typically 2-5s)."""
+    target_lang = "auto" if lang == "auto" else resolve_language_name(lang)
+    prompt = FIRST_FACTS_PROMPT_TEMPLATE.format(LANG=target_lang)
+
+    contents = []
+    for data, mime_type in files_data:
+        part = types.Part.from_bytes(data=data, mime_type=mime_type)
+        contents.append(part)
+    contents.append(prompt)
+
+    client = get_client()
+    config = types.GenerateContentConfig(
+        temperature=0.1,
+        response_mime_type="application/json",
+        response_schema=FirstFactsResult,
+        max_output_tokens=384,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+
+    rem_sec = (deadline - time.time()) if deadline is not None else 18.0
+    timeout_sec = min(15.0, max(2.0, rem_sec - 1.0))
+
+    try:
+        response = call_gemini_with_retry(
+            client=client,
+            model=FALLBACK_MODEL_ID,
+            contents=contents,
+            config=config,
+            endpoint="explain_first_facts",
+            deadline=deadline,
+            attempt_timeout_sec=timeout_sec,
+            max_retries=0,
+            fallback_model=FALLBACK_MODEL_ID,
+            retry_budget=min(18.0, rem_sec),
+        )
+        if isinstance(response.parsed, FirstFactsResult):
+            return response.parsed
+        return FirstFactsResult.model_validate_json(response.text)
+    except Exception as e:
+        logger.info("extract_first_facts: failed or timed out: %s", e)
+        return None
+
+
+def stream_read_document(
+    files_data: List[Tuple[bytes, str]],
+    lang: str,
+    deadline: Optional[float] = None,
+) -> Generator[Dict[str, Any], None, None]:
+    """Stream Explain results in parts so photos show their first result in under 20 seconds.
+    Yields progressive events:
+      - 'start': initial reading progress
+      - 'first_facts': fast initial facts (<20s)
+      - 'complete': full ReaderResponse object
+    """
+    is_photo = all("image" in (m or "").lower() for _, m in files_data)
+    page_count = len(files_data)
+
+    yield {
+        "step": "start",
+        "pages": page_count,
+        "is_photo": is_photo,
+        "message": f"Reading {page_count} page{'s' if page_count > 1 else ''}…",
+    }
+
+    if is_photo:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            future_first = pool.submit(extract_first_facts, files_data, lang, deadline)
+            future_full = pool.submit(read_document, files_data, lang, deadline)
+
+            try:
+                # Wait for first_facts with an 18s timeout to guarantee under 20s delivery
+                first_facts = future_first.result(timeout=18.0)
+                if first_facts:
+                    yield {
+                        "step": "first_facts",
+                        "document_type": first_facts.document_type,
+                        "document_kind": first_facts.document_kind or first_facts.document_type,
+                        "title": first_facts.title,
+                        "headline": first_facts.headline,
+                        "key_points": first_facts.key_points,
+                        "key_values": first_facts.key_values,
+                        "document_language": first_facts.document_language or "en",
+                    }
+            except Exception as e:
+                logger.info("stream_read_document: first_facts skipped: %s", e)
+
+            full_result = future_full.result()
+            yield {
+                "step": "complete",
+                "result": full_result,
+            }
+    else:
+        full_result = read_document(files_data, lang, deadline=deadline)
+        yield {
+            "step": "complete",
+            "result": full_result,
+        }
 
