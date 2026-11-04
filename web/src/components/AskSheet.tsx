@@ -47,6 +47,9 @@ export default function AskSheet({
   const [isLoading, setIsLoading] = useState(false)
   const [isStillWorking, setIsStillWorking] = useState(false)
   const [askError, setAskError] = useState<string | null>(null)
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const recognitionRef = useRef<any>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -80,6 +83,7 @@ export default function AskSheet({
     clearedRef.current = false
     setQuestion('')
     setAskError(null)
+    setPendingQuestion(null)
     setThread({
       key: threadKey,
       turns: turnsForThread(readStoredTurns(threadKey, sampleThread), initialAsksRef.current),
@@ -102,6 +106,20 @@ export default function AskSheet({
     if (onSaveAsks) onSaveAsks(owned)
     else if (resultId && !sampleThread) void saveRecentAsks(resultId, owned)
   }, [thread, threadKey, resultId, sampleThread])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const el = threadRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [isOpen, turns, pendingQuestion, isLoading])
+
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`
+  }, [question, isOpen])
 
   // Track 15s loading timer
   useEffect(() => {
@@ -199,6 +217,7 @@ export default function AskSheet({
     stopVoiceRecognition()
     setIsLoading(true)
     setAskError(null)
+    setPendingQuestion(targetQ)
     setQuestion('')
 
     const history = turns
@@ -222,6 +241,7 @@ export default function AskSheet({
         else throw err
       }
       if (!resp.answer && !resp.not_found) {
+        setPendingQuestion(null)
         setQuestion(targetQ)
         setAskError(t.retry || 'Try again')
         return
@@ -240,10 +260,12 @@ export default function AskSheet({
         answered_from: resp.answered_from,
         lang: resolveLang(lang),
       }
+      setPendingQuestion(null)
       setThread((prev) => (
         prev.key === threadKey ? { key: threadKey, turns: [...prev.turns, nextTurn] } : prev
       ))
     } catch (err: any) {
+      setPendingQuestion(null)
       setQuestion(targetQ)
       if (err.errorCode === 'ask_unverified') {
         setAskError(t.askUnverified || "I couldn't verify an answer. Check the original.")
@@ -255,30 +277,36 @@ export default function AskSheet({
     }
   }
 
-  const suggestionChips = turns.length
+  const suggestionChips = turns.length || pendingQuestion
     ? []
     : starterChipKeys(result.document_kind || result.doc_type).map((key) => t[key]).filter(Boolean)
+
+  const userBubble = (text: string) => (
+    <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35] break-words">
+      {text}
+    </div>
+  )
 
   return (
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
       title={t.askBtnLabel || 'Ask'}
-      maxHeight="max-h-[92vh]"
+      fill
     >
-      <div className="flex flex-col gap-4 pt-1">
-        {/* Header */}
-        <div className="flex items-start justify-between">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 pt-1">
+        <div className="flex shrink-0 items-start justify-between">
           <div className="flex flex-col gap-0.5">
             <h2 className="sv-display m-0 text-[36px] leading-none text-[#1A1A1A]">
               {t.askBtnLabel || 'Ask'}<span className="text-[#D9603B]">.</span>
             </h2>
             <span className="text-[14px] text-[#575B58]">{t.askHint || 'Type or speak, in any of 9 languages'}</span>
-            {turns.length > 0 && (
+            {(turns.length > 0 || pendingQuestion) && (
               <button
                 type="button"
                 onClick={() => {
                   clearedRef.current = true
+                  setPendingQuestion(null)
                   setThread({ key: threadKey, turns: [] })
                 }}
                 className="self-start mt-1 text-[13px] font-semibold text-[#575B58] underline"
@@ -292,92 +320,11 @@ export default function AskSheet({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {suggestionChips.map((chip, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                setQuestion(chip)
-                handleAskSubmit(chip)
-              }}
-              className="sv-press h-10 px-3.5 rounded-[20px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[14px] text-[#1A1A1A]"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-
-        {/* Input Bar with Mic and Counter */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-end gap-2">
-            <textarea
-              value={question}
-              maxLength={500}
-              rows={2}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleAskSubmit()
-                }
-              }}
-              placeholder={t.askPlaceholder || 'Type your question…'}
-              aria-label={t.askPlaceholder || 'Your question'}
-              className="min-w-0 flex-1 resize-none bg-transparent border-[1.5px] border-[#1A1A1A] rounded-[24px] px-[18px] py-3 text-[15.5px] font-medium leading-snug text-[#1A1A1A] placeholder-[#575B58] outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => void handleToggleMic()}
-              className={`w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#D9603B] text-[#1A1A1A] animate-pulse' : 'bg-[#F4F5F2] text-[#1A1A1A]'}`}
-              aria-label={isListening ? (t.stopListening || 'Stop') : (t.speakQuestion || 'Speak your question')}
-            >
-              {isListening ? <span className="font-mono text-[13px] font-bold">{recordSeconds}</span> : <MicIcon className="w-5 h-5" />}
-            </button>
-            <button
-              type="button"
-              disabled={!question.trim() || isLoading}
-              onClick={() => handleAskSubmit()}
-              className="sv-press w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"
-              aria-label="Send"
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <SendIcon className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-
-          {/* Character Counter (visible from 450) */}
-          {question.length >= 450 && (
-            <span className="text-[11px] font-mono text-[#5E636B] text-right px-1">
-              {question.length}/500
-            </span>
-          )}
-
-          {speechError && (
-            <span className="text-xs text-[#B42318] px-1">{speechError}</span>
-          )}
-        </div>
-
-        {/* Loading Indicator with "Still working..." after 15s */}
-        {isLoading && (
-          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F6F6F3] border border-[#E6E6E1] text-xs text-[#5E636B] animate-card-in">
-            <div className="w-3.5 h-3.5 border-2 border-[#034F46]/30 border-t-[#034F46] rounded-full animate-spin shrink-0" />
-            <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askTyping || 'Writing…')}</span>
-          </div>
-        )}
-
-        {/* Answer Display Card (never displayed if error is present) */}
-        {turns.length > 0 && (
-          <div className="flex flex-col gap-3 max-h-[42vh] overflow-y-auto">
-            {turns.map((turn, index) => (
-              <div key={`${index}-${turn.question.slice(0, 24)}`} className="flex flex-col gap-3">
-                <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35] break-words">
-                  {turn.question}
-                </div>
-                <div className="self-start flex gap-2.5 max-w-[94%]">
+        <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pb-1">
+          {turns.map((turn, index) => (
+            <div key={`${index}-${turn.question.slice(0, 24)}`} className="flex flex-col gap-3">
+              {userBubble(turn.question)}
+              <div className="self-start flex gap-2.5 max-w-[94%]">
                   <span aria-hidden="true" className="w-[34px] h-[34px] shrink-0 box-border rounded-full bg-[#034F46] border-[1.5px] border-[#1A1A1A] text-[#F4F5F2] flex items-center justify-center text-[15px] font-bold">S<span className="text-[#D9603B]">.</span></span>
                   <div className="flex flex-col gap-2.5 bg-[#F0D7FF] border-[1.5px] border-[#1A1A1A] px-4 py-3 rounded-[6px_24px_24px_24px]">
                     {turn.answered_from === 'summary' && (
@@ -437,15 +384,35 @@ export default function AskSheet({
                       )}
                     </span>
                   </div>
-                </div>
               </div>
+            </div>
+          ))}
+          {pendingQuestion && userBubble(pendingQuestion)}
+          {isLoading && (
+            <div className="self-start flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#F6F6F3] border border-[#E6E6E1] text-xs text-[#5E636B]">
+              <div className="w-3.5 h-3.5 border-2 border-[#034F46]/30 border-t-[#034F46] rounded-full animate-spin shrink-0" />
+              <span>{isStillWorking ? (t.askStillWorking || 'Still working...') : (t.askTyping || 'Writing…')}</span>
+            </div>
+          )}
+        </div>
+
+        {suggestionChips.length > 0 && (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {suggestionChips.map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleAskSubmit(chip)}
+                className="sv-press h-10 px-3.5 rounded-[20px] border-[1.5px] border-[#1A1A1A] bg-transparent font-semibold text-[14px] text-[#1A1A1A]"
+              >
+                {chip}
+              </button>
             ))}
           </div>
         )}
 
-        {/* Error Card with Retry */}
         {askError && (
-          <div className="bg-[#FFF4DE] border border-[#F4DDB0] rounded-xl p-3 flex items-center justify-between gap-2 text-xs text-[#5A3500]">
+          <div className="shrink-0 bg-[#FFF4DE] border border-[#F4DDB0] rounded-xl p-3 flex items-center justify-between gap-2 text-xs text-[#5A3500]">
             <div className="flex items-center gap-2">
               <AlertTriangleIcon className="w-4 h-4 text-[#C2410C] shrink-0" />
               <span>{askError}</span>
@@ -459,6 +426,57 @@ export default function AskSheet({
             </button>
           </div>
         )}
+
+        <div className="flex shrink-0 flex-col gap-1">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={composerRef}
+              value={question}
+              maxLength={500}
+              rows={1}
+              enterKeyHint="send"
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleAskSubmit()
+                }
+              }}
+              placeholder={t.askPlaceholder || 'Type your question…'}
+              aria-label={t.askPlaceholder || 'Your question'}
+              className="min-h-12 max-h-32 min-w-0 flex-1 resize-none bg-transparent border-[1.5px] border-[#1A1A1A] rounded-[24px] px-[18px] py-3 text-[15.5px] font-medium leading-snug text-[#1A1A1A] placeholder-[#575B58] outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => void handleToggleMic()}
+              className={`w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] flex items-center justify-center ${isListening ? 'bg-[#D9603B] text-[#1A1A1A] animate-pulse' : 'bg-[#F4F5F2] text-[#1A1A1A]'}`}
+              aria-label={isListening ? (t.stopListening || 'Stop') : (t.speakQuestion || 'Speak your question')}
+            >
+              {isListening ? <span className="font-mono text-[13px] font-bold">{recordSeconds}</span> : <MicIcon className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              disabled={!question.trim() || isLoading}
+              onClick={() => handleAskSubmit()}
+              className="sv-press w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"
+              aria-label="Send"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <SendIcon className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+          {question.length >= 450 && (
+            <span className="text-[11px] font-mono text-[#5E636B] text-right px-1">
+              {question.length}/500
+            </span>
+          )}
+          {speechError && (
+            <span className="text-xs text-[#B42318] px-1">{speechError}</span>
+          )}
+        </div>
       </div>
     </Sheet>
   )

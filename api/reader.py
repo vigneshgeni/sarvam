@@ -59,9 +59,13 @@ PAGE_CHUNK: int = 5
 
 FALLBACK_MODEL_ID: str = os.environ.get("FALLBACK_MODEL", "gemini-2.5-flash")
 FALLBACK_TIMEOUT: float = float(os.environ.get("FALLBACK_TIMEOUT", 35.0))
+# One more try after the backup model says it is busy. Further tries add load.
+FALLBACK_BUSY_RETRIES: int = 1
 
-ASK_TIMEOUT: float = float(os.environ.get("ASK_TIMEOUT", 28.0))
+ASK_TIMEOUT: float = float(os.environ.get("ASK_TIMEOUT", 10.0))
 ASK_FALLBACK_TIMEOUT: float = float(os.environ.get("ASK_FALLBACK_TIMEOUT", 14.0))
+# A long PDF is read in page groups. Two at a time keeps a burst from crowding Gemini.
+EXPLAIN_CHUNK_WORKERS: int = max(1, int(os.environ.get("EXPLAIN_CHUNK_WORKERS", "2")))
 
 REQUEST_DEADLINE: float = 80.0  # seconds (explain server budget)
 ASK_DEADLINE: float = 45.0  # seconds (ask server budget)
@@ -129,6 +133,18 @@ def is_retryable_error(e: Exception) -> bool:
             "timeout",
             "cancelled",
         )
+    )
+
+
+def is_busy_error(e: Exception) -> bool:
+    """Gemini rejected the call because it is busy, not because the document failed."""
+    code = getattr(e, "code", None) or getattr(e, "status_code", None)
+    if code == 429:
+        return True
+    text = f"{e} {e.__class__.__name__}".lower()
+    return any(
+        phrase in text
+        for phrase in ("too many requests", "resource exhausted", "resource_exhausted")
     )
 
 
@@ -358,6 +374,7 @@ def call_gemini_with_retry(
     current_model = primary_model
     current_timeout = primary_timeout
     model_path = "fallback" if current_model == fb_model else "primary"
+    switched_to_fallback = False
 
     retries_on_current_model = 0
     max_retries_per_model = 3
@@ -492,6 +509,7 @@ def call_gemini_with_retry(
                 current_model = fb_model
                 current_timeout = fb_timeout
                 model_path = "fallback"
+                switched_to_fallback = True
                 retries_on_current_model = 0
                 total_retries += 1
                 if fallback_contents is not None:
@@ -509,8 +527,11 @@ def call_gemini_with_retry(
                 # Switch to fallback immediately without backoff sleep
                 continue
 
-            # On fallback model (or primary if no fallback): retry with backoff while budget remains
-            if retries_on_current_model >= max_retries_per_model:
+            # On fallback model (or primary if no fallback): retry with backoff while budget remains.
+            # A busy backup gets one more try, then the person sees a short retry message.
+            busy_on_backup = switched_to_fallback and is_busy_error(e)
+            retry_limit = FALLBACK_BUSY_RETRIES if busy_on_backup else max_retries_per_model
+            if retries_on_current_model >= retry_limit:
                 logger.info(
                     "gemini_call: endpoint=%s, model_path=%s, model=%s, input_tokens=0, output_tokens=0, thinking_tokens=0, attempts=%d, seconds=%.2f, status=503",
                     endpoint,
@@ -861,22 +882,38 @@ def read_document(
             mime = files_data[0][1]
             logger.info("explain_split: chunks=%d", len(chunks))
 
-            def one(chunk: Tuple[bytes, int, int]) -> ReaderResponse:
+            def one(chunk: Tuple[bytes, int, int]) -> Any:
                 data, start, end = chunk
-                # Each chunk runs at the same time, so each one gets a full
-                # request budget. The wall clock is the slower chunk, not the sum.
-                result = read_document_single_attempt(
-                    [(data, mime)],
-                    lang,
-                    deadline=time.time() + REQUEST_DEADLINE,
-                    page_start=start,
-                    page_end=end,
-                )
-                return _shift_result_pages(result, start, end)
+                # Each chunk gets a full request budget. The wall clock is the
+                # slower chunk, not the sum. A failed group is kept out of the merge.
+                try:
+                    result = read_document_single_attempt(
+                        [(data, mime)],
+                        lang,
+                        deadline=time.time() + REQUEST_DEADLINE,
+                        page_start=start,
+                        page_end=end,
+                    )
+                    return _shift_result_pages(result, start, end)
+                except Exception as exc:
+                    logger.info(
+                        "explain_chunk_failed: pages=%d-%d error=%s",
+                        start,
+                        end,
+                        type(exc).__name__,
+                    )
+                    return exc
 
-            with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
-                results = list(pool.map(one, chunks))
-            return _merge_chunk_results(results)
+            workers = min(EXPLAIN_CHUNK_WORKERS, len(chunks))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                outcomes = list(pool.map(one, chunks))
+            kept = [item for item in outcomes if isinstance(item, ReaderResponse)]
+            failed = len(outcomes) - len(kept)
+            if not kept:
+                raise next(item for item in outcomes if isinstance(item, Exception))
+            if failed:
+                logger.info("explain_partial: kept=%d failed=%d", len(kept), failed)
+            return _merge_chunk_results(kept)
     return read_document_single_attempt(files_data, lang, deadline=deadline)
 
 
@@ -1229,8 +1266,6 @@ def ask_document_single_attempt(
     contents.append(prompt)
 
     timeout_sec = timeout if timeout is not None else ASK_TIMEOUT
-    if timeout_sec < 25 and timeout is None:
-        timeout_sec = 25
     temperature, thinking = ask_call_settings(question)
 
     config = types.GenerateContentConfig(
