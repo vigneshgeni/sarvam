@@ -45,7 +45,7 @@ def test_ask_keeps_the_last_eight_turns_and_a_short_answer():
 
 
 def test_ask_gives_the_primary_model_time_and_a_short_context():
-    assert ASK_TIMEOUT >= 25
+    assert 8 <= ASK_TIMEOUT <= 12
     assert ASK_TIMEOUT + ASK_FALLBACK_TIMEOUT <= 45
     assert ask_call_settings("Why can haemoglobin be low?") == (0.3, 512)
     assert ask_call_settings("What is the haemoglobin value?") == (0.0, 0)
@@ -83,3 +83,73 @@ def test_general_ask_response_can_omit_a_quote():
     body = AskResponse(answer="HbA1c is a blood test.", answered_from="general", language="en")
     assert body.quote is None
     assert body.answered_from == "general"
+
+
+def test_a_busy_backup_model_is_retried_once():
+    from unittest.mock import MagicMock, patch
+    from google.genai import errors
+    from reader import GeminiServiceError, call_gemini_with_retry
+
+    busy = errors.ClientError(429, {"error": {"message": "too many requests"}})
+    client = MagicMock()
+    client.models.generate_content.side_effect = [busy, busy, busy]
+    seen = []
+
+    def record(*_args, **kwargs):
+        seen.append(kwargs.get("model"))
+        raise busy
+
+    client.models.generate_content.side_effect = record
+    with patch("time.sleep", return_value=None):
+        try:
+            call_gemini_with_retry(
+                client=client,
+                model="gemini-3.7-flash",
+                contents=["question"],
+                config=MagicMock(),
+                endpoint="ask",
+                deadline=30,
+            )
+            raise AssertionError("a busy backup should stop after one retry")
+        except GeminiServiceError as exc:
+            assert exc.status_code == 503
+    assert seen == ["gemini-3.7-flash", "gemini-2.5-flash", "gemini-2.5-flash"]
+
+
+def test_explain_limits_parallel_chunks_and_keeps_the_ones_that_worked():
+    from unittest.mock import patch
+    from concurrent.futures import ThreadPoolExecutor
+    from models import ReaderResponse
+    from reader import GeminiServiceError, read_document
+
+    seen = {}
+
+    class RecordingPool:
+        def __init__(self, max_workers):
+            seen["workers"] = max_workers
+            self._pool = ThreadPoolExecutor(max_workers=max_workers)
+
+        def __enter__(self):
+            self._pool.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self._pool.__exit__(*args)
+
+        def map(self, fn, items):
+            return self._pool.map(fn, items)
+
+    def fake_single(_files, _lang, deadline=None, page_start=None, page_end=None):
+        if page_start == 6:
+            raise GeminiServiceError("busy", 503)
+        return ReaderResponse(title=f"Pages {page_start}-{page_end}", summary=["Kept."], language="en")
+
+    with patch("reader.pdf_page_chunks", return_value=[(b"a", 1, 5), (b"b", 6, 10), (b"c", 11, 12)]), \
+         patch("reader.read_document_single_attempt", side_effect=fake_single), \
+         patch("reader.ThreadPoolExecutor", RecordingPool):
+        result = read_document([(b"%PDF", "application/pdf")], "en")
+
+    assert seen["workers"] == 2
+    assert result.title == "Pages 1-5"
+    assert [section for section in (result.sections or [])] == []
+    assert "Kept." in result.summary

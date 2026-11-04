@@ -133,7 +133,9 @@ export default function SummaryCard({
     ? (t.nDocuments || '{n} documents').replace('{n}', String(partCount))
     : (getLocalisedDocType(lang, docType) || docType)
   const dateLabel = formatChipDate(result.report_date_iso || result.letter_date, lang)
-  const outsideCount = countOutside([...(result.sections || []), ...(result.parts || []).flatMap((part) => part.sections || [])])
+  const partSections = (result.parts || []).flatMap((part) => part.sections || [])
+  const allSections = partSections.length > 0 ? partSections : (result.sections || [])
+  const outsideCount = countOutside(allSections)
   const headline = outsideCount > 0
     ? (t.valuesOutside || '{n} values are outside the printed range').replace('{n}', String(outsideCount))
     : (result.glance?.headline || result.title)

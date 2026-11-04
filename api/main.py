@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 from starlette.concurrency import run_in_threadpool
 
@@ -387,6 +387,7 @@ async def explain(
     files: List[UploadFile] = File(...),
     lang: str = Form("en"),
     password: Optional[str] = Form(None),
+    stream: Optional[bool] = Form(False),
 ):
     start_time = time.time()
     start_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -526,6 +527,64 @@ async def explain(
         queue_wait,
     )
 
+    stream_requested = bool(
+        stream
+        or request.headers.get("accept") == "text/event-stream"
+        or request.query_params.get("stream", "").lower() in ("true", "1")
+    )
+
+    if stream_requested:
+        import queue
+        import threading
+
+        q: queue.Queue = queue.Queue()
+        sentinel = object()
+
+        def producer():
+            try:
+                for event in reader.stream_read_document(file_data_list, lang, deadline):
+                    q.put(event)
+            except Exception as exc:
+                q.put(exc)
+            finally:
+                q.put(sentinel)
+
+        threading.Thread(target=producer, daemon=True).start()
+
+        async def stream_generator():
+            try:
+                while True:
+                    while q.empty():
+                        await asyncio.sleep(0.05)
+                    item = q.get_nowait()
+                    if item is sentinel:
+                        break
+                    if isinstance(item, Exception):
+                        yield f"event: error\ndata: {json.dumps({'error': str(item)})}\n\n"
+                        break
+                    if item.get("step") == "complete":
+                        res_obj = format_explain_response(
+                            item["result"],
+                            file_data_list,
+                            pdf_pages_text,
+                            lang,
+                            start_time,
+                            start_dt,
+                            queue_wait,
+                            response,
+                        )
+                        if isinstance(res_obj, JSONResponse):
+                            payload = json.loads(res_obj.body.decode("utf-8"))
+                        else:
+                            payload = res_obj.model_dump()
+                        yield f"event: complete\ndata: {json.dumps(payload)}\n\n"
+                    else:
+                        yield f"event: {item['step']}\ndata: {json.dumps(item)}\n\n"
+            finally:
+                GEMINI_SEMAPHORE.release()
+
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
     # Run Gemini Reader with AnyIO thread pool so event loop remains completely unblocked
     try:
         reader_fn = (
@@ -581,6 +640,28 @@ async def explain(
     finally:
         GEMINI_SEMAPHORE.release()
 
+    return format_explain_response(
+        reader_result,
+        file_data_list,
+        pdf_pages_text,
+        lang,
+        start_time,
+        start_dt,
+        queue_wait,
+        response,
+    )
+
+
+def format_explain_response(
+    reader_result: reader.ReaderResponse,
+    file_data_list: List[Tuple[bytes, str]],
+    pdf_pages_text: Optional[List[str]],
+    lang: str,
+    start_time: float,
+    start_dt: datetime.datetime,
+    queue_wait: float,
+    response: Optional[Response] = None,
+):
     # Log ONLY non-content metrics: endpoint, start, finish, queue_wait, seconds, status
     elapsed = time.time() - start_time
     finish_dt = datetime.datetime.now(datetime.timezone.utc)
