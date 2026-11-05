@@ -1,7 +1,29 @@
 import { registerPlugin } from '@capacitor/core'
 import { isNative } from './isNative.js'
 
-const NativePlugin = registerPlugin('SarvamLiveActivity')
+const NativePlugin = registerPlugin('SarvamLiveActivity', {
+  // If native header wasn't ready at registration time, route to window.Capacitor.nativePromise directly
+  ios: {
+    isAvailable: async () => window.Capacitor?.nativePromise('SarvamLiveActivity', 'isAvailable', {}),
+    startActivity: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'startActivity', options),
+    updateActivity: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'updateActivity', options),
+    updateScanProgress: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'updateScanProgress', options),
+    markScanFailed: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'markScanFailed', options),
+    endActivity: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'endActivity', options),
+    playAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'playAudio', options),
+    pauseAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'pauseAudio', options),
+    resumeAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'resumeAudio', options),
+    seekAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'seekAudio', options),
+    stopAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'stopAudio', options),
+    startNativeScan: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'startNativeScan', options),
+    checkPendingScanResult: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'checkPendingScanResult', options),
+    cancelNativeScan: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'cancelNativeScan', options),
+    previewDocument: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'previewDocument', options),
+    shareContent: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'shareContent', options),
+    getLastOpenedURL: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'getLastOpenedURL', options),
+    echo: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'echo', options),
+  },
+})
 
 // In-memory reference for the current active Live Activity state
 let currentActiveState = null
@@ -31,12 +53,12 @@ export async function startScanActivity(params) {
   // Lock Screen is visible to anyone; default to generic title "Your document"
   // Setting "Show document name on Lock Screen" controls whether real name displays.
   const showDocumentName = getShowDocNameOnLockScreen()
-  const docTitle = params.fileName || 'Your document'
+  const docTitle = showDocumentName ? (params.fileName || 'Your document') : 'Your document'
   const state = {
     docId: params.docId,
     phase: 'scanning',
     title: docTitle,
-    fileName: params.fileName,
+    fileName: showDocumentName ? params.fileName : undefined,
     fileCount: params.fileCount || 1,
     progress: 0,
     stage: 'Reading your document',
@@ -112,6 +134,9 @@ export async function markScanReady(params) {
 
 export async function markScanFailed(params) {
   if (!isNative()) return
+  if (currentActiveState && currentActiveState.phase === 'failed') {
+    return
+  }
   const showDocumentName = getShowDocNameOnLockScreen()
   if (!currentActiveState) {
     currentActiveState = {
@@ -319,5 +344,31 @@ export async function getLastOpenedURL() {
   } catch (err) {
     console.warn('[SarvamNative] [LiveActivity] getLastOpenedURL failed:', err)
     return null
+  }
+}
+
+export async function echoBridge(value = 'ping') {
+  if (!isNative()) return { value, bridgeActive: false }
+  try {
+    return await NativePlugin.echo({ value })
+  } catch (err) {
+    console.error('[SarvamNative] [Bridge] echo failed:', err)
+    return null
+  }
+}
+
+if (typeof window !== 'undefined') {
+  // Expose on window for easy simulator / webview console debugging and verification
+  window.__sarvamEchoBridge = echoBridge
+  window.__sarvamNativePlugin = NativePlugin
+
+  if (isNative()) {
+    NativePlugin.echo({ value: 'startup_check' })
+      .then((res) => {
+        console.log('[SarvamNative] [Bridge] Startup bridge check OK:', res)
+      })
+      .catch((err) => {
+        console.error('[SarvamNative] [Bridge] Startup bridge check FAILED:', err)
+      })
   }
 }

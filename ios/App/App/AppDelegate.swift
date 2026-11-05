@@ -241,8 +241,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 class SarvamBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
-        bridge?.registerPluginType(SarvamLiveActivityPlugin.self)
-        SarvamNativeLogger.info("[Lifecycle] SarvamBridgeViewController registered SarvamLiveActivityPlugin")
+        let plugin = SarvamLiveActivityPlugin()
+        bridge?.registerPluginInstance(plugin)
+        SarvamNativeLogger.info("[Bridge] SarvamBridgeViewController registered SarvamLiveActivityPlugin instance on bridge: jsName=\(plugin.jsName), identifier=\(plugin.identifier)")
+        if let registered = bridge?.plugin(withName: plugin.jsName) {
+            SarvamNativeLogger.info("[Bridge] Verified registration: bridge has plugin \(type(of: registered))")
+        } else {
+            SarvamNativeLogger.error("[Bridge] CRITICAL: bridge plugin lookup for \(plugin.jsName) returned nil!")
+        }
     }
 
     override func viewDidLoad() {
@@ -260,6 +266,143 @@ class SarvamBridgeViewController: CAPBridgeViewController {
             SarvamNativeLogger.info("[Lifecycle] WKWebView configured with swipe gestures and #F4F5F2 background")
         }
     }
+
+    #if DEBUG
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if ProcessInfo.processInfo.arguments.contains("--run-bridge-matrix") {
+            runBridgeVerificationMatrix()
+        }
+    }
+
+    private func runBridgeVerificationMatrix() {
+        guard let web = webView else { return }
+        SarvamNativeLogger.info("[BridgeTest] Launch argument --run-bridge-matrix detected; starting JS round-trip test matrix...")
+        let jsTest = """
+        (async function() {
+            console.log('[BridgeTest] JS Bridge Test Runner started in WKWebView');
+            const plugin = window.__sarvamNativePlugin || window.Capacitor?.Plugins?.SarvamLiveActivity;
+            if (!plugin) {
+                console.error('[BridgeTest] Plugin SarvamLiveActivity not found on window');
+                return;
+            }
+            try {
+                // 1. echo
+                const echoRes = await plugin.echo({ value: 'hello_bridge' });
+                console.log('[BridgeTest] 1. echo result: ' + JSON.stringify(echoRes));
+
+                // 2. isAvailable
+                const availRes = await plugin.isAvailable();
+                console.log('[BridgeTest] 2. isAvailable result: ' + JSON.stringify(availRes));
+
+                // 3. startActivity
+                const startRes = await plugin.startActivity({
+                    docId: 'test-matrix-doc',
+                    phase: 'scanning',
+                    title: 'Your document',
+                    fileCount: 1,
+                    progress: 10,
+                    stage: 'Reading document',
+                    showDocumentName: false
+                });
+                console.log('[BridgeTest] 3. startActivity result: ' + JSON.stringify(startRes));
+
+                // 4. updateActivity
+                const updateRes = await plugin.updateActivity({
+                    docId: 'test-matrix-doc',
+                    phase: 'scanning',
+                    progress: 50,
+                    stage: 'Analyzing document…'
+                });
+                console.log('[BridgeTest] 4. updateActivity result: ' + JSON.stringify(updateRes));
+
+                // 5. updateScanProgress (alias)
+                const scanProgRes = await plugin.updateScanProgress({
+                    docId: 'test-matrix-doc',
+                    progress: 60,
+                    stageText: 'Still analyzing…'
+                });
+                console.log('[BridgeTest] 5. updateScanProgress result: ' + JSON.stringify(scanProgRes));
+
+                // 6. markScanFailed (alias)
+                const failRes = await plugin.markScanFailed({
+                    docId: 'test-matrix-doc',
+                    errorMessage: 'Service is busy'
+                });
+                console.log('[BridgeTest] 6. markScanFailed result: ' + JSON.stringify(failRes));
+
+                // 7. playAudio
+                const playRes = await plugin.playAudio({
+                    title: 'Your document',
+                    langLabel: 'English',
+                    duration: 30
+                });
+                console.log('[BridgeTest] 7. playAudio result: ' + JSON.stringify(playRes));
+
+                // 8. pauseAudio
+                const pauseRes = await plugin.pauseAudio();
+                console.log('[BridgeTest] 8. pauseAudio result: ' + JSON.stringify(pauseRes));
+
+                // 9. resumeAudio
+                const resumeRes = await plugin.resumeAudio();
+                console.log('[BridgeTest] 9. resumeAudio result: ' + JSON.stringify(resumeRes));
+
+                // 10. seekAudio
+                const seekRes = await plugin.seekAudio({ position: 10 });
+                console.log('[BridgeTest] 10. seekAudio result: ' + JSON.stringify(seekRes));
+
+                // 11. stopAudio
+                const stopRes = await plugin.stopAudio();
+                console.log('[BridgeTest] 11. stopAudio result: ' + JSON.stringify(stopRes));
+
+                // 12. startNativeScan
+                const scanRes = await plugin.startNativeScan({
+                    docId: 'test-matrix-doc',
+                    title: 'Your document',
+                    lang: 'en',
+                    apiBase: 'http://127.0.0.1:8080',
+                    showDocumentName: false,
+                    files: [{
+                        name: 'sample.pdf',
+                        type: 'application/pdf',
+                        base64: 'JVBERi0xLjQKJcTl8uXrCg=='
+                    }]
+                });
+                console.log('[BridgeTest] 12. startNativeScan result: ' + JSON.stringify(scanRes));
+
+                // 13. checkPendingScanResult
+                const checkRes = await plugin.checkPendingScanResult({ docId: 'test-matrix-doc' });
+                console.log('[BridgeTest] 13. checkPendingScanResult result: ' + JSON.stringify(checkRes));
+
+                // 14. cancelNativeScan
+                const cancelRes = await plugin.cancelNativeScan({ docId: 'test-matrix-doc' });
+                console.log('[BridgeTest] 14. cancelNativeScan result: ' + JSON.stringify(cancelRes));
+
+                // 15. getLastOpenedURL
+                const urlRes = await plugin.getLastOpenedURL();
+                console.log('[BridgeTest] 15. getLastOpenedURL result: ' + JSON.stringify(urlRes));
+
+                // 16. endActivity
+                const endRes = await plugin.endActivity({ docId: 'test-matrix-doc' });
+                console.log('[BridgeTest] 16. endActivity result: ' + JSON.stringify(endRes));
+
+                console.log('[BridgeTest] ALL 16 BRIDGE METHODS COMPLETED ROUND-TRIP SUCCESSFULLY!');
+            } catch (err) {
+                console.error('[BridgeTest] Method failed with error:', err);
+            }
+        })();
+        """
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            web.evaluateJavaScript(jsTest) { _, error in
+                if let error = error {
+                    SarvamNativeLogger.error("[BridgeTest] evaluateJavaScript failed: \(error)")
+                } else {
+                    SarvamNativeLogger.info("[BridgeTest] evaluateJavaScript dispatched successfully")
+                }
+            }
+        }
+    }
+    #endif
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .darkContent

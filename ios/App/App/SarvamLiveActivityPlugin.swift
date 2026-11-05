@@ -26,7 +26,10 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cancelNativeScan", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "previewDocument", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "shareContent", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getLastOpenedURL", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getLastOpenedURL", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateScanProgress", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "markScanFailed", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise)
     ]
 
     private var activeActivity: Activity<SarvamActivityAttributes>?
@@ -68,20 +71,37 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    @objc func echo(_ call: CAPPluginCall) {
+        let value = call.getString("value") ?? "pong"
+        SarvamNativeLogger.info("[Bridge] echo called via bridge: value=\(value)")
+        call.resolve(["value": value, "bridgeActive": true])
+    }
+
+    @objc func updateScanProgress(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] updateScanProgress called via bridge alias -> delegating to updateActivity")
+        updateActivity(call)
+    }
+
+    @objc func markScanFailed(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] markScanFailed called via bridge alias -> delegating to updateActivity")
+        updateActivity(call)
+    }
+
     @objc func isAvailable(_ call: CAPPluginCall) {
         if #available(iOS 16.1, *) {
             let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
-            SarvamNativeLogger.info("[ActivityKit] isAvailable checked: areActivitiesEnabled=\(areEnabled)")
+            SarvamNativeLogger.info("[Bridge] isAvailable called: areActivitiesEnabled=\(areEnabled)")
             call.resolve(["available": areEnabled])
         } else {
-            SarvamNativeLogger.info("[ActivityKit] isAvailable checked: iOS < 16.1 (false)")
+            SarvamNativeLogger.info("[Bridge] isAvailable called: iOS < 16.1 (false)")
             call.resolve(["available": false])
         }
     }
 
     @objc func startActivity(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] startActivity called from JS")
         guard #available(iOS 16.1, *) else {
-            SarvamNativeLogger.error("[ActivityKit] startActivity rejected: ActivityKit is not supported on this iOS version")
+            SarvamNativeLogger.error("[Bridge] startActivity rejected: ActivityKit is not supported on this iOS version")
             call.reject("ActivityKit is not supported on this iOS version")
             return
         }
@@ -90,10 +110,10 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let activeCount = Activity<SarvamActivityAttributes>.activities.count
         let phase = call.getString("phase") ?? "scanning"
         let docId = call.getString("docId") ?? "doc"
-        SarvamNativeLogger.info("[ActivityKit] startActivity called: docId=\(docId) phase=\(phase) areActivitiesEnabled=\(areEnabled) activeCount=\(activeCount)")
+        SarvamNativeLogger.info("[Bridge] startActivity parameters: docId=\(docId) phase=\(phase) areActivitiesEnabled=\(areEnabled) activeCount=\(activeCount)")
 
         guard areEnabled else {
-            SarvamNativeLogger.error("[ActivityKit] startActivity FAILED: Live Activities are disabled by the user in Settings (areActivitiesEnabled=false)")
+            SarvamNativeLogger.error("[Bridge] startActivity FAILED: Live Activities are disabled by the user in Settings (areActivitiesEnabled=false)")
             call.reject("Live Activities are disabled by the user in Settings")
             return
         }
@@ -161,8 +181,9 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func updateActivity(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] updateActivity called from JS")
         guard let activity = activeActivity else {
-            SarvamNativeLogger.warning("[ActivityKit] updateActivity skipped: no active activity")
+            SarvamNativeLogger.warning("[Bridge] updateActivity skipped: no active activity")
             call.resolve(["success": false, "reason": "No active activity"])
             return
         }
@@ -224,23 +245,23 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func endActivity(_ call: CAPPluginCall) {
-        SarvamNativeLogger.info("[ActivityKit] endActivity called")
+        SarvamNativeLogger.info("[Bridge] endActivity called from JS")
         endScanningBackgroundTask()
         SarvamAudioPlayer.shared.stop()
 
         guard let activity = activeActivity else {
-            SarvamNativeLogger.info("[ActivityKit] endActivity: no active activity to end")
+            SarvamNativeLogger.info("[Bridge] endActivity: no active activity to end")
             call.resolve(["success": true])
             return
         }
 
         let dismissal: ActivityUIDismissalPolicy = .immediate
         Task {
-            SarvamNativeLogger.info("[ActivityKit] Ending active activity id=\(activity.id)")
+            SarvamNativeLogger.info("[Bridge] Ending active activity id=\(activity.id)")
             await activity.end(nil, dismissalPolicy: dismissal)
             self.activeActivity = nil
             self.lastState = nil
-            SarvamNativeLogger.info("[ActivityKit] endActivity SUCCESS id=\(activity.id)")
+            SarvamNativeLogger.info("[Bridge] endActivity SUCCESS id=\(activity.id)")
             call.resolve(["success": true])
         }
     }
@@ -252,6 +273,8 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let langLabel = call.getString("langLabel") ?? "English"
         let duration = call.getDouble("duration") ?? 90
         let startPos = call.getDouble("startPosition") ?? 0
+
+        SarvamNativeLogger.info("[Bridge] playAudio called from JS: title=\(title) duration=\(duration) hasData=\(audioData != nil)")
 
         var url: URL?
         if let audioUrlString = audioUrlString {
@@ -267,27 +290,36 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             startPosition: startPos
         )
 
+        SarvamNativeLogger.info("[Bridge] playAudio resolved")
         call.resolve(["success": true])
     }
 
     @objc func pauseAudio(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] pauseAudio called from JS")
         SarvamAudioPlayer.shared.pause()
+        SarvamNativeLogger.info("[Bridge] pauseAudio resolved")
         call.resolve(["success": true])
     }
 
     @objc func resumeAudio(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] resumeAudio called from JS")
         SarvamAudioPlayer.shared.resume()
+        SarvamNativeLogger.info("[Bridge] resumeAudio resolved")
         call.resolve(["success": true])
     }
 
     @objc func seekAudio(_ call: CAPPluginCall) {
         let position = call.getDouble("position") ?? 0
+        SarvamNativeLogger.info("[Bridge] seekAudio called from JS: position=\(position)")
         SarvamAudioPlayer.shared.seek(to: position)
+        SarvamNativeLogger.info("[Bridge] seekAudio resolved")
         call.resolve(["success": true])
     }
 
     @objc func stopAudio(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[Bridge] stopAudio called from JS")
         SarvamAudioPlayer.shared.stop()
+        SarvamNativeLogger.info("[Bridge] stopAudio resolved")
         call.resolve(["success": true])
     }
 
@@ -434,10 +466,10 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         )
 
         if started {
-            SarvamNativeLogger.info("[ScanWorker] ScanWorker successfully scheduled upload task")
+            SarvamNativeLogger.info("[Bridge] startNativeScan resolved: docId=\(docId)")
             call.resolve(["success": true, "docId": docId])
         } else {
-            SarvamNativeLogger.error("[ScanWorker] ScanWorker failed to start scan task")
+            SarvamNativeLogger.error("[Bridge] startNativeScan rejected: failed to start scan task")
             call.reject("Failed to initiate native scan")
         }
     }
@@ -448,7 +480,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if FileManager.default.fileExists(atPath: resultFile.path) {
             if let data = try? Data(contentsOf: resultFile),
                let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                SarvamNativeLogger.info("[HandOff] checkPendingScanResult docId=\(docId) status=ready bytes=\(data.count)")
+                SarvamNativeLogger.info("[Bridge] checkPendingScanResult docId=\(docId) status=ready bytes=\(data.count)")
                 call.resolve([
                     "ready": true,
                     "result": json
@@ -461,7 +493,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if FileManager.default.fileExists(atPath: errorFile.path) {
             if let data = try? Data(contentsOf: errorFile),
                let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                SarvamNativeLogger.warning("[HandOff] checkPendingScanResult docId=\(docId) status=error")
+                SarvamNativeLogger.warning("[Bridge] checkPendingScanResult docId=\(docId) status=error")
                 call.resolve([
                     "ready": false,
                     "error": true,
@@ -472,7 +504,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let isScanning = SarvamScanWorker.shared.isScanning(docId: docId)
-        SarvamNativeLogger.debug("[HandOff] checkPendingScanResult docId=\(docId) status=running(\(isScanning))")
+        SarvamNativeLogger.info("[Bridge] checkPendingScanResult docId=\(docId) status=running(\(isScanning))")
         call.resolve([
             "ready": false,
             "running": isScanning
@@ -480,8 +512,9 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func cancelNativeScan(_ call: CAPPluginCall) {
-        SarvamNativeLogger.info("[ScanWorker] cancelNativeScan called")
+        SarvamNativeLogger.info("[Bridge] cancelNativeScan called from JS")
         SarvamScanWorker.shared.cancelActiveScan()
+        SarvamNativeLogger.info("[Bridge] cancelNativeScan resolved")
         call.resolve(["success": true])
     }
 
@@ -491,6 +524,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let self = self else { return }
             let fileName = call.getString("fileName") ?? "document.pdf"
             let title = call.getString("title") ?? fileName
+            SarvamNativeLogger.info("[Bridge] previewDocument called from JS: fileName=\(fileName) title=\(title)")
 
             var targetURL: URL?
             if let base64 = call.getString("base64"), let data = Data(base64Encoded: base64) {
@@ -502,6 +536,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             }
 
             guard let fileURL = targetURL else {
+                SarvamNativeLogger.error("[Bridge] previewDocument rejected: no document data")
                 call.reject("No document data or URL provided")
                 return
             }
@@ -514,9 +549,11 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
             if let presenter = self.bridge?.viewController {
                 presenter.present(previewController, animated: true) {
+                    SarvamNativeLogger.info("[Bridge] previewDocument resolved")
                     call.resolve(["success": true])
                 }
             } else {
+                SarvamNativeLogger.error("[Bridge] previewDocument rejected: no presenter")
                 call.reject("No view controller to present preview")
             }
         }
@@ -539,7 +576,10 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 items.append(tempURL)
             }
 
+            SarvamNativeLogger.info("[Bridge] shareContent called from JS: itemsCount=\(items.count)")
+
             guard !items.isEmpty else {
+                SarvamNativeLogger.error("[Bridge] shareContent rejected: items empty")
                 call.reject("Nothing to share")
                 return
             }
@@ -552,9 +592,11 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                     popover.permittedArrowDirections = []
                 }
                 presenter.present(activityVC, animated: true) {
+                    SarvamNativeLogger.info("[Bridge] shareContent resolved")
                     call.resolve(["success": true])
                 }
             } else {
+                SarvamNativeLogger.error("[Bridge] shareContent rejected: no presenter")
                 call.reject("No view controller to present share sheet")
             }
         }
@@ -563,6 +605,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func getLastOpenedURL(_ call: CAPPluginCall) {
         let url = AppDelegate.lastOpenedURL
         AppDelegate.lastOpenedURL = nil
+        SarvamNativeLogger.info("[Bridge] getLastOpenedURL called from JS: returning url=\(url ?? "nil")")
         call.resolve(["url": url as Any])
     }
 }

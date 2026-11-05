@@ -255,6 +255,15 @@ export default function ReadingScreen({
   const arrivedRef = useRef(false)
   arrivedRef.current = !!arrived
 
+  const hasMarkedReadyRef = useRef(false)
+  const hasMarkedFailedRef = useRef(false)
+
+  // Reset completion flags when files change or error is cleared (retry)
+  useEffect(() => {
+    hasMarkedReadyRef.current = false
+    hasMarkedFailedRef.current = false
+  }, [files, error])
+
   // Live Activity integration (strictly no-op on web/PWA)
   useEffect(() => {
     const docId = files[0]?.name || 'doc'
@@ -275,16 +284,22 @@ export default function ReadingScreen({
   useEffect(() => {
     const docId = files[0]?.name || 'doc'
     if (arrived) {
-      markScanReady({
-        docId,
-        language: lang,
-        languageLabel: nativeLangName,
-      })
+      if (!hasMarkedReadyRef.current) {
+        hasMarkedReadyRef.current = true
+        markScanReady({
+          docId,
+          language: lang,
+          languageLabel: nativeLangName,
+        })
+      }
     } else if (error) {
-      markScanFailed({
-        docId,
-        errorMessage: error.messageLocal || 'Service is busy',
-      })
+      if (!hasMarkedFailedRef.current) {
+        hasMarkedFailedRef.current = true
+        markScanFailed({
+          docId,
+          errorMessage: error.messageLocal || 'Service is busy',
+        })
+      }
     } else {
       updateScanProgress({
         docId,

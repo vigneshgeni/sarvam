@@ -121,3 +121,8 @@ export declare function shareContent(params: {
 }): Promise<any>
 
 export declare function getLastOpenedURL(): Promise<string | null>
+
+export declare function echoBridge(value?: string): Promise<{
+  value: string
+  bridgeActive: boolean
+} | null>
