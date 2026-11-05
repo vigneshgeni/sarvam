@@ -279,6 +279,7 @@
   "easyReadMode": "সহজ পাঠ মোড (পরিষ্কার ফন্ট এবং ব্যবধান)",
   "reduceMotion": "গতি কমান",
   "largerTapTargets": "বড় ট্যাপ বাটন",
+  "showDocNameOnLockScreen": "লক স্ক্রিনে নথির নাম দেখান",
   "preview": "প্রিভিউ",
   "reset": "রিসেট",
   "passwordRequiredTitle": "এই PDF লক করা",

@@ -181,6 +181,7 @@
   "highContrast": "High contrast",
   "reduceMotion": "Reduce motion",
   "largerTapTargets": "Larger tap targets",
+  "showDocNameOnLockScreen": "Show document name on Lock Screen",
   "preview": "Preview",
   "reset": "Reset",
   "passwordRequiredTitle": "This PDF is locked",

@@ -23,8 +23,12 @@ export interface ActivityState {
   currentTime?: number
   duration?: number
   allowListen: boolean
+  showDocumentName?: boolean
   errorMessage?: string
 }
+
+export declare function getShowDocNameOnLockScreen(): boolean
+export declare function setShowDocNameOnLockScreen(val: boolean): void
 
 export declare function getCurrentActivityState(): ActivityState | null
 

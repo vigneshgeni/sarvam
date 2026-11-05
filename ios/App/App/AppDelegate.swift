@@ -8,13 +8,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        #if DEBUG
         handleDebugLaunchArguments()
+        #endif
         return true
     }
 
+    #if DEBUG
     private func handleDebugLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
         print("SARVAM_DEBUG: Launch args = \(args)")
+        let showDoc = args.contains("--show-doc-name")
 
         var stateToStart: SarvamActivityAttributes.ContentState?
 
@@ -29,7 +33,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 stage: "Checking against the document",
                 secondsRemaining: 15,
                 language: "en",
-                languageLabel: "English"
+                languageLabel: "English",
+                showDocumentName: showDoc
             )
         } else if args.contains("--start-ready") {
             stateToStart = SarvamActivityAttributes.ContentState(
@@ -43,7 +48,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 secondsRemaining: 0,
                 language: "en",
                 languageLabel: "English",
-                allowListen: true
+                allowListen: true,
+                showDocumentName: showDoc
             )
         } else if args.contains("--start-listen-en") {
             stateToStart = SarvamActivityAttributes.ContentState(
@@ -59,7 +65,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 voiceGender: "female",
                 currentTime: 45,
                 duration: 90,
-                allowListen: true
+                allowListen: true,
+                showDocumentName: showDoc
             )
         } else if args.contains("--start-listen-ta") {
             stateToStart = SarvamActivityAttributes.ContentState(
@@ -75,7 +82,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 voiceGender: "female",
                 currentTime: 45,
                 duration: 90,
-                allowListen: true
+                allowListen: true,
+                showDocumentName: showDoc
             )
         } else if args.contains("--start-listen-paused") {
             stateToStart = SarvamActivityAttributes.ContentState(
@@ -91,7 +99,55 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 voiceGender: "female",
                 currentTime: 45,
                 duration: 90,
-                allowListen: true
+                allowListen: true,
+                showDocumentName: showDoc
+            )
+        } else if args.contains("--start-scan-failed") {
+            stateToStart = SarvamActivityAttributes.ContentState(
+                phase: "failed",
+                docId: "debug-scan-failed",
+                title: "image.jpg",
+                fileName: "image.jpg",
+                fileCount: 1,
+                progress: 62,
+                stage: "Service is busy",
+                secondsRemaining: 0,
+                language: "en",
+                languageLabel: "English",
+                showDocumentName: showDoc,
+                errorMessage: "Service is busy"
+            )
+        } else if args.contains("--start-scan-timeout") {
+            stateToStart = SarvamActivityAttributes.ContentState(
+                phase: "failed",
+                docId: "debug-scan-timeout",
+                title: "image.jpg",
+                fileName: "image.jpg",
+                fileCount: 1,
+                progress: 62,
+                stage: "Open Sarvam to finish",
+                secondsRemaining: 0,
+                language: "en",
+                languageLabel: "English",
+                showDocumentName: showDoc,
+                errorMessage: "Open Sarvam to finish"
+            )
+        } else if args.contains("--start-listen-finished") {
+            stateToStart = SarvamActivityAttributes.ContentState(
+                phase: "finished",
+                docId: "debug-listen-finished",
+                title: "Laboratory Report",
+                fileCount: 1,
+                progress: 100,
+                stage: "Finished",
+                secondsRemaining: 0,
+                language: "ta",
+                languageLabel: "தமிழ் · Female",
+                voiceGender: "female",
+                currentTime: 90,
+                duration: 90,
+                allowListen: true,
+                showDocumentName: showDoc
             )
         }
 
@@ -118,6 +174,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("SARVAM_DEBUG: No state to start or iOS < 16.1 (stateToStart: \(String(describing: stateToStart)))")
         }
     }
+    #endif
 
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.

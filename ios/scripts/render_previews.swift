@@ -1,5 +1,21 @@
 import SwiftUI
 import AppKit
+import CoreText
+
+// Register custom bundled fonts
+func registerCustomFonts() {
+    let fontPaths = [
+        "/Users/vigneshwaran/Projects/sarvam/ios/App/SarvamWidgetExtension/Fonts/Fraunces.ttf",
+        "/Users/vigneshwaran/Projects/sarvam/ios/App/SarvamWidgetExtension/Fonts/DMSans.ttf",
+        "/Users/vigneshwaran/Projects/sarvam/ios/App/SarvamWidgetExtension/Fonts/NotoSansTamil.ttf"
+    ]
+    for path in fontPaths {
+        let url = URL(fileURLWithPath: path) as CFURL
+        var error: Unmanaged<CFError>?
+        CTFontManagerRegisterFontsForURL(url, .process, &error)
+    }
+}
+_ = registerCustomFonts()
 
 // MARK: - Color Tokens
 extension Color {
@@ -24,11 +40,11 @@ enum SarvamFonts {
     }
 
     static func dmSans(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        return Font.custom("DMSans", size: size).weight(weight)
+        return Font.custom("DM Sans", size: size).weight(weight)
     }
 
     static func indic(size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        return Font.custom("NotoSansTamil", size: size).weight(weight)
+        return Font.custom("Noto Sans Tamil", size: size).weight(weight)
     }
 }
 
@@ -58,6 +74,21 @@ struct StateSnapshot {
     var currentTime: Double = 45
     var duration: Double = 90
     var allowListen: Bool = true
+    var showDocumentName: Bool = false
+
+    var displayTitle: String {
+        if showDocumentName && !title.isEmpty && title != "Your document" {
+            return title
+        }
+        return "Your document"
+    }
+
+    var displayFileName: String {
+        if showDocumentName, let name = fileName, !name.isEmpty {
+            return name
+        }
+        return "\(fileCount) photo"
+    }
 }
 
 // 3-Segment Progress Bar
@@ -170,6 +201,18 @@ struct TickRulerView: View {
                 }
             }
             .frame(height: 38)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: .black, location: 0.06),
+                        .init(color: .black, location: 0.94),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
         }
         .padding(.horizontal, 4)
     }
@@ -211,12 +254,12 @@ struct RenderLockScreenScanningView: View {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(state.title)
+                    Text(state.displayTitle)
                         .font(SarvamFonts.fraunces(size: 26, weight: .bold))
                         .foregroundColor(Color.svOffWhite)
                         .lineLimit(1)
 
-                    Text("\(state.fileCount) photo · Processing securely")
+                    Text(state.fileCount == 1 ? "1 photo" : "\(state.fileCount) photos")
                         .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                         .foregroundColor(Color.svOffWhite.opacity(0.82))
                 }
@@ -289,7 +332,7 @@ struct RenderLockScreenReadyView: View {
                         .font(SarvamFonts.fraunces(size: 22, weight: .bold))
                         .foregroundColor(Color.svInk)
 
-                    Text(state.fileName ?? "\(state.fileCount) photo")
+                    Text(state.displayFileName)
                         .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                         .foregroundColor(Color.svInk.opacity(0.75))
                 }
@@ -362,7 +405,7 @@ struct RenderLockScreenListenView: View {
                     .clipShape(Capsule())
             }
 
-            Text(state.title)
+            Text(state.displayTitle)
                 .font(SarvamFonts.fraunces(size: 26, weight: .bold))
                 .foregroundColor(Color.svOffWhite)
                 .lineLimit(1)
@@ -440,7 +483,7 @@ struct RenderExpandedScanningIsland: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(state.title)
+                Text(state.displayTitle)
                     .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
 
@@ -487,7 +530,7 @@ struct RenderExpandedReadyIsland: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(state.title)
+                Text(state.displayTitle)
                     .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
 
@@ -551,7 +594,7 @@ struct RenderExpandedListenIsland: View {
                             .font(SarvamFonts.fraunces(size: 16, weight: .bold))
                             .foregroundColor(Color.svOffWhite)
                     }
-                    Text(state.title)
+                    Text(state.displayTitle)
                         .font(SarvamFonts.fraunces(size: 15, weight: .semibold))
                         .foregroundColor(Color.svOffWhite)
                         .lineLimit(1)

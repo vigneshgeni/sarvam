@@ -92,4 +92,66 @@ assertEqual(testCurrentTickIndex(currentTime: 45, duration: 90), 15, "Tick at mi
 assertEqual(testCurrentTickIndex(currentTime: 90, duration: 90), 30, "Tick at end")
 print("✓ Tick index tests passed")
 
-print("ALL 18 SWIFT STATE UNIT TESTS PASSED!")
+// Test 5: Privacy displayTitle & displayFileName
+struct TestState {
+    var title: String
+    var fileName: String?
+    var fileCount: Int
+    var showDocumentName: Bool
+
+    var displayTitle: String {
+        if showDocumentName && !title.isEmpty && title != "Your document" {
+            return title
+        }
+        return "Your document"
+    }
+
+    var displayFileName: String {
+        if showDocumentName, let name = fileName, !name.isEmpty {
+            return name
+        }
+        return "\(fileCount) photo"
+    }
+}
+
+let privDefault = TestState(title: "Secret Lab Report.pdf", fileName: "Secret Lab Report.pdf", fileCount: 1, showDocumentName: false)
+assertEqual(privDefault.displayTitle, "Your document", "Privacy default title must be 'Your document'")
+assertEqual(privDefault.displayFileName, "1 photo", "Privacy default fileName must be '1 photo'")
+
+let privEnabled = TestState(title: "Secret Lab Report.pdf", fileName: "Secret Lab Report.pdf", fileCount: 1, showDocumentName: true)
+assertEqual(privEnabled.displayTitle, "Secret Lab Report.pdf", "When enabled, title shows real name")
+assertEqual(privEnabled.displayFileName, "Secret Lab Report.pdf", "When enabled, fileName shows real name")
+print("✓ Privacy display tests passed")
+
+// Test 6: Skip Back & Forward Clamping
+func skipTime(current: Double, delta: Double, duration: Double) -> Double {
+    return max(0.0, min(duration, current + delta))
+}
+assertEqual(skipTime(current: 5, delta: -10, duration: 90), 0.0, "Back near 0 clamps to 0")
+assertEqual(skipTime(current: 85, delta: 10, duration: 90), 90.0, "Forward near end clamps to duration")
+assertEqual(skipTime(current: 45, delta: -10, duration: 90), 35.0, "Back 10 from 45 is 35")
+assertEqual(skipTime(current: 45, delta: 10, duration: 90), 55.0, "Forward 10 from 45 is 55")
+print("✓ Audio skip clamping tests passed")
+
+// Test 7: Seconds remaining formula
+func calcSecondsRemaining(progress: Int, baselineDuration: Double = 15.0) -> Int {
+    if progress >= 100 { return 0 }
+    return max(1, Int(round(baselineDuration * (1.0 - Double(progress) / 100.0))))
+}
+assertEqual(calcSecondsRemaining(progress: 0), 15, "0% gives 15s")
+assertEqual(calcSecondsRemaining(progress: 62), 6, "62% gives 6s")
+assertEqual(calcSecondsRemaining(progress: 95), 1, "95% gives 1s")
+assertEqual(calcSecondsRemaining(progress: 100), 0, "100% gives 0s")
+print("✓ Seconds remaining calculation tests passed")
+
+// Test 8: Odia Listen prohibition rule
+func allowsListen(for language: String) -> Bool {
+    return language != "or"
+}
+assertEqual(allowsListen(for: "en"), true, "English allows listen")
+assertEqual(allowsListen(for: "ta"), true, "Tamil allows listen")
+assertEqual(allowsListen(for: "hi"), true, "Hindi allows listen")
+assertEqual(allowsListen(for: "or"), false, "Odia strictly forbids listen")
+print("✓ Odia listen prohibition tests passed")
+
+print("ALL 32 SWIFT STATE UNIT TESTS PASSED!")

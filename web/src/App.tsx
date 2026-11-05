@@ -196,16 +196,16 @@ export default function App() {
     }
   }, [])
 
-  // Live Activity Debug Harness state
+  // Live Activity Debug Harness state (DEV only)
   const [isDebugHarnessOpen, setIsDebugHarnessOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       return window.location.hash === '#debug' || window.location.search.includes('debug=true')
     }
     return false
   })
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
       ;(window as any).__openSarvamDebugHarness = () => setIsDebugHarnessOpen(true)
       const onHash = () => {
         if (window.location.hash === '#debug') setIsDebugHarnessOpen(true)
@@ -1581,11 +1581,13 @@ export default function App() {
         t={t}
       />
 
-      {/* Live Activity Debug Harness */}
-      <DebugHarness
-        isOpen={isDebugHarnessOpen}
-        onClose={() => setIsDebugHarnessOpen(false)}
-      />
+      {/* Live Activity Debug Harness (Debug-only) */}
+      {import.meta.env.DEV && (
+        <DebugHarness
+          isOpen={isDebugHarnessOpen}
+          onClose={() => setIsDebugHarnessOpen(false)}
+        />
+      )}
 
       {/* Delete Confirmation Sheet */}
       {mediaSheet && (

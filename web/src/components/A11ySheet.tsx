@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { A11ySettings } from '../types'
 import Sheet from './Sheet'
 import { CloseIcon } from './icons'
+import { getShowDocNameOnLockScreen, setShowDocNameOnLockScreen } from '../native/liveActivity.js'
 
 interface A11ySheetProps {
   isOpen: boolean
@@ -53,6 +54,7 @@ export function applyA11ySettings(settings: A11ySettings): void {
 
 export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheetProps) {
   const [settings, setSettings] = useState<A11ySettings>(getStoredA11ySettings)
+  const [showDocNameOnLockScreen, setShowDocNameState] = useState<boolean>(() => getShowDocNameOnLockScreen())
 
   useEffect(() => {
     applyA11ySettings(settings)
@@ -69,6 +71,8 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
   const handleReset = () => {
     setSettings(DEFAULT_A11Y_SETTINGS)
     applyA11ySettings(DEFAULT_A11Y_SETTINGS)
+    setShowDocNameOnLockScreen(false)
+    setShowDocNameState(false)
   }
 
   const myLanguage = lang !== 'en' && lang !== 'auto'
@@ -240,6 +244,21 @@ export default function A11ySheet({ isOpen, onClose, t, lang = 'en' }: A11ySheet
           </button>
           <button type="button" onClick={() => handleUpdate('largerTapTargets', !settings.largerTapTargets)} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold" style={{ background: settings.largerTapTargets ? '#E9B44C' : 'transparent' }}>
             {t.largerTapTargets || 'Larger tap targets'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showDocNameOnLockScreen
+              setShowDocNameOnLockScreen(next)
+              setShowDocNameState(next)
+            }}
+            className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] px-4 text-left text-[15px] font-semibold flex items-center justify-between"
+            style={{ background: showDocNameOnLockScreen ? '#E9B44C' : 'transparent' }}
+          >
+            <span>{t.showDocNameOnLockScreen || 'Show document name on Lock Screen'}</span>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-[10px]" style={showDocNameOnLockScreen ? { background: '#1A1A1A', color: '#F4F5F2' } : { border: '1.5px solid #1A1A1A' }}>
+              {showDocNameOnLockScreen ? (t.onWord || 'On') : (t.offWord || 'Off')}
+            </span>
           </button>
           <button type="button" onClick={handleReset} className="sv-press h-12 rounded-full border-[1.5px] border-[#1A1A1A] text-[15px] font-semibold">
             {t.reset || 'Reset all to defaults'}

@@ -9,6 +9,8 @@ import {
   startListenActivity,
   updateListenPlayback,
   finishListenActivity,
+  getShowDocNameOnLockScreen,
+  setShowDocNameOnLockScreen,
 } from './liveActivity.js'
 import { isNative } from './isNative.js'
 
@@ -27,6 +29,7 @@ export default function DebugHarness({ isOpen, onClose }: DebugHarnessProps) {
   const [duration] = useState(90)
   const [isPlaying, setIsPlaying] = useState(false)
   const [docTitle] = useState('image.jpg')
+  const [showDocName, setShowDocName] = useState(() => getShowDocNameOnLockScreen())
 
   useEffect(() => {
     // Listen for hash change to toggle harness
@@ -77,6 +80,26 @@ export default function DebugHarness({ isOpen, onClose }: DebugHarnessProps) {
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm font-bold"
           >
             ✕
+          </button>
+        </div>
+
+        {/* Privacy Default Setting */}
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-3">
+          <div>
+            <div className="text-xs font-semibold text-white">Show document name on Lock Screen</div>
+            <div className="text-[11px] text-white/50">Privacy default: Off ("Your document")</div>
+          </div>
+          <button
+            onClick={() => {
+              const next = !showDocName
+              setShowDocName(next)
+              setShowDocNameOnLockScreen(next)
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+              showDocName ? 'bg-[#E9B44C] text-black' : 'bg-white/10 text-white/70 border border-white/20'
+            }`}
+          >
+            {showDocName ? 'ON' : 'OFF (Default)'}
           </button>
         </div>
 

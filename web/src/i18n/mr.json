@@ -279,6 +279,7 @@
   "easyReadMode": "सुलभ वाचन मोड (स्वच्छ फॉन्ट आणि अंतर)",
   "reduceMotion": "हालचाल कमी करा",
   "largerTapTargets": "मोठे टॅप लक्ष्य",
+  "showDocNameOnLockScreen": "लॉक स्क्रीनवर कागदपत्राचे नाव दाखवा",
   "preview": "पूर्वावलोकन",
   "reset": "रीसेट करा",
   "passwordRequiredTitle": "हा PDF लॉक आहे",

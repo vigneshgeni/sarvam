@@ -17,7 +17,22 @@ public struct SarvamActivityAttributes: ActivityAttributes {
         public var currentTime: Double
         public var duration: Double
         public var allowListen: Bool
+        public var showDocumentName: Bool
         public var errorMessage: String?
+
+        public var displayTitle: String {
+            if showDocumentName && !title.isEmpty && title != "Your document" {
+                return title
+            }
+            return "Your document"
+        }
+
+        public var displayFileName: String {
+            if showDocumentName, let name = fileName, !name.isEmpty {
+                return name
+            }
+            return "\(fileCount) photo"
+        }
 
         public init(
             phase: String = "scanning",
@@ -34,6 +49,7 @@ public struct SarvamActivityAttributes: ActivityAttributes {
             currentTime: Double = 0,
             duration: Double = 90,
             allowListen: Bool = true,
+            showDocumentName: Bool = false,
             errorMessage: String? = nil
         ) {
             self.phase = phase
@@ -50,6 +66,7 @@ public struct SarvamActivityAttributes: ActivityAttributes {
             self.currentTime = currentTime
             self.duration = duration
             self.allowListen = allowListen
+            self.showDocumentName = showDocumentName
             self.errorMessage = errorMessage
         }
     }

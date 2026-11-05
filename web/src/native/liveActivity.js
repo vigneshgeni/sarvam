@@ -6,6 +6,20 @@ const NativePlugin = registerPlugin('SarvamLiveActivity')
 // In-memory reference for the current active Live Activity state
 let currentActiveState = null
 
+export function getShowDocNameOnLockScreen() {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem('sarvam.showDocNameOnLockScreen') === 'true'
+}
+
+export function setShowDocNameOnLockScreen(val) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('sarvam.showDocNameOnLockScreen', val ? 'true' : 'false')
+  if (currentActiveState) {
+    currentActiveState.showDocumentName = !!val
+    NativePlugin.updateActivity(currentActiveState).catch(() => {})
+  }
+}
+
 export function getCurrentActivityState() {
   return currentActiveState
 }
@@ -15,11 +29,13 @@ export async function startScanActivity(params) {
 
   // Privacy rule (Hard Rule 6 & Scenario X1):
   // Lock Screen is visible to anyone; default to generic title "Your document"
-  const defaultTitle = 'Your document'
+  // Setting "Show document name on Lock Screen" controls whether real name displays.
+  const showDocumentName = getShowDocNameOnLockScreen()
+  const docTitle = params.fileName || 'Your document'
   const state = {
     docId: params.docId,
     phase: 'scanning',
-    title: defaultTitle,
+    title: docTitle,
     fileName: params.fileName,
     fileCount: params.fileCount || 1,
     progress: 0,
@@ -28,6 +44,7 @@ export async function startScanActivity(params) {
     language: params.language || 'en',
     languageLabel: 'English',
     allowListen: params.language !== 'or',
+    showDocumentName,
   }
   currentActiveState = state
   try {
@@ -46,6 +63,7 @@ export async function updateScanProgress(params) {
   if (params.secondsRemaining !== undefined) {
     currentActiveState.secondsRemaining = params.secondsRemaining
   }
+  currentActiveState.showDocumentName = getShowDocNameOnLockScreen()
 
   try {
     await NativePlugin.updateActivity(currentActiveState)
@@ -56,25 +74,29 @@ export async function updateScanProgress(params) {
 
 export async function markScanReady(params) {
   if (!isNative()) return
+  const showDocumentName = getShowDocNameOnLockScreen()
   if (!currentActiveState) {
     currentActiveState = {
       docId: params.docId,
       phase: 'ready',
-      title: 'Your document',
+      title: params.title || 'Your document',
       fileCount: 1,
       progress: 100,
       stage: 'Ready',
       language: params.language || 'en',
       languageLabel: params.languageLabel || 'English',
       allowListen: params.language !== 'or',
+      showDocumentName,
     }
   } else {
     currentActiveState.phase = 'ready'
+    if (params.title) currentActiveState.title = params.title
     currentActiveState.progress = 100
     currentActiveState.stage = 'Ready'
     currentActiveState.language = params.language || currentActiveState.language
     currentActiveState.languageLabel = params.languageLabel || currentActiveState.languageLabel
     currentActiveState.allowListen = params.language !== 'or'
+    currentActiveState.showDocumentName = showDocumentName
   }
 
   try {
@@ -129,6 +151,7 @@ export async function startListenActivity(params) {
     return
   }
 
+  const showDocumentName = getShowDocNameOnLockScreen()
   const state = {
     docId: params.docId,
     phase: 'listening',
@@ -142,6 +165,7 @@ export async function startListenActivity(params) {
     currentTime: params.currentTime || 0,
     duration: params.duration || 0,
     allowListen: true,
+    showDocumentName,
   }
   currentActiveState = state
 

@@ -90,6 +90,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let currentTime = call.getDouble("currentTime") ?? 0
         let duration = call.getDouble("duration") ?? 90
         let allowListen = call.getBool("allowListen") ?? true
+        let showDocumentName = call.getBool("showDocumentName") ?? false
 
         let state = SarvamActivityAttributes.ContentState(
             phase: phase,
@@ -105,7 +106,8 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             voiceGender: voiceGender,
             currentTime: currentTime,
             duration: duration,
-            allowListen: allowListen
+            allowListen: allowListen,
+            showDocumentName: showDocumentName
         )
         self.lastState = state
 
@@ -155,6 +157,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let currentTime = call.getDouble("currentTime") ?? (lastState?.currentTime ?? 0)
         let duration = call.getDouble("duration") ?? (lastState?.duration ?? 90)
         let allowListen = call.getBool("allowListen") ?? (lastState?.allowListen ?? true)
+        let showDocumentName = call.getBool("showDocumentName") ?? (lastState?.showDocumentName ?? false)
         let errorMessage = call.getString("errorMessage") ?? lastState?.errorMessage
 
         let state = SarvamActivityAttributes.ContentState(
@@ -172,6 +175,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             currentTime: currentTime,
             duration: duration,
             allowListen: allowListen,
+            showDocumentName: showDocumentName,
             errorMessage: errorMessage
         )
         self.lastState = state

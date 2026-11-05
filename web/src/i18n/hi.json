@@ -181,6 +181,7 @@
   "highContrast": "उच्च कंट्रास्ट",
   "reduceMotion": "मोशन कम करें",
   "largerTapTargets": "बड़े बटन",
+  "showDocNameOnLockScreen": "लॉक स्क्रीन पर दस्तावेज़ का नाम दिखाएं",
   "preview": "पूर्वावलोकन",
   "reset": "रीसेट करें",
   "passwordRequiredTitle": "यह PDF लॉक है",

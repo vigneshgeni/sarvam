@@ -101,5 +101,22 @@ unless embed_phase.files_references.include?(widget_target.product_reference)
   puts "Added widget product reference to Embed App Extensions"
 end
 
+# Add Fonts to App and WidgetExtension targets
+fonts_group = main_group.find_subpath('Fonts', true)
+['Fraunces.ttf', 'DMSans.ttf', 'NotoSansTamil.ttf'].each do |font_name|
+  font_path = File.expand_path("../../App/App/Fonts/#{font_name}", __FILE__)
+  file_ref = fonts_group.find_file_by_path(font_name) || fonts_group.new_file(font_path)
+
+  unless app_target.resources_build_phase.files_references.include?(file_ref)
+    app_target.resources_build_phase.add_file_reference(file_ref)
+    puts "Added #{font_name} to App resources"
+  end
+
+  unless widget_target.resources_build_phase.files_references.include?(file_ref)
+    widget_target.resources_build_phase.add_file_reference(file_ref)
+    puts "Added #{font_name} to SarvamWidgetExtension resources"
+  end
+end
+
 project.save
 puts "Successfully configured and saved Xcode project with SarvamWidgetExtension!"

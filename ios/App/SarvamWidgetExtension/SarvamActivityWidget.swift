@@ -27,11 +27,11 @@ enum SarvamFonts {
     }
 
     static func dmSans(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        return Font.custom("DMSans", size: size).weight(weight)
+        return Font.custom("DM Sans", size: size).weight(weight)
     }
 
     static func indic(size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        return Font.custom("NotoSansTamil", size: size).weight(weight)
+        return Font.custom("Noto Sans Tamil", size: size).weight(weight)
     }
 }
 
@@ -167,7 +167,7 @@ struct TickRulerView: View {
             }
             .frame(height: 12)
 
-            // 31 ticks
+            // 31 ticks with soft edge fade
             HStack(alignment: .center, spacing: 3.5) {
                 ForEach(0..<tickCount, id: \.self) { idx in
                     let isMarker = (idx == 0 || idx == 10 || idx == 20 || idx == 30)
@@ -185,6 +185,18 @@ struct TickRulerView: View {
                 }
             }
             .frame(height: 38)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: .black, location: 0.06),
+                        .init(color: .black, location: 0.94),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
         }
         .padding(.horizontal, 4)
     }
@@ -323,10 +335,11 @@ struct ExpandedLeadingView: View {
                         .font(SarvamFonts.fraunces(size: 16, weight: .bold))
                         .foregroundColor(Color.svOffWhite)
                 }
-                Text(state.title)
+                Text(state.displayTitle)
                     .font(SarvamFonts.fraunces(size: 15, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
                     .lineLimit(1)
+                    .privacySensitive()
             }
             .padding(.leading, 8)
         } else if state.phase == "ready" {
@@ -449,9 +462,10 @@ struct ExpandedBottomView: View {
         } else if state.phase == "ready" {
             // Ready Island Details & Action Buttons
             VStack(alignment: .leading, spacing: 10) {
-                Text(state.title)
+                Text(state.displayTitle)
                     .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
+                    .privacySensitive()
 
                 Text("Explained in \(state.languageLabel), with voice")
                     .font(SarvamFonts.dmSans(size: 13, weight: .regular))
@@ -498,9 +512,10 @@ struct ExpandedBottomView: View {
         } else {
             // Scanning Island Details
             VStack(alignment: .leading, spacing: 8) {
-                Text(state.title)
+                Text(state.displayTitle)
                     .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
+                    .privacySensitive()
 
                 Text(state.stage)
                     .font(SarvamFonts.dmSans(size: 13, weight: .regular))
@@ -554,13 +569,13 @@ struct LockScreenScanningView: View {
             // Middle Row: Title & Subtitle vs Large Percentage
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(state.title)
+                    Text(state.displayTitle)
                         .font(SarvamFonts.fraunces(size: 26, weight: .bold))
                         .foregroundColor(Color.svOffWhite)
                         .lineLimit(1)
                         .privacySensitive()
 
-                    Text("\(state.fileCount) photo · Processing securely")
+                    Text(state.fileCount == 1 ? "1 photo" : "\(state.fileCount) photos")
                         .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                         .foregroundColor(Color.svOffWhite.opacity(0.82))
                 }
@@ -632,7 +647,7 @@ struct LockScreenReadyView: View {
                         .font(SarvamFonts.fraunces(size: 22, weight: .bold))
                         .foregroundColor(Color.svInk)
 
-                    Text(state.fileName ?? "\(state.fileCount) photo")
+                    Text(state.displayFileName)
                         .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                         .foregroundColor(Color.svInk.opacity(0.75))
                         .privacySensitive()
@@ -714,7 +729,7 @@ struct LockScreenListenView: View {
             }
 
             // Title
-            Text(state.title)
+            Text(state.displayTitle)
                 .font(SarvamFonts.fraunces(size: 26, weight: .bold))
                 .foregroundColor(Color.svOffWhite)
                 .lineLimit(1)

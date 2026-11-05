@@ -27,5 +27,14 @@
 	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/Fraunces.ttf</string>
+		<string>Fonts/DMSans.ttf</string>
+		<string>Fonts/NotoSansTamil.ttf</string>
+		<string>Fraunces.ttf</string>
+		<string>DMSans.ttf</string>
+		<string>NotoSansTamil.ttf</string>
+	</array>
 </dict>
 </plist>

@@ -21,10 +21,16 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		6D27510295BC381B6410B0BC /* Fraunces.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70B6E89582A1B5E3104AB20C /* Fraunces.ttf */; };
+		818B565D7EE69F78FC0063C9 /* NotoSansTamil.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */; };
+		91EDE164E7A4F311D88D59EB /* Fraunces.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70B6E89582A1B5E3104AB20C /* Fraunces.ttf */; };
+		9621E379E7851F68EAE0CABF /* DMSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6A0AC739CAA6D7A79B17049F /* DMSans.ttf */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		ACF36139ECA0FD1616AA9288 /* SarvamLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913C86DC7C1AB8D20EC58600 /* SarvamLiveActivityIntents.swift */; };
 		CFD57C5DF88BFBBE5149E3D0 /* SarvamWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6C6C718109A9F3EFC6FA9863 /* SarvamWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CFDBC3D08FB8819F54671879 /* DMSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6A0AC739CAA6D7A79B17049F /* DMSans.ttf */; };
 		D8D7B81ED479FC5F3B48FD99 /* SarvamActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B18005BF9E9E0D34284C7B /* SarvamActivityAttributes.swift */; };
+		E80086DE62903D32872D02B2 /* NotoSansTamil.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,17 +73,25 @@
 		53C8A5924C1029620FE4155D /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
 		5AE3DE0F0F1DC3C6E8802327 /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
 		65F56F575F2BF2CA383F0416 /* SarvamLiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamLiveActivityPlugin.swift; sourceTree = "<group>"; };
+		6A0AC739CAA6D7A79B17049F /* DMSans.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = DMSans.ttf; path = App/Fonts/DMSans.ttf; sourceTree = "<group>"; };
 		6C6C718109A9F3EFC6FA9863 /* SarvamWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SarvamWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		70B6E89582A1B5E3104AB20C /* Fraunces.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = Fraunces.ttf; path = App/Fonts/Fraunces.ttf; sourceTree = "<group>"; };
+		7AF91DD246226915E67E718F /* SarvamLiveActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamLiveActivityIntents.swift; path = SarvamWidgetExtension/SarvamLiveActivityIntents.swift; sourceTree = "<group>"; };
 		82C8B4598F3DF0D1AAED8553 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		86DEA2407E4F6F2E5E24773E /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
 		8ECEC4E9E66DC111DCD61B00 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SarvamWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		913C86DC7C1AB8D20EC58600 /* SarvamLiveActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamLiveActivityIntents.swift; path = SarvamWidgetExtension/SarvamLiveActivityIntents.swift; sourceTree = "<group>"; };
+		A352DD4DC3CCC1CDC72CCF30 /* SarvamAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamAudioPlayer.swift; path = App/SarvamAudioPlayer.swift; sourceTree = "<group>"; };
 		AAC08E6D30BED1EF0ABDBCED /* SarvamAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamAudioPlayer.swift; path = App/SarvamAudioPlayer.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
+		B10F2AD806716C14FE650F93 /* SarvamActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityWidget.swift; path = SarvamWidgetExtension/SarvamActivityWidget.swift; sourceTree = "<group>"; };
 		D381D538401E2F248343F2DE /* SarvamActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityWidget.swift; path = SarvamWidgetExtension/SarvamActivityWidget.swift; sourceTree = "<group>"; };
+		DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = NotoSansTamil.ttf; path = App/Fonts/NotoSansTamil.ttf; sourceTree = "<group>"; };
 		DDC809035EC782D14F54C5BA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SarvamWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		E4DE602F5ACE936419EAC543 /* SarvamAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamAudioPlayer.swift; sourceTree = "<group>"; };
 		E6B18005BF9E9E0D34284C7B /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamActivityAttributes.swift; sourceTree = "<group>"; };
+		F228C73AB6D2E953BB0A3685 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SarvamWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		FB4E7144B26C1829065B5659 /* SceneDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -119,6 +133,7 @@
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
 				A9DB0733A80FB43B7C8C5A5C /* SarvamWidgetExtension */,
+				B726F11BD8E58B6B5C0572A9 /* Fonts */,
 			);
 			sourceTree = "<group>";
 		};
@@ -172,8 +187,23 @@
 				5AE3DE0F0F1DC3C6E8802327 /* SarvamActivityAttributes.swift */,
 				45D784482AC5A3E98C4EA491 /* SarvamAudioPlayer.swift */,
 				8ECEC4E9E66DC111DCD61B00 /* Info.plist */,
+				B10F2AD806716C14FE650F93 /* SarvamActivityWidget.swift */,
+				7AF91DD246226915E67E718F /* SarvamLiveActivityIntents.swift */,
+				86DEA2407E4F6F2E5E24773E /* SarvamActivityAttributes.swift */,
+				A352DD4DC3CCC1CDC72CCF30 /* SarvamAudioPlayer.swift */,
+				F228C73AB6D2E953BB0A3685 /* Info.plist */,
 			);
 			name = SarvamWidgetExtension;
+			sourceTree = "<group>";
+		};
+		B726F11BD8E58B6B5C0572A9 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				70B6E89582A1B5E3104AB20C /* Fraunces.ttf */,
+				6A0AC739CAA6D7A79B17049F /* DMSans.ttf */,
+				DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */,
+			);
+			name = Fonts;
 			sourceTree = "<group>";
 		};
 		F1BDC8A896C80EE1CBC10143 /* iOS */ = {
@@ -265,6 +295,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				91EDE164E7A4F311D88D59EB /* Fraunces.ttf in Resources */,
+				9621E379E7851F68EAE0CABF /* DMSans.ttf in Resources */,
+				E80086DE62903D32872D02B2 /* NotoSansTamil.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +311,9 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				6D27510295BC381B6410B0BC /* Fraunces.ttf in Resources */,
+				CFDBC3D08FB8819F54671879 /* DMSans.ttf in Resources */,
+				818B565D7EE69F78FC0063C9 /* NotoSansTamil.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
