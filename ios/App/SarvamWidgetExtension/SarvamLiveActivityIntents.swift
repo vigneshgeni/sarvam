@@ -44,3 +44,16 @@ public struct SkipForwardIntent: LiveActivityIntent {
         return .result()
     }
 }
+
+@available(iOS 17.0, *)
+public struct CancelScanIntent: LiveActivityIntent {
+    public static var title: LocalizedStringResource = "Cancel Document Analysis"
+    public static var isDiscoverable: Bool = false
+
+    public init() {}
+
+    public func perform() async throws -> some IntentResult {
+        NotificationCenter.default.post(name: NSNotification.Name("SarvamCancelScanRequested"), object: nil)
+        return .result()
+    }
+}

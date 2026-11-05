@@ -252,7 +252,7 @@ struct RenderLockScreenScanningView: View {
                     .clipShape(Capsule())
             }
 
-            HStack(alignment: .bottom) {
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(state.displayTitle)
                         .font(SarvamFonts.fraunces(size: 26, weight: .bold))
@@ -266,21 +266,16 @@ struct RenderLockScreenScanningView: View {
 
                 Spacer()
 
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(state.progress)")
-                        .font(SarvamFonts.fraunces(size: 46, weight: .bold))
-                        .foregroundColor(Color.svMustard)
-                    Text("%")
-                        .font(SarvamFonts.fraunces(size: 24, weight: .bold))
-                        .foregroundColor(Color.svMustard)
-                }
+                // Option A: Animated indicator, NO percentage
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                    .scaleEffect(1.6)
+                    .padding(.trailing, 8)
             }
 
-            ThreeSegmentProgressBar(progress: state.progress)
-
             HStack {
-                Text(state.stage)
-                    .font(SarvamFonts.dmSans(size: 13, weight: .medium))
+                Text("Analyzing document…")
+                    .font(SarvamFonts.dmSans(size: 14, weight: .medium))
                     .foregroundColor(Color.svMustard)
                 Spacer()
                 Text("Usually under a minute")
@@ -470,16 +465,22 @@ struct RenderExpandedScanningIsland: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                ProgressRingView(progress: state.progress, size: 26)
-                Spacer()
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(state.progress)")
-                        .font(SarvamFonts.fraunces(size: 28, weight: .bold))
-                        .foregroundColor(Color.svMustard)
-                    Text("%")
-                        .font(SarvamFonts.fraunces(size: 16, weight: .bold))
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                        .scaleEffect(1.2)
+                    Text("Analyzing document…")
+                        .font(SarvamFonts.dmSans(size: 14, weight: .medium))
                         .foregroundColor(Color.svMustard)
                 }
+                Spacer()
+                Text("Cancel")
+                    .font(SarvamFonts.dmSans(size: 12, weight: .semibold))
+                    .foregroundColor(Color.svOffWhite.opacity(0.75))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.svDarkBtn)
+                    .clipShape(Capsule())
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -487,12 +488,9 @@ struct RenderExpandedScanningIsland: View {
                     .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
 
-                Text(state.stage)
+                Text("Usually under a minute")
                     .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                     .foregroundColor(Color.svOffWhite.opacity(0.8))
-
-                ThreeSegmentProgressBar(progress: state.progress)
-                    .padding(.top, 4)
             }
         }
         .padding(16)

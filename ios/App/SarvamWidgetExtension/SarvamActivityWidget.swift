@@ -269,8 +269,16 @@ struct CompactLeadingView: View {
                     .foregroundColor(Color.svInk)
             }
         } else {
-            ProgressRingView(progress: state.progress, size: 22)
-                .accessibilityLabel("\(state.progress)%")
+            // Scanning: Sarvam monogram badge
+            ZStack {
+                Circle()
+                    .fill(Color.svTealCard)
+                    .frame(width: 22, height: 22)
+                Text("S")
+                    .font(SarvamFonts.fraunces(size: 13, weight: .bold))
+                    .foregroundColor(Color.svOffWhite)
+            }
+            .accessibilityLabel("Sarvam analyzing document")
         }
     }
 }
@@ -289,10 +297,11 @@ struct CompactTrailingView: View {
                 .font(SarvamFonts.fraunces(size: 13, weight: .bold))
                 .foregroundColor(Color.svMustard)
         } else {
-            Text("\(state.progress)%")
-                .font(SarvamFonts.dmSans(size: 14, weight: .semibold))
-                .monospacedDigit()
-                .foregroundColor(Color.svMustard)
+            // Option A: Animated indicator, NO percentage number
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                .scaleEffect(0.85)
+                .accessibilityLabel("Analyzing document")
         }
     }
 }
@@ -314,7 +323,10 @@ struct MinimalView: View {
                     .foregroundColor(Color.svInk)
             }
         } else {
-            ProgressRingView(progress: state.progress, size: 20)
+            // Option A: Animated indicator, NO percentage number
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                .scaleEffect(0.85)
         }
     }
 }
@@ -359,7 +371,12 @@ struct ExpandedLeadingView: View {
             .padding(.leading, 8)
         } else {
             HStack(spacing: 8) {
-                ProgressRingView(progress: state.progress, size: 26)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                    .scaleEffect(1.2)
+                Text("Analyzing document…")
+                    .font(SarvamFonts.dmSans(size: 14, weight: .medium))
+                    .foregroundColor(Color.svMustard)
             }
             .padding(.leading, 8)
         }
@@ -378,11 +395,8 @@ struct ExpandedTrailingView: View {
         } else if state.phase == "ready" {
             EmptyView()
         } else {
-            Text("\(state.progress)%")
-                .font(SarvamFonts.fraunces(size: 28, weight: .bold))
-                .monospacedDigit()
-                .foregroundColor(Color.svMustard)
-                .padding(.trailing, 8)
+            // Option A: NO percentage number anywhere
+            EmptyView()
         }
     }
 }
@@ -517,12 +531,27 @@ struct ExpandedBottomView: View {
                     .foregroundColor(Color.svOffWhite)
                     .privacySensitive()
 
-                Text(state.stage)
-                    .font(SarvamFonts.dmSans(size: 13, weight: .regular))
-                    .foregroundColor(Color.svOffWhite.opacity(0.8))
+                HStack {
+                    Text("Usually under a minute")
+                        .font(SarvamFonts.dmSans(size: 13, weight: .regular))
+                        .foregroundColor(Color.svOffWhite.opacity(0.8))
 
-                ThreeSegmentProgressBar(progress: state.progress)
-                    .padding(.top, 4)
+                    Spacer()
+
+                    if #available(iOS 17.0, *) {
+                        Button(intent: CancelScanIntent()) {
+                            Text("Cancel")
+                                .font(SarvamFonts.dmSans(size: 12, weight: .semibold))
+                                .foregroundColor(Color.svOffWhite.opacity(0.75))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.svDarkBtn)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Cancel document analysis")
+                    }
+                }
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 8)
@@ -566,8 +595,8 @@ struct LockScreenScanningView: View {
                     .clipShape(Capsule())
             }
 
-            // Middle Row: Title & Subtitle vs Large Percentage
-            HStack(alignment: .bottom) {
+            // Middle Row: Title & Subtitle vs Animated Indicator (Option A: NO percentage)
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(state.displayTitle)
                         .font(SarvamFonts.fraunces(size: 26, weight: .bold))
@@ -582,19 +611,16 @@ struct LockScreenScanningView: View {
 
                 Spacer()
 
-                Text("\(state.progress)%")
-                    .font(SarvamFonts.fraunces(size: 44, weight: .bold))
-                    .monospacedDigit()
-                    .foregroundColor(Color.svMustard)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
+                    .scaleEffect(1.6)
+                    .padding(.trailing, 8)
             }
-
-            // 3-Segment Progress Bar
-            ThreeSegmentProgressBar(progress: state.progress)
 
             // Bottom Row: Stage Text vs Time Left
             HStack {
-                Text(state.stage)
-                    .font(SarvamFonts.dmSans(size: 13, weight: .medium))
+                Text("Analyzing document…")
+                    .font(SarvamFonts.dmSans(size: 14, weight: .medium))
                     .foregroundColor(Color.svMustard)
                 Spacer()
                 Text("Usually under a minute")
