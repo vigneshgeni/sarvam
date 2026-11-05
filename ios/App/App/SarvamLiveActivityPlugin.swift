@@ -37,10 +37,96 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     private var lastState: SarvamActivityAttributes.ContentState?
     private var qlDataSource: QuickLookPreviewControllerDataSource?
 
+    private var pendingScanState: SarvamActivityAttributes.ContentState?
+    private var scanRetryWorkItem: DispatchWorkItem?
+    private var didRegisterForegroundObserver = false
+
     override public func load() {
         super.load()
         SarvamLiveActivityPlugin.shared = self
         setupAudioPlayerBridge()
+        setupForegroundObserver()
+    }
+
+    private func setupForegroundObserver() {
+        guard !didRegisterForegroundObserver else { return }
+        didRegisterForegroundObserver = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleAppDidBecomeActive() {
+        if let pending = pendingScanState {
+            SarvamNativeLogger.info("[ActivityKit] App became active; retrying pending Live Activity request for docId=\(pending.docId)")
+            requestScanActivityWithRetry(state: pending, attempt: 1)
+        }
+    }
+
+    public func clearPendingScanRetry() {
+        pendingScanState = nil
+        scanRetryWorkItem?.cancel()
+        scanRetryWorkItem = nil
+    }
+
+    public func requestScanActivityWithRetry(state: SarvamActivityAttributes.ContentState, attempt: Int = 1) {
+        guard #available(iOS 16.1, *) else { return }
+        setupForegroundObserver()
+
+        let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        guard areEnabled else {
+            SarvamNativeLogger.warning("[ActivityKit] Live Activities are disabled in Settings; skipping request")
+            pendingScanState = nil
+            return
+        }
+
+        // 1. Check if an activity already exists for this scan or can be adopted
+        if let existing = Activity<SarvamActivityAttributes>.activities.first(where: { $0.attributes.activityId == state.docId }) ?? Activity<SarvamActivityAttributes>.activities.first {
+            SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) in place for docId=\(state.docId)")
+            self.activeActivity = existing
+            clearPendingScanRetry()
+            Task {
+                await existing.update(ActivityContent(state: state, staleDate: nil))
+                SarvamNativeLogger.info("[ActivityKit] Updated adopted activity id=\(existing.id) in place")
+            }
+            return
+        }
+
+        // 2. Log pending-start
+        SarvamNativeLogger.info("[ActivityKit] pending-start: docId=\(state.docId) phase=\(state.phase) attempt=\(attempt)")
+        self.pendingScanState = state
+
+        do {
+            let activity = try Activity.request(
+                attributes: SarvamActivityAttributes(activityId: state.docId),
+                content: ActivityContent(state: state, staleDate: nil),
+                pushType: nil
+            )
+            self.activeActivity = activity
+            clearPendingScanRetry()
+            SarvamNativeLogger.info("[ActivityKit] Activity.request SUCCESS id=\(activity.id) docId=\(state.docId) phase=\(state.phase)")
+        } catch {
+            let errDesc = error.localizedDescription
+            SarvamNativeLogger.warning("[ActivityKit] Activity.request FAILED (attempt \(attempt)): \(errDesc)")
+
+            let maxAttempts = 5
+            if attempt < maxAttempts {
+                let delays: [Double] = [0.3, 1.0, 2.0, 4.0]
+                let delay = delays[min(attempt - 1, delays.count - 1)]
+                SarvamNativeLogger.info("[ActivityKit] Scheduling retry in \(delay)s (attempt \(attempt + 1)/\(maxAttempts))")
+                self.scanRetryWorkItem?.cancel()
+                let workItem = DispatchWorkItem { [weak self] in
+                    self?.requestScanActivityWithRetry(state: state, attempt: attempt + 1)
+                }
+                self.scanRetryWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+            } else {
+                SarvamNativeLogger.error("[ActivityKit] Activity.request exhausted \(maxAttempts) attempts for docId=\(state.docId)")
+            }
+        }
     }
 
     private func setupAudioPlayerBridge() {
@@ -154,24 +240,34 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         // Begin background task for scanning (Scenario S1-S4, S13)
         if phase == "scanning" {
             beginScanningBackgroundTask(docId: docId)
+            requestScanActivityWithRetry(state: state, attempt: 1)
+            call.resolve(["success": true, "docId": docId])
+            return
+        }
+
+        // For non-scanning (e.g. listening):
+        // If an existing activity matches or can be adopted:
+        if let existing = Activity<SarvamActivityAttributes>.activities.first(where: { $0.attributes.activityId == docId }) ?? self.activeActivity ?? Activity<SarvamActivityAttributes>.activities.first {
+            SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) for docId=\(docId)")
+            self.activeActivity = existing
+            clearPendingScanRetry()
+            Task {
+                await existing.update(ActivityContent(state: state, staleDate: nil))
+                SarvamNativeLogger.info("[ActivityKit] Updated adopted activity id=\(existing.id) in place")
+            }
+            call.resolve(["success": true, "activityId": existing.id])
+            return
         }
 
         let attributes = SarvamActivityAttributes(activityId: docId)
         do {
-            // End any prior activity to enforce "one activity at a time" rule
-            if let existing = activeActivity {
-                SarvamNativeLogger.info("[ActivityKit] Ending previous active activity id=\(existing.id)")
-                Task {
-                    await existing.end(nil, dismissalPolicy: .immediate)
-                }
-            }
-
             let activity = try Activity.request(
                 attributes: attributes,
                 content: ActivityContent(state: state, staleDate: nil),
                 pushType: nil
             )
             self.activeActivity = activity
+            clearPendingScanRetry()
             SarvamNativeLogger.info("[ActivityKit] Activity.request SUCCESS id=\(activity.id) docId=\(docId) phase=\(phase)")
             call.resolve(["success": true, "activityId": activity.id])
         } catch {
@@ -182,11 +278,12 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func updateActivity(_ call: CAPPluginCall) {
         SarvamNativeLogger.info("[Bridge] updateActivity called from JS")
-        guard let activity = activeActivity else {
+        guard let activity = activeActivity ?? Activity<SarvamActivityAttributes>.activities.first else {
             SarvamNativeLogger.warning("[Bridge] updateActivity skipped: no active activity")
             call.resolve(["success": false, "reason": "No active activity"])
             return
         }
+        self.activeActivity = activity
 
         let phase = call.getString("phase") ?? (lastState?.phase ?? "scanning")
         let docId = call.getString("docId") ?? (lastState?.docId ?? "doc")
@@ -246,6 +343,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func endActivity(_ call: CAPPluginCall) {
         SarvamNativeLogger.info("[Bridge] endActivity called from JS")
+        clearPendingScanRetry()
         endScanningBackgroundTask()
         SarvamAudioPlayer.shared.stop()
 
@@ -427,33 +525,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         )
         self.lastState = state
 
-        if #available(iOS 16.1, *) {
-            let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
-            let activeCount = Activity<SarvamActivityAttributes>.activities.count
-            SarvamNativeLogger.info("[ScanWorker] Activity authorization check: areActivitiesEnabled=\(areEnabled) activeCount=\(activeCount)")
-
-            if areEnabled {
-                Task {
-                    for existing in Activity<SarvamActivityAttributes>.activities {
-                        SarvamNativeLogger.info("[ScanWorker] Ending pre-existing activity \(existing.id)")
-                        await existing.end(nil, dismissalPolicy: .immediate)
-                    }
-                    do {
-                        let activity = try Activity.request(
-                            attributes: SarvamActivityAttributes(activityId: docId),
-                            content: ActivityContent(state: state, staleDate: nil),
-                            pushType: nil
-                        )
-                        self.activeActivity = activity
-                        SarvamNativeLogger.info("[ScanWorker] Activity.request SUCCESS id=\(activity.id) for scan")
-                    } catch {
-                        SarvamNativeLogger.error("[ScanWorker] Activity.request FAILED: \(error.localizedDescription) (type: \(type(of: error)))")
-                    }
-                }
-            } else {
-                SarvamNativeLogger.warning("[ScanWorker] Live Activities are disabled; skipping Activity.request")
-            }
-        }
+        requestScanActivityWithRetry(state: state, attempt: 1)
 
         let started = SarvamScanWorker.shared.startScan(
             docId: docId,
@@ -513,6 +585,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func cancelNativeScan(_ call: CAPPluginCall) {
         SarvamNativeLogger.info("[Bridge] cancelNativeScan called from JS")
+        clearPendingScanRetry()
         SarvamScanWorker.shared.cancelActiveScan()
         SarvamNativeLogger.info("[Bridge] cancelNativeScan resolved")
         call.resolve(["success": true])
@@ -821,6 +894,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        SarvamLiveActivityPlugin.shared?.clearPendingScanRetry()
         if let tmp = currentTempFile {
             try? FileManager.default.removeItem(at: tmp)
             currentTempFile = nil

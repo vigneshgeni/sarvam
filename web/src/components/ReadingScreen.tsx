@@ -8,7 +8,6 @@ import { readingCountCopy } from '../utils/readingCopy'
 import ReadingArt from './v3/ReadingArt'
 import {
   startScanActivity,
-  updateScanProgress,
   markScanReady,
   markScanFailed,
   endScanActivity,
@@ -265,24 +264,27 @@ export default function ReadingScreen({
   }, [files, error])
 
   // Live Activity integration (strictly no-op on web/PWA)
+  const firstFileName = files[0]?.name
+  const docId = firstFileName && firstFileName.trim().length > 0 ? firstFileName : (files.length > 0 ? `scan_${files.length}files` : '')
+
   useEffect(() => {
-    const docId = files[0]?.name || 'doc'
+    if (!docId) return
     startScanActivity({
       docId,
-      fileName: files[0]?.name,
+      fileName: firstFileName,
       fileCount: files.length,
       language: lang,
     })
     return () => {
-      // Only tear down activity if not transitioning to Ready state
-      if (!arrivedRef.current) {
+      // Only tear down activity if not transitioning to Ready state and user explicitly cancelled
+      if (!arrivedRef.current && docId) {
         endScanActivity(docId)
       }
     }
-  }, [files, lang])
+  }, [files, lang, docId, firstFileName])
 
   useEffect(() => {
-    const docId = files[0]?.name || 'doc'
+    if (!docId) return
     if (arrived) {
       if (!hasMarkedReadyRef.current) {
         hasMarkedReadyRef.current = true
@@ -300,15 +302,8 @@ export default function ReadingScreen({
           errorMessage: error.messageLocal || 'Service is busy',
         })
       }
-    } else {
-      updateScanProgress({
-        docId,
-        progress: 0,
-        stageText: 'Analyzing document…',
-        secondsRemaining: 0,
-      })
     }
-  }, [reading.percent, reading.stage, arrived, error, lang, nativeLangName])
+  }, [arrived, error, lang, nativeLangName, docId])
 
   const progressiveNoticeText = (() => {
     if (elapsedSeconds >= 75) {

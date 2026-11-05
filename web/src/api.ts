@@ -47,8 +47,9 @@ async function explainWithNativeWorker(
   externalSignal?: AbortSignal,
   password?: string
 ): Promise<ExplainResponse> {
-  const docId = files[0]?.name || 'doc'
-  const title = files[0]?.name || 'Your document'
+  const firstFileName = files[0]?.name
+  const docId = firstFileName && firstFileName.trim().length > 0 ? firstFileName : (files.length > 0 ? `scan_${Date.now()}` : 'doc')
+  const title = firstFileName && firstFileName.trim().length > 0 ? firstFileName : 'Your document'
 
   const onAbort = () => {
     cancelNativeScan(docId)

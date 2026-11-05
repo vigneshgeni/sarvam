@@ -61,21 +61,17 @@ export async function startScanActivity(params) {
     fileName: showDocumentName ? params.fileName : undefined,
     fileCount: params.fileCount || 1,
     progress: 0,
-    stage: 'Reading your document',
-    secondsRemaining: 15,
+    stage: 'Analyzing document…',
+    secondsRemaining: 0,
     language: params.language || 'en',
     languageLabel: 'English',
     allowListen: params.language !== 'or',
     showDocumentName,
   }
   currentActiveState = state
-  console.log('[SarvamNative] [LiveActivity] startScanActivity dispatching:', state)
-  try {
-    const res = await NativePlugin.startActivity(state)
-    console.log('[SarvamNative] [LiveActivity] startActivity succeeded:', res)
-  } catch (err) {
-    console.error('[SarvamNative] [LiveActivity] startActivity failed:', err)
-  }
+  // Native scan activity is owned exclusively by SarvamScanWorker via startNativeScan.
+  // Store in memory for UI state queries, but do not dispatch a competing Activity.request from JS.
+  console.log('[SarvamNative] [LiveActivity] startScanActivity tracking in-memory state for docId:', params.docId)
 }
 
 export async function updateScanProgress(params) {
@@ -88,16 +84,17 @@ export async function updateScanProgress(params) {
     currentActiveState.secondsRemaining = params.secondsRemaining
   }
   currentActiveState.showDocumentName = getShowDocNameOnLockScreen()
-
-  try {
-    await NativePlugin.updateActivity(currentActiveState)
-  } catch (err) {
-    console.warn('[SarvamNative] [LiveActivity] updateScanProgress failed:', err)
-  }
+  // Do not flood native bridge with per-tick updates during scan; native worker self-manages Option A
 }
 
 export async function markScanReady(params) {
   if (!isNative()) return
+  // Do not start or churn a "Ready" activity from JS when the app is in the foreground and the result is shown immediately.
+  // Show Ready only if the app is not active (i.e. backgrounded).
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    console.log('[SarvamNative] [LiveActivity] App is active in foreground; skipping redundant JS markScanReady')
+    return
+  }
   const showDocumentName = getShowDocNameOnLockScreen()
   if (!currentActiveState) {
     currentActiveState = {
