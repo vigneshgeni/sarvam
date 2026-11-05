@@ -47,12 +47,12 @@ export async function startScanActivity(params) {
     showDocumentName,
   }
   currentActiveState = state
-  console.log('[SarvamLiveActivity] startScanActivity dispatching to native plugin:', state)
+  console.log('[SarvamNative] [LiveActivity] startScanActivity dispatching:', state)
   try {
     const res = await NativePlugin.startActivity(state)
-    console.log('[SarvamLiveActivity] startActivity succeeded:', res)
+    console.log('[SarvamNative] [LiveActivity] startActivity succeeded:', res)
   } catch (err) {
-    console.error('[SarvamLiveActivity] startActivity failed:', err)
+    console.error('[SarvamNative] [LiveActivity] startActivity failed:', err)
   }
 }
 
@@ -70,7 +70,7 @@ export async function updateScanProgress(params) {
   try {
     await NativePlugin.updateActivity(currentActiveState)
   } catch (err) {
-    console.warn('[SarvamLiveActivity] updateScanProgress failed:', err)
+    console.warn('[SarvamNative] [LiveActivity] updateScanProgress failed:', err)
   }
 }
 
@@ -101,12 +101,12 @@ export async function markScanReady(params) {
     currentActiveState.showDocumentName = showDocumentName
   }
 
-  console.log('[SarvamLiveActivity] markScanReady dispatching:', currentActiveState)
+  console.log('[SarvamNative] [LiveActivity] markScanReady dispatching:', currentActiveState)
   try {
     const res = await NativePlugin.updateActivity(currentActiveState)
-    console.log('[SarvamLiveActivity] markScanReady succeeded:', res)
+    console.log('[SarvamNative] [LiveActivity] markScanReady succeeded:', res)
   } catch (err) {
-    console.error('[SarvamLiveActivity] markScanReady failed:', err)
+    console.error('[SarvamNative] [LiveActivity] markScanReady failed:', err)
   }
 }
 
@@ -126,11 +126,11 @@ export async function markScanFailed(params) {
     currentActiveState.errorMessage = params.errorMessage || 'Service is busy'
   }
 
-  console.log('[SarvamLiveActivity] markScanFailed dispatching:', currentActiveState)
+  console.log('[SarvamNative] [LiveActivity] markScanFailed dispatching:', currentActiveState)
   try {
     await NativePlugin.updateActivity(currentActiveState)
   } catch (err) {
-    console.error('[SarvamLiveActivity] markScanFailed failed:', err)
+    console.error('[SarvamNative] [LiveActivity] markScanFailed failed:', err)
   }
 }
 
@@ -144,19 +144,19 @@ export async function markScanPasswordNeeded(params) {
   try {
     await NativePlugin.updateActivity(currentActiveState)
   } catch (err) {
-    console.warn('[LiveActivity] Failed to mark password needed:', err)
+    console.warn('[SarvamNative] [LiveActivity] Failed to mark password needed:', err)
   }
 }
 
 export async function endScanActivity(docId) {
   if (!isNative()) return
   currentActiveState = null
-  console.log('[SarvamLiveActivity] endScanActivity called for docId:', docId)
+  console.log('[SarvamNative] [LiveActivity] endScanActivity called for docId:', docId)
   try {
     await NativePlugin.endActivity({ docId })
-    console.log('[SarvamLiveActivity] endActivity succeeded')
+    console.log('[SarvamNative] [LiveActivity] endActivity succeeded')
   } catch (err) {
-    console.warn('[SarvamLiveActivity] Failed to end activity:', err)
+    console.warn('[SarvamNative] [LiveActivity] Failed to end activity:', err)
   }
 }
 
@@ -164,7 +164,7 @@ export async function startListenActivity(params) {
   if (!isNative()) return
   if (params.language === 'or') {
     // Odia rule: No listen activity
-    console.log('[SarvamLiveActivity] Odia language selected; skipping listen activity per rule')
+    console.log('[SarvamNative] [LiveActivity] Odia language selected; skipping listen activity per rule')
     return
   }
 
@@ -185,11 +185,11 @@ export async function startListenActivity(params) {
     showDocumentName,
   }
   currentActiveState = state
-  console.log('[SarvamLiveActivity] startListenActivity dispatching:', state)
+  console.log('[SarvamNative] [LiveActivity] startListenActivity dispatching:', state)
 
   try {
     const res = await NativePlugin.startActivity(state)
-    console.log('[SarvamLiveActivity] startListenActivity succeeded:', res)
+    console.log('[SarvamNative] [LiveActivity] startListenActivity succeeded:', res)
     if (params.audioBase64) {
       await NativePlugin.playAudio({
         audioData: params.audioBase64,
@@ -200,7 +200,7 @@ export async function startListenActivity(params) {
       })
     }
   } catch (err) {
-    console.error('[SarvamLiveActivity] startListenActivity failed:', err)
+    console.error('[SarvamNative] [LiveActivity] startListenActivity failed:', err)
   }
 }
 
@@ -215,7 +215,7 @@ export async function updateListenPlayback(params) {
   try {
     await NativePlugin.updateActivity(currentActiveState)
   } catch (err) {
-    console.warn('[LiveActivity] Failed to update listen playback:', err)
+    console.warn('[SarvamNative] [LiveActivity] Failed to update listen playback:', err)
   }
 }
 
@@ -227,7 +227,7 @@ export async function finishListenActivity() {
   try {
     await NativePlugin.updateActivity(currentActiveState)
   } catch (err) {
-    console.warn('[LiveActivity] Failed to finish listen activity:', err)
+    console.warn('[SarvamNative] [LiveActivity] Failed to finish listen activity:', err)
   }
 }
 
@@ -264,11 +264,11 @@ export async function startNativeScan(params) {
     files: base64Files,
   }
 
-  console.log('[SarvamLiveActivity] startNativeScan dispatching:', {
+  console.log('[SarvamNative] [ScanWorker] startNativeScan dispatching:', {
     docId: payload.docId,
-    title: payload.title,
     filesCount: payload.files.length,
     lang: payload.lang,
+    apiBase: payload.apiBase,
   })
 
   return await NativePlugin.startNativeScan(payload)
@@ -279,7 +279,7 @@ export async function checkPendingScanResult(docId) {
   try {
     return await NativePlugin.checkPendingScanResult({ docId })
   } catch (err) {
-    console.warn('[SarvamLiveActivity] checkPendingScanResult failed:', err)
+    console.warn('[SarvamNative] [ScanWorker] checkPendingScanResult failed:', err)
     return { ready: false }
   }
 }
@@ -289,7 +289,7 @@ export async function cancelNativeScan(docId) {
   try {
     return await NativePlugin.cancelNativeScan({ docId })
   } catch (err) {
-    console.warn('[SarvamLiveActivity] cancelNativeScan failed:', err)
+    console.warn('[SarvamNative] [ScanWorker] cancelNativeScan failed:', err)
   }
 }
 
@@ -298,7 +298,7 @@ export async function previewDocument(params) {
   try {
     return await NativePlugin.previewDocument(params)
   } catch (err) {
-    console.warn('[SarvamLiveActivity] previewDocument failed:', err)
+    console.warn('[SarvamNative] [LiveActivity] previewDocument failed:', err)
   }
 }
 
@@ -307,7 +307,7 @@ export async function shareContent(params) {
   try {
     return await NativePlugin.shareContent(params)
   } catch (err) {
-    console.warn('[SarvamLiveActivity] shareContent failed:', err)
+    console.warn('[SarvamNative] [LiveActivity] shareContent failed:', err)
   }
 }
 
@@ -317,7 +317,7 @@ export async function getLastOpenedURL() {
     const res = await NativePlugin.getLastOpenedURL()
     return res?.url || null
   } catch (err) {
-    console.warn('[SarvamLiveActivity] getLastOpenedURL failed:', err)
+    console.warn('[SarvamNative] [LiveActivity] getLastOpenedURL failed:', err)
     return null
   }
 }

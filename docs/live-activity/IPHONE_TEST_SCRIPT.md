@@ -29,6 +29,36 @@
    - On iPhone: **Settings → General → VPN & Device Management → Developer App → Trust [Your Apple ID]**.
    - Launch Sarvam.
 
+### 1.3 Capturing Diagnostic Logs (Step 0)
+
+All diagnostic logs emitted by native Swift and WKWebView JavaScript are tagged with `[SarvamNative]` and logged via Apple Unified Logging (`os_log`) with `privacy: .public` so that device tokens and status values are never redacted as `<private>`. Sensitive document text and file names are never logged.
+
+#### Method A: Using Xcode Debug Console (Recommended)
+1. In Xcode, ensure the bottom debug console area is visible (**View → Debug Area → Activate Console** or `Cmd + Shift + Y`).
+2. In the console search / filter box at the bottom right, enter:
+   ```text
+   [SarvamNative]
+   ```
+3. Reproduce the test scenarios on your device (e.g. Upload document, Listen button, Swipe to Home Screen).
+4. All relevant events will appear in real time:
+   - `[Lifecycle] didFinishLaunchingWithOptions: areActivitiesEnabled=...`
+   - `[ActivityKit] startActivity called / Activity.request SUCCESS or FAILED`
+   - `[ScanWorker] [API] POST /api/explain upload task started / completed`
+   - `[Audio] AudioSession setCategory / play() / pause() / interruptions`
+   - `[WebAPI] POST /api/speak status / blob size / error`
+   - `[ListenSheet] audio.play() result / fallbackToDeviceVoice`
+5. Select the logs in the Xcode console (`Cmd + A`), copy them (`Cmd + C`), and share them.
+
+#### Method B: Using macOS Console.app
+1. Open `/System/Applications/Utilities/Console.app`.
+2. Under **Devices** on the left sidebar, click your connected iPhone.
+3. Click **Start streaming** in the toolbar.
+4. In the search field (top right), type:
+   ```text
+   [SarvamNative]
+   ```
+5. Press Return. All unified `os_log` statements from Sarvam will be filtered in real-time without `<private>` redaction.
+
 ---
 
 ## 2. Interactive Test Checklist (Physical Device)

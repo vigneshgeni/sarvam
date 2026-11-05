@@ -12,7 +12,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         if let url = launchOptions?[.url] as? URL {
             AppDelegate.lastOpenedURL = url.absoluteString
+            SarvamNativeLogger.info("[Lifecycle] App launched with URL: \(url.scheme ?? "")://\(url.host ?? "")")
         }
+        let areEnabled: Bool
+        if #available(iOS 16.1, *) {
+            areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        } else {
+            areEnabled = false
+        }
+        SarvamNativeLogger.info("[Lifecycle] didFinishLaunchingWithOptions: areActivitiesEnabled=\(areEnabled)")
         #if DEBUG
         handleDebugLaunchArguments()
         #endif
@@ -204,7 +212,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        print("SARVAM_NATIVE: Application opened with URL: \(url.absoluteString)")
+        SarvamNativeLogger.info("[Lifecycle] openURL received: scheme=\(url.scheme ?? "") host=\(url.host ?? "") path=\(url.path)")
         AppDelegate.lastOpenedURL = url.absoluteString
         if let bridgeVC = window?.rootViewController as? CAPBridgeViewController, let web = bridgeVC.webView {
             let escaped = url.absoluteString.replacingOccurrences(of: "'", with: "\\'")
@@ -215,15 +223,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
+        SarvamNativeLogger.info("[Lifecycle] continue userActivity: type=\(userActivity.activityType)")
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
-        print("SARVAM_NATIVE: handleEventsForBackgroundURLSession identifier=\(identifier)")
-        SarvamScanWorker.shared.backgroundCompletionHandler = completionHandler
+        SarvamNativeLogger.info("[Lifecycle] handleEventsForBackgroundURLSession: identifier=\(identifier)")
+        SarvamScanWorker.shared.backgroundCompletionHandler = {
+            SarvamNativeLogger.info("[Lifecycle] Executing background completion handler for identifier=\(identifier)")
+            completionHandler()
+        }
     }
 
 }
@@ -233,7 +242,7 @@ class SarvamBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginType(SarvamLiveActivityPlugin.self)
-        print("SARVAM_NATIVE: capacitorDidLoad registered SarvamLiveActivityPlugin with Capacitor bridge!")
+        SarvamNativeLogger.info("[Lifecycle] SarvamBridgeViewController registered SarvamLiveActivityPlugin")
     }
 
     override func viewDidLoad() {
@@ -248,7 +257,7 @@ class SarvamBridgeViewController: CAPBridgeViewController {
             web.backgroundColor = sarvamCream
             web.scrollView.backgroundColor = sarvamCream
             web.scrollView.contentInsetAdjustmentBehavior = .never
-            print("SARVAM_NATIVE: Web view configured with swipe gestures and #F4F5F2 background!")
+            SarvamNativeLogger.info("[Lifecycle] WKWebView configured with swipe gestures and #F4F5F2 background")
         }
     }
 

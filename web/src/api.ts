@@ -62,6 +62,7 @@ async function explainWithNativeWorker(
   }
 
   try {
+    console.log('[SarvamNative] [WebAPI] Starting explainWithNativeWorker: filesCount=', files.length, 'lang=', lang, 'apiBase=', getApiBase())
     await startNativeScan({
       docId,
       title,
@@ -76,16 +77,19 @@ async function explainWithNativeWorker(
 
     while (Date.now() - startTime < maxWaitMs) {
       if (externalSignal?.aborted) {
+        console.warn('[SarvamNative] [WebAPI] explainWithNativeWorker cancelled by signal')
         cancelNativeScan(docId)
         throw new DOMException('Aborted', 'AbortError')
       }
 
       const check = await checkPendingScanResult(docId)
       if (check?.ready && check?.result) {
+        console.log('[SarvamNative] [WebAPI] Native scan worker finished successfully, result received')
         return check.result as ExplainResponse
       }
       if (check?.error) {
         const details = (check as any).details || {}
+        console.error('[SarvamNative] [WebAPI] Native scan worker reported failure:', details)
         throw new ExplainApiError(
           details.message || 'Service is busy',
           details.messageLocal || getLocalFallbackError(lang, 'generic'),
@@ -96,6 +100,7 @@ async function explainWithNativeWorker(
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
+    console.error('[SarvamNative] [WebAPI] explainWithNativeWorker timed out after 120s')
     throw new ExplainApiError(
       'Document analysis timed out after 120 seconds.',
       getLocalFallbackError(lang, 'timeout'),
@@ -518,6 +523,11 @@ export async function speakText(params: {
     params.signal.addEventListener('abort', onAbort, { once: true })
   }
 
+  const ttsStart = Date.now()
+  if (isNative()) {
+    console.log('[SarvamNative] [WebAPI] POST /api/speak request started: chars=', params.text.length, 'lang=', params.lang, 'voice=', params.voice)
+  }
+
   try {
     const res = await fetch(`${getApiBase()}/api/speak`, {
       method: 'POST',
@@ -534,10 +544,22 @@ export async function speakText(params: {
     })
 
     if (!res.ok) {
+      if (isNative()) {
+        console.error('[SarvamNative] [WebAPI] POST /api/speak FAILED status=', res.status, 'duration=', Date.now() - ttsStart, 'ms')
+      }
       throw new Error(`Speak error ${res.status}`)
     }
 
-    return await res.blob()
+    const blob = await res.blob()
+    if (isNative()) {
+      console.log('[SarvamNative] [WebAPI] POST /api/speak SUCCESS status=', res.status, 'duration=', Date.now() - ttsStart, 'ms blobBytes=', blob.size, 'type=', blob.type)
+    }
+    return blob
+  } catch (err) {
+    if (isNative()) {
+      console.error('[SarvamNative] [WebAPI] POST /api/speak error encountered:', err)
+    }
+    throw err
   } finally {
     clearTimeout(timeoutId)
     if (params.signal) {

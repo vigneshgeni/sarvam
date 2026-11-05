@@ -18,6 +18,7 @@ import {
 } from '../utils/speech'
 import { speakText } from '../api'
 import { resolveLang, LANG_LABELS } from '../i18n'
+import { isNative } from '../native/isNative.js'
 import {
   startListenActivity,
   updateListenPlayback,
@@ -378,6 +379,10 @@ export default function ListenSheet({
     const session = ++playbackSessionRef.current
     setIsBuffering(true)
 
+    if (isNative()) {
+      console.log('[SarvamNative] [ListenSheet] startPlaybackSession session=', session, 'mode=', mode, 'lang=', concreteLang, 'gender=', selectedGenderRef.current)
+    }
+
     const rawScript =
       mode === 'quick'
         ? buildQuickSummaryScript(result, concreteLang)
@@ -461,10 +466,17 @@ export default function ListenSheet({
         }
       }
 
+      if (isNative()) {
+        console.log('[SarvamNative] [ListenSheet] Calling audio.play()... blobUrl=', blobUrl, 'blobSize=', blob.size)
+      }
       audio.src = blobUrl
       initWebAudio()
       await audio.play()
       if (playbackSessionRef.current !== session) return
+
+      if (isNative()) {
+        console.log('[SarvamNative] [ListenSheet] audio.play() SUCCEEDED; starting Live Activity')
+      }
 
       visualizerActiveRef.current = true
       setIsPlaying(true)
@@ -482,7 +494,10 @@ export default function ListenSheet({
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
       }
-    } catch {
+    } catch (err) {
+      if (isNative()) {
+        console.error('[SarvamNative] [ListenSheet] audio.play() or fetch failed with error:', err, 'Aborted:', controller.signal.aborted)
+      }
       if (controller.signal.aborted || playbackSessionRef.current !== session) return
       // Fallback to device voice
       fallbackToDeviceVoice(rawScript, startPosRatio, session)
@@ -491,6 +506,9 @@ export default function ListenSheet({
 
   // Fallback to SpeechSynthesis
   const fallbackToDeviceVoice = (text: string, startPosRatio: number, session: number) => {
+    if (isNative()) {
+      console.warn('[SarvamNative] [ListenSheet] fallbackToDeviceVoice triggered! Switching engine to device voice.')
+    }
     setEngine('device')
     setUsingDeviceNote(true)
     setIsBuffering(false)

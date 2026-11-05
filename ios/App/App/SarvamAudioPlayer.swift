@@ -23,6 +23,7 @@ public final class SarvamAudioPlayer: NSObject {
         setupAudioSession()
         setupRemoteCommands()
         setupInterruptionObserver()
+        setupRouteChangeObserver()
     }
 
     private func setupAudioSession() {
@@ -30,8 +31,36 @@ public final class SarvamAudioPlayer: NSObject {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .spokenAudio, options: [])
             try session.setActive(true)
+            SarvamNativeLogger.info("[Audio] AudioSession setCategory .playback mode .spokenAudio SUCCESS")
         } catch {
-            print("[SarvamAudioPlayer] Failed to activate AVAudioSession: \(error)")
+            SarvamNativeLogger.error("[Audio] Failed to activate AVAudioSession: \(error.localizedDescription)")
+        }
+    }
+
+    private func setupRouteChangeObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRouteChange),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleRouteChange(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+            return
+        }
+        SarvamNativeLogger.info("[Audio] Route change notification received: reason=\(reasonValue)")
+        switch reason {
+        case .oldDeviceUnavailable:
+            SarvamNativeLogger.info("[Audio] Audio output device disconnected (e.g. headphones unplugged); pausing playback")
+            pause()
+        case .newDeviceAvailable:
+            SarvamNativeLogger.info("[Audio] New audio output device connected")
+        default:
+            break
         }
     }
 
@@ -53,13 +82,15 @@ public final class SarvamAudioPlayer: NSObject {
 
         switch type {
         case .began:
+            SarvamNativeLogger.info("[Audio] Audio interruption BEGAN (e.g. phone call/Siri); pausing playback")
             pause()
         case .ended:
-            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
-                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                if options.contains(.shouldResume) {
-                    resume()
-                }
+            let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            let shouldResume = options.contains(.shouldResume)
+            SarvamNativeLogger.info("[Audio] Audio interruption ENDED: shouldResume=\(shouldResume)")
+            if shouldResume {
+                resume()
             }
         @unknown default:
             break
@@ -141,6 +172,8 @@ public final class SarvamAudioPlayer: NSObject {
         totalDuration = duration > 0 ? duration : 90
         currentPosition = max(0, min(startPosition, totalDuration))
 
+        SarvamNativeLogger.info("[Audio] play() called: title=\(title) lang=\(langLabel) duration=\(totalDuration)s startPos=\(currentPosition)s hasBase64=\(audioBase64 != nil) hasUrl=\(url != nil)")
+
         // Clean up previous observer
         if let token = timeObserverToken, let p = player {
             p.removeTimeObserver(token)
@@ -152,12 +185,18 @@ public final class SarvamAudioPlayer: NSObject {
         if let audioBase64 = audioBase64 {
             let cleanBase64 = audioBase64.components(separatedBy: ",").last ?? audioBase64
             if let data = Data(base64Encoded: cleanBase64) {
-                let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sarvam_playback.wav")
+                let isMp3 = data.count > 3 && (data[0] == 0xFF && (data[1] & 0xE0) == 0xE0 || data.starts(with: "ID3".data(using: .utf8)!))
+                let ext = isMp3 ? "mp3" : "wav"
+                let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sarvam_playback.\(ext)")
                 try? data.write(to: tempUrl)
                 playerItem = AVPlayerItem(url: tempUrl)
+                SarvamNativeLogger.info("[Audio] Decoded audio base64: \(data.count) bytes (detected format: .\(ext))")
+            } else {
+                SarvamNativeLogger.error("[Audio] Failed to decode base64 audio string (\(cleanBase64.count) chars)")
             }
         } else if let url = url {
             playerItem = AVPlayerItem(url: url)
+            SarvamNativeLogger.info("[Audio] Using audio stream URL: \(url.absoluteString)")
         }
 
         // If no URL or data was passed, create a dummy 90-second silence asset for Simulator
@@ -165,9 +204,13 @@ public final class SarvamAudioPlayer: NSObject {
             let dummyUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sarvam_dummy_silent.wav")
             createDummyWavFile(at: dummyUrl, durationSeconds: totalDuration)
             playerItem = AVPlayerItem(url: dummyUrl)
+            SarvamNativeLogger.info("[Audio] Created dummy silent audio asset for testing")
         }
 
-        guard let item = playerItem else { return }
+        guard let item = playerItem else {
+            SarvamNativeLogger.error("[Audio] Failed to create AVPlayerItem")
+            return
+        }
 
         player = AVPlayer(playerItem: item)
 
@@ -176,6 +219,14 @@ public final class SarvamAudioPlayer: NSObject {
             self,
             selector: #selector(playerDidFinishPlaying),
             name: .AVPlayerItemDidPlayToEndTime,
+            object: item
+        )
+
+        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemFailedToPlayToEndTime, object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(playerItemFailedToPlay),
+            name: .AVPlayerItemFailedToPlayToEndTime,
             object: item
         )
 
@@ -194,10 +245,12 @@ public final class SarvamAudioPlayer: NSObject {
         player?.play()
         isPlaying = true
         updateNowPlayingInfo()
+        SarvamNativeLogger.info("[Audio] AVPlayer started playback at \(currentPosition)s")
         onPlaybackProgress?(currentPosition, totalDuration, isPlaying)
     }
 
     public func pause() {
+        SarvamNativeLogger.info("[Audio] pause() called at \(currentPosition)s")
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
@@ -205,6 +258,7 @@ public final class SarvamAudioPlayer: NSObject {
     }
 
     public func resume() {
+        SarvamNativeLogger.info("[Audio] resume() called at \(currentPosition)s")
         setupAudioSession()
         player?.play()
         isPlaying = true
@@ -214,18 +268,21 @@ public final class SarvamAudioPlayer: NSObject {
 
     public func skip(seconds: Double) {
         let newPos = max(0, min(currentPosition + seconds, totalDuration))
+        SarvamNativeLogger.info("[Audio] skip(\(seconds)s) to \(newPos)s")
         seek(to: newPos)
     }
 
     public func seek(to position: Double) {
         let clamped = max(0, min(position, totalDuration))
         currentPosition = clamped
+        SarvamNativeLogger.info("[Audio] seek(to: \(clamped)s)")
         player?.seek(to: CMTime(seconds: clamped, preferredTimescale: 600))
         updateNowPlayingInfo()
         onPlaybackProgress?(currentPosition, totalDuration, isPlaying)
     }
 
     public func stop() {
+        SarvamNativeLogger.info("[Audio] stop() called")
         player?.pause()
         if let token = timeObserverToken, let p = player {
             p.removeTimeObserver(token)
@@ -239,11 +296,17 @@ public final class SarvamAudioPlayer: NSObject {
     }
 
     @objc private func playerDidFinishPlaying() {
+        SarvamNativeLogger.info("[Audio] playerDidFinishPlaying reached end of track (\(totalDuration)s)")
         isPlaying = false
         currentPosition = totalDuration
         updateNowPlayingInfo()
         onPlaybackProgress?(totalDuration, totalDuration, false)
         onPlaybackEnded?()
+    }
+
+    @objc private func playerItemFailedToPlay(notification: Notification) {
+        let errDesc = (notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)?.localizedDescription ?? "unknown error"
+        SarvamNativeLogger.error("[Audio] AVPlayerItemFailedToPlayToEndTime: \(errDesc)")
     }
 
     private func createDummyWavFile(at url: URL, durationSeconds: Double) {

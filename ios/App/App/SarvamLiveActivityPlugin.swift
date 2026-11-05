@@ -1,6 +1,7 @@
 import ActivityKit
 import Capacitor
 import Foundation
+import OSLog
 import QuickLook
 import UIKit
 
@@ -70,25 +71,33 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func isAvailable(_ call: CAPPluginCall) {
         if #available(iOS 16.1, *) {
             let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+            SarvamNativeLogger.info("[ActivityKit] isAvailable checked: areActivitiesEnabled=\(areEnabled)")
             call.resolve(["available": areEnabled])
         } else {
+            SarvamNativeLogger.info("[ActivityKit] isAvailable checked: iOS < 16.1 (false)")
             call.resolve(["available": false])
         }
     }
 
     @objc func startActivity(_ call: CAPPluginCall) {
         guard #available(iOS 16.1, *) else {
+            SarvamNativeLogger.error("[ActivityKit] startActivity rejected: ActivityKit is not supported on this iOS version")
             call.reject("ActivityKit is not supported on this iOS version")
             return
         }
 
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+        let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        let activeCount = Activity<SarvamActivityAttributes>.activities.count
+        let phase = call.getString("phase") ?? "scanning"
+        let docId = call.getString("docId") ?? "doc"
+        SarvamNativeLogger.info("[ActivityKit] startActivity called: docId=\(docId) phase=\(phase) areActivitiesEnabled=\(areEnabled) activeCount=\(activeCount)")
+
+        guard areEnabled else {
+            SarvamNativeLogger.error("[ActivityKit] startActivity FAILED: Live Activities are disabled by the user in Settings (areActivitiesEnabled=false)")
             call.reject("Live Activities are disabled by the user in Settings")
             return
         }
 
-        let docId = call.getString("docId") ?? "doc"
-        let phase = call.getString("phase") ?? "scanning"
         let title = call.getString("title") ?? "Your document"
         let fileName = call.getString("fileName")
         let fileCount = call.getInt("fileCount") ?? 1
@@ -131,6 +140,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         do {
             // End any prior activity to enforce "one activity at a time" rule
             if let existing = activeActivity {
+                SarvamNativeLogger.info("[ActivityKit] Ending previous active activity id=\(existing.id)")
                 Task {
                     await existing.end(nil, dismissalPolicy: .immediate)
                 }
@@ -142,17 +152,17 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 pushType: nil
             )
             self.activeActivity = activity
-            print("SARVAM_NATIVE: [LiveActivity] Activity STARTED! ID=\(activity.id), docId=\(docId), phase=\(phase), title=\(state.displayTitle)")
+            SarvamNativeLogger.info("[ActivityKit] Activity.request SUCCESS id=\(activity.id) docId=\(docId) phase=\(phase)")
             call.resolve(["success": true, "activityId": activity.id])
         } catch {
-            print("SARVAM_NATIVE: [LiveActivity] Activity.request FAILED: \(error)")
+            SarvamNativeLogger.error("[ActivityKit] Activity.request FAILED: \(error.localizedDescription) (type: \(type(of: error)))")
             call.reject("Failed to request Live Activity: \(error.localizedDescription)")
         }
     }
 
     @objc func updateActivity(_ call: CAPPluginCall) {
         guard let activity = activeActivity else {
-            print("SARVAM_NATIVE: [LiveActivity] updateActivity skipped (no active activity)")
+            SarvamNativeLogger.warning("[ActivityKit] updateActivity skipped: no active activity")
             call.resolve(["success": false, "reason": "No active activity"])
             return
         }
@@ -202,31 +212,35 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             ? AlertConfiguration(title: "Ready", body: "Your document is ready", sound: .default)
             : nil
 
-        print("SARVAM_NATIVE: [LiveActivity] updateActivity updating activity: phase=\(phase), docId=\(docId), title=\(state.displayTitle)")
+        SarvamNativeLogger.info("[ActivityKit] updateActivity: phase=\(phase) docId=\(docId) id=\(activity.id)")
         Task {
             await activity.update(
                 ActivityContent(state: state, staleDate: nil),
                 alertConfiguration: alertConfig
             )
+            SarvamNativeLogger.info("[ActivityKit] updateActivity SUCCESS id=\(activity.id) phase=\(phase)")
             call.resolve(["success": true])
         }
     }
 
     @objc func endActivity(_ call: CAPPluginCall) {
-        print("SARVAM_NATIVE: [LiveActivity] endActivity called")
+        SarvamNativeLogger.info("[ActivityKit] endActivity called")
         endScanningBackgroundTask()
         SarvamAudioPlayer.shared.stop()
 
         guard let activity = activeActivity else {
+            SarvamNativeLogger.info("[ActivityKit] endActivity: no active activity to end")
             call.resolve(["success": true])
             return
         }
 
         let dismissal: ActivityUIDismissalPolicy = .immediate
         Task {
+            SarvamNativeLogger.info("[ActivityKit] Ending active activity id=\(activity.id)")
             await activity.end(nil, dismissalPolicy: dismissal)
             self.activeActivity = nil
             self.lastState = nil
+            SarvamNativeLogger.info("[ActivityKit] endActivity SUCCESS id=\(activity.id)")
             call.resolve(["success": true])
         }
     }
@@ -360,9 +374,12 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let showDoc = call.getBool("showDocumentName") ?? false
         let password = call.getString("password")
         guard let files = call.getArray("files") as? [[String: Any]], !files.isEmpty else {
+            SarvamNativeLogger.error("[ScanWorker] startNativeScan rejected: no files provided")
             call.reject("No files provided for scan")
             return
         }
+
+        SarvamNativeLogger.info("[ScanWorker] startNativeScan called: files=\(files.count) lang=\(lang) apiBase=\(apiBase)")
 
         // Start Live Activity with Option A parameters (NO percentage number)
         let state = SarvamActivityAttributes.ContentState(
@@ -379,9 +396,14 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         self.lastState = state
 
         if #available(iOS 16.1, *) {
-            if ActivityAuthorizationInfo().areActivitiesEnabled {
+            let areEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+            let activeCount = Activity<SarvamActivityAttributes>.activities.count
+            SarvamNativeLogger.info("[ScanWorker] Activity authorization check: areActivitiesEnabled=\(areEnabled) activeCount=\(activeCount)")
+
+            if areEnabled {
                 Task {
                     for existing in Activity<SarvamActivityAttributes>.activities {
+                        SarvamNativeLogger.info("[ScanWorker] Ending pre-existing activity \(existing.id)")
                         await existing.end(nil, dismissalPolicy: .immediate)
                     }
                     do {
@@ -391,11 +413,13 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                             pushType: nil
                         )
                         self.activeActivity = activity
-                        print("SARVAM_NATIVE: [ScanWorker] Live Activity started with ID \(activity.id)")
+                        SarvamNativeLogger.info("[ScanWorker] Activity.request SUCCESS id=\(activity.id) for scan")
                     } catch {
-                        print("SARVAM_NATIVE: [ScanWorker] Failed to request Live Activity: \(error)")
+                        SarvamNativeLogger.error("[ScanWorker] Activity.request FAILED: \(error.localizedDescription) (type: \(type(of: error)))")
                     }
                 }
+            } else {
+                SarvamNativeLogger.warning("[ScanWorker] Live Activities are disabled; skipping Activity.request")
             }
         }
 
@@ -410,8 +434,10 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         )
 
         if started {
+            SarvamNativeLogger.info("[ScanWorker] ScanWorker successfully scheduled upload task")
             call.resolve(["success": true, "docId": docId])
         } else {
+            SarvamNativeLogger.error("[ScanWorker] ScanWorker failed to start scan task")
             call.reject("Failed to initiate native scan")
         }
     }
@@ -422,6 +448,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if FileManager.default.fileExists(atPath: resultFile.path) {
             if let data = try? Data(contentsOf: resultFile),
                let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                SarvamNativeLogger.info("[HandOff] checkPendingScanResult docId=\(docId) status=ready bytes=\(data.count)")
                 call.resolve([
                     "ready": true,
                     "result": json
@@ -434,6 +461,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if FileManager.default.fileExists(atPath: errorFile.path) {
             if let data = try? Data(contentsOf: errorFile),
                let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                SarvamNativeLogger.warning("[HandOff] checkPendingScanResult docId=\(docId) status=error")
                 call.resolve([
                     "ready": false,
                     "error": true,
@@ -444,6 +472,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let isScanning = SarvamScanWorker.shared.isScanning(docId: docId)
+        SarvamNativeLogger.debug("[HandOff] checkPendingScanResult docId=\(docId) status=running(\(isScanning))")
         call.resolve([
             "ready": false,
             "running": isScanning
@@ -451,6 +480,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func cancelNativeScan(_ call: CAPPluginCall) {
+        SarvamNativeLogger.info("[ScanWorker] cancelNativeScan called")
         SarvamScanWorker.shared.cancelActiveScan()
         call.resolve(["success": true])
     }
@@ -577,6 +607,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     private var currentTempFile: URL?
     private var receivedData = Data()
     private var isCancelled = false
+    private var scanStartTime: CFAbsoluteTime = 0
 
     override private init() {
         super.init()
@@ -594,7 +625,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
             { _, observer, _, _, _ in
                 guard let observer = observer else { return }
                 let worker = Unmanaged<SarvamScanWorker>.fromOpaque(observer).takeUnretainedValue()
-                print("SARVAM_NATIVE: [ScanWorker] Received Darwin scan cancelled notification")
+                SarvamNativeLogger.info("[ScanWorker] Received Darwin scan cancelled notification")
                 worker.cancelActiveScan()
             },
             "com.sarvam.app.scanCancelled" as CFString,
@@ -618,14 +649,14 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     public static func saveResult(docId: String, resultJson: [String: Any]) {
         if let data = try? JSONSerialization.data(withJSONObject: resultJson, options: []) {
             try? data.write(to: resultFileURL(docId: docId))
-            print("SARVAM_NATIVE: [ScanWorker] Saved result for \(docId)")
+            SarvamNativeLogger.info("[ScanWorker] Saved result for docId=\(docId) (\(data.count) bytes)")
         }
     }
 
     public static func saveError(docId: String, errorJson: [String: Any]) {
         if let data = try? JSONSerialization.data(withJSONObject: errorJson, options: []) {
             try? data.write(to: errorFileURL(docId: docId))
-            print("SARVAM_NATIVE: [ScanWorker] Saved error for \(docId)")
+            SarvamNativeLogger.error("[ScanWorker] Saved error for docId=\(docId): \(errorJson["message"] ?? "")")
         }
     }
 
@@ -651,6 +682,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         isCancelled = false
         currentDocId = docId
         receivedData = Data()
+        scanStartTime = CFAbsoluteTimeGetCurrent()
 
         Self.clearCache(docId: docId)
 
@@ -659,7 +691,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         currentTempFile = tempFileURL
 
         guard let stream = OutputStream(url: tempFileURL, append: false) else {
-            print("SARVAM_NATIVE: [ScanWorker] Failed to create output stream at \(tempFileURL)")
+            SarvamNativeLogger.error("[ScanWorker] Failed to create output stream at \(tempFileURL)")
             return false
         }
         stream.open()
@@ -700,7 +732,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         writeString("--\(boundary)--\r\n")
 
         guard let url = URL(string: "\(apiBase)/api/explain") else {
-            print("SARVAM_NATIVE: [ScanWorker] Invalid URL: \(apiBase)/api/explain")
+            SarvamNativeLogger.error("[ScanWorker] [API] Invalid URL: \(apiBase)/api/explain")
             return false
         }
 
@@ -711,7 +743,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         let task = session.uploadTask(with: request, fromFile: tempFileURL)
         currentUploadTask = task
         task.resume()
-        print("SARVAM_NATIVE: [ScanWorker] Upload task started for docId: \(docId), url: \(url)")
+        SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain upload task started: docId=\(docId) files=\(files.count) lang=\(lang)")
         return true
     }
 
@@ -732,6 +764,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         if #available(iOS 16.1, *) {
             Task {
                 for activity in Activity<SarvamActivityAttributes>.activities {
+                    SarvamNativeLogger.info("[ScanWorker] Ending activity \(activity.id) due to cancel")
                     await activity.end(nil, dismissalPolicy: .immediate)
                 }
             }
@@ -741,6 +774,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     // MARK: - URLSession Delegate Methods
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         receivedData.append(data)
+        SarvamNativeLogger.debug("[ScanWorker] [API] Received data chunk: \(data.count) bytes (total=\(receivedData.count))")
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -748,12 +782,13 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
             try? FileManager.default.removeItem(at: tmp)
             currentTempFile = nil
         }
+        let durationMs = Int((CFAbsoluteTimeGetCurrent() - scanStartTime) * 1000)
         let docId = self.currentDocId ?? "doc"
         let httpResponse = task.response as? HTTPURLResponse
         let statusCode = httpResponse?.statusCode ?? (error != nil ? 500 : 200)
 
         if isCancelled || (error as NSError?)?.code == NSURLErrorCancelled {
-            print("SARVAM_NATIVE: [ScanWorker] Upload was cancelled")
+            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain CANCELLED duration=\(durationMs)ms")
             Self.clearCache(docId: docId)
             finishBackgroundEvents()
             return
@@ -761,14 +796,18 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
         if error != nil || statusCode >= 400 {
             let errorMsg: String
+            let errorType: String
             if statusCode == 429 {
                 errorMsg = "Too many requests. Please wait."
+                errorType = "http_429_rate_limit"
             } else if statusCode == 503 || statusCode == 504 {
                 errorMsg = "Service is busy. Please try again soon."
+                errorType = "http_\(statusCode)_busy"
             } else {
                 errorMsg = "Analysis failed. Please try again."
+                errorType = error != nil ? "network_error" : "http_\(statusCode)"
             }
-            print("SARVAM_NATIVE: [ScanWorker] Scan failed with code \(statusCode): \(errorMsg)")
+            SarvamNativeLogger.error("[ScanWorker] [API] POST /api/explain FAILED: status=\(statusCode) duration=\(durationMs)ms error=\(errorType) desc=\(error?.localizedDescription ?? "none")")
             Self.saveError(docId: docId, errorJson: [
                 "message": errorMsg,
                 "messageLocal": errorMsg,
@@ -782,14 +821,16 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
                         updatedState.phase = "failed"
                         updatedState.stage = errorMsg
                         updatedState.errorMessage = errorMsg
+                        SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to failed (\(errorType))")
                         await activity.update(ActivityContent(state: updatedState, staleDate: nil))
                     }
                 }
             }
         } else {
-            print("SARVAM_NATIVE: [ScanWorker] Scan completed successfully, \(receivedData.count) bytes received")
+            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain SUCCESS: status=\(statusCode) duration=\(durationMs)ms bytes=\(receivedData.count)")
             if let json = try? JSONSerialization.jsonObject(with: receivedData, options: []) as? [String: Any] {
                 Self.saveResult(docId: docId, resultJson: json)
+                SarvamNativeLogger.info("[ScanWorker] Saved result JSON for docId=\(docId) (\(receivedData.count) bytes)")
 
                 if #available(iOS 16.1, *) {
                     Task {
@@ -804,6 +845,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
                                 body: "Your document is ready",
                                 sound: .default
                             )
+                            SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to ready")
                             await activity.update(
                                 ActivityContent(state: updatedState, staleDate: nil),
                                 alertConfiguration: alertConfig
@@ -812,7 +854,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
                     }
                 }
             } else {
-                print("SARVAM_NATIVE: [ScanWorker] Failed to parse JSON response")
+                SarvamNativeLogger.error("[ScanWorker] [API] Failed to parse JSON response (\(receivedData.count) bytes received) duration=\(durationMs)ms")
                 let errorMsg = "Service is busy"
                 Self.saveError(docId: docId, errorJson: [
                     "message": errorMsg,
@@ -826,6 +868,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
                             updatedState.phase = "failed"
                             updatedState.stage = errorMsg
                             updatedState.errorMessage = errorMsg
+                            SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to failed (json_parse_error)")
                             await activity.update(ActivityContent(state: updatedState, staleDate: nil))
                         }
                     }
@@ -842,6 +885,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         if let handler = backgroundCompletionHandler {
             backgroundCompletionHandler = nil
             DispatchQueue.main.async {
+                SarvamNativeLogger.info("[ScanWorker] Background completion handler executed")
                 handler()
             }
         }

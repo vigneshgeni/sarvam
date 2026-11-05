@@ -1,5 +1,42 @@
 import ActivityKit
 import Foundation
+import OSLog
+
+// MARK: - Structured OSLog Diagnostic Logger
+public enum SarvamNativeLogger {
+    private static let osLogger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.sarvam.app",
+        category: "native"
+    )
+
+    public static func info(_ message: String) {
+        osLogger.info("[SarvamNative] \(message, privacy: .public)")
+        #if DEBUG
+        print("[SarvamNative] \(message)")
+        #endif
+    }
+
+    public static func error(_ message: String) {
+        osLogger.error("[SarvamNative] [ERROR] \(message, privacy: .public)")
+        #if DEBUG
+        print("[SarvamNative] [ERROR] \(message)")
+        #endif
+    }
+
+    public static func warning(_ message: String) {
+        osLogger.warning("[SarvamNative] [WARN] \(message, privacy: .public)")
+        #if DEBUG
+        print("[SarvamNative] [WARN] \(message)")
+        #endif
+    }
+
+    public static func debug(_ message: String) {
+        osLogger.debug("[SarvamNative] [DEBUG] \(message, privacy: .public)")
+        #if DEBUG
+        print("[SarvamNative] [DEBUG] \(message)")
+        #endif
+    }
+}
 
 public struct SarvamActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
