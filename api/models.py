@@ -750,6 +750,9 @@ class SpeakRequest(BaseModel):
     lang: str
     voice: Literal["female", "male"] = "female"
     rate: Optional[float] = Field(default=1.0, ge=0.25, le=4.0)
+    # Picks the voice inside the gender's rotating pool. The app sends one number per Listen
+    # session so the voice stays the same through pause, replay and seek. Absent: random voice.
+    voice_index: Optional[int] = Field(default=None, ge=0, le=1000)
 
 
 # Translation Models

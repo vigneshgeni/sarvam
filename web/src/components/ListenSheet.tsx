@@ -44,6 +44,17 @@ export const audioBlobCache = new Map<string, Blob>()
 // Native app: local audio file path per script (the file is written by the native downloader)
 const nativeAudioCache = new Map<string, string>()
 
+// Voice rotation. The server keeps a small pool of voices per gender (3 by default). Every time
+// the Listen sheet is opened it moves to the next voice, starting from a random one, so two
+// reads in a row never use the same voice. The number is then fixed for that whole session, so
+// pause, resume, replay, seek and speed never change the voice.
+const VOICE_VARIANTS = 3
+let voiceRotation = Math.floor(Math.random() * VOICE_VARIANTS)
+function nextVoiceVariant(): number {
+  voiceRotation = (voiceRotation + 1) % VOICE_VARIANTS
+  return voiceRotation
+}
+
 const BAR_COUNT = 35
 const RESTING_BARS = Array.from({ length: BAR_COUNT }, (_, index) =>
   8 + Math.round((Math.sin(index * 1.7) + 1) * 2)
@@ -93,6 +104,7 @@ export default function ListenSheet({
     }
   })
   const selectedGenderRef = useRef(gender)
+  const voiceVariantRef = useRef(0)
 
   // Sentences for live captions
   const [sentences, setSentences] = useState<string[]>([])
@@ -159,6 +171,11 @@ export default function ListenSheet({
   useEffect(() => {
     stopAllAudio()
   }, [concreteLang])
+
+  // New voice for each time the sheet is opened (declared before the effect that starts playback)
+  useEffect(() => {
+    if (isOpen) voiceVariantRef.current = nextVoiceVariant()
+  }, [isOpen])
 
   // Prepare script sentences and start synthesis as soon as Listen sheet opens or mode/lang/result changes
   useEffect(() => {
@@ -388,7 +405,7 @@ export default function ListenSheet({
     setIsBuffering(true)
 
     if (isNative()) {
-      console.log('[SarvamNative] [ListenSheet] startPlaybackSession session=', session, 'mode=', mode, 'lang=', concreteLang, 'gender=', selectedGenderRef.current)
+      console.log('[SarvamNative] [ListenSheet] startPlaybackSession session=', session, 'mode=', mode, 'lang=', concreteLang, 'gender=', selectedGenderRef.current, 'voiceVariant=', voiceVariantRef.current)
     }
 
     const rawScript =
@@ -397,7 +414,8 @@ export default function ListenSheet({
         : buildSpokenText(result)
     const speechScript = prepareTextForSpeech(rawScript, concreteLang)
     const docId = result.title || result.report_title || 'doc'
-    const cacheKey = `${docId}-${mode}-${concreteLang}-${selectedGenderRef.current}`
+    const voiceVariant = voiceVariantRef.current
+    const cacheKey = `${docId}-${mode}-${concreteLang}-${selectedGenderRef.current}-v${voiceVariant}`
 
     const controller = new AbortController()
     activeControllerRef.current = controller
@@ -413,6 +431,7 @@ export default function ListenSheet({
             lang: concreteLang,
             voice: selectedGenderRef.current,
             rate: 1,
+            voiceIndex: voiceVariant,
             signal: controller.signal,
           })
           if (controller.signal.aborted || playbackSessionRef.current !== session) return
@@ -426,6 +445,7 @@ export default function ListenSheet({
           lang: concreteLang,
           voice: selectedGenderRef.current,
           rate: 1,
+          voiceIndex: voiceVariant,
           signal: controller.signal,
         })
         if (controller.signal.aborted || playbackSessionRef.current !== session) return

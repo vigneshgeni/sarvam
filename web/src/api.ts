@@ -20,6 +20,16 @@ export function getApiBase(): string {
     : (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 }
 
+/**
+ * Base URL for /api/speak only. Set VITE_TTS_API_URL at build time to hear a TTS change from a
+ * server that is not deployed (for example the API running on your Mac). Explain, translate and
+ * ask keep using getApiBase(). Unset (the default): speech uses the normal API.
+ */
+function getSpeakBase(): string {
+  const tts = ((import.meta.env.VITE_TTS_API_URL as string | undefined) || '').trim()
+  return tts ? tts.replace(/\/+$/, '') : getApiBase()
+}
+
 export class ExplainApiError extends Error {
   messageLocal: string
   statusCode: number
@@ -495,14 +505,14 @@ export async function askDocument(params: {
 }
 
 /**
- * Longer reads need more than 8s. About 25s once the text reaches 900 characters.
- * Short text stays at 8s.
+ * Gemini TTS generates speech with a language model, so give it more time than a classic voice:
+ * 15s for short text, rising to 45s once the text reaches 900 characters.
  */
 function speakTimeoutMs(text: string): number {
   const length = text.length
-  if (length >= 900) return 25_000
-  if (length <= 80) return 8_000
-  return Math.round(8_000 + ((length - 80) / (900 - 80)) * 17_000)
+  if (length >= 900) return 45_000
+  if (length <= 80) return 15_000
+  return Math.round(15_000 + ((length - 80) / (900 - 80)) * 30_000)
 }
 
 /**
@@ -515,6 +525,8 @@ export async function speakText(params: {
   lang: string
   voice: 'female' | 'male'
   rate?: number
+  /** Picks the voice inside the gender's rotating pool. Same number for a whole Listen session. */
+  voiceIndex?: number
   signal?: AbortSignal
 }): Promise<Blob> {
   const controller = new AbortController()
@@ -531,7 +543,7 @@ export async function speakText(params: {
   }
 
   try {
-    const res = await fetch(`${getApiBase()}/api/speak`, {
+    const res = await fetch(`${getSpeakBase()}/api/speak`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -541,6 +553,7 @@ export async function speakText(params: {
         lang: params.lang,
         voice: params.voice,
         rate: params.rate || 1.0,
+        ...(params.voiceIndex !== undefined ? { voice_index: params.voiceIndex } : {}),
       }),
       signal: controller.signal,
     })
@@ -580,11 +593,12 @@ export async function speakTextToFile(params: {
   lang: string
   voice: 'female' | 'male'
   rate?: number
+  voiceIndex?: number
   signal?: AbortSignal
 }): Promise<string> {
   const timeoutMs = speakTimeoutMs(params.text)
   const started = Date.now()
-  console.log('[SarvamNative] [WebAPI] native POST /api/speak started: chars=', params.text.length, 'lang=', params.lang, 'voice=', params.voice)
+  console.log('[SarvamNative] [WebAPI] native POST /api/speak started: chars=', params.text.length, 'lang=', params.lang, 'voice=', params.voice, 'voiceIndex=', params.voiceIndex, 'base=', getSpeakBase())
 
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   let onAbort: (() => void) | undefined
@@ -603,12 +617,13 @@ export async function speakTextToFile(params: {
   try {
     const res = await Promise.race([
       downloadSpeechToFile({
-        url: `${getApiBase()}/api/speak`,
+        url: `${getSpeakBase()}/api/speak`,
         body: JSON.stringify({
           text: params.text,
           lang: params.lang,
           voice: params.voice,
           rate: params.rate || 1.0,
+          ...(params.voiceIndex !== undefined ? { voice_index: params.voiceIndex } : {}),
         }),
         timeoutMs,
       }),

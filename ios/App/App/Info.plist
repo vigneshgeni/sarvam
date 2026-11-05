@@ -76,6 +76,8 @@
 	<string>Sarvam needs permission to save analyzed document reports to your photo library.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sarvam uses audio playback and speech features to read document summaries aloud.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Sarvam can reach a development server on your local network to test spoken summaries.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

@@ -1,6 +1,8 @@
 import concurrent.futures
 import io
+import logging
 import os
+import random
 import re
 import threading
 import time
@@ -110,40 +112,115 @@ CRORE_WORDS = {
     "kn": "ಕೋಟಿ",
 }
 
-SPEAK_VOICES: Dict[str, Dict[str, str]] = {
-    "ta": {
-        "female": "ta-IN-Chirp3-HD-Achernar",
-        "male": "ta-IN-Chirp3-HD-Achird",
-    },
-    "hi": {
-        "female": "hi-IN-Chirp3-HD-Achernar",
-        "male": "hi-IN-Chirp3-HD-Achird",
-    },
-    "te": {
-        "female": "te-IN-Chirp3-HD-Achernar",
-        "male": "te-IN-Chirp3-HD-Achird",
-    },
-    "ml": {
-        "female": "ml-IN-Chirp3-HD-Achernar",
-        "male": "ml-IN-Chirp3-HD-Achird",
-    },
-    "kn": {
-        "female": "kn-IN-Chirp3-HD-Achernar",
-        "male": "kn-IN-Chirp3-HD-Achird",
-    },
-    "en": {
-        "female": "en-IN-Chirp3-HD-Achernar",
-        "male": "en-IN-Chirp3-HD-Achird",
-    },
-    "mr": {
-        "female": "mr-IN-Chirp3-HD-Achernar",
-        "male": "mr-IN-Chirp3-HD-Achird",
-    },
-    "bn": {
-        "female": "bn-IN-Chirp3-HD-Achernar",
-        "male": "bn-IN-Chirp3-HD-Achird",
-    },
+# --- Gemini TTS (Cloud Text-to-Speech, Gemini voices) ---------------------------------------
+# Languages Listen can speak, and the BCP-47 code sent to Gemini TTS for each.
+# Source: Google Cloud "Gemini-TTS" page. hi, ta, te, mr, en-IN are GA there; ml, kn are Preview.
+# Bengali is listed only as bn-BD (Bangladesh); no bn-IN is listed, so bn-BD is used.
+# Odia is not offered by the app (no Listen), see synthesize_speech.
+SPEAK_LANG_CODES: Dict[str, str] = {
+    "ta": "ta-IN",
+    "hi": "hi-IN",
+    "te": "te-IN",
+    "ml": "ml-IN",
+    "kn": "kn-IN",
+    "en": "en-IN",
+    "mr": "mr-IN",
+    "bn": "bn-BD",
 }
+
+# Default model. Override with GEMINI_TTS_MODEL (for example gemini-2.5-flash-tts, which is GA).
+DEFAULT_GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview"
+
+# Every Gemini TTS voice name the Google page lists, by gender.
+GEMINI_FEMALE_VOICES = (
+    "Achernar", "Aoede", "Autonoe", "Callirrhoe", "Despina", "Erinome", "Gacrux", "Kore",
+    "Laomedeia", "Leda", "Pulcherrima", "Sulafat", "Vindemiatrix", "Zephyr",
+)
+GEMINI_MALE_VOICES = (
+    "Achird", "Algenib", "Algieba", "Alnilam", "Charon", "Enceladus", "Fenrir", "Iapetus",
+    "Orus", "Puck", "Rasalgethi", "Sadachbia", "Sadaltager", "Schedar", "Umbriel",
+    "Zubenelgenubi",
+)
+
+# Voices that rotate for each Listen session. Chosen for a calm, clear, warm read of documents
+# (not the excitable, breathy or gravelly ones). Swap them without a code change with
+# SARVAM_TTS_FEMALE_VOICES / SARVAM_TTS_MALE_VOICES (comma separated names from the lists above).
+DEFAULT_VOICE_POOLS: Dict[str, Tuple[str, ...]] = {
+    "female": ("Sulafat", "Erinome", "Despina"),
+    "male": ("Charon", "Iapetus", "Sadaltager"),
+}
+_VOICE_POOL_ENV = {
+    "female": "SARVAM_TTS_FEMALE_VOICES",
+    "male": "SARVAM_TTS_MALE_VOICES",
+}
+_CATALOGUE = {"female": GEMINI_FEMALE_VOICES, "male": GEMINI_MALE_VOICES}
+
+# Gemini TTS accepts at most 4,000 bytes of text and 4,000 of prompt (8,000 combined).
+# Indic scripts use 3 bytes per character, so keep each call well under the limit.
+_MAX_TEXT_BYTES = 3000
+
+_LANGUAGE_NAMES = {
+    "en": "English with a natural Indian accent",
+    "ta": "Tamil",
+    "hi": "Hindi",
+    "te": "Telugu",
+    "ml": "Malayalam",
+    "kn": "Kannada",
+    "mr": "Marathi",
+    "bn": "Bengali",
+}
+
+logger = logging.getLogger("sarvam-api")
+
+
+def gemini_tts_model() -> str:
+    """Model id sent as model_name. Read on every call so it can be changed with an env var."""
+    return (os.environ.get("GEMINI_TTS_MODEL") or "").strip() or DEFAULT_GEMINI_TTS_MODEL
+
+
+def voice_pool(gender: str) -> Tuple[str, ...]:
+    """The rotating voices for a gender. Env override names are checked against Google's list."""
+    key = "male" if gender == "male" else "female"
+    raw = os.environ.get(_VOICE_POOL_ENV[key], "")
+    wanted = [part.strip() for part in raw.split(",") if part.strip()]
+    by_lower = {name.lower(): name for name in _CATALOGUE[key]}
+    pool: List[str] = []
+    for name in wanted:
+        canonical = by_lower.get(name.lower())
+        if canonical is None:
+            logger.warning("tts_voice_pool: ignoring unknown %s voice %r", key, name)
+        elif canonical not in pool:
+            pool.append(canonical)
+    return tuple(pool) if pool else DEFAULT_VOICE_POOLS[key]
+
+
+def choose_voice(gender: str, variant: Optional[int] = None) -> str:
+    """Pick one voice name. The client sends the same variant for a whole Listen session, so the
+    voice never changes on pause, resume, replay, seek or speed. Without a variant, pick at random."""
+    pool = voice_pool(gender)
+    if variant is None:
+        return random.choice(pool)
+    return pool[variant % len(pool)]
+
+
+def style_prompt(lang: str = "en", rate: float = 1.0) -> str:
+    """Natural-language direction for the voice (sent in the prompt field, never spoken)."""
+    language = _LANGUAGE_NAMES.get(lang, "English with a natural Indian accent")
+    if rate <= 0.9:
+        pace = "a little slower than normal conversation"
+    elif rate >= 1.15:
+        pace = "a little faster than normal conversation"
+    else:
+        pace = "an unhurried, conversational pace"
+    return (
+        f"Read the following aloud in {language}, as a warm, calm and caring person explaining "
+        "an important document to someone who may be worried about it. "
+        f"Speak at {pace} with clear pronunciation. "
+        "Let your tone follow the meaning: steady and serious for deadlines, penalties and "
+        "warnings, gently reassuring for good news, and neutral for plain facts. "
+        "Say amounts and dates clearly, with slight emphasis so they are easy to catch. "
+        "Sound expressive and human, never robotic and never dramatic."
+    )
 
 
 def to_speech(text: str, lang: str = "en") -> str:
@@ -396,17 +473,73 @@ _SYNTH_SLOTS = threading.Semaphore(12)
 _SEGMENT_WORKERS = 8
 
 
+def neutralise_markup(text: str) -> str:
+    """Gemini TTS reads [bracketed] words as style tags such as [whispering]. Document text must
+    never steer the voice, so square brackets are turned into spaces."""
+    if not text or ("[" not in text and "]" not in text):
+        return text
+    return re.sub(r"[ \t]+", " ", re.sub(r"[\[\]]", " ", text)).strip()
+
+
+def split_to_byte_limit(text: str, max_bytes: int = _MAX_TEXT_BYTES) -> List[str]:
+    """Splits one long sentence into parts that each fit the Gemini TTS text limit (UTF-8 bytes),
+    cutting at a space or punctuation mark when one is available."""
+    rest = (text or "").strip()
+    parts: List[str] = []
+    while rest:
+        if len(rest.encode("utf-8")) <= max_bytes:
+            parts.append(rest)
+            break
+        used = 0
+        cut = len(rest)
+        for index, char in enumerate(rest):
+            used += len(char.encode("utf-8"))
+            if used > max_bytes:
+                cut = index
+                break
+        window = rest[:cut]
+        best = max(window.rfind(mark) for mark in (" ", ",", ";", "،", "।", "\n"))
+        if best >= cut // 2:
+            cut = best + 1
+        piece = rest[:cut].strip()
+        if piece:
+            parts.append(piece)
+        rest = rest[cut:].strip()
+    return parts
+
+
+def ensure_wav(audio: bytes, rate: int = 24000) -> bytes:
+    """Returns WAV bytes. If the service ever returns bare 16-bit mono PCM, add the header."""
+    if not audio or audio[:4] == b"RIFF":
+        return audio
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(rate)
+        wf.writeframes(audio)
+    return out.getvalue()
+
+
 def synthesize_speech(
     text: str,
     lang: str = "en",
     voice_gender: str = "female",
     rate: float = 1.0,
     client: Optional[Any] = None,
+    voice_index: Optional[int] = None,
 ) -> bytes:
     """
-    Synthesizes speech using Google Cloud Text-to-Speech Chirp 3 HD voices.
+    Synthesizes speech with Gemini TTS through Google Cloud Text-to-Speech.
     Returns 24000Hz 16-bit PCM WAV audio bytes.
-    Synthesizes sentence segments in parallel and stitches them with 250ms silence.
+
+    - One voice is chosen per call from the gender's rotating pool (voice_index picks it, random
+      when absent) and used for every sentence, so the voice never changes mid-read.
+    - A natural-language style prompt (warm, calm, tone follows the meaning) is sent in the
+      prompt field. It is not spoken.
+    - Sentences are synthesized in parallel and stitched with 250ms silence.
+    - rate only shapes the style prompt. The apps change playback speed on the player.
+    - There is no fallback voice. If Gemini TTS fails the error is raised to the caller.
     """
     from google.cloud import texttospeech
 
@@ -414,16 +547,17 @@ def synthesize_speech(
         return b""
 
     norm_lang = (lang or "en").lower().split("-")[0]
-    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_VOICES):
+    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_LANG_CODES):
         raise ValueError(f"Language not supported for speech synthesis: {norm_lang}")
     if norm_lang == "auto":
         norm_lang = "en"
-    voice_info = SPEAK_VOICES.get(norm_lang, SPEAK_VOICES["en"])
-    selected_voice_name = voice_info.get(voice_gender, voice_info["female"])
 
-    lang_code = f"{norm_lang}-IN"
+    lang_code = SPEAK_LANG_CODES[norm_lang]
+    voice_name = choose_voice(voice_gender, voice_index)
+    model_name = gemini_tts_model()
+    prompt = style_prompt(norm_lang, rate)
 
-    normalized = normalize_caps_and_ids(text)
+    normalized = normalize_caps_and_ids(neutralise_markup(text))
     sentences = split_sentences(normalized)
     if not sentences:
         sentences = [normalized]
@@ -431,22 +565,18 @@ def synthesize_speech(
     if client is None:
         client = texttospeech.TextToSpeechClient()
 
-    def synth_segment(seg_text: str) -> bytes:
-        prep_text = to_speech(seg_text, norm_lang)
-        if not prep_text.strip():
-            return b""
-        synthesis_input = texttospeech.SynthesisInput(text=prep_text)
-        voice_params = texttospeech.VoiceSelectionParams(
-            language_code=lang_code,
-            name=selected_voice_name,
-        )
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.LINEAR16,
-            sample_rate_hertz=24000,
-            volume_gain_db=6.0,
-            speaking_rate=max(0.25, min(4.0, rate)),
-            effects_profile_id=["handheld-class-device"],
-        )
+    voice_params = texttospeech.VoiceSelectionParams(
+        language_code=lang_code,
+        name=voice_name,
+        model_name=model_name,
+    )
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+        sample_rate_hertz=24000,
+    )
+
+    def synth_part(part_text: str) -> bytes:
+        synthesis_input = texttospeech.SynthesisInput(text=part_text, prompt=prompt)
         # One try, then at most one retry on 429.
         for attempt in range(2):
             try:
@@ -456,7 +586,10 @@ def synthesize_speech(
                         voice=voice_params,
                         audio_config=audio_config,
                     )
-                return response.audio_content
+                audio = response.audio_content
+                if not audio:
+                    raise RuntimeError("Gemini TTS returned no audio")
+                return ensure_wav(audio)
             except Exception as exc:
                 code = getattr(exc, "code", None)
                 message = str(exc).lower()
@@ -466,14 +599,37 @@ def synthesize_speech(
                     continue
                 raise
 
-    if len(sentences) == 1:
-        return synth_segment(sentences[0])
+    def synth_segment(seg_text: str) -> bytes:
+        prep_text = to_speech(seg_text, norm_lang)
+        if not prep_text.strip():
+            return b""
+        parts = split_to_byte_limit(prep_text)
+        if len(parts) == 1:
+            return synth_part(parts[0])
+        return stitch_wavs([synth_part(p) for p in parts], silence_ms=120, rate=24000)
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=min(_SEGMENT_WORKERS, len(sentences))
-    ) as executor:
-        segment_wavs = list(executor.map(synth_segment, sentences))
-
-    valid_wavs = [w for w in segment_wavs if w]
-    return stitch_wavs(valid_wavs, silence_ms=250, rate=24000)
+    started = time.perf_counter()
+    try:
+        if len(sentences) == 1:
+            audio_out = synth_segment(sentences[0])
+        else:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(_SEGMENT_WORKERS, len(sentences))
+            ) as executor:
+                segment_wavs = list(executor.map(synth_segment, sentences))
+            valid_wavs = [w for w in segment_wavs if w]
+            audio_out = stitch_wavs(valid_wavs, silence_ms=250, rate=24000)
+    except Exception as exc:
+        logger.warning(
+            "tts_synth failed: model=%s voice=%s lang=%s segments=%d ms=%d error=%s",
+            model_name, voice_name, lang_code, len(sentences),
+            int((time.perf_counter() - started) * 1000), type(exc).__name__,
+        )
+        raise
+    logger.info(
+        "tts_synth ok: model=%s voice=%s lang=%s segments=%d chars=%d bytes=%d ms=%d",
+        model_name, voice_name, lang_code, len(sentences), len(text), len(audio_out),
+        int((time.perf_counter() - started) * 1000),
+    )
+    return audio_out
 

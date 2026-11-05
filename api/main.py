@@ -106,6 +106,8 @@ EXTRACT_SEMAPHORE = asyncio.Semaphore(1)
 
 # TTS semaphore (max 4 concurrent TTS calls)
 TTS_SEMAPHORE = asyncio.Semaphore(4)
+# Time allowed for one /api/speak synthesis attempt (seconds). Env override: SPEAK_TIMEOUT_S.
+SPEAK_TIMEOUT_S = float(os.environ.get("SPEAK_TIMEOUT_S", "30"))
 
 # Rate limits (per IP)
 EXPLAIN_RATE_LIMIT = 20
@@ -1728,9 +1730,9 @@ async def speak(request: Request, body: SpeakRequest):
     if len(body.text) > 1200:
         return make_error_response(422, "text_too_long", body.lang)
 
-    from tts import SPEAK_VOICES
+    from tts import SPEAK_LANG_CODES
     norm_lang = (body.lang or "en").lower().split("-")[0]
-    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_VOICES):
+    if norm_lang == "or" or (norm_lang != "auto" and norm_lang not in SPEAK_LANG_CODES):
         return make_error_response(400, "tts_unsupported_language", body.lang)
 
     # Acquire TTS semaphore (max 4 concurrent TTS calls)
@@ -1740,7 +1742,7 @@ async def speak(request: Request, body: SpeakRequest):
         return make_error_response(503, "tts_unavailable", body.lang)
 
     try:
-        # 15s timeout with 1 retry
+        # SPEAK_TIMEOUT_S per attempt, 1 retry
         for attempt in range(2):
             try:
                 audio_bytes = await asyncio.wait_for(
@@ -1750,8 +1752,10 @@ async def speak(request: Request, body: SpeakRequest):
                         body.lang,
                         body.voice,
                         body.rate or 1.0,
+                        None,
+                        body.voice_index,
                     ),
-                    timeout=15.0,
+                    timeout=SPEAK_TIMEOUT_S,
                 )
                 return Response(
                     content=audio_bytes,
