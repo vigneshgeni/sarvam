@@ -2,6 +2,12 @@ import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from '.
 import { explainQueue } from './utils/queue'
 import { explainCanRetry } from './utils/explainRetry'
 import { getLocalFallbackError } from './i18n'
+import { isNative } from './native/isNative.js'
+import {
+  startNativeScan,
+  checkPendingScanResult,
+  cancelNativeScan,
+} from './native/liveActivity.js'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -35,6 +41,73 @@ export class ExplainApiError extends Error {
   }
 }
 
+async function explainWithNativeWorker(
+  files: File[],
+  lang: string,
+  externalSignal?: AbortSignal,
+  password?: string
+): Promise<ExplainResponse> {
+  const docId = files[0]?.name || 'doc'
+  const title = files[0]?.name || 'Your document'
+
+  const onAbort = () => {
+    cancelNativeScan(docId)
+  }
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      cancelNativeScan(docId)
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    externalSignal.addEventListener('abort', onAbort, { once: true })
+  }
+
+  try {
+    await startNativeScan({
+      docId,
+      title,
+      lang,
+      apiBase: getApiBase(),
+      password,
+      files,
+    })
+
+    const startTime = Date.now()
+    const maxWaitMs = 120_000
+
+    while (Date.now() - startTime < maxWaitMs) {
+      if (externalSignal?.aborted) {
+        cancelNativeScan(docId)
+        throw new DOMException('Aborted', 'AbortError')
+      }
+
+      const check = await checkPendingScanResult(docId)
+      if (check?.ready && check?.result) {
+        return check.result as ExplainResponse
+      }
+      if (check?.error) {
+        const details = (check as any).details || {}
+        throw new ExplainApiError(
+          details.message || 'Service is busy',
+          details.messageLocal || getLocalFallbackError(lang, 'generic'),
+          details.statusCode || 500
+        )
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+
+    throw new ExplainApiError(
+      'Document analysis timed out after 120 seconds.',
+      getLocalFallbackError(lang, 'timeout'),
+      504
+    )
+  } finally {
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onAbort)
+    }
+  }
+}
+
 /**
  * Sends files, lang, and optional password to /api/explain as multipart/form-data.
  * Concurrency limited to at most 2 in-flight calls via explainQueue.
@@ -46,6 +119,9 @@ export async function explainDocument(
   externalSignal?: AbortSignal,
   password?: string
 ): Promise<ExplainResponse> {
+  if (isNative()) {
+    return await explainWithNativeWorker(files, lang, externalSignal, password)
+  }
   try {
     return await explainQueue.run(async () => {
       const hasPdf = files.some(

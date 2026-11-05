@@ -7,8 +7,12 @@ import WebKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    public static var lastOpenedURL: String?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        if let url = launchOptions?[.url] as? URL {
+            AppDelegate.lastOpenedURL = url.absoluteString
+        }
         #if DEBUG
         handleDebugLaunchArguments()
         #endif
@@ -200,8 +204,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Called when the app was launched with a url. Feel free to add additional processing here,
-        // but if you want the App API to support tracking app url opens, make sure to keep this call
+        print("SARVAM_NATIVE: Application opened with URL: \(url.absoluteString)")
+        AppDelegate.lastOpenedURL = url.absoluteString
+        if let bridgeVC = window?.rootViewController as? CAPBridgeViewController, let web = bridgeVC.webView {
+            let escaped = url.absoluteString.replacingOccurrences(of: "'", with: "\\'")
+            let js = "window.dispatchEvent(new CustomEvent('sarvamDeepLink', { detail: { url: '\(escaped)' } }));"
+            web.evaluateJavaScript(js, completionHandler: nil)
+        }
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
     }
 
@@ -210,6 +219,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
+        print("SARVAM_NATIVE: handleEventsForBackgroundURLSession identifier=\(identifier)")
+        SarvamScanWorker.shared.backgroundCompletionHandler = completionHandler
     }
 
 }

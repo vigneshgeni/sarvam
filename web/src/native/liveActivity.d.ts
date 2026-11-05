@@ -83,3 +83,41 @@ export declare function updateListenPlayback(params: {
 }): Promise<void>
 
 export declare function finishListenActivity(): Promise<void>
+
+export declare function fileToBase64(file: File): Promise<string>
+
+export declare function startNativeScan(params: {
+  docId: string
+  title?: string
+  lang: string
+  apiBase?: string
+  showDocumentName?: boolean
+  password?: string
+  files: File[]
+}): Promise<any>
+
+export declare function checkPendingScanResult(docId?: string): Promise<{
+  ready?: boolean
+  result?: any
+  error?: boolean
+  details?: any
+  running?: boolean
+}>
+
+export declare function cancelNativeScan(docId?: string): Promise<void>
+
+export declare function previewDocument(params: {
+  fileName: string
+  title?: string
+  base64?: string
+  url?: string
+}): Promise<any>
+
+export declare function shareContent(params: {
+  text?: string
+  url?: string
+  title?: string
+  icsData?: string
+}): Promise<any>
+
+export declare function getLastOpenedURL(): Promise<string | null>

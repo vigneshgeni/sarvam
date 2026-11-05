@@ -38,6 +38,8 @@ import {
   getGoogleCalendarUrl,
   type CalendarEventInput,
 } from '../utils/ics'
+import { isNative } from '../native/isNative.js'
+import { previewDocument, fileToBase64, shareContent } from '../native/liveActivity.js'
 
 import { buildShare, collectBirthDateKeys, sanitizeProse, shareToWhatsApp, shareToEmail, copyToClipboard } from '../utils/share'
 import { expandProtectedTerms, maskPlain, shareFromRedact } from '../utils/shareCore.js'
@@ -231,10 +233,27 @@ export default function ResultScreen({
     result.source_kind === 'photo' ||
     (files && files.length > 0 && files.every((f) => !f.name.toLowerCase().endsWith('.pdf') && f.type !== 'application/pdf'))
 
-  const handleOpenPreview = () => {
+  const handleOpenPreview = async () => {
     if (!hasDocumentPreview) {
       alert(t.previewNotAvailable || 'Preview not available on this device.')
       return
+    }
+    if (isNative()) {
+      const validFiles = files.filter((f) => f.size > 0)
+      const first = validFiles[0]
+      if (first) {
+        try {
+          const base64 = await fileToBase64(first)
+          await previewDocument({
+            fileName: first.name,
+            title: first.name,
+            base64,
+          })
+          return
+        } catch (err) {
+          console.warn('[ResultScreen] Native preview failed, falling back to modal:', err)
+        }
+      }
     }
     const validFiles = files.filter((f) => f.size > 0)
     const items: PreviewFileItem[] = validFiles.map((f) => ({
@@ -397,7 +416,11 @@ export default function ResultScreen({
       }),
       rrule: act?.recurrence ? 'FREQ=MONTHLY' : undefined,
     }
-    downloadIcs(`action-${calendarEdit.index + 1}.ics`, generateIcs([event]))
+    if (isNative()) {
+      shareContent({ icsData: generateIcs([event]), title: 'Reminder' })
+    } else {
+      downloadIcs(`action-${calendarEdit.index + 1}.ics`, generateIcs([event]))
+    }
     const key = String(calendarEdit.index)
     setRemindersAdded((prev) => {
       const added = { ...prev, [key]: true }
@@ -429,6 +452,14 @@ export default function ResultScreen({
 
     const ics = generateIcs(events)
     const filename = 'all-actions.ics'
+
+    if (isNative()) {
+      setCalendarStatus('Sharing calendar file (.ics)...')
+      await shareContent({ icsData: ics, title: result.title })
+      setCalendarStatus('Calendar file shared successfully.')
+      markDatedReminders()
+      return
+    }
 
     // On iOS Safari:
     if (isIosDevice()) {

@@ -61,6 +61,8 @@ import { outputNeedsTranslation } from './utils/languageMatch'
 import { forgetReadMemory, forgetReadResult, recallRead, rememberRead, sha256Files } from './utils/readCache'
 import { fetchSampleResult, isSampleFile, resolveSampleOpen } from './samples/loadSample'
 import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
+import { isNative } from './native/isNative.js'
+import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.js'
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -238,6 +240,72 @@ export default function App() {
       }
     }
   }, [])
+
+  // Native Deep Link Handling (Live Activity "Open" / "Listen")
+  useEffect(() => {
+    if (!isNative()) return
+
+    const handleDeepLinkUrl = async (urlStr: string) => {
+      console.log('[SarvamApp] Handling native deep link URL:', urlStr)
+      let docId = ''
+      if (urlStr.startsWith('sarvam://listen/')) {
+        docId = urlStr.replace('sarvam://listen/', '')
+      } else if (urlStr.startsWith('sarvam://doc/')) {
+        docId = urlStr.replace('sarvam://doc/', '')
+      }
+
+      if (docId) {
+        const check = await checkPendingScanResult(docId)
+        if (check?.ready && check?.result) {
+          const res = check.result as ExplainResponse
+          setResultData(res)
+          originalResultRef.current = res
+          currentResultIdRef.current = docId
+          setScreen('result')
+          setShowOnboarding(false)
+          seedResultHistory()
+        }
+      }
+    }
+
+    const onCustomDeepLink = (e: any) => {
+      if (e.detail?.url) {
+        handleDeepLinkUrl(e.detail.url)
+      }
+    }
+    window.addEventListener('sarvamDeepLink', onCustomDeepLink)
+
+    getLastOpenedURL().then((url: string | null) => {
+      if (url) handleDeepLinkUrl(url)
+    })
+
+    return () => {
+      window.removeEventListener('sarvamDeepLink', onCustomDeepLink)
+    }
+  }, [])
+
+  // Check for pending scan results on resume/visibility
+  useEffect(() => {
+    if (!isNative()) return
+    const onVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const check = await checkPendingScanResult()
+        if (check?.ready && check?.result && screen === 'reading') {
+          console.log('[SarvamApp] Detected ready scan on app resume!')
+          setResultData(check.result as ExplainResponse)
+          originalResultRef.current = check.result as ExplainResponse
+          setReadingArrived(true)
+          setScreen('result')
+          setShowOnboarding(false)
+          seedResultHistory()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [screen])
 
   // Restore session on reload (WEB-iOS Fix 1)
   useEffect(() => {

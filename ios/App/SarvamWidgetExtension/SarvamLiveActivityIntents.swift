@@ -1,5 +1,8 @@
 import AppIntents
 import Foundation
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 @available(iOS 17.0, *)
 public struct PlayPauseIntent: LiveActivityIntent {
@@ -53,7 +56,22 @@ public struct CancelScanIntent: LiveActivityIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult {
+        #if canImport(ActivityKit)
+        if #available(iOS 16.1, *) {
+            for activity in Activity<SarvamActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+        #endif
+
         NotificationCenter.default.post(name: NSNotification.Name("SarvamCancelScanRequested"), object: nil)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName("com.sarvam.app.scanCancelled" as CFString),
+            nil,
+            nil,
+            true
+        )
         return .result()
     }
 }

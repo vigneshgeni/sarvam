@@ -230,3 +230,94 @@ export async function finishListenActivity() {
     console.warn('[LiveActivity] Failed to finish listen activity:', err)
   }
 }
+
+// MARK: - Native Background Scan Worker Helpers
+export async function fileToBase64(file) {
+  const buffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+export async function startNativeScan(params) {
+  if (!isNative()) return null
+  const showDocumentName = getShowDocNameOnLockScreen()
+  const base64Files = await Promise.all(
+    params.files.map(async (f) => ({
+      name: f.name,
+      type: f.type || 'application/octet-stream',
+      base64: await fileToBase64(f),
+    }))
+  )
+
+  const payload = {
+    docId: params.docId,
+    title: params.title || params.files[0]?.name || 'Your document',
+    lang: params.lang,
+    apiBase: params.apiBase || 'http://127.0.0.1:8080',
+    showDocumentName,
+    password: params.password,
+    files: base64Files,
+  }
+
+  console.log('[SarvamLiveActivity] startNativeScan dispatching:', {
+    docId: payload.docId,
+    title: payload.title,
+    filesCount: payload.files.length,
+    lang: payload.lang,
+  })
+
+  return await NativePlugin.startNativeScan(payload)
+}
+
+export async function checkPendingScanResult(docId) {
+  if (!isNative()) return { ready: false }
+  try {
+    return await NativePlugin.checkPendingScanResult({ docId })
+  } catch (err) {
+    console.warn('[SarvamLiveActivity] checkPendingScanResult failed:', err)
+    return { ready: false }
+  }
+}
+
+export async function cancelNativeScan(docId) {
+  if (!isNative()) return
+  try {
+    return await NativePlugin.cancelNativeScan({ docId })
+  } catch (err) {
+    console.warn('[SarvamLiveActivity] cancelNativeScan failed:', err)
+  }
+}
+
+export async function previewDocument(params) {
+  if (!isNative()) return
+  try {
+    return await NativePlugin.previewDocument(params)
+  } catch (err) {
+    console.warn('[SarvamLiveActivity] previewDocument failed:', err)
+  }
+}
+
+export async function shareContent(params) {
+  if (!isNative()) return
+  try {
+    return await NativePlugin.shareContent(params)
+  } catch (err) {
+    console.warn('[SarvamLiveActivity] shareContent failed:', err)
+  }
+}
+
+export async function getLastOpenedURL() {
+  if (!isNative()) return null
+  try {
+    const res = await NativePlugin.getLastOpenedURL()
+    return res?.url || null
+  } catch (err) {
+    console.warn('[SarvamLiveActivity] getLastOpenedURL failed:', err)
+    return null
+  }
+}
