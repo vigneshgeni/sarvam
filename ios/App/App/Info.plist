@@ -66,6 +66,21 @@
 	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Sarvam needs camera access to take photos of documents and prescriptions for instant analysis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Sarvam needs photo library access to select documents and prescriptions for instant analysis.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Sarvam needs permission to save analyzed document reports to your photo library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sarvam uses audio playback and speech features to read document summaries aloud.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

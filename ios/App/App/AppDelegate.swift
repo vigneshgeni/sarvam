@@ -1,6 +1,7 @@
 import UIKit
 import Capacitor
 import ActivityKit
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -211,4 +212,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+// MARK: - Custom Bridge View Controller for Native Shell Configuration
+class SarvamBridgeViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        bridge?.registerPluginType(SarvamLiveActivityPlugin.self)
+        print("SARVAM_NATIVE: capacitorDidLoad registered SarvamLiveActivityPlugin with Capacitor bridge!")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let sarvamCream = UIColor(red: 244/255, green: 245/255, blue: 242/255, alpha: 1.0)
+        view.backgroundColor = sarvamCream
+
+        if let web = webView {
+            web.allowsBackForwardNavigationGestures = true
+            web.isOpaque = false
+            web.backgroundColor = sarvamCream
+            web.scrollView.backgroundColor = sarvamCream
+            web.scrollView.contentInsetAdjustmentBehavior = .never
+            print("SARVAM_NATIVE: Web view configured with swipe gestures and #F4F5F2 background!")
+        }
+    }
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .darkContent
+    }
 }
