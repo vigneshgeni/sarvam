@@ -18,6 +18,12 @@ import {
 } from '../utils/speech'
 import { speakText } from '../api'
 import { resolveLang, LANG_LABELS } from '../i18n'
+import {
+  startListenActivity,
+  updateListenPlayback,
+  finishListenActivity,
+  endScanActivity,
+} from '../native/liveActivity.js'
 
 interface ListenSheetProps {
   isOpen: boolean
@@ -210,6 +216,7 @@ export default function ListenSheet({
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none'
     }
+    endScanActivity(result.title || result.report_title || 'doc')
   }
 
   // Handle Sheet Close
@@ -434,6 +441,11 @@ export default function ListenSheet({
           setPlaybackProgress(cur / dur)
           updateSentenceFromTime(cur, dur, sentencesRef.current)
           updateMediaPositionState(cur, dur, audio.playbackRate)
+          updateListenPlayback({
+            currentTime: cur,
+            duration: dur,
+            isPlaying: true,
+          })
         }
       }
 
@@ -443,6 +455,7 @@ export default function ListenSheet({
         visualizerActiveRef.current = false
         setCurrentTime(audio.duration || 0)
         setPlaybackProgress(1)
+        finishListenActivity()
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'none'
         }
@@ -457,6 +470,15 @@ export default function ListenSheet({
       setIsPlaying(true)
       startVisualizer(true)
       setupMediaSession(audio)
+      startListenActivity({
+        docId: docId,
+        title: result.title || result.report_title || 'Your document',
+        language: concreteLang,
+        languageLabel: LANG_LABELS[concreteLang] || 'English',
+        voiceGender: selectedGenderRef.current,
+        duration: audio.duration || 90,
+        currentTime: audio.currentTime || 0,
+      })
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
       }
@@ -562,6 +584,7 @@ export default function ListenSheet({
         visualizerActiveRef.current = true
         setIsPlaying(true)
         startVisualizer(true)
+        updateListenPlayback({ currentTime, duration, isPlaying: true })
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'playing'
         }
@@ -571,6 +594,7 @@ export default function ListenSheet({
       visualizerActiveRef.current = true
       setIsPlaying(true)
       startVisualizer(false)
+      updateListenPlayback({ currentTime, duration, isPlaying: true })
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
       }
@@ -591,6 +615,7 @@ export default function ListenSheet({
     }
     visualizerActiveRef.current = false
     setIsPlaying(false)
+    updateListenPlayback({ currentTime, duration, isPlaying: false })
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'paused'
     }

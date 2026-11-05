@@ -46,6 +46,7 @@ import PasswordSheet from './components/PasswordSheet'
 import HomeScreen from './components/v3/HomeScreen'
 import Onboarding from './components/v3/Onboarding'
 import MediaSheet, { grantMediaAccess, mediaAccessGranted } from './components/v3/MediaSheet'
+import DebugHarness from './native/DebugHarness'
 import { ensureIndicFont } from './design/indicFont'
 import {
   pushBrowserHistory,
@@ -192,6 +193,25 @@ export default function App() {
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  // Live Activity Debug Harness state
+  const [isDebugHarnessOpen, setIsDebugHarnessOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.hash === '#debug' || window.location.search.includes('debug=true')
+    }
+    return false
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      ;(window as any).__openSarvamDebugHarness = () => setIsDebugHarnessOpen(true)
+      const onHash = () => {
+        if (window.location.hash === '#debug') setIsDebugHarnessOpen(true)
+      }
+      window.addEventListener('hashchange', onHash)
+      return () => window.removeEventListener('hashchange', onHash)
     }
   }, [])
 
@@ -1559,6 +1579,12 @@ export default function App() {
         onUnlock={handleUnlockPassword}
         onCancel={handleCancelPassword}
         t={t}
+      />
+
+      {/* Live Activity Debug Harness */}
+      <DebugHarness
+        isOpen={isDebugHarnessOpen}
+        onClose={() => setIsDebugHarnessOpen(false)}
       />
 
       {/* Delete Confirmation Sheet */}

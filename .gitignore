@@ -16,3 +16,8 @@ lostfound-api/
 firebase.old.json
 scratch/
 ROUND2_CHECKLIST.md
+.hotfix3-build/
+ios/build/
+ios/App/Pods/
+ios/App/App/public/
+

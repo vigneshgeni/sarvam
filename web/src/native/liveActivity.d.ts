@@ -1,0 +1,81 @@
+export type ActivityPhase =
+  | 'preparing'
+  | 'scanning'
+  | 'ready'
+  | 'listening'
+  | 'paused'
+  | 'finished'
+  | 'failed'
+  | 'passwordNeeded'
+
+export interface ActivityState {
+  docId: string
+  phase: ActivityPhase
+  title: string
+  fileName?: string
+  fileCount: number
+  progress: number
+  stage: string
+  secondsRemaining?: number
+  language: string
+  languageLabel: string
+  voiceGender?: 'female' | 'male'
+  currentTime?: number
+  duration?: number
+  allowListen: boolean
+  errorMessage?: string
+}
+
+export declare function getCurrentActivityState(): ActivityState | null
+
+export declare function startScanActivity(params: {
+  docId: string
+  fileName?: string
+  fileCount: number
+  language: string
+  t?: Record<string, string>
+}): Promise<void>
+
+export declare function updateScanProgress(params: {
+  docId: string
+  progress: number
+  stageText: string
+  secondsRemaining?: number
+}): Promise<void>
+
+export declare function markScanReady(params: {
+  docId: string
+  title?: string
+  language: string
+  languageLabel: string
+}): Promise<void>
+
+export declare function markScanFailed(params: {
+  docId: string
+  errorMessage?: string
+}): Promise<void>
+
+export declare function markScanPasswordNeeded(params: {
+  docId: string
+}): Promise<void>
+
+export declare function endScanActivity(docId?: string): Promise<void>
+
+export declare function startListenActivity(params: {
+  docId: string
+  title: string
+  language: string
+  languageLabel: string
+  voiceGender: 'female' | 'male'
+  duration: number
+  currentTime?: number
+  audioBase64?: string
+}): Promise<void>
+
+export declare function updateListenPlayback(params: {
+  currentTime: number
+  duration: number
+  isPlaying: boolean
+}): Promise<void>
+
+export declare function finishListenActivity(): Promise<void>

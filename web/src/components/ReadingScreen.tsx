@@ -6,6 +6,13 @@ import { useOverlayRestore } from '../design/contracts'
 import { useReadingStage } from '../hooks/useReadingStage'
 import { readingCountCopy } from '../utils/readingCopy'
 import ReadingArt from './v3/ReadingArt'
+import {
+  startScanActivity,
+  updateScanProgress,
+  markScanReady,
+  markScanFailed,
+  endScanActivity,
+} from '../native/liveActivity.js'
 
 interface ReadingScreenProps {
   files: File[]
@@ -243,6 +250,45 @@ export default function ReadingScreen({
 
   const step = reading.stage === 'checking' ? 1 : reading.stage === 'writing' ? 2 : 0
   const showTakingLonger = !error && takingLonger
+
+  // Live Activity integration (strictly no-op on web/PWA)
+  useEffect(() => {
+    const docId = files[0]?.name || 'doc'
+    startScanActivity({
+      docId,
+      fileName: files[0]?.name,
+      fileCount: files.length,
+      language: lang,
+    })
+    return () => {
+      endScanActivity(docId)
+    }
+  }, [files, lang])
+
+  useEffect(() => {
+    const docId = files[0]?.name || 'doc'
+    if (arrived) {
+      markScanReady({
+        docId,
+        language: lang,
+        languageLabel: nativeLangName,
+      })
+    } else if (error) {
+      markScanFailed({
+        docId,
+        errorMessage: error.messageLocal || 'Service is busy',
+      })
+    } else {
+      const currentStepLabel = steps[step]?.label || 'Reading your document'
+      const estimatedSecondsLeft = Math.max(0, Math.round((100 - reading.percent) * 0.25))
+      updateScanProgress({
+        docId,
+        progress: reading.percent,
+        stageText: currentStepLabel,
+        secondsRemaining: estimatedSecondsLeft,
+      })
+    }
+  }, [reading.percent, reading.stage, arrived, error, lang, nativeLangName])
 
   const progressiveNoticeText = (() => {
     if (elapsedSeconds >= 75) {
