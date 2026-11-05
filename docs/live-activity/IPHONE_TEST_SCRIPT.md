@@ -74,6 +74,17 @@ All diagnostic logs emitted by native Swift and WKWebView JavaScript are tagged 
 
 ### Test Group A: Document Scanning & Dynamic Island (Option A)
 
+#### A0. Three Scan Ingestion Modes (Round 4 F1 Verification)
+1. **Camera Capture Scan:** Tap Camera / "Take photo", capture document, immediately swipe to Home Screen.
+   - [ ] Verify `[ActivityKit] pending-start` appears if camera is still dismissing.
+   - [ ] Verify exactly ONE `Activity.request SUCCESS` occurs when scene becomes active (no `ActivityAuthorizationError`).
+   - [ ] Verify Dynamic Island scanning indicator appears immediately on Home Screen.
+2. **Photo Library Scan:** Tap Photo Library / "Choose photo", pick an image, immediately swipe to Home Screen.
+   - [ ] Verify Live Activity begins smoothly without dual-activity clash.
+   - [ ] Verify no `updateActivity skipped` logs during scan.
+3. **Files / PDF Scan:** Tap Files / "Choose file", pick a PDF, immediately swipe to Home Screen.
+   - [ ] Verify worker adopts in-place or starts single activity with real `docId`.
+
 #### A1. Compact Dynamic Island During Scan (Scenario S1)
 1. In Sarvam, select a document or take a photo, and tap Explain.
 2. As soon as processing starts, **swipe up to go to the Home Screen**.
