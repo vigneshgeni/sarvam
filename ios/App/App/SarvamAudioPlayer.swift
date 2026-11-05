@@ -14,6 +14,9 @@ public final class SarvamAudioPlayer: NSObject {
     public private(set) var totalDuration: Double = 90
     public private(set) var currentTitle = "Your document"
     public private(set) var currentLanguageLabel = "English"
+    public private(set) var hasEnded = false
+    public private(set) var playbackRate: Float = 1.0
+    public var isActive: Bool { player != nil }
 
     public var onPlaybackProgress: ((Double, Double, Bool) -> Void)?
     public var onPlaybackEnded: (() -> Void)?
@@ -154,7 +157,7 @@ public final class SarvamAudioPlayer: NSObject {
         info[MPMediaItemPropertyAlbumTitle] = currentLanguageLabel
         info[MPMediaItemPropertyPlaybackDuration] = totalDuration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentPosition
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0.0
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
@@ -165,8 +168,10 @@ public final class SarvamAudioPlayer: NSObject {
         title: String = "Your document",
         langLabel: String = "English",
         duration: Double = 90,
-        startPosition: Double = 0
+        startPosition: Double = 0,
+        autoStart: Bool = true
     ) {
+        hasEnded = false
         currentTitle = title
         currentLanguageLabel = langLabel
         totalDuration = duration > 0 ? duration : 90
@@ -196,7 +201,18 @@ public final class SarvamAudioPlayer: NSObject {
             }
         } else if let url = url {
             playerItem = AVPlayerItem(url: url)
-            SarvamNativeLogger.info("[Audio] Using audio stream URL: \(url.absoluteString)")
+            if url.isFileURL {
+                // Real duration of the downloaded TTS file (the UI and the Live Activity use it).
+                let asset = AVURLAsset(url: url)
+                let secs = CMTimeGetSeconds(asset.duration)
+                if secs.isFinite && secs > 0 {
+                    totalDuration = secs
+                    currentPosition = max(0, min(startPosition, secs))
+                }
+                SarvamNativeLogger.info("[Audio] Playing local file \(url.lastPathComponent) duration=\(totalDuration)s")
+            } else {
+                SarvamNativeLogger.info("[Audio] Using audio stream URL: \(url.absoluteString)")
+            }
         }
 
         // If no URL or data was passed, create a dummy 90-second silence asset for Simulator
@@ -242,11 +258,26 @@ public final class SarvamAudioPlayer: NSObject {
             player?.seek(to: CMTime(seconds: currentPosition, preferredTimescale: 600))
         }
 
-        player?.play()
-        isPlaying = true
+        if autoStart {
+            player?.play()
+            player?.rate = playbackRate
+            isPlaying = true
+            SarvamNativeLogger.info("[Audio] AVPlayer started playback at \(currentPosition)s rate=\(playbackRate)")
+        } else {
+            isPlaying = false
+            SarvamNativeLogger.info("[Audio] AVPlayer loaded (not started) at \(currentPosition)s")
+        }
         updateNowPlayingInfo()
-        SarvamNativeLogger.info("[Audio] AVPlayer started playback at \(currentPosition)s")
         onPlaybackProgress?(currentPosition, totalDuration, isPlaying)
+    }
+
+    public func setRate(_ rate: Float) {
+        let clamped = max(0.5, min(rate, 2.0))
+        playbackRate = clamped
+        if isPlaying {
+            player?.rate = clamped
+        }
+        updateNowPlayingInfo()
     }
 
     public func pause() {
@@ -260,7 +291,14 @@ public final class SarvamAudioPlayer: NSObject {
     public func resume() {
         SarvamNativeLogger.info("[Audio] resume() called at \(currentPosition)s")
         setupAudioSession()
+        if hasEnded {
+            // Replay after the audio finished.
+            hasEnded = false
+            currentPosition = 0
+            player?.seek(to: .zero)
+        }
         player?.play()
+        player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
         onPlaybackProgress?(currentPosition, totalDuration, isPlaying)
@@ -290,6 +328,7 @@ public final class SarvamAudioPlayer: NSObject {
         }
         player = nil
         isPlaying = false
+        hasEnded = false
         currentPosition = 0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         onPlaybackProgress?(0, totalDuration, false)
@@ -298,6 +337,7 @@ public final class SarvamAudioPlayer: NSObject {
     @objc private func playerDidFinishPlaying() {
         SarvamNativeLogger.info("[Audio] playerDidFinishPlaying reached end of track (\(totalDuration)s)")
         isPlaying = false
+        hasEnded = true
         currentPosition = totalDuration
         updateNowPlayingInfo()
         onPlaybackProgress?(totalDuration, totalDuration, false)

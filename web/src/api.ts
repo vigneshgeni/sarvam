@@ -7,6 +7,7 @@ import {
   startNativeScan,
   checkPendingScanResult,
   cancelNativeScan,
+  downloadSpeechToFile,
 } from './native/liveActivity.js'
 
 export function getApiBase(): string {
@@ -566,6 +567,61 @@ export async function speakText(params: {
     if (params.signal) {
       params.signal.removeEventListener('abort', onAbort)
     }
+  }
+}
+
+/**
+ * Native app only: same /api/speak call, but done by native URLSession and saved to a file.
+ * The WKWebView fetch path returned HTTP 200 with 0 bytes for audio/wav, so JS never got audio.
+ * Resolves with the local file path; the native AVPlayer plays it.
+ */
+export async function speakTextToFile(params: {
+  text: string
+  lang: string
+  voice: 'female' | 'male'
+  rate?: number
+  signal?: AbortSignal
+}): Promise<string> {
+  const timeoutMs = speakTimeoutMs(params.text)
+  const started = Date.now()
+  console.log('[SarvamNative] [WebAPI] native POST /api/speak started: chars=', params.text.length, 'lang=', params.lang, 'voice=', params.voice)
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let onAbort: (() => void) | undefined
+  const guard = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('timeout')), timeoutMs)
+    if (params.signal) {
+      if (params.signal.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'))
+        return
+      }
+      onAbort = () => reject(new DOMException('Aborted', 'AbortError'))
+      params.signal.addEventListener('abort', onAbort, { once: true })
+    }
+  })
+
+  try {
+    const res = await Promise.race([
+      downloadSpeechToFile({
+        url: `${getApiBase()}/api/speak`,
+        body: JSON.stringify({
+          text: params.text,
+          lang: params.lang,
+          voice: params.voice,
+          rate: params.rate || 1.0,
+        }),
+        timeoutMs,
+      }),
+      guard,
+    ])
+    console.log('[SarvamNative] [WebAPI] native POST /api/speak SUCCESS duration=', Date.now() - started, 'ms bytes=', res.bytes, 'type=', res.contentType)
+    return res.path
+  } catch (err) {
+    console.error('[SarvamNative] [WebAPI] native POST /api/speak FAILED after', Date.now() - started, 'ms:', err)
+    throw err
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (params.signal && onAbort) params.signal.removeEventListener('abort', onAbort)
   }
 }
 

@@ -15,6 +15,9 @@ const NativePlugin = registerPlugin('SarvamLiveActivity', {
     resumeAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'resumeAudio', options),
     seekAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'seekAudio', options),
     stopAudio: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'stopAudio', options),
+    getAudioState: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'getAudioState', options),
+    setAudioRate: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'setAudioRate', options),
+    downloadSpeech: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'downloadSpeech', options),
     startNativeScan: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'startNativeScan', options),
     checkPendingScanResult: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'checkPendingScanResult', options),
     cancelNativeScan: async (options) => window.Capacitor?.nativePromise('SarvamLiveActivity', 'cancelNativeScan', options),
@@ -170,12 +173,16 @@ export async function markScanPasswordNeeded(params) {
   }
 }
 
-export async function endScanActivity(docId) {
+export async function endScanActivity(docId, opts = {}) {
   if (!isNative()) return
-  currentActiveState = null
-  console.log('[SarvamNative] [LiveActivity] endScanActivity called for docId:', docId)
+  const force = !!opts.force
+  // A stale cleanup for an OLD document must not wipe the state of the document running now.
+  if (force || !currentActiveState || !docId || currentActiveState.docId === docId) {
+    currentActiveState = null
+  }
+  console.log('[SarvamNative] [LiveActivity] endScanActivity called for docId:', docId, 'force:', force)
   try {
-    await NativePlugin.endActivity({ docId })
+    await NativePlugin.endActivity({ docId, force })
     console.log('[SarvamNative] [LiveActivity] endActivity succeeded')
   } catch (err) {
     console.warn('[SarvamNative] [LiveActivity] Failed to end activity:', err)
@@ -230,15 +237,12 @@ export async function updateListenPlayback(params) {
   if (!isNative()) return
   if (!currentActiveState) return
 
+  // The native AVPlayer owns playback and updates the Live Activity itself from its real
+  // position (SarvamAudioPlayer -> ActivityKit). JS only mirrors the values locally; sending
+  // them back over the bridge every tick overwrote the native state and flooded the bridge.
   currentActiveState.currentTime = params.currentTime
   currentActiveState.duration = params.duration
   currentActiveState.phase = params.isPlaying ? 'listening' : 'paused'
-
-  try {
-    await NativePlugin.updateActivity(currentActiveState)
-  } catch (err) {
-    console.warn('[SarvamNative] [LiveActivity] Failed to update listen playback:', err)
-  }
 }
 
 export async function finishListenActivity() {
@@ -367,5 +371,47 @@ if (typeof window !== 'undefined') {
       .catch((err) => {
         console.error('[SarvamNative] [Bridge] Startup bridge check FAILED:', err)
       })
+  }
+}
+
+
+// MARK: - Native audio (AVPlayer owns playback; JS only mirrors state)
+export async function downloadSpeechToFile(params) {
+  const res = await NativePlugin.downloadSpeech(params)
+  if (!res || !res.path || !(res.bytes > 0)) {
+    throw new Error('Speak error: empty audio')
+  }
+  return res
+}
+
+export async function nativeAudioPlay(params) {
+  return await NativePlugin.playAudio(params)
+}
+
+export async function nativeAudioResume() {
+  return await NativePlugin.resumeAudio({})
+}
+
+export async function nativeAudioPause() {
+  return await NativePlugin.pauseAudio({})
+}
+
+export async function nativeAudioSeek(position) {
+  return await NativePlugin.seekAudio({ position })
+}
+
+export async function nativeAudioStop() {
+  return await NativePlugin.stopAudio({})
+}
+
+export async function nativeAudioSetRate(rate) {
+  return await NativePlugin.setAudioRate({ rate })
+}
+
+export async function getNativeAudioState() {
+  try {
+    return await NativePlugin.getAudioState({})
+  } catch (err) {
+    return null
   }
 }

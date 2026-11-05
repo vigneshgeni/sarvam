@@ -63,7 +63,7 @@ export declare function markScanPasswordNeeded(params: {
   docId: string
 }): Promise<void>
 
-export declare function endScanActivity(docId?: string): Promise<void>
+export declare function endScanActivity(docId?: string, opts?: { force?: boolean }): Promise<void>
 
 export declare function startListenActivity(params: {
   docId: string
@@ -125,4 +125,30 @@ export declare function getLastOpenedURL(): Promise<string | null>
 export declare function echoBridge(value?: string): Promise<{
   value: string
   bridgeActive: boolean
+} | null>
+
+export declare function downloadSpeechToFile(params: {
+  url: string
+  body: string
+  timeoutMs?: number
+}): Promise<{ path: string; bytes: number; status: number; contentType: string }>
+export declare function nativeAudioPlay(params: {
+  filePath: string
+  title?: string
+  langLabel?: string
+  rate?: number
+  startPosition?: number
+  autoStart?: boolean
+}): Promise<{ success: boolean; duration: number }>
+export declare function nativeAudioResume(): Promise<unknown>
+export declare function nativeAudioPause(): Promise<unknown>
+export declare function nativeAudioSeek(position: number): Promise<unknown>
+export declare function nativeAudioStop(): Promise<unknown>
+export declare function nativeAudioSetRate(rate: number): Promise<unknown>
+export declare function getNativeAudioState(): Promise<{
+  active: boolean
+  playing: boolean
+  position: number
+  duration: number
+  ended: boolean
 } | null>

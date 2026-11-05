@@ -16,7 +16,7 @@ import {
   findVoiceForLanguage,
   logTargetVoices,
 } from '../utils/speech'
-import { speakText } from '../api'
+import { speakText, speakTextToFile } from '../api'
 import { resolveLang, LANG_LABELS } from '../i18n'
 import { isNative } from '../native/isNative.js'
 import {
@@ -25,6 +25,7 @@ import {
   finishListenActivity,
   endScanActivity,
 } from '../native/liveActivity.js'
+import { NativeAudioElement, NATIVE_SRC_PREFIX } from '../native/nativeAudioElement.js'
 
 interface ListenSheetProps {
   isOpen: boolean
@@ -40,6 +41,8 @@ const SILENT_WAV_URI =
 
 // In-memory cache for synthesized audio Blobs across the entire session: cacheKey -> Blob
 export const audioBlobCache = new Map<string, Blob>()
+// Native app: local audio file path per script (the file is written by the native downloader)
+const nativeAudioCache = new Map<string, string>()
 
 const BAR_COUNT = 35
 const RESTING_BARS = Array.from({ length: BAR_COUNT }, (_, index) =>
@@ -118,7 +121,11 @@ export default function ListenSheet({
   // Initialize audio element once
   useEffect(() => {
     if (!audioElRef.current) {
-      const audio = new Audio()
+      // Native iOS app: the native AVPlayer owns playback (Dynamic Island / Lock Screen controls,
+      // background audio). The PWA keeps the normal HTML audio element.
+      const audio = isNative()
+        ? (new NativeAudioElement() as unknown as HTMLAudioElement)
+        : new Audio()
       audio.preload = 'auto'
       audioElRef.current = audio
     }
@@ -217,7 +224,7 @@ export default function ListenSheet({
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none'
     }
-    endScanActivity(result.title || result.report_title || 'doc')
+    endScanActivity(result.title || result.report_title || 'doc', { force: true })
   }
 
   // Handle Sheet Close
@@ -228,6 +235,7 @@ export default function ListenSheet({
 
   // Setup Web Audio Analyser once
   const initWebAudio = () => {
+    if (isNative()) return // native AVPlayer owns playback; no Web Audio graph
     if (!audioElRef.current) return
     try {
       if (!audioContextRef.current) {
@@ -395,8 +403,22 @@ export default function ListenSheet({
     activeControllerRef.current = controller
 
     try {
-      let blob: Blob
-      if (audioBlobCache.has(cacheKey)) {
+      let blob: Blob | null = null
+      let nativeFilePath: string | null = null
+      if (isNative()) {
+        nativeFilePath = nativeAudioCache.get(cacheKey) ?? null
+        if (!nativeFilePath) {
+          nativeFilePath = await speakTextToFile({
+            text: speechScript,
+            lang: concreteLang,
+            voice: selectedGenderRef.current,
+            rate: 1,
+            signal: controller.signal,
+          })
+          if (controller.signal.aborted || playbackSessionRef.current !== session) return
+          nativeAudioCache.set(cacheKey, nativeFilePath)
+        }
+      } else if (audioBlobCache.has(cacheKey)) {
         blob = audioBlobCache.get(cacheKey)!
       } else {
         blob = await speakText({
@@ -414,16 +436,32 @@ export default function ListenSheet({
       setUsingDeviceNote(false)
       setIsBuffering(false)
 
-      if (currentBlobUrlRef.current) {
+      if (currentBlobUrlRef.current && currentBlobUrlRef.current.startsWith('blob:')) {
         URL.revokeObjectURL(currentBlobUrlRef.current)
       }
-      const blobUrl = URL.createObjectURL(blob)
+      const blobUrl = nativeFilePath
+        ? NATIVE_SRC_PREFIX + nativeFilePath
+        : URL.createObjectURL(blob as Blob)
       currentBlobUrlRef.current = blobUrl
 
       const audio = audioElRef.current
       if (!audio) return
 
       audio.playbackRate = selectedSpeedRef.current
+      if (nativeFilePath) {
+        const nativeAudio = audio as unknown as NativeAudioElement
+        nativeAudio.setMeta({
+          title: result.title || result.report_title || 'Your document',
+          langLabel: LANG_LABELS[concreteLang] || 'English',
+        })
+        // Keep the sheet in sync when playback is paused/resumed from the Dynamic Island,
+        // the Lock Screen or headphones.
+        nativeAudio.onplayingchange = (playing: boolean) => {
+          if (playbackSessionRef.current !== session) return
+          visualizerActiveRef.current = playing
+          setIsPlaying(playing)
+        }
+      }
       audio.onloadedmetadata = () => {
         if (playbackSessionRef.current !== session) return
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
@@ -467,10 +505,10 @@ export default function ListenSheet({
       }
 
       if (isNative()) {
-        console.log('[SarvamNative] [ListenSheet] Calling audio.play()... blobUrl=', blobUrl, 'blobSize=', blob.size)
+        console.log('[SarvamNative] [ListenSheet] Calling audio.play()... src=', blobUrl, 'blobSize=', blob ? blob.size : 'native-file')
       }
       audio.src = blobUrl
-      initWebAudio()
+      if (!isNative()) initWebAudio()
       await audio.play()
       if (playbackSessionRef.current !== session) return
 
@@ -481,7 +519,7 @@ export default function ListenSheet({
       visualizerActiveRef.current = true
       setIsPlaying(true)
       startVisualizer(true)
-      setupMediaSession(audio)
+      if (!isNative()) setupMediaSession(audio)
       startListenActivity({
         docId: docId,
         title: result.title || result.report_title || 'Your document',

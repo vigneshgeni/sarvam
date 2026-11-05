@@ -121,6 +121,32 @@ struct ProgressRingView: View {
     }
 }
 
+// MARK: - Scanning indicator (static by design)
+// Live Activities cannot run continuous animations, and ProgressView() renders as a plain
+// static circle there (real-device screenshot). This is an intentional "working" mark:
+// track, a mustard arc, and the coral dot, with no percentage (Option A).
+struct ScanningRingView: View {
+    let size: CGFloat
+
+    var body: some View {
+        let line = max(2.5, size * 0.12)
+        ZStack {
+            Circle()
+                .stroke(Color.svTrackGrey, lineWidth: line)
+                .frame(width: size, height: size)
+            Circle()
+                .trim(from: 0.0, to: 0.3)
+                .stroke(Color.svMustard, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: size, height: size)
+            Circle()
+                .fill(Color.svCoral)
+                .frame(width: size * 0.2, height: size * 0.2)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 // MARK: - 5-Bar Waveform Icon
 struct WaveformIconView: View {
     let isPaused: Bool
@@ -297,10 +323,8 @@ struct CompactTrailingView: View {
                 .font(SarvamFonts.fraunces(size: 13, weight: .bold))
                 .foregroundColor(Color.svMustard)
         } else {
-            // Option A: Animated indicator, NO percentage number
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
-                .scaleEffect(0.85)
+            // Option A: working indicator, NO percentage number
+            ScanningRingView(size: 18)
                 .accessibilityLabel("Analyzing document")
         }
     }
@@ -323,10 +347,8 @@ struct MinimalView: View {
                     .foregroundColor(Color.svInk)
             }
         } else {
-            // Option A: Animated indicator, NO percentage number
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
-                .scaleEffect(0.85)
+            // Option A: working indicator, NO percentage number
+            ScanningRingView(size: 16)
         }
     }
 }
@@ -370,15 +392,11 @@ struct ExpandedLeadingView: View {
             }
             .padding(.leading, 8)
         } else {
-            HStack(spacing: 8) {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
-                    .scaleEffect(1.2)
-                Text("Analyzing document…")
-                    .font(SarvamFonts.dmSans(size: 14, weight: .medium))
-                    .foregroundColor(Color.svMustard)
-            }
-            .padding(.leading, 8)
+            // Only the ring lives in the narrow leading region; the text moved to the bottom
+            // region, where it has the full width (it used to wrap to "Analyzi / ng / docu…").
+            ScanningRingView(size: 28)
+                .padding(.leading, 8)
+                .accessibilityLabel("Analyzing document")
         }
     }
 }
@@ -475,17 +493,22 @@ struct ExpandedBottomView: View {
             .padding(.bottom, 8)
         } else if state.phase == "ready" {
             // Ready Island Details & Action Buttons
-            VStack(alignment: .leading, spacing: 10) {
-                Text(state.displayTitle)
-                    .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
-                    .foregroundColor(Color.svOffWhite)
-                    .privacySensitive()
+            // Compact enough for the expanded island's height limit (the buttons were clipped).
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(state.displayTitle)
+                        .font(SarvamFonts.fraunces(size: 15, weight: .semibold))
+                        .foregroundColor(Color.svOffWhite)
+                        .lineLimit(1)
+                        .privacySensitive()
 
-                Text("Explained in \(state.languageLabel), with voice")
-                    .font(SarvamFonts.dmSans(size: 13, weight: .regular))
-                    .foregroundColor(Color.svOffWhite.opacity(0.75))
+                    Text("Explained in \(state.languageLabel), with voice")
+                        .font(SarvamFonts.dmSans(size: 12, weight: .regular))
+                        .foregroundColor(Color.svOffWhite.opacity(0.75))
+                        .lineLimit(1)
+                }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     // Open button (44 pt tall, mustard, ink text)
                     Link(destination: URL(string: "sarvam://doc/\(state.docId)")!) {
                         HStack(spacing: 6) {
@@ -496,7 +519,7 @@ struct ExpandedBottomView: View {
                         }
                         .foregroundColor(Color.svInk)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 44)
+                        .frame(height: 38)
                         .background(Color.svMustard)
                         .clipShape(Capsule())
                     }
@@ -513,7 +536,7 @@ struct ExpandedBottomView: View {
                             }
                             .foregroundColor(Color.svOffWhite)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 44)
+                            .frame(height: 38)
                             .background(Color.svDarkBtn)
                             .clipShape(Capsule())
                         }
@@ -525,11 +548,18 @@ struct ExpandedBottomView: View {
             .padding(.bottom, 8)
         } else {
             // Scanning Island Details
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(state.displayTitle)
-                    .font(SarvamFonts.fraunces(size: 16, weight: .semibold))
+                    .font(SarvamFonts.fraunces(size: 17, weight: .semibold))
                     .foregroundColor(Color.svOffWhite)
+                    .lineLimit(1)
                     .privacySensitive()
+
+                Text("Analyzing document…")
+                    .font(SarvamFonts.dmSans(size: 14, weight: .medium))
+                    .foregroundColor(Color.svMustard)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
                 HStack {
                     Text("Usually under a minute")
@@ -611,10 +641,9 @@ struct LockScreenScanningView: View {
 
                 Spacer()
 
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color.svMustard))
-                    .scaleEffect(1.6)
-                    .padding(.trailing, 8)
+                ScanningRingView(size: 40)
+                    .padding(.trailing, 4)
+                    .accessibilityLabel("Analyzing document")
             }
 
             // Bottom Row: Stage Text vs Time Left

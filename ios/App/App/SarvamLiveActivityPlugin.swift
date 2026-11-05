@@ -20,6 +20,9 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "resumeAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "seekAudio", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopAudio", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getAudioState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAudioRate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "downloadSpeech", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startNativeScan", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "checkPendingScanResult", returnType: CAPPluginReturnPromise),
@@ -32,11 +35,25 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise)
     ]
 
-    private var activeActivity: Activity<SarvamActivityAttributes>?
+    private var storedActivity: Activity<SarvamActivityAttributes>?
+    /// Self-healing handle: returns nil once the system has ended/dismissed the activity, so a
+    /// stale (ended) activity is never "adopted" and silently updated for a later Listen.
+    private var activeActivity: Activity<SarvamActivityAttributes>? {
+        get {
+            if let a = storedActivity, a.activityState == .active { return a }
+            storedActivity = nil
+            return nil
+        }
+        set { storedActivity = newValue }
+    }
+    private var liveActivities: [Activity<SarvamActivityAttributes>] {
+        Activity<SarvamActivityAttributes>.activities.filter { $0.activityState == .active }
+    }
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     private var lastState: SarvamActivityAttributes.ContentState?
     private var qlDataSource: QuickLookPreviewControllerDataSource?
 
+    private var lastPushedPosition: Double = -100
     private var pendingScanState: SarvamActivityAttributes.ContentState?
     private var scanRetryWorkItem: DispatchWorkItem?
     private var didRegisterForegroundObserver = false
@@ -84,7 +101,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         // 1. Check if an activity already exists for this scan or can be adopted
-        if let existing = Activity<SarvamActivityAttributes>.activities.first(where: { $0.attributes.activityId == state.docId }) ?? Activity<SarvamActivityAttributes>.activities.first {
+        if let existing = liveActivities.first(where: { $0.attributes.activityId == state.docId }) ?? liveActivities.first {
             SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) in place for docId=\(state.docId)")
             self.activeActivity = existing
             clearPendingScanRetry()
@@ -132,10 +149,19 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     private func setupAudioPlayerBridge() {
         SarvamAudioPlayer.shared.onPlaybackProgress = { [weak self] current, duration, isPlaying in
             guard let self = self, var state = self.lastState else { return }
+            // Only the listen phases are driven by the player. Never flip a scanning/ready/failed
+            // activity to "paused" (stop() used to do exactly that during a scan).
+            guard state.phase == "listening" || state.phase == "paused" || state.phase == "finished" else { return }
+            let newPhase = isPlaying ? "listening" : "paused"
+            let phaseChanged = state.phase != newPhase
             state.currentTime = current
             state.duration = duration
-            state.phase = isPlaying ? "listening" : "paused"
+            state.phase = newPhase
             self.lastState = state
+
+            // Throttle: update the activity on state changes or every ~2 s of audio, not every tick.
+            if !phaseChanged && abs(current - self.lastPushedPosition) < 2.0 { return }
+            self.lastPushedPosition = current
 
             Task {
                 await self.activeActivity?.update(
@@ -236,6 +262,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             showDocumentName: showDocumentName
         )
         self.lastState = state
+        self.lastPushedPosition = -100
 
         // Begin background task for scanning (Scenario S1-S4, S13)
         if phase == "scanning" {
@@ -247,7 +274,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // For non-scanning (e.g. listening):
         // If an existing activity matches or can be adopted:
-        if let existing = Activity<SarvamActivityAttributes>.activities.first(where: { $0.attributes.activityId == docId }) ?? self.activeActivity ?? Activity<SarvamActivityAttributes>.activities.first {
+        if let existing = liveActivities.first(where: { $0.attributes.activityId == docId }) ?? self.activeActivity ?? liveActivities.first {
             SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) for docId=\(docId)")
             self.activeActivity = existing
             clearPendingScanRetry()
@@ -278,7 +305,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func updateActivity(_ call: CAPPluginCall) {
         SarvamNativeLogger.info("[Bridge] updateActivity called from JS")
-        guard let activity = activeActivity ?? Activity<SarvamActivityAttributes>.activities.first else {
+        guard let activity = activeActivity ?? liveActivities.first else {
             SarvamNativeLogger.warning("[Bridge] updateActivity skipped: no active activity")
             call.resolve(["success": false, "reason": "No active activity"])
             return
@@ -342,7 +369,22 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func endActivity(_ call: CAPPluginCall) {
-        SarvamNativeLogger.info("[Bridge] endActivity called from JS")
+        let requestedDocId = call.getString("docId")
+        let force = call.getBool("force") ?? false
+        SarvamNativeLogger.info("[Bridge] endActivity called from JS docId=\(requestedDocId ?? "nil") force=\(force)")
+
+        // A stale screen cleanup (for an OLD document) must never end the activity of the
+        // document that is running now. Real log: the cleanup for "image.jpg" ended the brand-new
+        // activity of the next scan. Unless JS says force, only end when the docId matches.
+        if !force, let requested = requestedDocId {
+            let currentDocId = activeActivity?.attributes.activityId ?? pendingScanState?.docId ?? lastState?.docId
+            if let current = currentDocId, current != requested {
+                SarvamNativeLogger.info("[Bridge] endActivity SKIPPED: request for docId=\(requested) but current activity is docId=\(current)")
+                call.resolve(["success": true, "skipped": true])
+                return
+            }
+        }
+
         clearPendingScanRetry()
         endScanningBackgroundTask()
         SarvamAudioPlayer.shared.stop()
@@ -371,25 +413,115 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let langLabel = call.getString("langLabel") ?? "English"
         let duration = call.getDouble("duration") ?? 90
         let startPos = call.getDouble("startPosition") ?? 0
+        let filePath = call.getString("filePath")
+        let rate = call.getDouble("rate") ?? 1.0
+        let autoStart = call.getBool("autoStart") ?? true
 
-        SarvamNativeLogger.info("[Bridge] playAudio called from JS: title=\(title) duration=\(duration) hasData=\(audioData != nil)")
+        SarvamNativeLogger.info("[Bridge] playAudio called from JS: title=\(title) hasData=\(audioData != nil) hasFile=\(filePath != nil) rate=\(rate) autoStart=\(autoStart)")
 
         var url: URL?
-        if let audioUrlString = audioUrlString {
+        if let filePath = filePath {
+            guard FileManager.default.fileExists(atPath: filePath) else {
+                SarvamNativeLogger.error("[Audio] playAudio rejected: file missing at \(filePath)")
+                call.reject("Audio file not found", "file_missing")
+                return
+            }
+            url = URL(fileURLWithPath: filePath)
+        } else if let audioUrlString = audioUrlString {
             url = URL(string: audioUrlString)
         }
 
+        SarvamAudioPlayer.shared.setRate(Float(rate))
         SarvamAudioPlayer.shared.play(
             url: url,
             audioBase64: audioData,
             title: title,
             langLabel: langLabel,
             duration: duration,
-            startPosition: startPos
+            startPosition: startPos,
+            autoStart: autoStart
         )
 
-        SarvamNativeLogger.info("[Bridge] playAudio resolved")
+        let realDuration = SarvamAudioPlayer.shared.totalDuration
+        SarvamNativeLogger.info("[Bridge] playAudio resolved duration=\(realDuration)s")
+        call.resolve(["success": true, "duration": realDuration])
+    }
+
+    /// Reports the real native player state. JS polls this (also re-syncs after the app returns
+    /// from the background, when JS timers were suspended).
+    @objc func getAudioState(_ call: CAPPluginCall) {
+        let p = SarvamAudioPlayer.shared
+        call.resolve([
+            "active": p.isActive,
+            "playing": p.isPlaying,
+            "position": p.currentPosition,
+            "duration": p.totalDuration,
+            "ended": p.hasEnded
+        ])
+    }
+
+    @objc func setAudioRate(_ call: CAPPluginCall) {
+        let rate = call.getDouble("rate") ?? 1.0
+        SarvamNativeLogger.info("[Bridge] setAudioRate called from JS: rate=\(rate)")
+        SarvamAudioPlayer.shared.setRate(Float(rate))
         call.resolve(["success": true])
+    }
+
+    /// Downloads server TTS natively into a temp file. The WKWebView fetch path (CapacitorHttp)
+    /// returned HTTP 200 with 0 bytes for audio/wav, so JS could never play it.
+    @objc func downloadSpeech(_ call: CAPPluginCall) {
+        guard let urlString = call.getString("url"), let url = URL(string: urlString) else {
+            call.reject("Invalid speech url", "bad_url")
+            return
+        }
+        let body = call.getString("body") ?? "{}"
+        let timeoutSeconds = (call.getDouble("timeoutMs") ?? 60000) / 1000.0
+
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeoutSeconds)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body.data(using: .utf8)
+
+        let started = CFAbsoluteTimeGetCurrent()
+        SarvamNativeLogger.info("[TTS] POST \(url.path) started: bodyBytes=\(body.utf8.count) timeout=\(Int(timeoutSeconds))s")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let ms = Int((CFAbsoluteTimeGetCurrent() - started) * 1000)
+            if let error = error {
+                SarvamNativeLogger.error("[TTS] POST \(url.path) FAILED after \(ms)ms: \(error.localizedDescription)")
+                call.reject("Network error: \(error.localizedDescription)", "network_error")
+                return
+            }
+            guard let http = response as? HTTPURLResponse else {
+                SarvamNativeLogger.error("[TTS] POST \(url.path) FAILED after \(ms)ms: no HTTP response")
+                call.reject("No response", "no_response")
+                return
+            }
+            guard (200..<300).contains(http.statusCode), let data = data, !data.isEmpty else {
+                SarvamNativeLogger.error("[TTS] POST \(url.path) FAILED after \(ms)ms: status=\(http.statusCode) bytes=\(data?.count ?? 0)")
+                call.reject("Speak error \(http.statusCode)", String(http.statusCode))
+                return
+            }
+            let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? "audio/wav"
+            let lower = contentType.lowercased()
+            let ext = (lower.contains("mpeg") || lower.contains("mp3")) ? "mp3" : "wav"
+            let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("sarvam_tts_\(UUID().uuidString).\(ext)")
+            do {
+                try data.write(to: fileURL)
+            } catch {
+                SarvamNativeLogger.error("[TTS] Could not write audio file: \(error.localizedDescription)")
+                call.reject("Could not save audio", "write_failed")
+                return
+            }
+            SarvamNativeLogger.info("[TTS] POST \(url.path) SUCCESS status=\(http.statusCode) duration=\(ms)ms bytes=\(data.count) type=\(contentType)")
+            call.resolve([
+                "path": fileURL.path,
+                "bytes": data.count,
+                "status": http.statusCode,
+                "contentType": contentType
+            ])
+        }
+        task.resume()
     }
 
     @objc func pauseAudio(_ call: CAPPluginCall) {
@@ -794,7 +926,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         files: [[String: Any]],
         password: String? = nil
     ) -> Bool {
-        cancelActiveScan()
+        cancelActiveScan(endActivities: false)
         isCancelled = false
         currentDocId = docId
         receivedData = Data()
@@ -863,7 +995,12 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         return true
     }
 
-    public func cancelActiveScan() {
+    /// Cancels the in-flight upload and clears the cache.
+    /// - Parameter endActivities: pass `false` when a NEW scan is about to start, so the Live
+    ///   Activity just requested for it is not torn down. The old code ended ALL activities here,
+    ///   which killed the new scan's activity right after it started (real-device log:
+    ///   "Activity.request SUCCESS" followed by "Ending activity ... due to cancel").
+    public func cancelActiveScan(endActivities: Bool = true) {
         isCancelled = true
         currentUploadTask?.cancel()
         currentUploadTask = nil
@@ -876,6 +1013,11 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         }
         currentDocId = nil
         receivedData = Data()
+
+        guard endActivities else {
+            SarvamNativeLogger.info("[ScanWorker] Previous scan cancelled; keeping the Live Activity for the new scan")
+            return
+        }
 
         if #available(iOS 16.1, *) {
             Task {
@@ -951,6 +1093,16 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
                 if #available(iOS 16.1, *) {
                     Task {
+                        // If the user is looking at the app, the result opens in-app right away:
+                        // do not flash a Ready card with a sound, just end the activity.
+                        let appIsActive = await MainActor.run { UIApplication.shared.applicationState == .active }
+                        if appIsActive {
+                            for activity in Activity<SarvamActivityAttributes>.activities where activity.content.state.phase == "scanning" {
+                                SarvamNativeLogger.info("[ScanWorker] App is in the foreground; ending scan activity \(activity.id) (result is shown in-app)")
+                                await activity.end(nil, dismissalPolicy: .immediate)
+                            }
+                            return
+                        }
                         for activity in Activity<SarvamActivityAttributes>.activities {
                             var updatedState = activity.content.state
                             updatedState.phase = "ready"
