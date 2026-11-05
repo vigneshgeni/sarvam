@@ -283,7 +283,7 @@ struct RenderLockScreenScanningView: View {
                     .font(SarvamFonts.dmSans(size: 13, weight: .medium))
                     .foregroundColor(Color.svMustard)
                 Spacer()
-                Text("About \(state.secondsRemaining) s left")
+                Text("Usually under a minute")
                     .font(SarvamFonts.dmSans(size: 13, weight: .regular))
                     .foregroundColor(Color.svOffWhite.opacity(0.8))
             }
