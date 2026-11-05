@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getDictionary, SUPPORTED_LANGS } from '../i18n'
 import type { AppErrorInfo } from '../types'
 import { pickReadingVariant, type ReadingLetter } from '../design/catalog'
@@ -251,6 +251,10 @@ export default function ReadingScreen({
   const step = reading.stage === 'checking' ? 1 : reading.stage === 'writing' ? 2 : 0
   const showTakingLonger = !error && takingLonger
 
+  // Track arrived in ref to prevent unmount cleanup from prematurely killing the Ready activity
+  const arrivedRef = useRef(false)
+  arrivedRef.current = !!arrived
+
   // Live Activity integration (strictly no-op on web/PWA)
   useEffect(() => {
     const docId = files[0]?.name || 'doc'
@@ -261,7 +265,10 @@ export default function ReadingScreen({
       language: lang,
     })
     return () => {
-      endScanActivity(docId)
+      // Only tear down activity if not transitioning to Ready state
+      if (!arrivedRef.current) {
+        endScanActivity(docId)
+      }
     }
   }, [files, lang])
 
@@ -279,13 +286,11 @@ export default function ReadingScreen({
         errorMessage: error.messageLocal || 'Service is busy',
       })
     } else {
-      const currentStepLabel = steps[step]?.label || 'Reading your document'
-      const estimatedSecondsLeft = Math.max(0, Math.round((100 - reading.percent) * 0.25))
       updateScanProgress({
         docId,
-        progress: reading.percent,
-        stageText: currentStepLabel,
-        secondsRemaining: estimatedSecondsLeft,
+        progress: 0,
+        stageText: 'Analyzing document…',
+        secondsRemaining: 0,
       })
     }
   }, [reading.percent, reading.stage, arrived, error, lang, nativeLangName])

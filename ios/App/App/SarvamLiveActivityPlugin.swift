@@ -131,14 +131,17 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 pushType: nil
             )
             self.activeActivity = activity
+            print("SARVAM_NATIVE: [LiveActivity] Activity STARTED! ID=\(activity.id), docId=\(docId), phase=\(phase), title=\(state.displayTitle)")
             call.resolve(["success": true, "activityId": activity.id])
         } catch {
+            print("SARVAM_NATIVE: [LiveActivity] Activity.request FAILED: \(error)")
             call.reject("Failed to request Live Activity: \(error.localizedDescription)")
         }
     }
 
     @objc func updateActivity(_ call: CAPPluginCall) {
         guard let activity = activeActivity else {
+            print("SARVAM_NATIVE: [LiveActivity] updateActivity skipped (no active activity)")
             call.resolve(["success": false, "reason": "No active activity"])
             return
         }
@@ -188,6 +191,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             ? AlertConfiguration(title: "Ready", body: "Your document is ready", sound: .default)
             : nil
 
+        print("SARVAM_NATIVE: [LiveActivity] updateActivity updating activity: phase=\(phase), docId=\(docId), title=\(state.displayTitle)")
         Task {
             await activity.update(
                 ActivityContent(state: state, staleDate: nil),
@@ -198,6 +202,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func endActivity(_ call: CAPPluginCall) {
+        print("SARVAM_NATIVE: [LiveActivity] endActivity called")
         endScanningBackgroundTask()
         SarvamAudioPlayer.shared.stop()
 

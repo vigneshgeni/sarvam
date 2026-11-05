@@ -3,9 +3,15 @@ import { explainQueue } from './utils/queue'
 import { explainCanRetry } from './utils/explainRetry'
 import { getLocalFallbackError } from './i18n'
 
-const API_BASE = import.meta.env.DEV
-  ? ''
-  : (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+export function getApiBase(): string {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const override = localStorage.getItem('sarvam.apiBase')
+    if (override) return override.replace(/\/+$/, '')
+  }
+  return import.meta.env.DEV
+    ? ''
+    : (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+}
 
 export class ExplainApiError extends Error {
   messageLocal: string
@@ -86,7 +92,7 @@ export async function explainDocument(
 
         let response: Response
         try {
-          response = await fetch(`${API_BASE}/api/explain`, {
+          response = await fetch(`${getApiBase()}/api/explain`, {
             method: 'POST',
             body: formData,
             signal: controller.signal,
@@ -248,7 +254,7 @@ export async function translateDocument(
 
   let response: Response
   try {
-    response = await fetch(`${API_BASE}/api/translate`, {
+    response = await fetch(`${getApiBase()}/api/translate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -364,7 +370,7 @@ export async function askDocument(params: {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/ask`, {
+    const res = await fetch(`${getApiBase()}/api/ask`, {
       method: 'POST',
       body: formData,
       signal: controller.signal,
@@ -437,7 +443,7 @@ export async function speakText(params: {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/speak`, {
+    const res = await fetch(`${getApiBase()}/api/speak`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -492,7 +498,7 @@ export async function extractDocumentText(
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/extract-text`, {
+    const res = await fetch(`${getApiBase()}/api/extract-text`, {
       method: 'POST',
       body: formData,
       signal: controller.signal,
@@ -515,7 +521,7 @@ export async function redactText(
   lang: string,
   signal?: AbortSignal
 ): Promise<{ spans: { text: string; type: string }[] }> {
-  const res = await fetch(`${API_BASE}/api/redact`, {
+  const res = await fetch(`${getApiBase()}/api/redact`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, lang }),
@@ -531,7 +537,7 @@ export async function transcribeAudio(blob: Blob, lang: string): Promise<string>
   const formData = new FormData()
   formData.append('lang', lang)
   formData.append('audio', blob, 'question.webm')
-  const res = await fetch(`${API_BASE}/api/transcribe`, { method: 'POST', body: formData })
+  const res = await fetch(`${getApiBase()}/api/transcribe`, { method: 'POST', body: formData })
   if (!res.ok) return ''
   const data = await res.json()
   return typeof data?.text === 'string' ? data.text.slice(0, 500) : ''
