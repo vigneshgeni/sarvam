@@ -1,0 +1,9 @@
+# Files left out of `gcloud run deploy --source api` uploads (local-only clutter).
+.gcloudignore
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tts_audition/
+evals/out/
+*.wav

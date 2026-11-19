@@ -21,7 +21,7 @@ import {
   isHeicFile,
   processPhotosSequentially,
 } from './utils/image'
-import { explainDocument, translateDocument, ExplainApiError, extractDocumentText } from './api'
+import { explainDocument, translateDocument, ExplainApiError, extractDocumentText, getActiveNativeScanId, getLastNativeScanId } from './api'
 import {
   getRecentResults,
   saveRecentResult,
@@ -86,6 +86,12 @@ export default function App() {
     return saved.screen === 'reading' ? 'reading' : 'result'
   })
   const [readingArrived, setReadingArrived] = useState(false)
+  // iPhone Live Activity "Listen" link: bumped to ask the result screen to open the Listen sheet.
+  const [listenRequest, setListenRequest] = useState(0)
+  const pendingListenRef = useRef(false)
+  // Native scan id whose result runExplain already showed (so a Live Activity link reuses it).
+  const deliveredScanIdRef = useRef<string | null>(null)
+  const deliveredResultIdRef = useRef<string | null>(null)
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([])
   const [activeFiles, setActiveFiles] = useState<File[]>([])
   const [resultData, setResultData] = useState<ExplainResponse | null>(() => loadActiveSession()?.result || null)
@@ -247,23 +253,69 @@ export default function App() {
 
     const handleDeepLinkUrl = async (urlStr: string) => {
       console.log('[SarvamApp] Handling native deep link URL:', urlStr)
+      const wantsListen = urlStr.startsWith('sarvam://listen/')
       let docId = ''
-      if (urlStr.startsWith('sarvam://listen/')) {
+      if (wantsListen) {
         docId = urlStr.replace('sarvam://listen/', '')
       } else if (urlStr.startsWith('sarvam://doc/')) {
         docId = urlStr.replace('sarvam://doc/', '')
       }
+      try {
+        docId = decodeURIComponent(docId)
+      } catch {
+        // keep the raw id
+      }
+      if (!docId) return
 
-      if (docId) {
-        const check = await checkPendingScanResult(docId)
-        if (check?.ready && check?.result) {
-          const res = check.result as ExplainResponse
-          setResultData(res)
-          originalResultRef.current = res
-          currentResultIdRef.current = docId
-          setScreen('result')
-          setShowOnboarding(false)
-          seedResultHistory()
+      // The scan this app session started is still being collected by runExplain (its poll
+      // resumes as soon as the app is active). Let that normal pipeline show and save the
+      // result; only remember that Listen was asked for.
+      if (getActiveNativeScanId() === docId) {
+        if (wantsListen) pendingListenRef.current = true
+        return
+      }
+
+      // Already showing this document (the poll finished first): just open Listen if asked.
+      if (
+        currentResultIdRef.current === docId ||
+        (deliveredScanIdRef.current === docId && currentResultIdRef.current === deliveredResultIdRef.current)
+      ) {
+        setScreen('result')
+        if (wantsListen) setListenRequest((n) => n + 1)
+        return
+      }
+
+      // The app was relaunched (JS lost the scan): read the result the native worker saved.
+      const check = await checkPendingScanResult(docId)
+      if (check?.ready && check?.result) {
+        const res = check.result as ExplainResponse
+        currentResultIdRef.current = docId
+        asksOwnerRef.current = docId
+        asksRef.current = []
+        originalResultRef.current = res
+        translationCacheRef.current.clear()
+        translationCacheRef.current.set(`${docId}:${res.language || resolveLang(selectedLang)}`, res)
+        setResultData(res)
+        setCurrentError(null)
+        setReadingArrived(true)
+        setScreen('result')
+        setShowOnboarding(false)
+        seedResultHistory()
+        if (wantsListen) setListenRequest((n) => n + 1)
+        if (isSaveRecentEnabled()) {
+          try {
+            await saveRecentResult({
+              id: docId,
+              title: cleanerTitle(res),
+              fileCount: 1,
+              fileNames: [],
+              lang: res.language || resolveLang(selectedLang),
+              result: res,
+            })
+            await loadRecents()
+          } catch {
+            // recents are best effort
+          }
         }
       }
     }
@@ -284,28 +336,14 @@ export default function App() {
     }
   }, [])
 
-  // Check for pending scan results on resume/visibility
+  // Live Activity "Listen" tapped while the scan was still finishing: open Listen once the
+  // result screen is up.
   useEffect(() => {
-    if (!isNative()) return
-    const onVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        const check = await checkPendingScanResult()
-        if (check?.ready && check?.result && screen === 'reading') {
-          console.log('[SarvamApp] Detected ready scan on app resume!')
-          setResultData(check.result as ExplainResponse)
-          originalResultRef.current = check.result as ExplainResponse
-          setReadingArrived(true)
-          setScreen('result')
-          setShowOnboarding(false)
-          seedResultHistory()
-        }
-      }
+    if (screen === 'result' && resultData && pendingListenRef.current) {
+      pendingListenRef.current = false
+      setListenRequest((n) => n + 1)
     }
-    document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
-  }, [screen])
+  }, [screen, resultData])
 
   // Restore session on reload (WEB-iOS Fix 1)
   useEffect(() => {
@@ -343,7 +381,9 @@ export default function App() {
     const recover = () => {
       document.body.style.overflow = ''
       const saved = loadActiveSession()
-      const next = screenAfterReturn({ screen, hasResult: Boolean(resultData) }, saved)
+      const next = screenAfterReturn({ screen, hasResult: Boolean(resultData) }, saved, {
+        scanInFlight: Boolean(getActiveNativeScanId()),
+      })
       if (next.restore && saved?.result) {
         setResultData(saved.result)
         originalResultRef.current = saved.originalResult || saved.result
@@ -703,9 +743,12 @@ export default function App() {
       (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     )
     // A short read stays at 90s. A PDF with many tables needs the longer server budget.
+    // On the iPhone app the scan runs natively and survives the background (JS timers are paused
+    // there), so a 90 s JS timer would fire on return and cancel a finished scan. The native
+    // poll has its own limit.
     readingTimeoutRef.current = window.setTimeout(() => {
       controller.abort('timeout')
-    }, hasPdf ? 150_000 : 90_000)
+    }, isNative() ? 310_000 : hasPdf ? 150_000 : 90_000)
 
     activeFilesRef.current = filesToExplain
     retryActionRef.current = () => runExplain(filesToExplain, lang, password)
@@ -872,6 +915,8 @@ export default function App() {
         await rememberRead(fileHashRef.current, targetLang, result, resultId)
       }
 
+      deliveredScanIdRef.current = isNative() ? getLastNativeScanId() : null
+      deliveredResultIdRef.current = resultId
       setResultData(result)
       setPasswordState({ isOpen: false, fileName: undefined, errorMsg: null, pendingFiles: undefined })
       setReadingArrived(true)
@@ -1609,6 +1654,15 @@ export default function App() {
             displayName={sessionName}
             savedTitle={sessionTitle}
             onActivityChange={queueActivity}
+            listenRequest={listenRequest}
+            onListenRequestHandled={() => setListenRequest(0)}
+            nativeDocId={
+              currentResultIdRef.current?.startsWith('scan-')
+                ? currentResultIdRef.current
+                : currentResultIdRef.current && currentResultIdRef.current === deliveredResultIdRef.current
+                  ? deliveredScanIdRef.current || undefined
+                  : undefined
+            }
             onSaveAsks={(asks) => { void saveAsks(asks) }}
             onRename={(name) => {
               const id = currentResultIdRef.current

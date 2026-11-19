@@ -59,3 +59,17 @@ test('a shared link or an open result is not blocked', () => {
   assert.equal(screenAfterReturn({ screen: 'home', hasResult: false }, { result: { title: 'Letter' }, screen: 'result' }).screen, 'result')
   assert.equal(screenAfterReturn({ screen: 'result', hasResult: false }, null).screen, 'home')
 })
+
+test('iPhone: returning while a native scan runs keeps the reading screen', () => {
+  // Was: jumped Home (or restored an older saved document) and the new result never showed.
+  const inFlight = screenAfterReturn(
+    { screen: 'reading', hasResult: false },
+    { result: { title: 'Older letter' }, screen: 'result' },
+    { scanInFlight: true }
+  )
+  assert.deepEqual(inFlight, { screen: 'reading', restore: false })
+  assert.equal(screenAfterReturn({ screen: 'reading', hasResult: false }, null, { scanInFlight: true }).screen, 'reading')
+  // No scan running: unchanged behaviour.
+  assert.equal(screenAfterReturn({ screen: 'reading', hasResult: false }, null).screen, 'home')
+  assert.equal(screenAfterReturn({ screen: 'home', hasResult: false }, null, { scanInFlight: true }).screen, 'home')
+})

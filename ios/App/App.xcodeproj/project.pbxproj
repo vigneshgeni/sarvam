@@ -26,6 +26,7 @@
 		91EDE164E7A4F311D88D59EB /* Fraunces.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70B6E89582A1B5E3104AB20C /* Fraunces.ttf */; };
 		9621E379E7851F68EAE0CABF /* DMSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6A0AC739CAA6D7A79B17049F /* DMSans.ttf */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		5A11C0DE5A11C0DE5A11C0DE /* SarvamLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913C86DC7C1AB8D20EC58600 /* SarvamLiveActivityIntents.swift */; };
 		ACF36139ECA0FD1616AA9288 /* SarvamLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913C86DC7C1AB8D20EC58600 /* SarvamLiveActivityIntents.swift */; };
 		CFD57C5DF88BFBBE5149E3D0 /* SarvamWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6C6C718109A9F3EFC6FA9863 /* SarvamWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CFDBC3D08FB8819F54671879 /* DMSans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6A0AC739CAA6D7A79B17049F /* DMSans.ttf */; };
@@ -73,9 +74,9 @@
 		53C8A5924C1029620FE4155D /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
 		5AE3DE0F0F1DC3C6E8802327 /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
 		65F56F575F2BF2CA383F0416 /* SarvamLiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamLiveActivityPlugin.swift; sourceTree = "<group>"; };
-		6A0AC739CAA6D7A79B17049F /* DMSans.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = DMSans.ttf; path = App/Fonts/DMSans.ttf; sourceTree = "<group>"; };
+		6A0AC739CAA6D7A79B17049F /* DMSans.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = DMSans.ttf; path = App/Fonts/DMSans.ttf; sourceTree = "<group>"; };
 		6C6C718109A9F3EFC6FA9863 /* SarvamWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SarvamWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		70B6E89582A1B5E3104AB20C /* Fraunces.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = Fraunces.ttf; path = App/Fonts/Fraunces.ttf; sourceTree = "<group>"; };
+		70B6E89582A1B5E3104AB20C /* Fraunces.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = Fraunces.ttf; path = App/Fonts/Fraunces.ttf; sourceTree = "<group>"; };
 		7AF91DD246226915E67E718F /* SarvamLiveActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamLiveActivityIntents.swift; path = SarvamWidgetExtension/SarvamLiveActivityIntents.swift; sourceTree = "<group>"; };
 		82C8B4598F3DF0D1AAED8553 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		86DEA2407E4F6F2E5E24773E /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityAttributes.swift; path = App/SarvamActivityAttributes.swift; sourceTree = "<group>"; };
@@ -87,7 +88,7 @@
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		B10F2AD806716C14FE650F93 /* SarvamActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityWidget.swift; path = SarvamWidgetExtension/SarvamActivityWidget.swift; sourceTree = "<group>"; };
 		D381D538401E2F248343F2DE /* SarvamActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SarvamActivityWidget.swift; path = SarvamWidgetExtension/SarvamActivityWidget.swift; sourceTree = "<group>"; };
-		DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = NotoSansTamil.ttf; path = App/Fonts/NotoSansTamil.ttf; sourceTree = "<group>"; };
+		DB34D687F56CE38EE91120C9 /* NotoSansTamil.ttf */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file; name = NotoSansTamil.ttf; path = App/Fonts/NotoSansTamil.ttf; sourceTree = "<group>"; };
 		DDC809035EC782D14F54C5BA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SarvamWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		E4DE602F5ACE936419EAC543 /* SarvamAudioPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamAudioPlayer.swift; sourceTree = "<group>"; };
 		E6B18005BF9E9E0D34284C7B /* SarvamActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SarvamActivityAttributes.swift; sourceTree = "<group>"; };
@@ -269,6 +270,9 @@
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
 					};
+					9D28E70EEC977BD87AC1B35A = {
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
@@ -375,6 +379,7 @@
 				D8D7B81ED479FC5F3B48FD99 /* SarvamActivityAttributes.swift in Sources */,
 				256045ED3245AF37921D5595 /* SarvamAudioPlayer.swift in Sources */,
 				0ADD78C0109BD3556143B98A /* SarvamLiveActivityPlugin.swift in Sources */,
+				5A11C0DE5A11C0DE5A11C0DE /* SarvamLiveActivityIntents.swift in Sources */,
 				227B8A4608125AA90CF5862D /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -524,12 +529,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 84HZA9Y68X;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.sarvam.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vigneshwaran.sarvam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
@@ -544,11 +550,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 84HZA9Y68X;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sarvam.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vigneshwaran.sarvam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
@@ -560,14 +567,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 84HZA9Y68X;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SarvamWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sarvam.app.widget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vigneshwaran.sarvam.widget;
 				PRODUCT_NAME = SarvamWidgetExtension;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -581,14 +589,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 84HZA9Y68X;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SarvamWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sarvam.app.widget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vigneshwaran.sarvam.widget;
 				PRODUCT_NAME = SarvamWidgetExtension;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;

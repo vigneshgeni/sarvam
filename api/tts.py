@@ -521,6 +521,33 @@ def ensure_wav(audio: bytes, rate: int = 24000) -> bytes:
     return out.getvalue()
 
 
+def wav_seconds(wav_bytes: bytes) -> float:
+    """Length of a WAV in seconds (0 when it cannot be read)."""
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+            rate = wf.getframerate() or 24000
+            return wf.getnframes() / float(rate)
+    except Exception:
+        return 0.0
+
+
+def sentence_timings(segment_wavs: List[bytes], texts: List[str], gap_s: float = 0.25) -> List[dict]:
+    """Start / end of each sentence in the stitched audio (same order and gaps as stitch_wavs)."""
+    out: List[dict] = []
+    cursor = 0.0
+    first = True
+    for wav_bytes, sentence in zip(segment_wavs, texts):
+        if not wav_bytes:
+            continue
+        if not first:
+            cursor += gap_s
+        first = False
+        length = wav_seconds(wav_bytes)
+        out.append({"text": sentence.strip(), "start": round(cursor, 3), "end": round(cursor + length, 3)})
+        cursor += length
+    return out
+
+
 def synthesize_speech(
     text: str,
     lang: str = "en",
@@ -528,6 +555,7 @@ def synthesize_speech(
     rate: float = 1.0,
     client: Optional[Any] = None,
     voice_index: Optional[int] = None,
+    timings_out: Optional[List[dict]] = None,
 ) -> bytes:
     """
     Synthesizes speech with Gemini TTS through Google Cloud Text-to-Speech.
@@ -540,6 +568,8 @@ def synthesize_speech(
     - Sentences are synthesized in parallel and stitched with 250ms silence.
     - rate only shapes the style prompt. The apps change playback speed on the player.
     - There is no fallback voice. If Gemini TTS fails the error is raised to the caller.
+    - timings_out (optional list) receives one {"text", "start", "end"} per spoken sentence, in
+      seconds, measured from the stitched audio itself. The apps use it for exact captions.
     """
     from google.cloud import texttospeech
 
@@ -608,10 +638,17 @@ def synthesize_speech(
             return synth_part(parts[0])
         return stitch_wavs([synth_part(p) for p in parts], silence_ms=120, rate=24000)
 
+    # Caption text: the sentences as written (before speech-only rewrites like caps), when they
+    # split the same way; otherwise the spoken form.
+    display = split_sentences(neutralise_markup(text))
+    if len(display) != len(sentences):
+        display = sentences
+
     started = time.perf_counter()
     try:
         if len(sentences) == 1:
             audio_out = synth_segment(sentences[0])
+            segment_wavs = [audio_out]
         else:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(_SEGMENT_WORKERS, len(sentences))
@@ -619,6 +656,8 @@ def synthesize_speech(
                 segment_wavs = list(executor.map(synth_segment, sentences))
             valid_wavs = [w for w in segment_wavs if w]
             audio_out = stitch_wavs(valid_wavs, silence_ms=250, rate=24000)
+        if timings_out is not None:
+            timings_out.extend(sentence_timings(segment_wavs, display, gap_s=0.25))
     except Exception as exc:
         logger.warning(
             "tts_synth failed: model=%s voice=%s lang=%s segments=%d ms=%d error=%s",

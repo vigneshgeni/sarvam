@@ -297,3 +297,73 @@ html[data-high-contrast="true"] .voice-seek::-moz-range-thumb {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- Listen v3: centre ruler (drag to seek) and lyric captions ---------- */
+.listen-ruler {
+  position: relative;
+  height: 84px;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%);
+}
+.listen-ruler.is-dragging { cursor: grabbing; }
+.listen-ruler.is-disabled { cursor: default; opacity: 0.55; }
+.listen-ruler-strip { position: absolute; left: 0; top: 0; height: 100%; will-change: transform; }
+.listen-ruler-tick { position: absolute; bottom: 20px; width: 4px; border-radius: 2px; }
+.listen-ruler-label {
+  position: absolute;
+  top: 0;
+  font: 600 12px/1 'DM Sans', system-ui, sans-serif;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.listen-ruler-playhead { position: absolute; left: 50%; top: 12px; width: 0; pointer-events: none; }
+.listen-ruler-playhead i {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 4px;
+  height: 52px;
+  border-radius: 2px;
+  background: #FFD98A;
+  box-shadow: 0 0 0 3px #1C1C1C;
+}
+.listen-ruler-playhead b {
+  position: absolute;
+  left: -7px;
+  top: 58px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 10px solid #E9B44C;
+}
+.listen-lyrics {
+  position: relative;
+  height: 230px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 82%, transparent 100%);
+}
+.listen-lyrics-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+  animation: listen-lyric-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.listen-lyrics-prev { margin: 0; font: 500 16px/1.35 'DM Sans', system-ui, sans-serif; color: #A3A7A4; }
+.listen-lyrics-now { margin: 0; font: 600 26px/1.22 'Fraunces', Georgia, serif; color: #1A1A1A; overflow-wrap: anywhere; }
+.listen-lyrics-now.is-indic { font: 700 22px/1.4 var(--sv-indic-family, 'Noto Sans Tamil'), 'Tamil Sangam MN', system-ui, sans-serif; }
+.listen-lyrics-next { margin: 0; font: 500 17px/1.4 'DM Sans', system-ui, sans-serif; color: #7D817E; }
+@keyframes listen-lyric-up {
+  from { transform: translateY(42px); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listen-lyrics-inner { animation: none; }
+}

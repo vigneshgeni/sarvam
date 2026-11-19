@@ -37,7 +37,7 @@ export class NativeAudioElement {
     this._currentTime = 0
     this._duration = NaN
     this._rate = 1
-    this._meta = { title: 'Your document', langLabel: 'English' }
+    this._meta = { title: 'Your document', langLabel: 'English', docId: '', voiceGender: '', language: '' }
     this._pollTimer = null
     this._playToken = 0
     this._cmdSeq = 0
@@ -85,6 +85,21 @@ export class NativeAudioElement {
     }
   }
 
+  /**
+   * Live seek while a finger drags the ruler: the voice follows at once and older seeks are
+   * dropped. Polls in flight are ignored (command sequence), so the ruler never jumps back.
+   */
+  fastSeek(value) {
+    const v = Number.isFinite(value) ? Math.max(0, value) : 0
+    this._currentTime = v
+    if (this._active) {
+      this._cmdSeq++
+      nativeAudioSeek(v, true).catch(() => {})
+    } else {
+      this._pendingSeek = v
+    }
+  }
+
   get playbackRate() {
     return this._rate
   }
@@ -103,6 +118,17 @@ export class NativeAudioElement {
   async play() {
     // Silent-WAV "unlock" data: URIs used for the browser autoplay trick are not needed natively.
     if (!this._src || !this._src.startsWith(NATIVE_SRC_PREFIX)) return
+
+    // Audio taken over from the native player (Ready card Listen): always resume natively
+    // (native replays from the start if it had ended).
+    if (this._active && this._src === NATIVE_SRC_PREFIX + 'attached') {
+      this._cmdSeq++
+      this._ended = false
+      await nativeAudioResume()
+      this._setPaused(false)
+      this._startPolling()
+      return
+    }
 
     // Resume an already loaded track (paused, not finished)
     if (this._active && this._loadedSrc === this._src && !this._ended) {
@@ -125,6 +151,9 @@ export class NativeAudioElement {
       rate: this._rate,
       startPosition: 0,
       autoStart: false, // load first so the sheet can apply a start position without a blip
+      docId: this._meta.docId || undefined,
+      voiceGender: this._meta.voiceGender || undefined,
+      language: this._meta.language || undefined,
     })
     if (token !== this._playToken) {
       // Stopped or superseded while loading
@@ -140,6 +169,24 @@ export class NativeAudioElement {
     await nativeAudioResume()
     if (token !== this._playToken) return
     this._setPaused(false)
+    this._startPolling()
+  }
+
+  /**
+   * Take over audio the native player is already playing (started from the Ready card's
+   * "Listen" while the app was closed) instead of fetching and restarting it.
+   */
+  attach(st) {
+    this._playToken++
+    this._src = NATIVE_SRC_PREFIX + 'attached'
+    this._loadedSrc = this._src
+    this._active = true
+    this._ended = !!st.ended
+    this._currentTime = st.position || 0
+    this._duration = st.duration > 0 ? st.duration : NaN
+    if (st.rate > 0) this._rate = st.rate
+    this._setPaused(!st.playing)
+    if (this.onloadedmetadata) this.onloadedmetadata()
     this._startPolling()
   }
 

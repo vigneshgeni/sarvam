@@ -16,14 +16,17 @@ import {
   findVoiceForLanguage,
   logTargetVoices,
 } from '../utils/speech'
-import { speakText, speakTextToFile } from '../api'
+import { speakText, speakTextToFile, getSpeakBase, getSpeechSegments } from '../api'
+import ListenRuler from './ListenRuler'
+import { cleanSegments, estimatedIndexAt, positionText, segmentIndexAt, clockTime, type SpeechSegment } from '../utils/lyrics'
 import { resolveLang, LANG_LABELS } from '../i18n'
 import { isNative } from '../native/isNative.js'
 import {
   startListenActivity,
   updateListenPlayback,
   finishListenActivity,
-  endScanActivity,
+  endListenActivity,
+  getNativeAudioState,
 } from '../native/liveActivity.js'
 import { NativeAudioElement, NATIVE_SRC_PREFIX } from '../native/nativeAudioElement.js'
 
@@ -33,6 +36,8 @@ interface ListenSheetProps {
   result: ExplainResponse
   lang: string
   t: Record<string, string>
+  /** iPhone app: the scan id of this result (matches audio started from the Ready card). */
+  nativeDocId?: string
 }
 
 // 1-sample silent WAV data URI to unlock iOS audio context synchronously
@@ -60,19 +65,13 @@ const RESTING_BARS = Array.from({ length: BAR_COUNT }, (_, index) =>
   8 + Math.round((Math.sin(index * 1.7) + 1) * 2)
 )
 
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return '00:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
 export default function ListenSheet({
   isOpen,
   onClose,
   result,
   lang,
   t,
+  nativeDocId,
 }: ListenSheetProps) {
   const concreteLang = resolveLang(lang)
   const [mode, setMode] = useState<'quick' | 'full'>('quick')
@@ -85,7 +84,6 @@ export default function ListenSheet({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playbackProgress, setPlaybackProgress] = useState(0)
-  const [seekPreview, setSeekPreview] = useState<number | null>(null)
   const [speed, setSpeed] = useState<number>(() => {
     try {
       const raw = localStorage.getItem('sarvam.a11y')
@@ -104,12 +102,20 @@ export default function ListenSheet({
     }
   })
   const selectedGenderRef = useRef(gender)
+  const listenActivityStartedRef = useRef(false)
+  // Device-voice fallback: estimated length, so pause/resume keeps the right position.
+  const deviceTotalRef = useRef(0)
   const voiceVariantRef = useRef(0)
 
   // Sentences for live captions
   const [sentences, setSentences] = useState<string[]>([])
   const sentencesRef = useRef<string[]>([])
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(0)
+  // Exact sentence timings from the voice server (captions follow them); empty = estimate.
+  const [timedSegments, setTimedSegments] = useState<SpeechSegment[]>([])
+  const timedSegmentsRef = useRef<SpeechSegment[]>([])
+  // While a finger drags the ruler the sheet shows the finger's time, not the player's.
+  const scrubbingRef = useRef(false)
 
   // Audio elements & Web Audio refs
   const audioElRef = useRef<HTMLAudioElement | null>(null)
@@ -128,7 +134,7 @@ export default function ListenSheet({
   const isSpeakingRef = useRef<boolean>(false)
   const deviceVoiceIntervalRef = useRef<number | null>(null)
 
-  const [barHeights, setBarHeights] = useState<number[]>(RESTING_BARS)
+  const [, setBarHeights] = useState<number[]>(RESTING_BARS)
 
   // Initialize audio element once
   useEffect(() => {
@@ -152,18 +158,28 @@ export default function ListenSheet({
       window.speechSynthesis.onvoiceschanged = loadVoices
     }
 
+    // iPhone app: wake the voice server while the user reads the result, so the first Listen
+    // does not also wait for the server to start (it scales to zero when idle). No voice is made.
+    if (isNative()) {
+      try {
+        fetch(`${getSpeakBase()}/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+      } catch {
+        // best effort
+      }
+    }
+
     return () => {
-      stopAllAudio()
+      stopAllAudio(true)
     }
   }, [])
 
   // Stop audio on pagehide or unmount
   useEffect(() => {
-    const handlePageHide = () => stopAllAudio()
+    const handlePageHide = () => stopAllAudio(true)
     window.addEventListener('pagehide', handlePageHide)
     return () => {
       window.removeEventListener('pagehide', handlePageHide)
-      stopAllAudio()
+      stopAllAudio(true)
     }
   }, [])
 
@@ -187,25 +203,44 @@ export default function ListenSheet({
     const scriptSentences = split.length > 0 ? split : [rawScript]
     setSentences(scriptSentences)
     sentencesRef.current = scriptSentences
+    applyTimedSegments([])
     setActiveSentenceIndex(0)
     setCurrentTime(0)
     setDuration(0)
     setPlaybackProgress(0)
-    setSeekPreview(null)
-    stopAllAudio()
+    // Closing the sheet ends the Listen card; a restart inside the sheet (language, mode)
+    // keeps it, so the island and Lock Screen never blink away.
+    stopAllAudio(!isOpen)
 
     if (isOpen) {
       setIsBuffering(true)
-      if (audioElRef.current) {
-        audioElRef.current.src = SILENT_WAV_URI
-        audioElRef.current.play().catch(() => {})
+      const startFresh = () => {
+        if (audioElRef.current) {
+          audioElRef.current.src = SILENT_WAV_URI
+          audioElRef.current.play().catch(() => {})
+        }
+        startPlaybackSession(0)
       }
-      startPlaybackSession(0)
+      if (isNative() && nativeDocId) {
+        // "Listen" may already be playing from the Ready card (app was closed): take it over.
+        const session = playbackSessionRef.current
+        getNativeAudioState({ withSegments: true })
+          .then((st: any) => {
+            if (playbackSessionRef.current !== session) return
+            if (st && st.active && st.docId === nativeDocId) attachToNative(st)
+            else startFresh()
+          })
+          .catch(() => {
+            if (playbackSessionRef.current === session) startFresh()
+          })
+      } else {
+        startFresh()
+      }
     }
   }, [result, mode, concreteLang, isOpen])
 
-  // Stop all audio helper
-  const stopAllAudio = () => {
+  // Stop all audio helper. endActivity: also close the Listen Live Activity (sheet closed or gone).
+  const stopAllAudio = (endActivity = false) => {
     playbackSessionRef.current += 1
     if (activeControllerRef.current) {
       activeControllerRef.current.abort()
@@ -241,12 +276,99 @@ export default function ListenSheet({
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none'
     }
-    endScanActivity(result.title || result.report_title || 'doc', { force: true })
+    // End only the Listen activity this sheet started. This used to force-end ANY activity
+    // (including a running scan or a Ready card) every time the sheet mounted or the result
+    // changed, even with the sheet closed.
+    if (endActivity && listenActivityStartedRef.current) {
+      listenActivityStartedRef.current = false
+      endListenActivity()
+    }
+  }
+
+  // Native audio started from the Ready card's "Listen": follow it instead of restarting it.
+  const attachToNative = (st: { position?: number; duration?: number; playing?: boolean; ended?: boolean; rate?: number; segments?: SpeechSegment[] }) => {
+    const session = ++playbackSessionRef.current
+    applyTimedSegments(cleanSegments(st.segments))
+    const el = audioElRef.current
+    const nativeEl = el as unknown as NativeAudioElement
+    if (!el || typeof (nativeEl as any).attach !== 'function') {
+      startPlaybackSession(0)
+      return
+    }
+    setEngine('server')
+    setUsingDeviceNote(false)
+    setIsBuffering(false)
+    currentBlobUrlRef.current = NATIVE_SRC_PREFIX + 'attached'
+    listenActivityStartedRef.current = true
+    if (st.rate && st.rate > 0) {
+      setSpeed(st.rate)
+      selectedSpeedRef.current = st.rate
+    }
+    nativeEl.onplayingchange = (playing: boolean) => {
+      if (playbackSessionRef.current !== session) return
+      visualizerActiveRef.current = playing
+      setIsPlaying(playing)
+      if (playing) startVisualizer(true)
+    }
+    el.onloadedmetadata = () => {
+      if (playbackSessionRef.current !== session) return
+      if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration)
+    }
+    el.ontimeupdate = () => {
+      if (playbackSessionRef.current !== session || scrubbingRef.current) return
+      const cur = el.currentTime
+      const dur = el.duration
+      setCurrentTime(cur)
+      if (Number.isFinite(dur) && dur > 0) {
+        setDuration(dur)
+        setPlaybackProgress(cur / dur)
+        updateSentenceFromTime(cur, dur, sentencesRef.current)
+      }
+    }
+    el.onended = () => {
+      if (playbackSessionRef.current !== session) return
+      setIsPlaying(false)
+      visualizerActiveRef.current = false
+      setCurrentTime(el.duration || 0)
+      setPlaybackProgress(1)
+      finishListenActivity()
+    }
+    ;(nativeEl as any).attach(st)
+    const dur = st.duration && st.duration > 0 ? st.duration : 0
+    const pos = st.position || 0
+    setCurrentTime(pos)
+    if (dur > 0) {
+      setDuration(dur)
+      setPlaybackProgress(pos / dur)
+    }
+    if (st.playing) {
+      visualizerActiveRef.current = true
+      setIsPlaying(true)
+      startVisualizer(true)
+    }
+  }
+
+  // Device-voice elapsed-time ticker. Pausing stops it; resuming continues from where it was.
+  const startDeviceTicker = (fromElapsed: number, session: number) => {
+    const total = deviceTotalRef.current > 0 ? deviceTotalRef.current : 30
+    const startStamp = Date.now() - fromElapsed * 1000
+    if (deviceVoiceIntervalRef.current) clearInterval(deviceVoiceIntervalRef.current)
+    deviceVoiceIntervalRef.current = window.setInterval(() => {
+      if (playbackSessionRef.current !== session || !isSpeakingRef.current) {
+        if (deviceVoiceIntervalRef.current) clearInterval(deviceVoiceIntervalRef.current)
+        deviceVoiceIntervalRef.current = null
+        return
+      }
+      const elapsed = (Date.now() - startStamp) / 1000
+      setCurrentTime(Math.min(total, elapsed))
+      setPlaybackProgress(Math.min(1, elapsed / total))
+      updateSentenceFromTime(elapsed, total, sentencesRef.current)
+    }, 200)
   }
 
   // Handle Sheet Close
   const handleClose = () => {
-    stopAllAudio()
+    stopAllAudio(true)
     onClose()
   }
 
@@ -325,21 +447,21 @@ export default function ListenSheet({
     animFrameRef.current = requestAnimationFrame(updateWaveform)
   }
 
-  // Compute which sentence is playing based on progress
+  const applyTimedSegments = (segments: SpeechSegment[]) => {
+    timedSegmentsRef.current = segments
+    setTimedSegments(segments)
+  }
+
+  // Which sentence is playing: exact timings when the voice server sent them, else an estimate.
   const updateSentenceFromTime = (cur: number, total: number, sList?: string[]) => {
+    const timed = timedSegmentsRef.current
+    if (timed.length) {
+      setActiveSentenceIndex(segmentIndexAt(timed, cur))
+      return
+    }
     const list = sList && sList.length ? sList : sentencesRef.current
     if (!list.length || total <= 0) return
-    const ratio = Math.min(0.999, Math.max(0, cur / total))
-    const totalChars = list.reduce((acc, s) => acc + s.length, 0) || 1
-    let accumulated = 0
-    for (let i = 0; i < list.length; i++) {
-      accumulated += list[i].length
-      if (ratio <= accumulated / totalChars) {
-        setActiveSentenceIndex(i)
-        return
-      }
-    }
-    setActiveSentenceIndex(Math.max(0, list.length - 1))
+    setActiveSentenceIndex(estimatedIndexAt(list, cur, total))
   }
 
   // Setup MediaSession API (Addendum Task 4.3)
@@ -413,7 +535,7 @@ export default function ListenSheet({
         ? buildQuickSummaryScript(result, concreteLang)
         : buildSpokenText(result)
     const speechScript = prepareTextForSpeech(rawScript, concreteLang)
-    const docId = result.title || result.report_title || 'doc'
+    const docId = nativeDocId || result.title || result.report_title || 'doc'
     const voiceVariant = voiceVariantRef.current
     const cacheKey = `${docId}-${mode}-${concreteLang}-${selectedGenderRef.current}-v${voiceVariant}`
 
@@ -437,6 +559,7 @@ export default function ListenSheet({
           if (controller.signal.aborted || playbackSessionRef.current !== session) return
           nativeAudioCache.set(cacheKey, nativeFilePath)
         }
+        applyTimedSegments(getSpeechSegments(nativeFilePath))
       } else if (audioBlobCache.has(cacheKey)) {
         blob = audioBlobCache.get(cacheKey)!
       } else {
@@ -451,6 +574,7 @@ export default function ListenSheet({
         if (controller.signal.aborted || playbackSessionRef.current !== session) return
         audioBlobCache.set(cacheKey, blob)
       }
+      if (blob) applyTimedSegments(getSpeechSegments(blob))
 
       setEngine('server')
       setUsingDeviceNote(false)
@@ -473,6 +597,9 @@ export default function ListenSheet({
         nativeAudio.setMeta({
           title: result.title || result.report_title || 'Your document',
           langLabel: LANG_LABELS[concreteLang] || 'English',
+          docId,
+          voiceGender: selectedGenderRef.current,
+          language: concreteLang,
         })
         // Keep the sheet in sync when playback is paused/resumed from the Dynamic Island,
         // the Lock Screen or headphones.
@@ -495,7 +622,7 @@ export default function ListenSheet({
       }
 
       audio.ontimeupdate = () => {
-        if (playbackSessionRef.current !== session) return
+        if (playbackSessionRef.current !== session || scrubbingRef.current) return
         const cur = audio.currentTime
         const dur = audio.duration
         setCurrentTime(cur)
@@ -540,6 +667,7 @@ export default function ListenSheet({
       setIsPlaying(true)
       startVisualizer(true)
       if (!isNative()) setupMediaSession(audio)
+      listenActivityStartedRef.current = true
       startListenActivity({
         docId: docId,
         title: result.title || result.report_title || 'Your document',
@@ -548,6 +676,7 @@ export default function ListenSheet({
         voiceGender: selectedGenderRef.current,
         duration: audio.duration || 90,
         currentTime: audio.currentTime || 0,
+        ttsBase: getSpeakBase(),
       })
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
@@ -568,6 +697,7 @@ export default function ListenSheet({
       console.warn('[SarvamNative] [ListenSheet] fallbackToDeviceVoice triggered! Switching engine to device voice.')
     }
     setEngine('device')
+    applyTimedSegments([])
     setUsingDeviceNote(true)
     setIsBuffering(false)
 
@@ -611,20 +741,9 @@ export default function ListenSheet({
         navigator.mediaSession.playbackState = 'playing'
       }
 
-      // Interval to update elapsed time during device speech
-      const startStamp = Date.now() - (startPosRatio * estimatedTotal * 1000)
-      if (deviceVoiceIntervalRef.current) clearInterval(deviceVoiceIntervalRef.current)
-      deviceVoiceIntervalRef.current = window.setInterval(() => {
-        if (playbackSessionRef.current !== session || !isSpeakingRef.current) {
-          if (deviceVoiceIntervalRef.current) clearInterval(deviceVoiceIntervalRef.current)
-          return
-        }
-        const elapsed = (Date.now() - startStamp) / 1000
-        setCurrentTime(Math.min(estimatedTotal, elapsed))
-        const p = Math.min(1, elapsed / estimatedTotal)
-        setPlaybackProgress(p)
-        updateSentenceFromTime(elapsed, estimatedTotal, sentences)
-      }, 200)
+      // Elapsed time during device speech (stops while paused)
+      deviceTotalRef.current = estimatedTotal
+      startDeviceTicker(startPosRatio * estimatedTotal, session)
     }
 
     utter.onend = () => {
@@ -667,6 +786,7 @@ export default function ListenSheet({
       }).catch(() => {})
     } else if (engine === 'device' && synthRef.current?.paused) {
       synthRef.current.resume()
+      startDeviceTicker(currentTime, playbackSessionRef.current)
       visualizerActiveRef.current = true
       setIsPlaying(true)
       startVisualizer(false)
@@ -688,6 +808,11 @@ export default function ListenSheet({
       audioElRef.current.pause()
     } else if (engine === 'device' && synthRef.current) {
       synthRef.current.pause()
+      // Stop the clock too: it used to keep running while paused.
+      if (deviceVoiceIntervalRef.current) {
+        clearInterval(deviceVoiceIntervalRef.current)
+        deviceVoiceIntervalRef.current = null
+      }
     }
     visualizerActiveRef.current = false
     setIsPlaying(false)
@@ -728,10 +853,27 @@ export default function ListenSheet({
     startPlaybackSession(ratio)
   }
 
-  const handleSeek = (progressRatio: number) => {
-    const clamped = Math.min(0.999, Math.max(0, progressRatio))
-    const total = duration > 0 ? duration : 30
-    seekToSeconds(clamped * total)
+  // Centre ruler: live seek while dragging (the voice follows the finger), exact seek on release.
+  const canScrub = engine === 'server' && !isBuffering && duration > 0
+  const handleScrubStart = () => {
+    scrubbingRef.current = true
+  }
+  const handleScrub = (target: number) => {
+    const audio = audioElRef.current
+    if (!canScrub || !audio) return
+    const clamped = Math.min(Math.max(0, duration - 0.05), Math.max(0, target))
+    const native = audio as unknown as NativeAudioElement
+    if (typeof (native as any).fastSeek === 'function' && isNative()) native.fastSeek(clamped)
+    else if (typeof (audio as any).fastSeek === 'function') (audio as any).fastSeek(clamped)
+    else audio.currentTime = clamped
+    setCurrentTime(clamped)
+    setPlaybackProgress(duration > 0 ? clamped / duration : 0)
+    updateSentenceFromTime(clamped, duration, sentencesRef.current)
+  }
+  const handleScrubEnd = (target: number) => {
+    scrubbingRef.current = false
+    if (!canScrub) return
+    seekToSeconds(target)
   }
 
   const handleReplay10s = () => {
@@ -761,39 +903,19 @@ export default function ListenSheet({
     stopAllAudio()
     setCurrentTime(0)
     setPlaybackProgress(0)
-    setSeekPreview(null)
     setActiveSentenceIndex(0)
     if (hadPlayback && isOpen && concreteLang !== 'or') {
       startPlaybackSession(0)
     }
   }
 
-  const currentSentence = sentences[activeSentenceIndex] || ''
-  const nextSentence = sentences[activeSentenceIndex + 1] || ''
-  const visibleProgress = seekPreview ?? playbackProgress
-  const percentVal = Math.round(visibleProgress * 100)
-  const ariaValueText = (() => {
-    switch (concreteLang) {
-      case 'ta':
-        return `${percentVal} சதவீதம்`
-      case 'hi':
-        return `${percentVal} प्रतिशत`
-      case 'te':
-        return `${percentVal} శాతం`
-      case 'ml':
-        return `${percentVal} ശതമാനം`
-      case 'kn':
-        return `${percentVal} ಪ್ರತಿಶತ`
-      case 'mr':
-        return `${percentVal} टक्के`
-      case 'bn':
-        return `${percentVal} শতাংশ`
-      case 'or':
-        return `${percentVal} ପ୍ରତିଶତ`
-      default:
-        return `${percentVal}%`
-    }
-  })()
+  // Lyrics: the exact sentences the voice server timed, else the script's sentences (estimated).
+  const lyricLines = timedSegments.length ? timedSegments.map((seg) => seg.text) : sentences
+  const lyricIndex = Math.min(activeSentenceIndex, Math.max(0, lyricLines.length - 1))
+  const prevLine = lyricIndex > 0 ? lyricLines[lyricIndex - 1] : ''
+  const currentLine = lyricLines[lyricIndex] || ''
+  const nextLine = lyricLines[lyricIndex + 1] || ''
+  const indicScript = concreteLang !== 'en'
 
   return (
     <Sheet
@@ -866,97 +988,67 @@ export default function ListenSheet({
           </>
         )}
 
-        {/* The bars show audio activity; the track below shows position. */}
-        <div className="rounded-[32px] bg-[#1A1A1A] text-[#F4F5F2] p-[18px] flex flex-col gap-3.5">
-          <div className="flex items-center justify-between gap-2.5">
-            <span className="flex items-center gap-2.5 min-w-0">
-              <span className="w-9 h-9 shrink-0 rounded-full bg-[#E9B44C] flex items-center justify-center text-[#1A1A1A] text-[16px]" aria-hidden="true">♪</span>
-              <span className="text-[14px] font-semibold truncate">{result.title || t.listenBtnLabel || 'Listen'}</span>
+        {/* Listen v3: centre ruler (drag left = forward), times, lyric captions */}
+        <div className="rounded-[28px] bg-[#1C1C1C] text-[#F4F5F2] px-4 pt-4 pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="w-[34px] h-[34px] shrink-0 rounded-full bg-[#E9B44C] flex items-center justify-center text-[#1A1A1A]" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 1.5v8.3a2.6 2.6 0 1 1-1.5-2.3V3.6L6 4.4V1.9z" /></svg>
             </span>
-            <span className="shrink-0 text-[13px] text-[#C4C8C3] tabular-nums">
-              {isBuffering
-                ? (t.preparingAudio || 'Preparing audio...')
-                : `${formatTime(currentTime)} / ${formatTime(duration)}`}
-            </span>
+            <span className="flex-1 min-w-0 text-[15px] font-semibold truncate">{result.title || t.listenBtnLabel || 'Listen'}</span>
           </div>
 
-          <div className="flex h-16 items-center gap-1 overflow-hidden" aria-hidden="true">
-            {barHeights.map((height, index) => {
-              const played = index / Math.max(1, barHeights.length) < visibleProgress
-              return (
-                <span
-                  key={index}
-                  className="min-w-0 flex-1 rounded-[3px]"
-                  style={{
-                    height: `${Math.max(8, Math.min(60, height))}px`,
-                    backgroundColor: played ? '#D9603B' : index < barHeights.length / 2 ? '#E9B44C' : '#525754',
-                  }}
-                />
-              )
-            })}
-          </div>
-
-          <div className="relative flex h-6 items-center">
-            <div className="pointer-events-none absolute left-0 right-0 h-1 rounded-[2px] bg-[#383B39]">
-              <div
-                className="h-1 rounded-[2px]"
-                style={{
-                  width: `${Math.min(100, Math.max(0, visibleProgress * 100))}%`,
-                  backgroundColor: '#D9603B',
-                }}
-              />
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1000"
-              step="1"
-              value={Math.round(visibleProgress * 1000)}
-              onChange={(event) => setSeekPreview(Number(event.currentTarget.value) / 1000)}
-              onPointerUp={(event) => {
-                handleSeek(Number(event.currentTarget.value) / 1000)
-                setSeekPreview(null)
-              }}
-              onKeyUp={(event) => {
-                if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) {
-                  handleSeek(Number(event.currentTarget.value) / 1000)
-                  setSeekPreview(null)
-                }
-              }}
-              onBlur={() => {
-                if (seekPreview !== null) {
-                  handleSeek(seekPreview)
-                  setSeekPreview(null)
-                }
-              }}
-              onPointerCancel={() => setSeekPreview(null)}
-              className="voice-seek focus-ring relative w-full"
-              aria-label={t.seekAudio || 'Seek audio'}
-              aria-valuetext={ariaValueText}
+          <div className="mt-3.5">
+            <ListenRuler
+              time={currentTime}
+              duration={duration}
+              playing={isPlaying}
+              rate={speed}
+              disabled={!canScrub}
+              onScrubStart={handleScrubStart}
+              onScrub={handleScrub}
+              onScrubEnd={handleScrubEnd}
             />
+          </div>
+          <label className="sr-only" htmlFor="listen-position">{t.seekAudio || 'Playback position'}</label>
+          <input
+            id="listen-position"
+            className="sr-only"
+            type="range"
+            min={0}
+            max={Math.max(1, Math.round(duration))}
+            step={5}
+            value={Math.round(currentTime)}
+            disabled={!canScrub}
+            aria-valuetext={positionText(currentTime, duration)}
+            onChange={(event) => seekToSeconds(Number(event.currentTarget.value))}
+          />
+          <div className="mt-0.5 flex justify-between tabular-nums">
+            <span className="text-[16px] font-semibold leading-none text-[#E9B44C]">
+              {isBuffering ? (t.preparingAudio || 'Preparing audio...') : clockTime(currentTime)}
+            </span>
+            <span className="text-[15px] font-medium leading-none text-[#9AA09C]">
+              {duration > 0 ? `-${clockTime(Math.max(0, duration - currentTime))}` : ''}
+            </span>
           </div>
         </div>
 
-        {/* Live Captions */}
-        <div className="flex min-h-[88px] flex-col gap-1.5" aria-live="polite">
-          <p className="sv-display m-0 text-[26px] leading-[1.15] text-[#1A1A1A]">
-            {currentSentence}
-          </p>
-          {nextSentence && (
-            <p className="m-0 text-[16px] leading-[1.4] text-[#575B58] line-clamp-2">
-              {nextSentence}
-            </p>
-          )}
+        {/* Lyric captions: previous line dim, the sentence being read bright, next line dim */}
+        <div className="listen-lyrics" aria-live="polite">
+          <div key={lyricIndex} className="listen-lyrics-inner">
+            <p className="listen-lyrics-prev">{prevLine || '\u00a0'}</p>
+            <p className={`listen-lyrics-now${indicScript ? ' is-indic' : ''}`}>{currentLine}</p>
+            <p className="listen-lyrics-next">{nextLine || '\u00a0'}</p>
+          </div>
         </div>
 
         {/* Player Controls */}
         <div className="flex flex-col gap-5 pt-1">
           {/* Main Controls Row */}
-          <div className="flex items-center justify-center gap-7">
+          <div className="flex items-center justify-center gap-[26px]">
             <button
               type="button"
               onClick={handleReplay10s}
-              className="sv-press w-[52px] h-[52px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
+              className="sv-press w-[54px] h-[54px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
               aria-label={t.replay10s || 'Replay 10 seconds'}
             >
               <ReplayIcon className="h-[22px] w-[22px]" />
@@ -966,7 +1058,7 @@ export default function ListenSheet({
               type="button"
               onClick={handleTogglePlay}
               disabled={isBuffering || concreteLang === 'or'}
-              className="sv-press w-[78px] h-[78px] rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] flex items-center justify-center disabled:opacity-40"
+              className="sv-press w-[80px] h-[80px] rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] text-[#1A1A1A] flex items-center justify-center disabled:opacity-40"
               aria-label={isPlaying ? t.pause || 'Pause' : t.play || 'Play'}
             >
               {isBuffering ? (
@@ -981,13 +1073,12 @@ export default function ListenSheet({
             <button
               type="button"
               onClick={() => {
-                stopAllAudio()
+                stopAllAudio(true)
                 setCurrentTime(0)
                 setPlaybackProgress(0)
-                setSeekPreview(null)
-                setActiveSentenceIndex(0)
+                            setActiveSentenceIndex(0)
               }}
-              className="sv-press w-[52px] h-[52px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
+              className="sv-press w-[54px] h-[54px] rounded-full border-[1.5px] border-[#1A1A1A] bg-transparent flex items-center justify-center"
               aria-label={t.stop || 'Stop'}
             >
               <span className="h-4 w-4 rounded-[3px] bg-[#1A1A1A]" />

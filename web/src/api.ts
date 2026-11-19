@@ -1,7 +1,8 @@
 import type { ExplainResponse, ApiError, TranslateRequest, AskResponse } from './types'
+import { parseSegmentsHeader, cleanSegments, type SpeechSegment } from './utils/lyrics'
 import { explainQueue } from './utils/queue'
 import { explainCanRetry } from './utils/explainRetry'
-import { getLocalFallbackError } from './i18n'
+import { getLocalFallbackError, getDictionary, LANG_LABELS } from './i18n'
 import { isNative } from './native/isNative.js'
 import {
   startNativeScan,
@@ -25,7 +26,7 @@ export function getApiBase(): string {
  * server that is not deployed (for example the API running on your Mac). Explain, translate and
  * ask keep using getApiBase(). Unset (the default): speech uses the normal API.
  */
-function getSpeakBase(): string {
+export function getSpeakBase(): string {
   const tts = ((import.meta.env.VITE_TTS_API_URL as string | undefined) || '').trim()
   return tts ? tts.replace(/\/+$/, '') : getApiBase()
 }
@@ -52,6 +53,39 @@ export class ExplainApiError extends Error {
   }
 }
 
+/** Language name and the three reading-stage labels, exactly as the reading screen shows them. */
+export function nativeScanLabels(lang: string): { languageLabel: string; stageLabels: string[] } {
+  const t = getDictionary(lang)
+  const languageLabel = (LANG_LABELS as Record<string, string>)[lang] || 'English'
+  let writing = (t.stepWriting || 'Writing in {lang}').replace('{lang}', languageLabel)
+  if (lang === 'ta') writing = 'தமிழில் எழுதுகிறோம்'
+  else if (lang === 'hi') writing = 'हिंदी में लिख रहे हैं'
+  return {
+    languageLabel,
+    stageLabels: [
+      t.stepReading || 'Reading your document',
+      t.stepChecking || 'Checking against the document',
+      writing,
+    ],
+  }
+}
+
+/** Unique, URL-safe id for one scan (used in sarvam://doc/<id> and the native result file). */
+function newScanId(): string {
+  return `scan-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+let activeNativeScanId: string | null = null
+let lastNativeScanId: string | null = null
+/** The scan the native worker is running for this app session, if any. */
+export function getActiveNativeScanId(): string | null {
+  return activeNativeScanId
+}
+/** The most recent scan started in this app session (kept after it finishes). */
+export function getLastNativeScanId(): string | null {
+  return lastNativeScanId
+}
+
 async function explainWithNativeWorker(
   files: File[],
   lang: string,
@@ -59,38 +93,51 @@ async function explainWithNativeWorker(
   password?: string
 ): Promise<ExplainResponse> {
   const firstFileName = files[0]?.name
-  const docId = firstFileName && firstFileName.trim().length > 0 ? firstFileName : (files.length > 0 ? `scan_${Date.now()}` : 'doc')
+  // A per-scan id. The file name ("image.jpg" for every camera photo) collided between scans
+  // and broke the sarvam://doc/<id> link when the name had spaces.
+  const docId = newScanId()
   const title = firstFileName && firstFileName.trim().length > 0 ? firstFileName : 'Your document'
+  const isPdf = files.some((f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+  const { languageLabel, stageLabels } = nativeScanLabels(lang)
 
   const onAbort = () => {
     cancelNativeScan(docId)
   }
   if (externalSignal) {
     if (externalSignal.aborted) {
-      cancelNativeScan(docId)
       throw new DOMException('Aborted', 'AbortError')
     }
     externalSignal.addEventListener('abort', onAbort, { once: true })
   }
 
   try {
-    console.log('[SarvamNative] [WebAPI] Starting explainWithNativeWorker: filesCount=', files.length, 'lang=', lang, 'apiBase=', getApiBase())
+    console.log('[SarvamNative] [WebAPI] Starting explainWithNativeWorker: filesCount=', files.length, 'lang=', lang, 'apiBase=', getApiBase(), 'docId=', docId)
+    activeNativeScanId = docId
+    lastNativeScanId = docId
     await startNativeScan({
       docId,
       title,
       lang,
+      languageLabel,
+      stageLabels,
+      kind: isPdf ? 'pdf' : 'photo',
+      // Where the Ready card's "Listen" fetches the voice when the app is closed.
+      ttsBase: getSpeakBase(),
       apiBase: getApiBase(),
       password,
       files,
     })
 
+    // The scan keeps running natively while the app is in the background (JS is paused then),
+    // so wall-clock time is not a failure signal. Stop only when native says the scan is no
+    // longer running and left no result, or after a generous hard cap.
     const startTime = Date.now()
-    const maxWaitMs = 120_000
+    const hardCapMs = 300_000
+    let notRunningChecks = 0
 
-    while (Date.now() - startTime < maxWaitMs) {
+    while (Date.now() - startTime < hardCapMs) {
       if (externalSignal?.aborted) {
         console.warn('[SarvamNative] [WebAPI] explainWithNativeWorker cancelled by signal')
-        cancelNativeScan(docId)
         throw new DOMException('Aborted', 'AbortError')
       }
 
@@ -108,17 +155,28 @@ async function explainWithNativeWorker(
           details.statusCode || 500
         )
       }
+      notRunningChecks = check?.running === false ? notRunningChecks + 1 : 0
+      if (notRunningChecks >= 8) {
+        console.error('[SarvamNative] [WebAPI] Native scan is not running and left no result')
+        throw new ExplainApiError(
+          'Analysis stopped. Please try again.',
+          getLocalFallbackError(lang, 'generic'),
+          500
+        )
+      }
 
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
-    console.error('[SarvamNative] [WebAPI] explainWithNativeWorker timed out after 120s')
+    console.error('[SarvamNative] [WebAPI] explainWithNativeWorker timed out after 300s')
+    cancelNativeScan(docId)
     throw new ExplainApiError(
-      'Document analysis timed out after 120 seconds.',
+      'Document analysis timed out.',
       getLocalFallbackError(lang, 'timeout'),
       504
     )
   } finally {
+    if (activeNativeScanId === docId) activeNativeScanId = null
     if (externalSignal) {
       externalSignal.removeEventListener('abort', onAbort)
     }
@@ -566,6 +624,8 @@ export async function speakText(params: {
     }
 
     const blob = await res.blob()
+    // Exact sentence timings for the captions (sent by the voice server; absent on older ones).
+    speechSegmentsForBlob.set(blob, parseSegmentsHeader(res.headers.get('X-Sarvam-Segments')))
     if (isNative()) {
       console.log('[SarvamNative] [WebAPI] POST /api/speak SUCCESS status=', res.status, 'duration=', Date.now() - ttsStart, 'ms blobBytes=', blob.size, 'type=', blob.type)
     }
@@ -581,6 +641,17 @@ export async function speakText(params: {
       params.signal.removeEventListener('abort', onAbort)
     }
   }
+}
+
+// Sentence timings of each voice download (captions follow them exactly).
+const speechSegmentsForBlob = new WeakMap<Blob, SpeechSegment[]>()
+const speechSegmentsForPath = new Map<string, SpeechSegment[]>()
+
+/** Exact sentence timings of a downloaded voice (blob in the browser, file path in the app). */
+export function getSpeechSegments(audio: Blob | string | null | undefined): SpeechSegment[] {
+  if (!audio) return []
+  if (typeof audio === 'string') return speechSegmentsForPath.get(audio) ?? []
+  return speechSegmentsForBlob.get(audio) ?? []
 }
 
 /**
@@ -629,7 +700,8 @@ export async function speakTextToFile(params: {
       }),
       guard,
     ])
-    console.log('[SarvamNative] [WebAPI] native POST /api/speak SUCCESS duration=', Date.now() - started, 'ms bytes=', res.bytes, 'type=', res.contentType)
+    console.log('[SarvamNative] [WebAPI] native POST /api/speak SUCCESS duration=', Date.now() - started, 'ms bytes=', res.bytes, 'type=', res.contentType, 'sentences=', res.segments?.length ?? 0)
+    speechSegmentsForPath.set(res.path, cleanSegments(res.segments))
     return res.path
   } catch (err) {
     console.error('[SarvamNative] [WebAPI] native POST /api/speak FAILED after', Date.now() - started, 'ms:', err)

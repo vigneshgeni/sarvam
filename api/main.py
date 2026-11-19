@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 import datetime
+import base64
 import json
 import logging
 import os
@@ -112,7 +113,7 @@ SPEAK_TIMEOUT_S = float(os.environ.get("SPEAK_TIMEOUT_S", "30"))
 # Rate limits (per IP)
 EXPLAIN_RATE_LIMIT = 20
 TRANSLATE_RATE_LIMIT = 30
-TTS_RATE_LIMIT = 60
+TTS_RATE_LIMIT = int(os.environ.get("TTS_RATE_LIMIT", "60"))
 ASK_RATE_LIMIT = 20
 REDACT_RATE_LIMIT = 20
 RATE_LIMIT_WINDOW = 60.0  # seconds
@@ -172,10 +173,38 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Sarvam-Segments"],
 )
 
 logger = logging.getLogger("sarvam-api")
 logging.basicConfig(level=logging.INFO)
+
+
+# Voice-only server: a separate Cloud Run service (sarvam-tts) that the iPhone app uses for Listen.
+# With SARVAM_VOICE_ONLY=1 only /health and /api/speak answer; everything else is 404, so that
+# public address cannot run Explain / Ask / Translate on the project's Gemini quota.
+# Unset (the live sarvam-api) = no change.
+VOICE_ONLY = os.environ.get("SARVAM_VOICE_ONLY", "").strip() == "1"
+VOICE_ONLY_PATHS = {"/health", "/api/speak"}
+# Spend guard: at most this many /api/speak calls per server copy per UTC day. 0 = no cap.
+SPEAK_DAILY_CAP = int(os.environ.get("SPEAK_DAILY_CAP", "0"))
+_SPEAK_DAY = {"day": "", "count": 0}
+
+
+def encode_segments_header(timings: list, limit: int = 7000) -> str:
+    """[{text,start,end}] as base64 JSON for the X-Sarvam-Segments header ('' when empty or too big)."""
+    if not timings:
+        return ""
+    raw = json.dumps(timings, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    encoded = base64.b64encode(raw).decode("ascii")
+    return encoded if len(encoded) <= limit else ""
+
+
+@app.middleware("http")
+async def voice_only_gate(request: Request, call_next):
+    if VOICE_ONLY and request.url.path not in VOICE_ONLY_PATHS:
+        return JSONResponse(status_code=404, content={"message": "Not found"})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -1727,6 +1756,18 @@ async def speak(request: Request, body: SpeakRequest):
             headers={"Retry-After": str(retry_after)},
         )
 
+    if SPEAK_DAILY_CAP > 0:
+        today = time.strftime("%Y-%m-%d", time.gmtime())
+        if _SPEAK_DAY["day"] != today:
+            _SPEAK_DAY["day"] = today
+            _SPEAK_DAY["count"] = 0
+        if _SPEAK_DAY["count"] >= SPEAK_DAILY_CAP:
+            logger.warning("speak_daily_cap_reached: cap=%d", SPEAK_DAILY_CAP)
+            return make_error_response(
+                429, "rate_limit", body.lang, headers={"Retry-After": "3600"}
+            )
+        _SPEAK_DAY["count"] += 1
+
     if len(body.text) > 1200:
         return make_error_response(422, "text_too_long", body.lang)
 
@@ -1745,6 +1786,7 @@ async def speak(request: Request, body: SpeakRequest):
         # SPEAK_TIMEOUT_S per attempt, 1 retry
         for attempt in range(2):
             try:
+                timings: list = []
                 audio_bytes = await asyncio.wait_for(
                     run_in_threadpool(
                         synthesize_speech,
@@ -1754,17 +1796,20 @@ async def speak(request: Request, body: SpeakRequest):
                         body.rate or 1.0,
                         None,
                         body.voice_index,
+                        timings,
                     ),
                     timeout=SPEAK_TIMEOUT_S,
                 )
-                return Response(
-                    content=audio_bytes,
-                    media_type="audio/wav",
-                    headers={
-                        "Cache-Control": "no-store",
-                        "Content-Disposition": "inline; filename=speech.wav",
-                    },
-                )
+                headers = {
+                    "Cache-Control": "no-store",
+                    "Content-Disposition": "inline; filename=speech.wav",
+                }
+                # Exact sentence start/end times for captions (base64 JSON, so any script fits
+                # in a header). Left out if it would be too big for a header.
+                segments_header = encode_segments_header(timings)
+                if segments_header:
+                    headers["X-Sarvam-Segments"] = segments_header
+                return Response(content=audio_bytes, media_type="audio/wav", headers=headers)
             except Exception as e:
                 logger.warning("speak attempt %d failed: %s", attempt + 1, e)
                 if attempt == 1:

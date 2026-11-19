@@ -289,8 +289,8 @@ def test_speak_endpoint_passes_voice_index_and_old_clients_still_work():
     assert new.status_code == 200 and old.status_code == 200
     assert new.content[:4] == b"RIFF"
     first, second = mock_synth.call_args_list
-    assert first.args[2] == "male" and first.args[-1] == 2
-    assert second.args[2] == "female" and second.args[-1] is None
+    assert first.args[2] == "male" and first.args[5] == 2
+    assert second.args[2] == "female" and second.args[5] is None
 
 
 def test_speak_endpoint_rejects_a_bad_voice_index_and_odia_still_has_no_audio():

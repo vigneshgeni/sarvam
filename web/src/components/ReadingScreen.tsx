@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { getDictionary, SUPPORTED_LANGS } from '../i18n'
 import type { AppErrorInfo } from '../types'
 import { pickReadingVariant, type ReadingLetter } from '../design/catalog'
@@ -6,12 +6,7 @@ import { useOverlayRestore } from '../design/contracts'
 import { useReadingStage } from '../hooks/useReadingStage'
 import { readingCountCopy } from '../utils/readingCopy'
 import ReadingArt from './v3/ReadingArt'
-import {
-  startScanActivity,
-  markScanReady,
-  markScanFailed,
-  endScanActivity,
-} from '../native/liveActivity.js'
+import { startScanActivity } from '../native/liveActivity.js'
 
 interface ReadingScreenProps {
   files: File[]
@@ -250,19 +245,6 @@ export default function ReadingScreen({
   const step = reading.stage === 'checking' ? 1 : reading.stage === 'writing' ? 2 : 0
   const showTakingLonger = !error && takingLonger
 
-  // Track arrived in ref to prevent unmount cleanup from prematurely killing the Ready activity
-  const arrivedRef = useRef(false)
-  arrivedRef.current = !!arrived
-
-  const hasMarkedReadyRef = useRef(false)
-  const hasMarkedFailedRef = useRef(false)
-
-  // Reset completion flags when files change or error is cleared (retry)
-  useEffect(() => {
-    hasMarkedReadyRef.current = false
-    hasMarkedFailedRef.current = false
-  }, [files, error])
-
   // Live Activity integration (strictly no-op on web/PWA)
   const firstFileName = files[0]?.name
   const docId = firstFileName && firstFileName.trim().length > 0 ? firstFileName : (files.length > 0 ? `scan_${files.length}files` : '')
@@ -275,35 +257,15 @@ export default function ReadingScreen({
       fileCount: files.length,
       language: lang,
     })
-    return () => {
-      // Only tear down activity if not transitioning to Ready state and user explicitly cancelled
-      if (!arrivedRef.current && docId) {
-        endScanActivity(docId)
-      }
-    }
+    // No cleanup here. The scan Live Activity belongs to the native scan worker: it ends on
+    // cancel (cancelNativeScan), turns Ready when the result is saved, and ends quietly when the
+    // result opens in-app. This cleanup used to end it about a second after the scan started
+    // (real log: "Activity.request SUCCESS" then "endScanActivity image.jpg"), so the island
+    // never reached Ready.
   }, [files, lang, docId, firstFileName])
 
-  useEffect(() => {
-    if (!docId) return
-    if (arrived) {
-      if (!hasMarkedReadyRef.current) {
-        hasMarkedReadyRef.current = true
-        markScanReady({
-          docId,
-          language: lang,
-          languageLabel: nativeLangName,
-        })
-      }
-    } else if (error) {
-      if (!hasMarkedFailedRef.current) {
-        hasMarkedFailedRef.current = true
-        markScanFailed({
-          docId,
-          errorMessage: error.messageLocal || 'Service is busy',
-        })
-      }
-    }
-  }, [arrived, error, lang, nativeLangName, docId])
+  // Ready / failed are set by the native scan worker itself (it knows the real scan id and
+  // whether the app is in the foreground), so the screen does not send them.
 
   const progressiveNoticeText = (() => {
     if (elapsedSeconds >= 75) {

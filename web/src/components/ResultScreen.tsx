@@ -78,6 +78,11 @@ interface ResultScreenProps {
   onActivityChange?: (activity: DocumentActivity) => void
   onRename?: (name: string) => void
   onSaveAsks?: (asks: AskTurn[]) => void
+  /** Bumped by the app when the iPhone "Listen" button on the Ready Live Activity is tapped. */
+  listenRequest?: number
+  onListenRequestHandled?: () => void
+  /** iPhone app: scan id of this result (links in-app Listen to Ready-card Listen audio). */
+  nativeDocId?: string
 }
 
 export default function ResultScreen({
@@ -103,6 +108,9 @@ export default function ResultScreen({
   onActivityChange,
   onRename,
   onSaveAsks,
+  listenRequest = 0,
+  onListenRequestHandled,
+  nativeDocId,
 }: ResultScreenProps) {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number | null>(activity?.reportIndex ?? null)
   const activityRef = useRef<DocumentActivity>(mergeActivity(activity))
@@ -281,6 +289,14 @@ export default function ResultScreen({
     if (overlayName === 'reminders') setIsRemindersOpen(true)
     if (overlayName === 'doc_preview') setIsPreviewOpen(true)
   }
+  // Live Activity "Listen" (sarvam://listen/<id>): open the Listen sheet once the result shows.
+  useEffect(() => {
+    if (listenRequest <= 0) return
+    if (!isListenOpen) openOverlay('listen')
+    onListenRequestHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listenRequest])
+
 
   const closeOverlay = (
     overlayName: 'listen' | 'ask' | 'share' | 'source' | 'reminders' | 'doc_preview'
@@ -1424,6 +1440,7 @@ export default function ResultScreen({
         result={result}
         lang={contentLang}
         t={t}
+        nativeDocId={nativeDocId}
       />
 
       {/* Ask Sheet (WEB-12) */}

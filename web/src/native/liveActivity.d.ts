@@ -65,6 +65,8 @@ export declare function markScanPasswordNeeded(params: {
 
 export declare function endScanActivity(docId?: string, opts?: { force?: boolean }): Promise<void>
 
+export declare function endListenActivity(): Promise<void>
+
 export declare function startListenActivity(params: {
   docId: string
   title: string
@@ -74,6 +76,7 @@ export declare function startListenActivity(params: {
   duration: number
   currentTime?: number
   audioBase64?: string
+  ttsBase?: string
 }): Promise<void>
 
 export declare function updateListenPlayback(params: {
@@ -90,6 +93,10 @@ export declare function startNativeScan(params: {
   docId: string
   title?: string
   lang: string
+  languageLabel?: string
+  stageLabels?: string[]
+  kind?: 'pdf' | 'photo'
+  ttsBase?: string
   apiBase?: string
   showDocumentName?: boolean
   password?: string
@@ -131,7 +138,14 @@ export declare function downloadSpeechToFile(params: {
   url: string
   body: string
   timeoutMs?: number
-}): Promise<{ path: string; bytes: number; status: number; contentType: string }>
+}): Promise<{
+  path: string
+  bytes: number
+  status: number
+  contentType: string
+  /** Exact sentence timings sent by the voice server (empty when it sent none). */
+  segments?: { text: string; start: number; end: number }[]
+}>
 export declare function nativeAudioPlay(params: {
   filePath: string
   title?: string
@@ -142,13 +156,16 @@ export declare function nativeAudioPlay(params: {
 }): Promise<{ success: boolean; duration: number }>
 export declare function nativeAudioResume(): Promise<unknown>
 export declare function nativeAudioPause(): Promise<unknown>
-export declare function nativeAudioSeek(position: number): Promise<unknown>
+export declare function nativeAudioSeek(position: number, fast?: boolean): Promise<unknown>
 export declare function nativeAudioStop(): Promise<unknown>
 export declare function nativeAudioSetRate(rate: number): Promise<unknown>
-export declare function getNativeAudioState(): Promise<{
+export declare function getNativeAudioState(options?: { withSegments?: boolean }): Promise<{
   active: boolean
   playing: boolean
   position: number
   duration: number
   ended: boolean
+  rate?: number
+  docId?: string
+  segments?: { text: string; start: number; end: number }[]
 } | null>

@@ -15,8 +15,15 @@ export function shouldShowOnboarding(input: {
 /** Where to land when the page comes back without its result still in memory. */
 export function screenAfterReturn(
   current: { screen: string; hasResult: boolean },
-  saved: { screen?: string; result?: unknown } | null
+  saved: { screen?: string; result?: unknown } | null,
+  opts?: { scanInFlight?: boolean }
 ): { screen: 'home' | 'reading' | 'result' | 'tray'; restore: boolean } {
+  // iPhone app: a scan keeps running natively while the app is in the background. Coming back
+  // must keep the reading screen (its result is about to arrive), not jump Home or restore an
+  // older document from the saved session.
+  if (opts?.scanInFlight && current.screen === 'reading') {
+    return { screen: 'reading', restore: false }
+  }
   if (current.hasResult) {
     const screen = current.screen === 'reading' || current.screen === 'tray' || current.screen === 'result' ? current.screen : 'home'
     return { screen, restore: false }

@@ -12,7 +12,9 @@ export declare class NativeAudioElement {
   readonly duration: number
   currentTime: number
   playbackRate: number
-  setMeta(meta: { title?: string; langLabel?: string }): void
+  setMeta(meta: { title?: string; langLabel?: string; docId?: string; voiceGender?: string; language?: string }): void
+  attach(st: { position?: number; duration?: number; playing?: boolean; ended?: boolean; rate?: number }): void
+  fastSeek(value: number): void
   removeAttribute(name: string): void
   addEventListener(...args: unknown[]): void
   removeEventListener(...args: unknown[]): void

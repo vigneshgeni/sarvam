@@ -189,6 +189,22 @@ export async function endScanActivity(docId, opts = {}) {
   }
 }
 
+/**
+ * Ends only a Listen activity (listening / paused / finished). A scan or Ready activity is never
+ * touched: those belong to the native scan worker. Used when the Listen sheet stops or closes.
+ */
+export async function endListenActivity() {
+  if (!isNative()) return
+  if (currentActiveState && ['listening', 'paused', 'finished'].includes(currentActiveState.phase)) {
+    currentActiveState = null
+  }
+  try {
+    await NativePlugin.endActivity({ listenOnly: true })
+  } catch (err) {
+    console.warn('[SarvamNative] [LiveActivity] Failed to end listen activity:', err)
+  }
+}
+
 export async function startListenActivity(params) {
   if (!isNative()) return
   if (params.language === 'or') {
@@ -212,6 +228,7 @@ export async function startListenActivity(params) {
     duration: params.duration || 0,
     allowListen: true,
     showDocumentName,
+    ttsBase: params.ttsBase,
   }
   currentActiveState = state
   console.log('[SarvamNative] [LiveActivity] startListenActivity dispatching:', state)
@@ -283,7 +300,12 @@ export async function startNativeScan(params) {
   const payload = {
     docId: params.docId,
     title: params.title || params.files[0]?.name || 'Your document',
+    fileName: params.files[0]?.name,
     lang: params.lang,
+    languageLabel: params.languageLabel,
+    stageLabels: params.stageLabels,
+    kind: params.kind,
+    ttsBase: params.ttsBase,
     apiBase: params.apiBase || 'http://127.0.0.1:8080',
     showDocumentName,
     password: params.password,
@@ -396,8 +418,9 @@ export async function nativeAudioPause() {
   return await NativePlugin.pauseAudio({})
 }
 
-export async function nativeAudioSeek(position) {
-  return await NativePlugin.seekAudio({ position })
+/** fast: live seeking while the ruler is dragged (resolves at once; the newest seek wins). */
+export async function nativeAudioSeek(position, fast = false) {
+  return await NativePlugin.seekAudio({ position, fast })
 }
 
 export async function nativeAudioStop() {
@@ -408,9 +431,9 @@ export async function nativeAudioSetRate(rate) {
   return await NativePlugin.setAudioRate({ rate })
 }
 
-export async function getNativeAudioState() {
+export async function getNativeAudioState(options = {}) {
   try {
-    return await NativePlugin.getAudioState({})
+    return await NativePlugin.getAudioState({ withSegments: !!options.withSegments })
   } catch (err) {
     return null
   }

@@ -57,6 +57,12 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     private var pendingScanState: SarvamActivityAttributes.ContentState?
     private var scanRetryWorkItem: DispatchWorkItem?
     private var didRegisterForegroundObserver = false
+    /// Drives the scan percent / stage / time left while the app process is awake (foreground and
+    /// the ~30 s background grace). Each push sets a short stale date, so once iOS suspends the app
+    /// the Live Activity shows its system-driven countdown instead of a frozen percent.
+    private var scanTicker: Timer?
+    private var scanStageLabels: [String] = []
+    private var readyCleanupWorkItem: DispatchWorkItem?
 
     override public func load() {
         super.load()
@@ -80,6 +86,94 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         if let pending = pendingScanState {
             SarvamNativeLogger.info("[ActivityKit] App became active; retrying pending Live Activity request for docId=\(pending.docId)")
             requestScanActivityWithRetry(state: pending, attempt: 1)
+        }
+        // A Ready / failed card has done its job once the app is open (the result shows in-app).
+        // Wait a little: tapping "Listen" on the card turns it into the Listen activity instead.
+        readyCleanupWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard #available(iOS 16.1, *) else { return }
+            guard UIApplication.shared.applicationState == .active else { return }
+            Task {
+                for activity in Activity<SarvamActivityAttributes>.activities
+                where activity.content.state.phase == "ready" || activity.content.state.phase == "failed" {
+                    SarvamNativeLogger.info("[ActivityKit] App is open; ending \(activity.content.state.phase) card id=\(activity.id)")
+                    await activity.end(nil, dismissalPolicy: .immediate)
+                    if self?.storedActivity?.id == activity.id { self?.activeActivity = nil }
+                }
+            }
+        }
+        readyCleanupWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: work)
+    }
+
+    /// True when this activity shows a scan that is still running (never end or adopt it then).
+    private func isRunningScan(_ activity: Activity<SarvamActivityAttributes>) -> Bool {
+        let state = activity.content.state
+        return state.phase == "scanning" && SarvamScanWorker.shared.currentDocId != nil
+    }
+
+    // MARK: - Scan progress ticker (runs only while the process is awake)
+    public func startScanTicker() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.scanTicker?.invalidate()
+            let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+                self?.tickScan()
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.scanTicker = timer
+            self.tickScan()
+        }
+    }
+
+    public func stopScanTicker() {
+        DispatchQueue.main.async { [weak self] in
+            self?.scanTicker?.invalidate()
+            self?.scanTicker = nil
+        }
+    }
+
+    private func stageText(forFraction fraction: Double) -> String {
+        let labels = scanStageLabels.count == 3
+            ? scanStageLabels
+            : ["Reading your document", "Checking against the document", "Writing your explanation"]
+        if fraction < 0.35 { return labels[0] }
+        if fraction < 0.70 { return labels[1] }
+        return labels[2]
+    }
+
+    private func tickScan() {
+        guard var state = lastState, state.phase == "scanning", let start = state.scanStartedAt else {
+            scanTicker?.invalidate()
+            scanTicker = nil
+            return
+        }
+        guard SarvamScanWorker.shared.currentDocId == state.docId else {
+            scanTicker?.invalidate()
+            scanTicker = nil
+            return
+        }
+        let estimate = Double(max(10, state.scanEstimateSeconds ?? 40))
+        let elapsed = max(0, Date().timeIntervalSince(start))
+        let fraction = elapsed / estimate
+        // Same linear timeline as the system-drawn bar, held below 100 until the result exists.
+        state.progress = min(99, max(1, Int(fraction * 100)))
+        state.secondsRemaining = max(0, Int((estimate - elapsed).rounded(.up)))
+        state.stage = stageText(forFraction: fraction)
+        lastState = state
+
+        guard #available(iOS 16.1, *) else { return }
+        let target = activeActivity ?? liveActivities.first(where: { $0.attributes.activityId == state.docId })
+        guard let activity = target, activity.content.state.phase == "scanning" else { return }
+        let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(6))
+        Task { await activity.update(content) }
+    }
+
+    /// Called by the scan worker when the scan finished, failed or was cancelled.
+    public func scanDidStop() {
+        stopScanTicker()
+        DispatchQueue.main.async { [weak self] in
+            self?.endScanningBackgroundTask()
         }
     }
 
@@ -105,9 +199,14 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) in place for docId=\(state.docId)")
             self.activeActivity = existing
             clearPendingScanRetry()
-            Task {
-                await existing.update(ActivityContent(state: state, staleDate: nil))
-                SarvamNativeLogger.info("[ActivityKit] Updated adopted activity id=\(existing.id) in place")
+            if state.isListenPhase {
+                // The listen service sends this (in order with the player's own updates).
+                SarvamListenService.shared.track(activityId: existing.id, state: state)
+            } else {
+                Task {
+                    await existing.update(ActivityContent(state: state, staleDate: nil))
+                    SarvamNativeLogger.info("[ActivityKit] Updated adopted activity id=\(existing.id) in place")
+                }
             }
             return
         }
@@ -147,40 +246,9 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func setupAudioPlayerBridge() {
-        SarvamAudioPlayer.shared.onPlaybackProgress = { [weak self] current, duration, isPlaying in
-            guard let self = self, var state = self.lastState else { return }
-            // Only the listen phases are driven by the player. Never flip a scanning/ready/failed
-            // activity to "paused" (stop() used to do exactly that during a scan).
-            guard state.phase == "listening" || state.phase == "paused" || state.phase == "finished" else { return }
-            let newPhase = isPlaying ? "listening" : "paused"
-            let phaseChanged = state.phase != newPhase
-            state.currentTime = current
-            state.duration = duration
-            state.phase = newPhase
-            self.lastState = state
-
-            // Throttle: update the activity on state changes or every ~2 s of audio, not every tick.
-            if !phaseChanged && abs(current - self.lastPushedPosition) < 2.0 { return }
-            self.lastPushedPosition = current
-
-            Task {
-                await self.activeActivity?.update(
-                    ActivityContent(state: state, staleDate: nil)
-                )
-            }
-        }
-
-        SarvamAudioPlayer.shared.onPlaybackEnded = { [weak self] in
-            guard let self = self, var state = self.lastState else { return }
-            state.phase = "finished"
-            self.lastState = state
-
-            Task {
-                await self.activeActivity?.update(
-                    ActivityContent(state: state, staleDate: nil)
-                )
-            }
-        }
+        // One place keeps the Listen Live Activity in step with the player (also used when
+        // "Listen" is tapped on the Ready card while the app is closed).
+        SarvamListenService.shared.install()
     }
 
     @objc func echo(_ call: CAPPluginCall) {
@@ -243,6 +311,9 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let duration = call.getDouble("duration") ?? 90
         let allowListen = call.getBool("allowListen") ?? true
         let showDocumentName = call.getBool("showDocumentName") ?? false
+        if let tts = call.getString("ttsBase"), !tts.isEmpty {
+            UserDefaults.standard.set(tts, forKey: SarvamListenService.ttsBaseKey)
+        }
 
         let state = SarvamActivityAttributes.ContentState(
             phase: phase,
@@ -274,7 +345,11 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // For non-scanning (e.g. listening):
         // If an existing activity matches or can be adopted:
-        if let existing = liveActivities.first(where: { $0.attributes.activityId == docId }) ?? self.activeActivity ?? liveActivities.first {
+        // Adopt the Ready card or an earlier Listen activity, never a scan that is still running.
+        let adoptable = liveActivities.filter { !isRunningScan($0) }
+        if let existing = adoptable.first(where: { $0.attributes.activityId == docId })
+            ?? adoptable.first(where: { $0.content.state.isListenPhase || $0.content.state.phase == "ready" })
+            ?? adoptable.first {
             SarvamNativeLogger.info("[ActivityKit] Adopting existing activity id=\(existing.id) for docId=\(docId)")
             self.activeActivity = existing
             clearPendingScanRetry()
@@ -295,6 +370,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             )
             self.activeActivity = activity
             clearPendingScanRetry()
+            if state.isListenPhase { SarvamListenService.shared.track(activityId: activity.id, state: state) }
             SarvamNativeLogger.info("[ActivityKit] Activity.request SUCCESS id=\(activity.id) docId=\(docId) phase=\(phase)")
             call.resolve(["success": true, "activityId": activity.id])
         } catch {
@@ -311,6 +387,18 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         self.activeActivity = activity
+
+        // A running scan belongs to the native worker; JS may only flip "show document name".
+        if isRunningScan(activity), var scan = lastState, scan.phase == "scanning" {
+            if let show = call.getBool("showDocumentName") { scan.showDocumentName = show }
+            lastState = scan
+            let snapshot = scan
+            Task {
+                await activity.update(ActivityContent(state: snapshot, staleDate: Date().addingTimeInterval(6)))
+                call.resolve(["success": true, "scanOwned": true])
+            }
+            return
+        }
 
         let phase = call.getString("phase") ?? (lastState?.phase ?? "scanning")
         let docId = call.getString("docId") ?? (lastState?.docId ?? "doc")
@@ -345,9 +433,18 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             duration: duration,
             allowListen: allowListen,
             showDocumentName: showDocumentName,
-            errorMessage: errorMessage
+            errorMessage: errorMessage,
+            scanStartedAt: lastState?.scanStartedAt,
+            scanEstimateSeconds: lastState?.scanEstimateSeconds
         )
         self.lastState = state
+        if state.isListenPhase {
+            // Listen state goes through the listen service (ordered with player updates; voice,
+            // language and position come from the audio actually loaded).
+            SarvamListenService.shared.track(activityId: activity.id, state: state)
+            call.resolve(["success": true])
+            return
+        }
 
         if phase == "ready" {
             endScanningBackgroundTask()
@@ -371,37 +468,43 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func endActivity(_ call: CAPPluginCall) {
         let requestedDocId = call.getString("docId")
         let force = call.getBool("force") ?? false
-        SarvamNativeLogger.info("[Bridge] endActivity called from JS docId=\(requestedDocId ?? "nil") force=\(force)")
+        let listenOnly = call.getBool("listenOnly") ?? false
+        SarvamNativeLogger.info("[Bridge] endActivity called from JS docId=\(requestedDocId ?? "nil") force=\(force) listenOnly=\(listenOnly)")
 
-        // A stale screen cleanup (for an OLD document) must never end the activity of the
-        // document that is running now. Real log: the cleanup for "image.jpg" ended the brand-new
-        // activity of the next scan. Unless JS says force, only end when the docId matches.
-        if !force, let requested = requestedDocId {
-            let currentDocId = activeActivity?.attributes.activityId ?? pendingScanState?.docId ?? lastState?.docId
-            if let current = currentDocId, current != requested {
-                SarvamNativeLogger.info("[Bridge] endActivity SKIPPED: request for docId=\(requested) but current activity is docId=\(current)")
-                call.resolve(["success": true, "skipped": true])
-                return
-            }
+        // The scan and Ready activities belong to the native scan worker. JS can only end a
+        // Listen activity (and a failed card). Real log: JS ended the scan activity about a second
+        // after it started, so the island never reached Ready.
+        let candidates = liveActivities.filter { activity in
+            let state = activity.content.state
+            if state.isListenPhase { return true }
+            if listenOnly { return false }
+            if state.phase == "failed" || state.phase == "passwordNeeded" { return true }
+            return false
         }
 
-        clearPendingScanRetry()
-        endScanningBackgroundTask()
-        SarvamAudioPlayer.shared.stop()
+        if listenOnly || candidates.contains(where: { $0.content.state.isListenPhase }) {
+            SarvamListenService.shared.untrack()
+            SarvamAudioPlayer.shared.stop()
+        }
 
-        guard let activity = activeActivity else {
-            SarvamNativeLogger.info("[Bridge] endActivity: no active activity to end")
-            call.resolve(["success": true])
+        guard !candidates.isEmpty else {
+            SarvamNativeLogger.info("[Bridge] endActivity: nothing JS may end (scan/Ready activities are kept)")
+            call.resolve(["success": true, "skipped": true])
             return
         }
 
-        let dismissal: ActivityUIDismissalPolicy = .immediate
         Task {
-            SarvamNativeLogger.info("[Bridge] Ending active activity id=\(activity.id)")
-            await activity.end(nil, dismissalPolicy: dismissal)
-            self.activeActivity = nil
-            self.lastState = nil
-            SarvamNativeLogger.info("[Bridge] endActivity SUCCESS id=\(activity.id)")
+            for activity in candidates {
+                SarvamNativeLogger.info("[Bridge] Ending activity id=\(activity.id) phase=\(activity.content.state.phase)")
+                await activity.end(nil, dismissalPolicy: .immediate)
+                if self.storedActivity?.id == activity.id {
+                    self.activeActivity = nil
+                }
+            }
+            if let last = self.lastState, last.isListenPhase || last.phase == "failed" {
+                self.lastState = nil
+            }
+            SarvamNativeLogger.info("[Bridge] endActivity SUCCESS ended=\(candidates.count)")
             call.resolve(["success": true])
         }
     }
@@ -416,6 +519,17 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let filePath = call.getString("filePath")
         let rate = call.getDouble("rate") ?? 1.0
         let autoStart = call.getBool("autoStart") ?? true
+        if let audioDocId = call.getString("docId"), !audioDocId.isEmpty {
+            SarvamListenService.shared.currentDocId = audioDocId
+        }
+        // Voice / language of THIS audio: the Listen card shows exactly these.
+        if let voice = call.getString("voiceGender"), !voice.isEmpty {
+            SarvamListenService.shared.currentVoiceGender = voice
+        }
+        if let code = call.getString("language"), !code.isEmpty {
+            SarvamListenService.shared.currentLanguageCode = code
+        }
+        SarvamListenService.shared.currentLanguageLabel = langLabel
 
         SarvamNativeLogger.info("[Bridge] playAudio called from JS: title=\(title) hasData=\(audioData != nil) hasFile=\(filePath != nil) rate=\(rate) autoStart=\(autoStart)")
 
@@ -431,6 +545,8 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             url = URL(string: audioUrlString)
         }
 
+        // Captions follow the exact sentence timings saved with this file (none for other audio).
+        SarvamListenService.shared.useSegments(forPath: filePath)
         SarvamAudioPlayer.shared.setRate(Float(rate))
         SarvamAudioPlayer.shared.play(
             url: url,
@@ -451,13 +567,22 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// from the background, when JS timers were suspended).
     @objc func getAudioState(_ call: CAPPluginCall) {
         let p = SarvamAudioPlayer.shared
-        call.resolve([
+        var out: [String: Any] = [
             "active": p.isActive,
             "playing": p.isPlaying,
             "position": p.currentPosition,
             "duration": p.totalDuration,
-            "ended": p.hasEnded
-        ])
+            "ended": p.hasEnded,
+            "rate": Double(p.playbackRate),
+            "docId": SarvamListenService.shared.currentDocId ?? ""
+        ]
+        // Once, when the sheet takes over audio started from the Ready card: its captions.
+        if call.getBool("withSegments") ?? false {
+            out["segments"] = SarvamListenService.shared.currentSegments.map {
+                ["text": $0.text, "start": $0.start, "end": $0.end] as [String: Any]
+            }
+        }
+        call.resolve(out)
     }
 
     @objc func setAudioRate(_ call: CAPPluginCall) {
@@ -513,12 +638,15 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("Could not save audio", "write_failed")
                 return
             }
-            SarvamNativeLogger.info("[TTS] POST \(url.path) SUCCESS status=\(http.statusCode) duration=\(ms)ms bytes=\(data.count) type=\(contentType)")
+            let segments = SarvamSpeechSegment.parseHeader(http.value(forHTTPHeaderField: SarvamSpeechSegment.headerName))
+            SarvamListenService.shared.rememberSegments(segments, forPath: fileURL.path)
+            SarvamNativeLogger.info("[TTS] POST \(url.path) SUCCESS status=\(http.statusCode) duration=\(ms)ms bytes=\(data.count) type=\(contentType) sentences=\(segments.count)")
             call.resolve([
                 "path": fileURL.path,
                 "bytes": data.count,
                 "status": http.statusCode,
-                "contentType": contentType
+                "contentType": contentType,
+                "segments": segments.map { ["text": $0.text, "start": $0.start, "end": $0.end] as [String: Any] }
             ])
         }
         task.resume()
@@ -540,10 +668,18 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func seekAudio(_ call: CAPPluginCall) {
         let position = call.getDouble("position") ?? 0
+        // fast: live seeking while the in-app ruler is dragged (resolves at once, newest wins).
+        let fast = call.getBool("fast") ?? false
+        if fast {
+            SarvamAudioPlayer.shared.seek(to: position, fast: true, completion: nil)
+            call.resolve(["success": true, "position": SarvamAudioPlayer.shared.currentPosition])
+            return
+        }
         SarvamNativeLogger.info("[Bridge] seekAudio called from JS: position=\(position)")
-        SarvamAudioPlayer.shared.seek(to: position)
-        SarvamNativeLogger.info("[Bridge] seekAudio resolved")
-        call.resolve(["success": true])
+        SarvamAudioPlayer.shared.seek(to: position, fast: false) {
+            SarvamNativeLogger.info("[Bridge] seekAudio resolved")
+            call.resolve(["success": true, "position": SarvamAudioPlayer.shared.currentPosition])
+        }
     }
 
     @objc func stopAudio(_ call: CAPPluginCall) {
@@ -557,19 +693,13 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     private func beginScanningBackgroundTask(docId: String) {
         endScanningBackgroundTask()
         backgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "SarvamDocumentScanning") { [weak self] in
-            // Expiration handler: S13 honest state
-            guard let self = self else { return }
-            if var state = self.lastState, state.phase == "scanning" {
-                state.stage = "Open Sarvam to finish"
-                state.errorMessage = "Open Sarvam to finish"
-                self.lastState = state
-                Task {
-                    await self.activeActivity?.update(
-                        ActivityContent(state: state, staleDate: Date())
-                    )
-                }
-            }
-            self.endScanningBackgroundTask()
+            // iOS is about to suspend the app. The upload keeps running in the system's background
+            // session and wakes the app when it finishes (then the card turns Ready). Stop the
+            // percent ticker; the card goes stale and shows its system-driven countdown.
+            SarvamNativeLogger.info("[ScanWorker] Background time is ending for docId=\(docId); scan continues in the background session")
+            self?.scanTicker?.invalidate()
+            self?.scanTicker = nil
+            self?.endScanningBackgroundTask()
         }
     }
 
@@ -631,29 +761,42 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func startNativeScan(_ call: CAPPluginCall) {
         let docId = call.getString("docId") ?? "doc"
         let title = call.getString("title") ?? "Your document"
+        let fileName = call.getString("fileName")
         let lang = call.getString("lang") ?? "en"
+        let languageLabel = call.getString("languageLabel") ?? SarvamActivityAttributes.languageName(for: lang)
+        let kind = call.getString("kind") ?? "photo"
         let apiBase = call.getString("apiBase") ?? "http://127.0.0.1:8080"
         let showDoc = call.getBool("showDocumentName") ?? false
         let password = call.getString("password")
+        let labels = (call.getArray("stageLabels") as? [String]) ?? []
+        if let tts = call.getString("ttsBase"), !tts.isEmpty {
+            UserDefaults.standard.set(tts, forKey: SarvamListenService.ttsBaseKey)
+        }
         guard let files = call.getArray("files") as? [[String: Any]], !files.isEmpty else {
             SarvamNativeLogger.error("[ScanWorker] startNativeScan rejected: no files provided")
             call.reject("No files provided for scan")
             return
         }
 
-        SarvamNativeLogger.info("[ScanWorker] startNativeScan called: files=\(files.count) lang=\(lang) apiBase=\(apiBase)")
+        let estimate = SarvamScanEstimator.estimateSeconds(kind: kind, fileCount: files.count)
+        SarvamNativeLogger.info("[ScanWorker] startNativeScan called: docId=\(docId) files=\(files.count) lang=\(lang) kind=\(kind) estimate=\(estimate)s apiBase=\(apiBase)")
 
-        // Start Live Activity with Option A parameters (NO percentage number)
+        scanStageLabels = labels.count == 3 ? labels : []
         let state = SarvamActivityAttributes.ContentState(
             phase: "scanning",
             docId: docId,
             title: title,
+            fileName: fileName,
             fileCount: files.count,
-            progress: 0,
-            stage: "Analyzing document…",
-            secondsRemaining: 0,
+            progress: 1,
+            stage: stageText(forFraction: 0),
+            secondsRemaining: estimate,
             language: lang,
-            showDocumentName: showDoc
+            languageLabel: languageLabel,
+            allowListen: lang != "or",
+            showDocumentName: showDoc,
+            scanStartedAt: Date(),
+            scanEstimateSeconds: estimate
         )
         self.lastState = state
 
@@ -663,6 +806,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             docId: docId,
             title: title,
             lang: lang,
+            kind: kind,
             apiBase: apiBase,
             showDocumentName: showDoc,
             files: files,
@@ -670,8 +814,12 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         )
 
         if started {
+            DispatchQueue.main.async { [weak self] in
+                self?.beginScanningBackgroundTask(docId: docId)
+            }
+            startScanTicker()
             SarvamNativeLogger.info("[Bridge] startNativeScan resolved: docId=\(docId)")
-            call.resolve(["success": true, "docId": docId])
+            call.resolve(["success": true, "docId": docId, "estimateSeconds": estimate])
         } else {
             SarvamNativeLogger.error("[Bridge] startNativeScan rejected: failed to start scan task")
             call.reject("Failed to initiate native scan")
@@ -719,6 +867,7 @@ public class SarvamLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         SarvamNativeLogger.info("[Bridge] cancelNativeScan called from JS")
         clearPendingScanRetry()
         SarvamScanWorker.shared.cancelActiveScan()
+        scanDidStop()
         SarvamNativeLogger.info("[Bridge] cancelNativeScan resolved")
         call.resolve(["success": true])
     }
@@ -844,6 +993,31 @@ class QuickLookPreviewControllerDataSource: NSObject, QLPreviewControllerDataSou
     }
 }
 
+// MARK: - Scan length estimate (learned from recent scans on this phone)
+public enum SarvamScanEstimator {
+    private static let defaults = UserDefaults.standard
+
+    private static func key(_ kind: String) -> String { "sarvam.scanSeconds.\(kind == "pdf" ? "pdf" : "photo")" }
+
+    /// Expected scan length. A little longer than the recent average, so the bar rarely sits full.
+    public static func estimateSeconds(kind: String, fileCount: Int) -> Int {
+        let learned = defaults.double(forKey: key(kind))
+        let base: Double = learned > 0 ? learned * 1.25 : (kind == "pdf" ? 55 : 35)
+        let extra = Double(max(0, fileCount - 1)) * (kind == "pdf" ? 12 : 8)
+        return Int(min(120, max(15, (base + extra).rounded())))
+    }
+
+    /// Keeps a smoothed average of how long one scan really took.
+    public static func record(kind: String, seconds: Double, fileCount: Int) {
+        guard seconds.isFinite, seconds > 2, seconds < 600 else { return }
+        let perScan = seconds - Double(max(0, fileCount - 1)) * (kind == "pdf" ? 12 : 8)
+        let old = defaults.double(forKey: key(kind))
+        let next = old > 0 ? old * 0.6 + max(5, perScan) * 0.4 : max(5, perScan)
+        defaults.set(next, forKey: key(kind))
+        SarvamNativeLogger.info("[ScanWorker] Scan took \(Int(seconds))s; average for \(kind) is now \(Int(next))s")
+    }
+}
+
 // MARK: - Native Background Scan Worker
 public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionDataDelegate {
     public static let shared = SarvamScanWorker()
@@ -856,6 +1030,10 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     private var receivedData = Data()
     private var isCancelled = false
     private var scanStartTime: CFAbsoluteTime = 0
+    private var currentKind = "photo"
+    private var currentFileCount = 1
+    // Survives a relaunch: the system can wake a terminated app to deliver the upload result.
+    private static let metaKey = "sarvam.activeScanMeta"
 
     override private init() {
         super.init()
@@ -913,6 +1091,17 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         try? FileManager.default.removeItem(at: errorFileURL(docId: docId))
     }
 
+    /// Removes saved results older than three days.
+    public static func pruneOldResults() {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        let cutoff = Date().addingTimeInterval(-3 * 24 * 3600)
+        for url in items where url.lastPathComponent.hasPrefix("scan_result_") || url.lastPathComponent.hasPrefix("scan_error_") {
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
+            if modified < cutoff { try? fm.removeItem(at: url) }
+        }
+    }
+
     public func isScanning(docId: String) -> Bool {
         return currentDocId == docId && currentUploadTask != nil
     }
@@ -921,6 +1110,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         docId: String,
         title: String,
         lang: String,
+        kind: String = "photo",
         apiBase: String,
         showDocumentName: Bool,
         files: [[String: Any]],
@@ -929,8 +1119,17 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         cancelActiveScan(endActivities: false)
         isCancelled = false
         currentDocId = docId
+        currentKind = kind
+        currentFileCount = files.count
         receivedData = Data()
         scanStartTime = CFAbsoluteTimeGetCurrent()
+        UserDefaults.standard.set([
+            "docId": docId,
+            "kind": kind,
+            "fileCount": files.count,
+            "startedAt": Date().timeIntervalSince1970
+        ], forKey: Self.metaKey)
+        Self.pruneOldResults()
 
         Self.clearCache(docId: docId)
 
@@ -989,6 +1188,9 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         let task = session.uploadTask(with: request, fromFile: tempFileURL)
+        // The scan id travels with the task, so a relaunched app still saves the result under it
+        // (it used to fall back to "doc", and the app could never find the result).
+        task.taskDescription = docId
         currentUploadTask = task
         task.resume()
         SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain upload task started: docId=\(docId) files=\(files.count) lang=\(lang)")
@@ -1001,6 +1203,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     ///   which killed the new scan's activity right after it started (real-device log:
     ///   "Activity.request SUCCESS" followed by "Ending activity ... due to cancel").
     public func cancelActiveScan(endActivities: Bool = true) {
+        let cancelledDocId = currentDocId
         isCancelled = true
         currentUploadTask?.cancel()
         currentUploadTask = nil
@@ -1013,6 +1216,7 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         }
         currentDocId = nil
         receivedData = Data()
+        UserDefaults.standard.removeObject(forKey: Self.metaKey)
 
         guard endActivities else {
             SarvamNativeLogger.info("[ScanWorker] Previous scan cancelled; keeping the Live Activity for the new scan")
@@ -1021,7 +1225,10 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
         if #available(iOS 16.1, *) {
             Task {
-                for activity in Activity<SarvamActivityAttributes>.activities {
+                // Only the scan's own card. A Listen activity keeps playing.
+                for activity in Activity<SarvamActivityAttributes>.activities
+                where activity.content.state.phase == "scanning" || activity.attributes.activityId == cancelledDocId {
+                    if activity.content.state.isListenPhase { continue }
                     SarvamNativeLogger.info("[ScanWorker] Ending activity \(activity.id) due to cancel")
                     await activity.end(nil, dismissalPolicy: .immediate)
                 }
@@ -1036,118 +1243,112 @@ public class SarvamScanWorker: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        SarvamLiveActivityPlugin.shared?.clearPendingScanRetry()
-        if let tmp = currentTempFile {
-            try? FileManager.default.removeItem(at: tmp)
-            currentTempFile = nil
-        }
-        let durationMs = Int((CFAbsoluteTimeGetCurrent() - scanStartTime) * 1000)
-        let docId = self.currentDocId ?? "doc"
-        let httpResponse = task.response as? HTTPURLResponse
-        let statusCode = httpResponse?.statusCode ?? (error != nil ? 500 : 200)
-
-        if isCancelled || (error as NSError?)?.code == NSURLErrorCancelled {
-            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain CANCELLED duration=\(durationMs)ms")
-            Self.clearCache(docId: docId)
+        let meta = UserDefaults.standard.dictionary(forKey: Self.metaKey)
+        let docId = task.taskDescription ?? currentDocId ?? (meta?["docId"] as? String) ?? "doc"
+        let isCurrentTask = (currentUploadTask == nil || currentUploadTask?.taskIdentifier == task.taskIdentifier)
+        if (error as NSError?)?.code == NSURLErrorCancelled || (isCancelled && isCurrentTask && currentDocId == nil) {
+            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain CANCELLED docId=\(docId)")
             finishBackgroundEvents()
             return
         }
 
+        SarvamLiveActivityPlugin.shared?.clearPendingScanRetry()
+        SarvamLiveActivityPlugin.shared?.scanDidStop()
+        if let tmp = currentTempFile {
+            try? FileManager.default.removeItem(at: tmp)
+            currentTempFile = nil
+        }
+        let startedAt: Double = {
+            if currentDocId == docId, scanStartTime > 0 { return Date().timeIntervalSince1970 - (CFAbsoluteTimeGetCurrent() - scanStartTime) }
+            return (meta?["startedAt"] as? Double) ?? Date().timeIntervalSince1970
+        }()
+        let seconds = Date().timeIntervalSince1970 - startedAt
+        let durationMs = Int(seconds * 1000)
+        let kind = (currentDocId == docId) ? currentKind : ((meta?["kind"] as? String) ?? "photo")
+        let fileCount = (currentDocId == docId) ? currentFileCount : ((meta?["fileCount"] as? Int) ?? 1)
+        let httpResponse = task.response as? HTTPURLResponse
+        let statusCode = httpResponse?.statusCode ?? (error != nil ? 500 : 200)
+        let body = receivedData
+
+        var failure: (message: String, type: String, status: Int)?
         if error != nil || statusCode >= 400 {
-            let errorMsg: String
-            let errorType: String
             if statusCode == 429 {
-                errorMsg = "Too many requests. Please wait."
-                errorType = "http_429_rate_limit"
+                failure = ("Too many requests. Please wait.", "http_429_rate_limit", statusCode)
             } else if statusCode == 503 || statusCode == 504 {
-                errorMsg = "Service is busy. Please try again soon."
-                errorType = "http_\(statusCode)_busy"
+                failure = ("Service is busy. Please try again soon.", "http_\(statusCode)_busy", statusCode)
             } else {
-                errorMsg = "Analysis failed. Please try again."
-                errorType = error != nil ? "network_error" : "http_\(statusCode)"
+                failure = ("Analysis failed. Please try again.", error != nil ? "network_error" : "http_\(statusCode)", statusCode)
             }
-            SarvamNativeLogger.error("[ScanWorker] [API] POST /api/explain FAILED: status=\(statusCode) duration=\(durationMs)ms error=\(errorType) desc=\(error?.localizedDescription ?? "none")")
-            Self.saveError(docId: docId, errorJson: [
-                "message": errorMsg,
-                "messageLocal": errorMsg,
-                "statusCode": statusCode
-            ])
-
-            if #available(iOS 16.1, *) {
-                Task {
-                    for activity in Activity<SarvamActivityAttributes>.activities {
-                        var updatedState = activity.content.state
-                        updatedState.phase = "failed"
-                        updatedState.stage = errorMsg
-                        updatedState.errorMessage = errorMsg
-                        SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to failed (\(errorType))")
-                        await activity.update(ActivityContent(state: updatedState, staleDate: nil))
-                    }
-                }
-            }
+            SarvamNativeLogger.error("[ScanWorker] [API] POST /api/explain FAILED: docId=\(docId) status=\(statusCode) duration=\(durationMs)ms error=\(failure!.type) desc=\(error?.localizedDescription ?? "none")")
+        } else if let json = try? JSONSerialization.jsonObject(with: body, options: []) as? [String: Any] {
+            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain SUCCESS: docId=\(docId) status=\(statusCode) duration=\(durationMs)ms bytes=\(body.count)")
+            Self.saveResult(docId: docId, resultJson: json)
+            SarvamScanEstimator.record(kind: kind, seconds: seconds, fileCount: fileCount)
         } else {
-            SarvamNativeLogger.info("[ScanWorker] [API] POST /api/explain SUCCESS: status=\(statusCode) duration=\(durationMs)ms bytes=\(receivedData.count)")
-            if let json = try? JSONSerialization.jsonObject(with: receivedData, options: []) as? [String: Any] {
-                Self.saveResult(docId: docId, resultJson: json)
-                SarvamNativeLogger.info("[ScanWorker] Saved result JSON for docId=\(docId) (\(receivedData.count) bytes)")
-
-                if #available(iOS 16.1, *) {
-                    Task {
-                        // If the user is looking at the app, the result opens in-app right away:
-                        // do not flash a Ready card with a sound, just end the activity.
-                        let appIsActive = await MainActor.run { UIApplication.shared.applicationState == .active }
-                        if appIsActive {
-                            for activity in Activity<SarvamActivityAttributes>.activities where activity.content.state.phase == "scanning" {
-                                SarvamNativeLogger.info("[ScanWorker] App is in the foreground; ending scan activity \(activity.id) (result is shown in-app)")
-                                await activity.end(nil, dismissalPolicy: .immediate)
-                            }
-                            return
-                        }
-                        for activity in Activity<SarvamActivityAttributes>.activities {
-                            var updatedState = activity.content.state
-                            updatedState.phase = "ready"
-                            updatedState.stage = "Ready"
-                            updatedState.progress = 100
-                            updatedState.secondsRemaining = 0
-                            let alertConfig = AlertConfiguration(
-                                title: "Ready",
-                                body: "Your document is ready",
-                                sound: .default
-                            )
-                            SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to ready")
-                            await activity.update(
-                                ActivityContent(state: updatedState, staleDate: nil),
-                                alertConfiguration: alertConfig
-                            )
-                        }
-                    }
-                }
-            } else {
-                SarvamNativeLogger.error("[ScanWorker] [API] Failed to parse JSON response (\(receivedData.count) bytes received) duration=\(durationMs)ms")
-                let errorMsg = "Service is busy"
-                Self.saveError(docId: docId, errorJson: [
-                    "message": errorMsg,
-                    "messageLocal": errorMsg,
-                    "statusCode": 500
-                ])
-                if #available(iOS 16.1, *) {
-                    Task {
-                        for activity in Activity<SarvamActivityAttributes>.activities {
-                            var updatedState = activity.content.state
-                            updatedState.phase = "failed"
-                            updatedState.stage = errorMsg
-                            updatedState.errorMessage = errorMsg
-                            SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to failed (json_parse_error)")
-                            await activity.update(ActivityContent(state: updatedState, staleDate: nil))
-                        }
-                    }
-                }
-            }
+            SarvamNativeLogger.error("[ScanWorker] [API] Failed to parse JSON response docId=\(docId) (\(body.count) bytes) duration=\(durationMs)ms")
+            failure = ("Service is busy", "json_parse_error", 500)
         }
 
-        currentUploadTask = nil
-        currentDocId = nil
-        finishBackgroundEvents()
+        if let failure = failure {
+            Self.saveError(docId: docId, errorJson: [
+                "message": failure.message,
+                "messageLocal": failure.message,
+                "statusCode": failure.status
+            ])
+        }
+
+        if currentDocId == docId || currentDocId == nil {
+            currentUploadTask = nil
+            currentDocId = nil
+            receivedData = Data()
+            UserDefaults.standard.removeObject(forKey: Self.metaKey)
+        }
+
+        guard #available(iOS 16.1, *) else {
+            finishBackgroundEvents()
+            return
+        }
+        let outcome = failure  // a let: Task closures cannot capture a var
+        Task {
+            let all = Activity<SarvamActivityAttributes>.activities
+            var targets = all.filter { $0.attributes.activityId == docId && !$0.content.state.isListenPhase }
+            if targets.isEmpty {
+                targets = all.filter { $0.content.state.phase == "scanning" }
+            }
+            let appIsActive = await MainActor.run { UIApplication.shared.applicationState == .active }
+
+            for activity in targets {
+                var updated = activity.content.state
+                if let failure = outcome {
+                    updated.phase = "failed"
+                    updated.stage = failure.message
+                    updated.errorMessage = failure.message
+                    SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to failed (\(failure.type))")
+                    await activity.update(ActivityContent(state: updated, staleDate: nil))
+                } else if appIsActive {
+                    // The user is looking at the app: the result opens in-app right away, so no
+                    // Ready card or sound, just end the scan activity.
+                    SarvamNativeLogger.info("[ScanWorker] App is in the foreground; ending scan activity \(activity.id) (result is shown in-app)")
+                    await activity.end(nil, dismissalPolicy: .immediate)
+                } else {
+                    updated.phase = "ready"
+                    updated.stage = "Ready"
+                    updated.progress = 100
+                    updated.secondsRemaining = 0
+                    let alertConfig = AlertConfiguration(
+                        title: "Ready",
+                        body: "Your document is ready",
+                        sound: .default
+                    )
+                    SarvamNativeLogger.info("[ScanWorker] Updating Activity \(activity.id) to ready")
+                    await activity.update(
+                        ActivityContent(state: updated, staleDate: nil),
+                        alertConfiguration: alertConfig
+                    )
+                }
+            }
+            self.finishBackgroundEvents()
+        }
     }
 
     private func finishBackgroundEvents() {
