@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live Relay intro</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.lr *{box-sizing:border-box}
+/* ONE 21 s loop: scene 1 = 0-33.3 %, scene 2 = 33.3-66.6 %, scene 3 = 66.6-100 % (7 s each) */
+.an{animation-duration:21s;animation-iteration-count:infinite;animation-timing-function:ease-in-out;animation-fill-mode:both}
+.sc1,.t1{animation-name:s1}.sc2,.t2{animation-name:s2}.sc3,.t3{animation-name:s3}
+@keyframes s1{0%{opacity:0;transform:translateY(10px)}2%,31%{opacity:1;transform:none}33.3%,100%{opacity:0;transform:translateY(-10px)}}
+@keyframes s2{0%,33.3%{opacity:0;transform:translateY(10px)}35.5%,64.5%{opacity:1;transform:none}66.6%,100%{opacity:0;transform:translateY(-10px)}}
+@keyframes s3{0%,66.6%{opacity:0;transform:translateY(10px)}68.8%,98%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-10px)}}
+
+/* ---- scene 1: the Invite sheet, family joins, Gemini joins ---- */
+.dg1{animation-name:dg1}.dg2{animation-name:dg2}.dg3{animation-name:dg3}.dg4{animation-name:dg4}
+@keyframes dg1{0%,3%{opacity:0;transform:translateY(6px)}5%,31%{opacity:1;transform:none}33.3%,100%{opacity:0}}
+@keyframes dg2{0%,5%{opacity:0;transform:translateY(6px)}7%,31%{opacity:1;transform:none}33.3%,100%{opacity:0}}
+@keyframes dg3{0%,7%{opacity:0;transform:translateY(6px)}9%,31%{opacity:1;transform:none}33.3%,100%{opacity:0}}
+@keyframes dg4{0%,9%{opacity:0;transform:translateY(6px)}11%,31%{opacity:1;transform:none}33.3%,100%{opacity:0}}
+.qr{animation-name:qr}
+@keyframes qr{0%,3%{opacity:0}7%,31%{opacity:1}33.3%,100%{opacity:0}}
+.wa{animation-name:wa}
+@keyframes wa{0%,13%{transform:scale(1)}14.5%{transform:scale(.95)}16%,100%{transform:scale(1)}}
+.tg{animation-name:tg}.kn{animation-name:kn}
+@keyframes tg{0%,26%{background:#C9C5BC}28%,100%{background:#214D47}}
+@keyframes kn{0%,26%{transform:translateX(0)}28%,100%{transform:translateX(18px)}}
+.c1{animation-name:c1}.c2{animation-name:c2}.c3{animation-name:c3}.c4{animation-name:c4}
+@keyframes c1{0%,12%{transform:scale(0);opacity:0}15%{transform:scale(1.1);opacity:1}17%,31%{transform:scale(1);opacity:1}33.3%,100%{transform:scale(0);opacity:0}}
+@keyframes c2{0%,17%{transform:scale(0);opacity:0}20%{transform:scale(1.1);opacity:1}22%,31%{transform:scale(1);opacity:1}33.3%,100%{transform:scale(0);opacity:0}}
+@keyframes c3{0%,21%{transform:scale(0);opacity:0}24%{transform:scale(1.1);opacity:1}26%,31%{transform:scale(1);opacity:1}33.3%,100%{transform:scale(0);opacity:0}}
+@keyframes c4{0%,25%{transform:scale(0);opacity:0}28%{transform:scale(1.1);opacity:1}30%,31%{transform:scale(1);opacity:1}33.3%,100%{transform:scale(0);opacity:0}}
+.live{animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.bar{transform-origin:center;animation:bar .9s ease-in-out infinite}
+@keyframes bar{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+
+/* ---- scene 2: the Live screen, camera on a real object, captions with names ---- */
+.r1{animation-name:r1}.r2b{animation-name:r2b}.r3{animation-name:r3}
+@keyframes r1{0%,38%{opacity:0;transform:translateY(10px)}41%,64.5%{opacity:1;transform:none}66.6%,100%{opacity:0}}
+@keyframes r2b{0%,45%{opacity:0;transform:translateY(10px)}48%,64.5%{opacity:1;transform:none}66.6%,100%{opacity:0}}
+@keyframes r3{0%,52%{opacity:0;transform:translateY(10px)}55%,64.5%{opacity:1;transform:none}66.6%,100%{opacity:0}}
+.led{animation:led 1.6s steps(1) infinite}
+@keyframes led{0%,70%{opacity:1}71%,100%{opacity:.35}}
+.focus{animation:focus 1.8s ease-in-out infinite}
+@keyframes focus{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.05);opacity:1}}
+
+/* ---- scene 3: the form fills itself ---- */
+.f1{animation-name:f1}.f2{animation-name:f2}.f3{animation-name:f3}.f4{animation-name:f4}
+@keyframes f1{0%,69%{clip-path:inset(0 100% 0 0)}73%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes f2{0%,74%{clip-path:inset(0 100% 0 0)}78%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes f3{0%,79%{clip-path:inset(0 100% 0 0)}83%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes f4{0%,92%{clip-path:inset(0 100% 0 0)}94%,100%{clip-path:inset(0 0 0 0)}}
+.h1{animation-name:h1}.h2{animation-name:h2}.h3{animation-name:h3}.h4{animation-name:h4}
+@keyframes h1{0%,70%{background:transparent}73%{background:#F6E7C4}78%,100%{background:transparent}}
+@keyframes h2{0%,75%{background:transparent}78%{background:#F6E7C4}83%,100%{background:transparent}}
+@keyframes h3{0%,80%{background:transparent}83%{background:#F6E7C4}88%,100%{background:transparent}}
+@keyframes h4{0%,92%{background:transparent}94%{background:#F6E7C4}98%,100%{background:transparent}}
+.miss{animation-name:miss}
+@keyframes miss{0%,84%{outline-color:transparent}86%,91%{outline-color:#C96846}93%,100%{outline-color:transparent}}
+.ask{animation-name:ask}
+@keyframes ask{0%,84%{opacity:0;transform:translateY(10px)}87%,91%{opacity:1;transform:none}93%,100%{opacity:0}}
+.ready{animation-name:ready}
+@keyframes ready{0%,94%{opacity:0;transform:translateY(10px)}96.5%,98%{opacity:1;transform:none}100%{opacity:0}}
+
+/* ---- progress dots ---- */
+.d1{animation-name:d1}.d2{animation-name:d2}.d3{animation-name:d3}
+@keyframes d1{0%,33.3%{width:28px;background:#E3B660}34%,100%{width:8px;background:rgba(244,243,241,.35)}}
+@keyframes d2{0%,33.3%{width:8px;background:rgba(244,243,241,.35)}34%,66.6%{width:28px;background:#E3B660}67%,100%{width:8px;background:rgba(244,243,241,.35)}}
+@keyframes d3{0%,66.6%{width:8px;background:rgba(244,243,241,.35)}67%,100%{width:28px;background:#E3B660}}
+.go:focus-visible,.skip:focus-visible{outline:3px solid #F4F3F1;outline-offset:3px}
+@media (prefers-reduced-motion: reduce){
+  .an,.bar,.live,.led,.focus{animation:none!important}
+  .sc2,.sc3,.t2,.t3{display:none}
+  .sc1,.t1,.dg1,.dg2,.dg3,.dg4,.qr,.c1,.c2,.c3,.c4{opacity:1!important;transform:none!important}
+  .d1{width:28px!important;background:#E3B660!important}
+}
+</style>
+</helmet>
+<div class="lr" style="width:390px;height:844px;position:relative;overflow:hidden;background:#214D47;color:#F4F3F1;font-family:'DM Sans',system-ui,sans-serif;display:flex;flex-direction:column">
+
+  <!-- top bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:56px 24px 0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;letter-spacing:-0.2px">Live Relay</span>
+      <span style="background:#E3B660;color:#1B1B1B;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 9px;border-radius:999px">BETA</span>
+    </div>
+    <button class="skip" type="button" style="min-width:64px;min-height:44px;background:transparent;border:0;color:#F4F3F1;font:500 16px 'DM Sans',system-ui,sans-serif;cursor:pointer;opacity:.9">Skip</button>
+  </div>
+
+  <!-- stage (decorative; the copy below says the same) -->
+  <div aria-hidden="true" style="position:relative;margin:8px 24px 0;height:392px">
+
+    <!-- SCENE 1: the Invite sheet, family joins, Gemini joins -->
+    <div class="an sc1" style="position:absolute;inset:0">
+      <div style="position:absolute;inset:0;background:#F4F3F1;color:#1B1B1B;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 18px 40px rgba(0,0,0,.28)">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:30px">
+          <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;color:#214D47">Invite family</span>
+          <span style="display:flex;align-items:center;gap:6px;background:#E3EEEB;color:#214D47;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700"><span class="live" style="width:7px;height:7px;border-radius:50%;background:#2E8B6E;display:inline-block"></span>Room open</span>
+        </div>
+        <div style="display:flex;gap:14px;height:108px">
+          <div class="an qr" style="width:108px;height:108px;border-radius:12px;background:#FFFFFF;border:1.5px solid #D9D6CF;padding:8px;flex:none">
+            <svg width="90" height="90" viewBox="0 0 25 25" shape-rendering="crispEdges"><path fill="#1B1B1B" d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h10v1h-10zM11 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h2v1h-2zM18 18h1v1h-1zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h1v1h-1zM20 19h3v1h-3zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h6v1h-6zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862">ROOM CODE</div>
+            <div style="display:flex;gap:6px">
+              <span class="an dg1" style="width:38px;height:50px;border-radius:10px;background:#E9E6DF;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">K</span>
+              <span class="an dg2" style="width:38px;height:50px;border-radius:10px;background:#E9E6DF;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">7</span>
+              <span class="an dg3" style="width:38px;height:50px;border-radius:10px;background:#E9E6DF;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">Q</span>
+              <span class="an dg4" style="width:38px;height:50px;border-radius:10px;background:#E9E6DF;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700">M</span>
+            </div>
+            <div style="font-size:13px;line-height:17px;color:#4A4843">Scan the QR or type the code</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;height:44px">
+          <div class="an wa" style="flex:1.4;background:#E3B660;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Share on WhatsApp</div>
+          <div style="flex:1;border:1.5px solid #214D47;color:#214D47;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Copy link</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;height:26px">
+          <span style="font-size:14px;font-weight:500">Guests can show their camera</span>
+          <span class="an tg" style="width:44px;height:26px;border-radius:13px;background:#C9C5BC;padding:3px;display:block"><span class="an kn" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></span>
+        </div>
+        <div style="height:1px;background:#D9D6CF"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862;margin-bottom:6px">IN THE ROOM</div>
+          <div style="display:flex;gap:5px;height:34px">
+            <span class="an c1" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 9px 0 5px;border-radius:999px;background:#E9E6DF;font-size:13px;font-weight:500"><span style="width:22px;height:22px;border-radius:50%;background:#214D47;color:#F4F3F1;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">Y</span>You</span>
+            <span class="an c2" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 9px 0 5px;border-radius:999px;background:#E9E6DF;font-size:13px;font-weight:500"><span style="width:22px;height:22px;border-radius:50%;background:#C96846;color:#F4F3F1;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">A</span>Amma</span>
+            <span class="an c3" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 9px 0 5px;border-radius:999px;background:#E9E6DF;font-size:13px;font-weight:500"><span style="width:22px;height:22px;border-radius:50%;background:#3E7068;color:#F4F3F1;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">R</span>Ravi</span>
+            <span class="an c4" style="display:flex;align-items:center;gap:5px;height:34px;padding:0 9px 0 5px;border-radius:999px;background:#E3B660;font-size:13px;font-weight:700"><span style="width:22px;height:22px;border-radius:50%;background:#1B1B1B;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M12 2c.6 5.2 4.8 9.4 10 10-5.2.6-9.4 4.8-10 10-.6-5.2-4.8-9.4-10-10 5.2-.6 9.4-4.8 10-10z" fill="#E3B660"/></svg></span>Gemini</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 2: the Live screen, camera on a real object, captions with names -->
+    <div class="an sc2" style="position:absolute;inset:0">
+      <div style="position:absolute;left:0;top:0;width:342px;height:188px;border-radius:22px;overflow:hidden;background:radial-gradient(120% 100% at 50% 40%,#26332F 0%,#0E1514 72%)">
+        <div style="position:absolute;left:28px;top:34px;width:286px;height:128px;border-radius:16px;background:linear-gradient(180deg,#D8D5CE 0%,#B4B0A8 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -3px 6px rgba(0,0,0,.25),0 14px 30px rgba(0,0,0,.5)">
+          <div style="position:absolute;left:22px;top:20px;width:124px;height:58px;border-radius:8px;background:#060908;box-shadow:inset 0 0 0 2px #2B2F2E,inset 0 4px 10px rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center">
+            <span class="led" style="font-size:36px;font-weight:700;letter-spacing:5px;color:#FF8A4C;text-shadow:0 0 14px rgba(255,138,76,.85);font-family:'DM Sans',monospace">E21</span>
+          </div>
+          <div style="position:absolute;left:24px;top:90px;display:flex;gap:7px">
+            <span style="width:6px;height:6px;border-radius:50%;background:#7E7B74"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:#7E7B74"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:#7E7B74"></span>
+          </div>
+          <div style="position:absolute;left:24px;bottom:10px;font-size:9px;font-weight:700;letter-spacing:1.6px;color:#6B6862">COTTON · QUICK · RINSE</div>
+          <div style="position:absolute;right:24px;top:20px;width:80px;height:80px;border-radius:50%;background:conic-gradient(from 200deg,#F2F0EC,#9A968E,#E8E5DF,#8B877F,#F2F0EC);box-shadow:0 6px 12px rgba(0,0,0,.35),inset 0 0 0 4px rgba(255,255,255,.3)">
+            <span style="position:absolute;left:38px;top:8px;width:4px;height:18px;border-radius:2px;background:#1B1B1B"></span>
+          </div>
+        </div>
+        <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 55%,rgba(0,0,0,.5) 100%)"></div>
+        <div class="focus" style="position:absolute;left:44px;top:48px;width:132px;height:74px;border:2.5px solid #E3B660;border-radius:12px"></div>
+        <div style="position:absolute;left:10px;top:10px;width:20px;height:20px;border-left:2px solid rgba(255,255,255,.8);border-top:2px solid rgba(255,255,255,.8);border-top-left-radius:6px"></div>
+        <div style="position:absolute;right:10px;top:10px;width:20px;height:20px;border-right:2px solid rgba(255,255,255,.8);border-top:2px solid rgba(255,255,255,.8);border-top-right-radius:6px"></div>
+        <div style="position:absolute;left:10px;bottom:10px;width:20px;height:20px;border-left:2px solid rgba(255,255,255,.8);border-bottom:2px solid rgba(255,255,255,.8);border-bottom-left-radius:6px"></div>
+        <div style="position:absolute;right:10px;bottom:10px;width:20px;height:20px;border-right:2px solid rgba(255,255,255,.8);border-bottom:2px solid rgba(255,255,255,.8);border-bottom-right-radius:6px"></div>
+        <div style="position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.6px"><span class="live" style="width:7px;height:7px;border-radius:50%;background:#C96846;display:inline-block"></span>LIVE</div>
+        <div style="position:absolute;right:18px;top:16px;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:500">Back camera</div>
+        <div style="position:absolute;left:18px;bottom:16px;background:#E3B660;color:#1B1B1B;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700">Gemini sees: error code E21</div>
+      </div>
+      <div style="position:absolute;left:0;top:196px;width:342px;height:196px;border-radius:22px;background:#151C1B;padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div class="an r1" style="height:38px;display:flex;align-items:center;gap:10px">
+          <span style="background:#F4F3F1;color:#1B1B1B;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.6px;flex:none">AMMA</span>
+          <span style="font-size:17px;line-height:24px">இது என்ன அர்த்தம்?</span>
+        </div>
+        <div class="an r2b" style="height:56px;background:rgba(227,182,96,.12);border-left:3px solid #E3B660;border-radius:10px;padding:5px 10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;height:14px">
+            <span style="font-size:10px;font-weight:700;letter-spacing:.8px;color:#E3B660">GEMINI → AMMA · தமிழ்</span>
+            <span style="display:flex;align-items:center;gap:3px;height:12px"><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#C96846"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#C96846;animation-delay:.15s"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#C96846;animation-delay:.3s"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#C96846;animation-delay:.08s"></span></span>
+          </div>
+          <div style="font-size:13px;line-height:18px;margin-top:3px">இது வடிகால் பிரச்சனை. வடிகட்டியை சரிபார்க்கவும்.</div>
+        </div>
+        <div class="an r3" style="height:56px;background:rgba(244,243,241,.08);border-left:3px solid rgba(244,243,241,.7);border-radius:10px;padding:5px 10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;height:14px">
+            <span style="font-size:10px;font-weight:700;letter-spacing:.8px;color:#F4F3F1">GEMINI → RAVI · हिन्दी</span>
+            <span style="display:flex;align-items:center;gap:3px;height:12px"><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#E3B660;animation-delay:.2s"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#E3B660;animation-delay:.05s"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#E3B660;animation-delay:.28s"></span><span class="bar" style="width:3px;height:12px;border-radius:2px;background:#E3B660;animation-delay:.12s"></span></span>
+          </div>
+          <div style="font-size:13px;line-height:18px;margin-top:3px">यह पानी निकलने की समस्या है। फ़िल्टर जाँचें।</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 3: Gemini fills the PDF form -->
+    <div class="an sc3" style="position:absolute;inset:0">
+      <div style="position:absolute;left:46px;top:0;width:250px;height:304px;background:#F4F3F1;color:#1B1B1B;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.28);padding:16px 18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-weight:700;font-size:14px;color:#214D47">Application form</span>
+          <span style="border:1.5px solid #C96846;color:#C96846;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;letter-spacing:.6px">PDF</span>
+        </div>
+        <div style="height:1.5px;background:#D9D6CF;margin-bottom:10px"></div>
+
+        <div class="an h1" style="padding:4px 6px 6px;border-radius:8px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862">NAME</div>
+          <div style="height:26px;border-bottom:1.5px solid #D9D6CF;font-size:16px;line-height:26px"><span class="an f1" style="display:inline-block">Ravi Kumar</span></div>
+        </div>
+        <div class="an h2" style="padding:4px 6px 6px;border-radius:8px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862">DATE OF BIRTH</div>
+          <div style="height:26px;border-bottom:1.5px solid #D9D6CF;font-size:16px;line-height:26px"><span class="an f2" style="display:inline-block">14 / 03 / 1990</span></div>
+        </div>
+        <div class="an h3" style="padding:4px 6px 6px;border-radius:8px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862">ADDRESS</div>
+          <div style="height:26px;border-bottom:1.5px solid #D9D6CF;font-size:16px;line-height:26px"><span class="an f3" style="display:inline-block">Anna Nagar, Chennai</span></div>
+        </div>
+        <div class="an h4 miss" style="padding:4px 6px 6px;border-radius:8px;outline:2px dashed transparent;outline-offset:1px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6B6862">PHONE</div>
+          <div style="height:26px;border-bottom:1.5px solid #D9D6CF;font-size:16px;line-height:26px"><span class="an f4" style="display:inline-block">98765 43210</span></div>
+        </div>
+      </div>
+      <div class="an ask" style="position:absolute;left:0;top:318px;width:342px;height:62px;background:#1B3B37;border:1.5px solid #E3B660;border-radius:18px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#E3B660">GEMINI ASKS</div>
+          <div style="font-size:16px;line-height:24px">What is your phone number?</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;height:26px">
+          <span class="bar" style="width:5px;height:26px;border-radius:3px;background:#C96846"></span>
+          <span class="bar" style="width:5px;height:26px;border-radius:3px;background:#C96846;animation-delay:.14s"></span>
+          <span class="bar" style="width:5px;height:26px;border-radius:3px;background:#C96846;animation-delay:.28s"></span>
+          <span class="bar" style="width:5px;height:26px;border-radius:3px;background:#C96846;animation-delay:.08s"></span>
+        </div>
+      </div>
+      <div class="an ready" style="position:absolute;left:0;top:318px;width:342px;height:62px;background:#E3B660;color:#1B1B1B;border-radius:18px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:15px;font-weight:700">PDF ready</div>
+          <div style="font-size:13px">Share it or keep it in Sarvam</div>
+        </div>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1B1B1B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- copy -->
+  <div style="position:relative;margin:18px 24px 0;height:160px">
+    <div class="an t1" style="position:absolute;inset:0">
+      <h1 style="margin:0 0 8px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:30px;line-height:36px;letter-spacing:-0.4px">Invite family into the room.</h1>
+      <p style="margin:0;font-size:16px;line-height:24px;color:rgba(244,243,241,.88)">Share a link or code. Family joins from any phone with no app, and Gemini sits in the call too.</p>
+    </div>
+    <div class="an t2" style="position:absolute;inset:0">
+      <h2 style="margin:0 0 8px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:30px;line-height:36px;letter-spacing:-0.4px">Show anything. Ask Gemini live.</h2>
+      <p style="margin:0;font-size:16px;line-height:24px;color:rgba(244,243,241,.88)">Point the camera at a machine, bill or medicine box. Everyone hears the answer in their own language.</p>
+    </div>
+    <div class="an t3" style="position:absolute;inset:0">
+      <h2 style="margin:0 0 8px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:30px;line-height:36px;letter-spacing:-0.4px">Forms fill themselves.</h2>
+      <p style="margin:0;font-size:16px;line-height:24px;color:rgba(244,243,241,.88)">Show a form. Gemini fills it from your details, asks aloud for what is missing, and hands you a PDF.</p>
+    </div>
+  </div>
+
+  <!-- progress dots -->
+  <div aria-hidden="true" style="display:flex;gap:8px;align-items:center;margin:8px 24px 0;height:8px">
+    <span class="an d1" style="display:block;height:8px;border-radius:4px;width:28px;background:#E3B660"></span>
+    <span class="an d2" style="display:block;height:8px;border-radius:4px;width:8px;background:rgba(244,243,241,.35)"></span>
+    <span class="an d3" style="display:block;height:8px;border-radius:4px;width:8px;background:rgba(244,243,241,.35)"></span>
+  </div>
+
+  <!-- primary action -->
+  <div style="margin-top:auto;padding:0 24px 36px">
+    <button class="go" type="button" style="width:100%;min-height:58px;border:0;border-radius:999px;background:#E3B660;color:#1B1B1B;font:700 18px 'DM Sans',system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
+      Start scanning
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B1B1B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

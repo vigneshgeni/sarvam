@@ -5,7 +5,7 @@
  * ensures overlays close first on back-swipe, and restores saved results on reload.
  */
 
-export type AppScreen = 'home' | 'reading' | 'result' | 'tray' | 'relay-camera'
+export type AppScreen = 'home' | 'reading' | 'result' | 'tray' | 'relay-intro' | 'relay-camera'
 
 export type OverlayType =
   | 'listen'

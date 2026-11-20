@@ -16,7 +16,10 @@ export function shouldShowOnboarding(input: {
 export function screenAfterReturn(
   current: { screen: string; hasResult: boolean },
   saved: { screen?: string; result?: unknown } | null
-): { screen: 'home' | 'reading' | 'result' | 'tray'; restore: boolean } {
+): { screen: 'home' | 'reading' | 'result' | 'tray' | 'relay-intro' | 'relay-camera'; restore: boolean } {
+  if (current.screen === 'relay-intro' || current.screen === 'relay-camera') {
+    return { screen: current.screen, restore: false }
+  }
   if (current.hasResult) {
     const screen = current.screen === 'reading' || current.screen === 'tray' || current.screen === 'result' ? current.screen : 'home'
     return { screen, restore: false }

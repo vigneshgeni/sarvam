@@ -196,4 +196,150 @@ test('resumption handle storage saves, retrieves and clears handle', () => {
   assert.equal(storage.get(), undefined)
 })
 
+test('relay stage state machine transitions through full tap -> camera -> Gemini lifecycle and error recovery', async () => {
+  const ts = (await import('typescript')).default
+  const statePath = fs.existsSync('src/features/relay/relaySessionState.ts')
+    ? path.resolve('src/features/relay/relaySessionState.ts')
+    : path.resolve('web/src/features/relay/relaySessionState.ts')
+
+  const src = fs.readFileSync(statePath, 'utf8')
+  const transpiled = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+
+  const tmpFile = path.resolve(
+    fs.realpathSync(fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'relay-state-'))),
+    'relaySessionState.mjs',
+  )
+  fs.writeFileSync(tmpFile, transpiled)
+  const { createInitialRelayState, transitionRelayState, classifyRelayError } = await import(path.resolve(tmpFile))
+
+  let st = createInitialRelayState()
+  assert.equal(st.stage, 'idle')
+  assert.equal(st.error, null)
+
+  st = transitionRelayState(st, { type: 'TAP' })
+  assert.equal(st.stage, 'tapped')
+
+  st = transitionRelayState(st, { type: 'PERMISSION_GRANTED' })
+  assert.equal(st.stage, 'permission_granted')
+
+  st = transitionRelayState(st, { type: 'STREAM_STARTED' })
+  assert.equal(st.stage, 'stream_started')
+
+  st = transitionRelayState(st, { type: 'FIRST_FRAME' })
+  assert.equal(st.stage, 'first_frame')
+
+  st = transitionRelayState(st, { type: 'GEMINI_CONNECTING' })
+  assert.equal(st.stage, 'gemini_connecting')
+
+  st = transitionRelayState(st, { type: 'CONNECTED', model: 'gemini-3.8-live', isFallback: false })
+  assert.equal(st.stage, 'connected')
+  assert.equal(st.modelUsed, 'gemini-3.8-live')
+  assert.equal(st.isFallbackModel, false)
+
+  st = transitionRelayState(st, { type: 'RECONNECTING' })
+  assert.equal(st.stage, 'reconnecting')
+
+  const errInfo = classifyRelayError(new Error('App Check token failed'), 'gemini', true)
+  st = transitionRelayState(st, { type: 'ERROR', error: errInfo })
+  assert.equal(st.stage, 'error')
+  assert.equal(st.error?.kind, 'gemini_connect')
+
+  // Retry clears error cleanly
+  st = transitionRelayState(st, { type: 'GEMINI_CONNECTING' })
+  assert.equal(st.stage, 'gemini_connecting')
+  assert.equal(st.error, null)
+
+  // Fallback model recorded accurately
+  st = transitionRelayState(st, {
+    type: 'CONNECTED',
+    model: 'gemini-live-2.5-flash-native-audio',
+    isFallback: true,
+  })
+  assert.equal(st.stage, 'connected')
+  assert.equal(st.isFallbackModel, true)
+  assert.deepEqual(st.history.slice(0, 7), [
+    'idle',
+    'tapped',
+    'permission_granted',
+    'stream_started',
+    'first_frame',
+    'gemini_connecting',
+    'connected',
+  ])
+})
+
+test('relay error mapping covers permission denied, no camera, camera busy, Gemini connect, and network lost', async () => {
+  const ts = (await import('typescript')).default
+  const statePath = fs.existsSync('src/features/relay/relaySessionState.ts')
+    ? path.resolve('src/features/relay/relaySessionState.ts')
+    : path.resolve('web/src/features/relay/relaySessionState.ts')
+
+  const src = fs.readFileSync(statePath, 'utf8')
+  const transpiled = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+
+  const tmpFile = path.resolve(
+    fs.realpathSync(fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'relay-err-'))),
+    'relaySessionState.mjs',
+  )
+  fs.writeFileSync(tmpFile, transpiled)
+  const { classifyRelayError } = await import(path.resolve(tmpFile))
+
+  const permErr = Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' })
+  const permRes = classifyRelayError(permErr, 'camera', true)
+  assert.equal(permRes.kind, 'permission_denied')
+  assert.equal(permRes.titleKey, 'relayErrPermissionTitle')
+  assert.equal(permRes.retryTarget, 'camera')
+
+  const noCamErr = Object.assign(new Error('Requested device not found'), { name: 'NotFoundError' })
+  const noCamRes = classifyRelayError(noCamErr, 'camera', true)
+  assert.equal(noCamRes.kind, 'no_camera')
+  assert.equal(noCamRes.titleKey, 'relayErrNoCameraTitle')
+
+  const busyErr = Object.assign(new Error('Could not start video source'), { name: 'NotReadableError' })
+  const busyRes = classifyRelayError(busyErr, 'camera', true)
+  assert.equal(busyRes.kind, 'camera_busy')
+  assert.equal(busyRes.titleKey, 'relayErrCameraBusyTitle')
+
+  const geminiErr = new Error('App Check reCAPTCHA token missing (403)')
+  const geminiRes = classifyRelayError(geminiErr, 'gemini', true)
+  assert.equal(geminiRes.kind, 'gemini_connect')
+  assert.equal(geminiRes.titleKey, 'relayErrGeminiTitle')
+  assert.equal(geminiRes.retryTarget, 'gemini')
+
+  const netRes = classifyRelayError(new Error('Failed to fetch'), 'gemini', false)
+  assert.equal(netRes.kind, 'network_lost')
+  assert.equal(netRes.titleKey, 'relayErrNetworkTitle')
+})
+
+test('screenAfterReturn preserves relay-intro and relay-camera across iOS visibilitychange', async () => {
+  const ts = (await import('typescript')).default
+  const onboardingPath = fs.existsSync('src/design/onboarding.ts')
+    ? path.resolve('src/design/onboarding.ts')
+    : path.resolve('web/src/design/onboarding.ts')
+
+  const src = fs.readFileSync(onboardingPath, 'utf8')
+  const transpiled = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+
+  const tmpFile = path.resolve(
+    fs.realpathSync(fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'relay-onboard-'))),
+    'onboarding.mjs',
+  )
+  fs.writeFileSync(tmpFile, transpiled)
+  const { screenAfterReturn } = await import(path.resolve(tmpFile))
+
+  assert.equal(screenAfterReturn({ screen: 'relay-intro', hasResult: false }, null).screen, 'relay-intro')
+  assert.equal(screenAfterReturn({ screen: 'relay-camera', hasResult: false }, null).screen, 'relay-camera')
+  assert.equal(
+    screenAfterReturn({ screen: 'relay-camera', hasResult: false }, { screen: 'result', result: { title: 'Old' } }).screen,
+    'relay-camera',
+  )
+})
+
+
 

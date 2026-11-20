@@ -414,6 +414,7 @@ export default function HomeScreen(props: HomeProps) {
       <div className="flex flex-col gap-3">
         <button
           type="button"
+          data-testid="home-live-relay-card"
           onClick={props.onOpenRelay || props.onTakePhoto}
           className="sv-press flex items-center gap-3.5 p-4 sm:p-5 border-[2px] border-[#1B1B1B] rounded-[30px] bg-[#214D47] text-white text-left min-h-[92px]"
           aria-label="Live Relay"

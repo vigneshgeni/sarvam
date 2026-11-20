@@ -2,37 +2,77 @@
  * CameraScreen — Full-screen Live Relay camera.
  *
  * Implements:
+ * - Immediate mount on tap (never waits for Gemini before showing the camera)
+ * - Reuses the MediaStream & AudioContext acquired inside the user's tap gesture
+ * - <video> with playsInline, muted, autoPlay, and awaited play() with catch
  * - Full-screen camera with flip button (facingMode user & environment)
  * - Preview mirrored only on front camera; Gemini frames unmirrored
- * - Host defaults to back camera (environment)
  * - Shutter with page stack (max 10, JPEG long edge 1600 px, in-memory)
- * - Thumbnail stack with coral count badge
- * - Mic mode toggle (open mic / hold to talk)
- * - LiveSheet integration over camera
- * - On Proceed: sends pinned pages + streams 1 fps at 768 px
- * - Friendly permission and connection error messages
- * - Clean production UI (no spike debug chips)
+ * - LiveSheet integration over camera with non-blocking connect
+ * - Friendly, translated error card with "Try again" & "Back to Home" for every failure
+ * - Stage logging via console.info('[relay] ...') for Safari Web Inspector
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { FirebaseLiveClient } from './live/FirebaseLiveClient.js'
-import { LiveAudioManager } from './audio/LiveAudioManager.js'
+import {
+  LiveAudioManager,
+  createOrResumeRelayAudioContext,
+  requestRelayMediaStream,
+} from './audio/LiveAudioManager.js'
 import { stripSpeakerNotes } from './live/relayPrompt.js'
-import { addPageToStack, calculateLongEdgeDimensions, type CapturedPage, MAX_PAGE_STACK_COUNT } from './pageStack.js'
+import {
+  addPageToStack,
+  calculateLongEdgeDimensions,
+  type CapturedPage,
+  MAX_PAGE_STACK_COUNT,
+} from './pageStack.js'
+import {
+  classifyRelayError,
+  createInitialRelayState,
+  logRelayStage,
+  transitionRelayState,
+  type RelayErrorInfo,
+  type RelaySessionState,
+} from './relaySessionState.js'
 import LiveSheet from './LiveSheet.js'
 import type { CaptionTurn } from './RelaySpikeScreen.js'
+import { getDictionary, resolveLang } from '../../i18n/index.js'
+
+export interface RelayLaunchContext {
+  audioCtx: AudioContext | null
+  mediaPromise: Promise<MediaStream>
+  facingMode: 'user' | 'environment'
+}
 
 interface CameraScreenProps {
   onClose: () => void
+  onBack?: () => void
   lang?: string
+  initialLaunch?: RelayLaunchContext | null
 }
 
-export default function CameraScreen({ onClose }: CameraScreenProps) {
+export default function CameraScreen({
+  onClose,
+  onBack,
+  lang = 'en',
+  initialLaunch = null,
+}: CameraScreenProps) {
+  const t = getDictionary(resolveLang(lang))
+
   // Camera state
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(
+    initialLaunch?.facingMode || 'environment',
+  )
   const [cameraReady, setCameraReady] = useState(false)
-  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [cameraStarting, setCameraStarting] = useState(true)
   const [flash, setFlash] = useState(false)
+
+  // Session stage & error state machine
+  const [sessionState, setSessionState] = useState<RelaySessionState>(() =>
+    transitionRelayState(createInitialRelayState(), { type: 'TAP' }),
+  )
+  const [relayError, setRelayError] = useState<RelayErrorInfo | null>(null)
 
   // Pages stack state
   const [pages, setPages] = useState<CapturedPage[]>([])
@@ -46,7 +86,6 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
   const [isUsingFallback, setIsUsingFallback] = useState(false)
   const [fallbackModelName, setFallbackModelName] = useState<string>()
   const [captions, setCaptions] = useState<CaptionTurn[]>([])
-  const [sessionError, setSessionError] = useState<string | null>(null)
 
   // Audio / Mic controls
   const [micMode, setMicMode] = useState<'vad' | 'hold'>('vad')
@@ -56,9 +95,12 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
   // DOM & Manager refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const activeStreamRef = useRef<MediaStream | null>(null)
+  const sharedAudioCtxRef = useRef<AudioContext | null>(initialLaunch?.audioCtx || null)
   const clientRef = useRef<FirebaseLiveClient | null>(null)
   const audioManagerRef = useRef<LiveAudioManager | null>(null)
   const fpsIntervalRef = useRef<number | null>(null)
+  const isMountedRef = useRef(true)
 
   // Turn grouping tracking refs
   const activeInputTurnId = useRef<string | null>(null)
@@ -84,60 +126,217 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
     isHoldingTalkRef.current = isHoldingTalk
   }, [isHoldingTalk])
 
-  // ── Camera Initialization & Flip ───────────────────────────────────
+  // ── Resource Cleanup (NEVER calls onClose — safe under StrictMode) ─
 
-  const startCamera = useCallback(async (facing: 'user' | 'environment') => {
-    setCameraError(null)
-    setCameraReady(false)
-
-    // Stop existing video tracks
+  const stopActiveStream = useCallback(() => {
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((track) => track.stop())
+      activeStreamRef.current = null
+    }
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream
       stream.getTracks().forEach((track) => track.stop())
       videoRef.current.srcObject = null
     }
+  }, [])
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      })
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        setCameraReady(true)
-      }
-    } catch (err: unknown) {
-      console.error('[CameraScreen] getUserMedia failed', err)
-      const errorName = (err as { name?: string })?.name || ''
-      if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
-        setCameraError('Camera access was denied. Please allow camera permissions in your browser settings.')
-      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-        setCameraError('No camera device found.')
-      } else {
-        setCameraError('Unable to start camera. Please verify device camera settings.')
-      }
+  const stopGeminiSession = useCallback(async () => {
+    if (fpsIntervalRef.current) {
+      window.clearInterval(fpsIntervalRef.current)
+      fpsIntervalRef.current = null
+    }
+    if (clientRef.current) {
+      const c = clientRef.current
+      clientRef.current = null
+      await c.close().catch(() => {})
+    }
+    if (audioManagerRef.current) {
+      const am = audioManagerRef.current
+      audioManagerRef.current = null
+      await am.stop().catch(() => {})
     }
   }, [])
 
+  const cleanupAllResources = useCallback(() => {
+    void stopGeminiSession()
+    stopActiveStream()
+    if (sharedAudioCtxRef.current && sharedAudioCtxRef.current.state !== 'closed') {
+      void sharedAudioCtxRef.current.close().catch(() => {})
+      sharedAudioCtxRef.current = null
+    }
+  }, [stopActiveStream, stopGeminiSession])
+
+  // ── Attach a MediaStream to <video> and wait for first frame ───────
+
+  const attachStreamToVideo = useCallback(
+    async (stream: MediaStream, isCancelled: () => boolean) => {
+      if (isCancelled()) {
+        return
+      }
+
+      stopActiveStream()
+      activeStreamRef.current = stream
+      logRelayStage('permission granted', {
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+      })
+      setSessionState((prev) => transitionRelayState(prev, { type: 'PERMISSION_GRANTED' }))
+
+      const videoEl = videoRef.current
+      if (!videoEl) {
+        return
+      }
+
+      // Preview uses video-only MediaStream so local mic is never echoed through <video>
+      const videoOnlyStream = new MediaStream(stream.getVideoTracks())
+      videoEl.srcObject = videoOnlyStream
+      logRelayStage('stream started')
+      setSessionState((prev) => transitionRelayState(prev, { type: 'STREAM_STARTED' }))
+
+      let firstFrameLogged = false
+      const markFirstFrame = () => {
+        if (firstFrameLogged || isCancelled()) return
+        firstFrameLogged = true
+        logRelayStage('first frame', {
+          width: videoEl.videoWidth,
+          height: videoEl.videoHeight,
+        })
+        setSessionState((prev) => transitionRelayState(prev, { type: 'FIRST_FRAME' }))
+        setCameraReady(true)
+        setCameraStarting(false)
+      }
+
+      videoEl.addEventListener('loadeddata', markFirstFrame, { once: true })
+      videoEl.addEventListener('playing', markFirstFrame, { once: true })
+
+      try {
+        await videoEl.play()
+        if (!isCancelled() && videoEl.readyState >= 2) {
+          markFirstFrame()
+        } else if (!isCancelled()) {
+          // Video play resolved; mark ready as soon as metadata/frame arrives
+          setCameraReady(true)
+          setCameraStarting(false)
+        }
+      } catch (playErr: unknown) {
+        if (isCancelled()) return
+        const classified = classifyRelayError(playErr, 'camera')
+        logRelayStage('error', { source: 'video-play', kind: classified.kind })
+        setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+        setRelayError(classified)
+        setCameraStarting(false)
+      }
+    },
+    [stopActiveStream],
+  )
+
+  // ── Initial mount: consume the stream requested in the user's tap ──
+
   useEffect(() => {
-    void startCamera(facingMode)
-    return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
+    isMountedRef.current = true
+    let cancelled = false
+
+    const boot = async () => {
+      setCameraStarting(true)
+      setRelayError(null)
+      try {
+        const stream = initialLaunch
+          ? await initialLaunch.mediaPromise
+          : await requestRelayMediaStream(facingMode)
+        if (cancelled) return
+        await attachStreamToVideo(stream, () => cancelled)
+      } catch (err: unknown) {
+        if (cancelled) return
+        const classified = classifyRelayError(err, 'camera')
+        logRelayStage('error', { source: 'camera', kind: classified.kind })
+        setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+        setRelayError(classified)
+        setCameraReady(false)
+        setCameraStarting(false)
       }
     }
-  }, [facingMode, startCamera])
+
+    void boot()
+
+    return () => {
+      cancelled = true
+      isMountedRef.current = false
+      // Only stop tracks if this mount actually attached a stream (StrictMode-safe)
+      if (activeStreamRef.current) {
+        stopActiveStream()
+      }
+      void stopGeminiSession()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLaunch])
+
+  // Watch browser offline events while live
+  useEffect(() => {
+    const handleOffline = () => {
+      if (isLive || isConnecting) {
+        const classified = classifyRelayError(new Error('network offline'), 'gemini', false)
+        logRelayStage('error', { source: 'network', kind: classified.kind })
+        setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+        setRelayError(classified)
+      }
+    }
+    window.addEventListener('offline', handleOffline)
+    return () => window.removeEventListener('offline', handleOffline)
+  }, [isLive, isConnecting])
+
+  // Escape key returns to intro or Home cleanly
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        cleanupAllResources()
+        if (onBack) {
+          onBack()
+        } else {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [cleanupAllResources, onBack, onClose])
+
+  // ── User-gesture handlers (camera retry & flip) ────────────────────
+
+  const startCameraInGesture = useCallback(
+    async (facing: 'user' | 'environment') => {
+      logRelayStage('tap', { action: 'camera', facing })
+      sharedAudioCtxRef.current = createOrResumeRelayAudioContext(sharedAudioCtxRef.current)
+      setRelayError(null)
+      setCameraReady(false)
+      setCameraStarting(true)
+      stopActiveStream()
+
+      try {
+        // First await inside the user tap handler!
+        const stream = await requestRelayMediaStream(facing)
+        if (!isMountedRef.current) {
+          stream.getTracks().forEach((tr) => tr.stop())
+          return
+        }
+        await attachStreamToVideo(stream, () => !isMountedRef.current)
+      } catch (err: unknown) {
+        if (!isMountedRef.current) return
+        const classified = classifyRelayError(err, 'camera')
+        logRelayStage('error', { source: 'camera', kind: classified.kind })
+        setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+        setRelayError(classified)
+        setCameraReady(false)
+        setCameraStarting(false)
+      }
+    },
+    [attachStreamToVideo, stopActiveStream],
+  )
 
   const handleFlipCamera = () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment'
     setFacingMode(nextFacing)
+    void startCameraInGesture(nextFacing)
   }
 
   // ── Audio & LiveClient Lifecycle ───────────────────────────────────
@@ -145,147 +344,188 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
   const initLiveClient = useCallback(async () => {
     if (clientRef.current) return clientRef.current
 
+    // Ensure AudioContext is unlocked on this tap if not already
+    sharedAudioCtxRef.current = createOrResumeRelayAudioContext(sharedAudioCtxRef.current)
+
     setIsConnecting(true)
-    setSessionError(null)
+    setRelayError(null)
+    logRelayStage('Gemini connecting')
+    setSessionState((prev) => transitionRelayState(prev, { type: 'GEMINI_CONNECTING' }))
 
     const client = new FirebaseLiveClient()
-    clientRef.current = client
-
     const audioManager = new LiveAudioManager()
-    audioManagerRef.current = audioManager
-
-    // Forward mic audio respecting micMode & hold-to-talk
-    await audioManager.start((pcm) => {
-      if (micModeRef.current === 'vad') {
-        if (!isMutedRef.current) {
-          client.sendAudio(pcm)
-        }
-      } else {
-        // Hold to talk
-        if (isHoldingTalkRef.current) {
-          client.sendAudio(pcm)
-        }
-      }
-    })
-
-    // Output audio
-    client.onAudio = (pcm) => {
-      setIsSpeaking(true)
-      audioManager.playAudio(pcm)
-    }
-
-    // Interrupted
-    client.onInterrupted = () => {
-      audioManager.flush()
-      setIsSpeaking(false)
-      if (activeOutputTurnId.current) {
-        const turnId = activeOutputTurnId.current
-        activeOutputTurnId.current = null
-        activeOutputText.current = ''
-        setCaptions((prev) =>
-          prev.map((c) => (c.id === turnId ? { ...c, isComplete: true, text: c.text ? `${c.text} ⚡` : '⚡' } : c)),
-        )
-      }
-    }
-
-    // Input captions (one row per turn, in-place update)
-    client.onInputText = (text: string) => {
-      if (activeOutputTurnId.current) {
-        const prevId = activeOutputTurnId.current
-        activeOutputTurnId.current = null
-        activeOutputText.current = ''
-        setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
-      }
-
-      if (!activeInputTurnId.current) {
-        const turnId = `you-${Date.now()}`
-        activeInputTurnId.current = turnId
-        activeInputText.current = text
-        const cleaned = stripSpeakerNotes(activeInputText.current)
-        setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'You', text: cleaned }])
-      } else {
-        activeInputText.current += text
-        const cleaned = stripSpeakerNotes(activeInputText.current)
-        const turnId = activeInputTurnId.current
-        setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
-      }
-    }
-
-    // Output captions (one row per turn, in-place update)
-    client.onOutputText = (text: string) => {
-      setIsSpeaking(true)
-      if (activeInputTurnId.current) {
-        const prevId = activeInputTurnId.current
-        activeInputTurnId.current = null
-        activeInputText.current = ''
-        setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
-      }
-
-      if (!activeOutputTurnId.current) {
-        const turnId = `gemini-${Date.now()}`
-        activeOutputTurnId.current = turnId
-        activeOutputText.current = text
-        const cleaned = stripSpeakerNotes(activeOutputText.current)
-        setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'Gemini', text: cleaned }])
-      } else {
-        activeOutputText.current += text
-        const cleaned = stripSpeakerNotes(activeOutputText.current)
-        const turnId = activeOutputTurnId.current
-        setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
-      }
-    }
-
-    client.onTurnComplete = () => {
-      setIsSpeaking(false)
-      if (activeOutputTurnId.current) {
-        const turnId = activeOutputTurnId.current
-        activeOutputTurnId.current = null
-        activeOutputText.current = ''
-        setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
-      }
-      if (activeInputTurnId.current) {
-        const turnId = activeInputTurnId.current
-        activeInputTurnId.current = null
-        activeInputText.current = ''
-        setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
-      }
-    }
-
-    client.onGenerationComplete = () => {
-      setIsSpeaking(false)
-      if (activeOutputTurnId.current) {
-        const turnId = activeOutputTurnId.current
-        activeOutputTurnId.current = null
-        activeOutputText.current = ''
-        setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
-      }
-    }
-
-    client.onUsingFallback = (fbModel) => {
-      setIsUsingFallback(true)
-      setFallbackModelName(fbModel)
-    }
-
-    client.onReconnecting = () => {
-      setIsReconnecting(true)
-    }
-
-    client.onReconnected = () => {
-      setIsReconnecting(false)
-    }
 
     try {
+      // Forward mic audio respecting micMode & hold-to-talk
+      await audioManager.start(
+        (pcm) => {
+          if (micModeRef.current === 'vad') {
+            if (!isMutedRef.current) {
+              client.sendAudio(pcm)
+            }
+          } else if (isHoldingTalkRef.current) {
+            client.sendAudio(pcm)
+          }
+        },
+        {
+          audioCtx: sharedAudioCtxRef.current,
+          audioStream: activeStreamRef.current,
+        },
+      )
+
+      clientRef.current = client
+      audioManagerRef.current = audioManager
+
+      // Output audio
+      client.onAudio = (pcm) => {
+        setIsSpeaking(true)
+        audioManager.playAudio(pcm)
+      }
+
+      // Interrupted
+      client.onInterrupted = () => {
+        audioManager.flush()
+        setIsSpeaking(false)
+        if (activeOutputTurnId.current) {
+          const turnId = activeOutputTurnId.current
+          activeOutputTurnId.current = null
+          activeOutputText.current = ''
+          setCaptions((prev) =>
+            prev.map((c) =>
+              c.id === turnId ? { ...c, isComplete: true, text: c.text ? `${c.text} ⚡` : '⚡' } : c,
+            ),
+          )
+        }
+      }
+
+      // Input captions (one row per turn, in-place update)
+      client.onInputText = (text: string) => {
+        if (activeOutputTurnId.current) {
+          const prevId = activeOutputTurnId.current
+          activeOutputTurnId.current = null
+          activeOutputText.current = ''
+          setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
+        }
+
+        if (!activeInputTurnId.current) {
+          const turnId = `you-${Date.now()}`
+          activeInputTurnId.current = turnId
+          activeInputText.current = text
+          const cleaned = stripSpeakerNotes(activeInputText.current)
+          setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'You', text: cleaned }])
+        } else {
+          activeInputText.current += text
+          const cleaned = stripSpeakerNotes(activeInputText.current)
+          const turnId = activeInputTurnId.current
+          setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
+        }
+      }
+
+      // Output captions (one row per turn, in-place update)
+      client.onOutputText = (text: string) => {
+        setIsSpeaking(true)
+        if (activeInputTurnId.current) {
+          const prevId = activeInputTurnId.current
+          activeInputTurnId.current = null
+          activeInputText.current = ''
+          setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
+        }
+
+        if (!activeOutputTurnId.current) {
+          const turnId = `gemini-${Date.now()}`
+          activeOutputTurnId.current = turnId
+          activeOutputText.current = text
+          const cleaned = stripSpeakerNotes(activeOutputText.current)
+          setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'Gemini', text: cleaned }])
+        } else {
+          activeOutputText.current += text
+          const cleaned = stripSpeakerNotes(activeOutputText.current)
+          const turnId = activeOutputTurnId.current
+          setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
+        }
+      }
+
+      client.onTurnComplete = () => {
+        setIsSpeaking(false)
+        if (activeOutputTurnId.current) {
+          const turnId = activeOutputTurnId.current
+          activeOutputTurnId.current = null
+          activeOutputText.current = ''
+          setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
+        }
+        if (activeInputTurnId.current) {
+          const turnId = activeInputTurnId.current
+          activeInputTurnId.current = null
+          activeInputText.current = ''
+          setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
+        }
+      }
+
+      client.onGenerationComplete = () => {
+        setIsSpeaking(false)
+        if (activeOutputTurnId.current) {
+          const turnId = activeOutputTurnId.current
+          activeOutputTurnId.current = null
+          activeOutputText.current = ''
+          setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
+        }
+      }
+
+      client.onUsingFallback = (fbModel) => {
+        setIsUsingFallback(true)
+        setFallbackModelName(fbModel)
+      }
+
+      client.onReconnecting = () => {
+        setIsReconnecting(true)
+        setSessionState((prev) => transitionRelayState(prev, { type: 'RECONNECTING' }))
+      }
+
+      client.onReconnected = () => {
+        setIsReconnecting(false)
+      }
+
+      client.onClose = (info) => {
+        if (!info.wasClean && isMountedRef.current) {
+          const classified = classifyRelayError(
+            new Error(info.reason || `WebSocket closed (${info.code})`),
+            'gemini',
+          )
+          logRelayStage('error', { source: 'gemini-close', kind: classified.kind, code: info.code })
+          setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+          setRelayError(classified)
+          setIsLive(false)
+        }
+      }
+
       await client.connect()
+      const activeModel = client.getActiveModel()
+      const usingFb = client.getIsUsingFallback()
+      logRelayStage('connected')
+      logRelayStage('model used', {
+        model: activeModel,
+        tier: usingFb ? 'fallback' : 'primary',
+      })
+      setSessionState((prev) =>
+        transitionRelayState(prev, { type: 'CONNECTED', model: activeModel, isFallback: usingFb }),
+      )
       setIsLive(true)
       setIsConnecting(false)
-      setIsUsingFallback(client.getIsUsingFallback())
-      setFallbackModelName(client.getActiveModel())
+      setIsUsingFallback(usingFb)
+      setFallbackModelName(activeModel)
       return client
     } catch (err: unknown) {
       setIsConnecting(false)
-      const raw = err instanceof Error ? err.message : String(err)
-      console.error('[CameraScreen] Connect failed', err)
-      setSessionError(`Live connection failed: ${raw}`)
+      setIsLive(false)
+      clientRef.current = null
+      audioManagerRef.current = null
+      await client.close().catch(() => {})
+      await audioManager.stop().catch(() => {})
+
+      const classified = classifyRelayError(err, 'gemini')
+      logRelayStage('error', { source: 'gemini', kind: classified.kind })
+      setSessionState((prev) => transitionRelayState(prev, { type: 'ERROR', error: classified }))
+      setRelayError(classified)
       throw err
     }
   }, [])
@@ -366,7 +606,7 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
       streamCanvas.toBlob(
         (blob) => {
           if (!blob) return
-          blob.arrayBuffer().then((buf) => {
+          void blob.arrayBuffer().then((buf) => {
             client.sendFrame(buf)
           })
         },
@@ -377,9 +617,10 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
   }, [])
 
   const handleProceed = useCallback(async () => {
+    setIsLiveSheetOpen(true)
+    setRelayError(null)
     try {
       const client = await initLiveClient()
-      setIsLiveSheetOpen(true)
 
       // Send each pinned page as a still
       for (let i = 0; i < pages.length; i++) {
@@ -391,45 +632,31 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
 
       // Start 1 fps video streaming loop over the live camera
       startFpsVideoLoop(client)
-    } catch (err) {
-      console.error('[CameraScreen] Proceed failed to start Live', err)
+    } catch {
+      // Friendly error state already set and logged by initLiveClient
     }
   }, [initLiveClient, pages, startFpsVideoLoop])
 
-  // ── Cleanup on Close ───────────────────────────────────────────────
+  const handleRetryError = () => {
+    if (relayError?.retryTarget === 'gemini') {
+      void handleProceed()
+    } else {
+      void startCameraInGesture(facingMode)
+    }
+  }
 
-  const handleClose = useCallback(async () => {
-    if (fpsIntervalRef.current) {
-      window.clearInterval(fpsIntervalRef.current)
-      fpsIntervalRef.current = null
-    }
-    if (clientRef.current) {
-      await clientRef.current.close()
-      clientRef.current = null
-    }
-    if (audioManagerRef.current) {
-      await audioManagerRef.current.stop()
-      audioManagerRef.current = null
-    }
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach((track) => track.stop())
-      videoRef.current.srcObject = null
-    }
+  const handleCloseToHome = useCallback(() => {
+    cleanupAllResources()
     onClose()
-  }, [onClose])
-
-  useEffect(() => {
-    return () => {
-      void handleClose()
-    }
-  }, [handleClose])
+  }, [cleanupAllResources, onClose])
 
   const hasPages = pages.length > 0
   const isFront = facingMode === 'user'
 
   return (
     <div
+      data-testid="relay-camera-screen"
+      data-relay-stage={sessionState.stage}
       style={{
         position: 'fixed',
         inset: 0,
@@ -445,8 +672,10 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
       {/* Video Viewport */}
       <video
         ref={videoRef}
+        data-testid="relay-camera-video"
         playsInline
         muted
+        autoPlay
         style={{
           position: 'absolute',
           inset: 0,
@@ -506,8 +735,8 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
         {/* Close Button */}
         <button
           type="button"
-          onClick={handleClose}
-          aria-label="Close camera"
+          onClick={handleCloseToHome}
+          aria-label={t.relayCloseCamera}
           style={{
             width: 44,
             height: 44,
@@ -541,14 +770,18 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
           }}
         >
           <span style={{ width: 8, height: 8, borderRadius: 4, background: '#E3B660' }} />
-          {hasPages ? `${pages.length} page${pages.length > 1 ? 's' : ''} · add more or Proceed` : 'Fit the page in the frame'}
+          {cameraStarting && !relayError
+            ? t.relayStartingCamera
+            : hasPages
+              ? `${pages.length} page${pages.length > 1 ? 's' : ''} · add more or ${t.relayProceed}`
+              : t.relayHintFitPage}
         </span>
 
         {/* Flip Camera Button */}
         <button
           type="button"
           onClick={handleFlipCamera}
-          aria-label="Flip camera"
+          aria-label={t.relayFlipCamera}
           style={{
             width: 44,
             height: 44,
@@ -569,22 +802,99 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
         </button>
       </div>
 
-      {/* Camera permission error banner */}
-      {cameraError && (
+      {/* Friendly Translated Error Overlay (never blank, never silent) */}
+      {relayError && (
         <div
+          role="alert"
+          data-testid="relay-error-card"
+          data-error-kind={relayError.kind}
           style={{
-            position: 'relative',
-            zIndex: 30,
-            margin: '20px 16px',
-            padding: 16,
-            borderRadius: 16,
-            background: 'rgba(229, 83, 61, 0.95)',
-            color: '#fff',
-            fontSize: 14,
-            lineHeight: 1.4,
+            position: 'absolute',
+            inset: 0,
+            zIndex: 70,
+            background: 'rgba(14, 14, 14, 0.88)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
           }}
         >
-          {cameraError}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 342,
+              background: '#F4F3F1',
+              color: '#1B1B1B',
+              borderRadius: 24,
+              border: '2px solid #1B1B1B',
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              boxShadow: '0 20px 44px rgba(0,0,0,0.45)',
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: 'Fraunces, Georgia, serif',
+                fontSize: 22,
+                lineHeight: 1.25,
+                fontWeight: 600,
+                color: '#1B1B1B',
+              }}
+            >
+              {t[relayError.titleKey]}
+            </h2>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                lineHeight: 1.45,
+                color: '#3D3B37',
+              }}
+            >
+              {t[relayError.bodyKey]}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+              <button
+                type="button"
+                data-testid="relay-error-retry"
+                onClick={handleRetryError}
+                style={{
+                  width: '100%',
+                  minHeight: 48,
+                  borderRadius: 999,
+                  border: '2px solid #1B1B1B',
+                  background: '#E3B660',
+                  color: '#1B1B1B',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.relayTryAgain}
+              </button>
+              <button
+                type="button"
+                data-testid="relay-error-home"
+                onClick={handleCloseToHome}
+                style={{
+                  width: '100%',
+                  minHeight: 48,
+                  borderRadius: 999,
+                  border: '2px solid #214D47',
+                  background: 'transparent',
+                  color: '#214D47',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.backHome}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -643,7 +953,7 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
           justifyContent: 'space-between',
         }}
       >
-        {/* Left: Thumbnail stack (when hasPages) OR Mic mode toggle (when noPages) */}
+        {/* Left: Thumbnail stack (when hasPages) OR Mic toggle (when noPages) */}
         <div style={{ width: 92, display: 'flex', justifyContent: 'flex-start' }}>
           {hasPages ? (
             <div style={{ position: 'relative', width: 48, height: 60 }}>
@@ -728,9 +1038,10 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
         {/* Center: Shutter Button */}
         <button
           type="button"
+          data-testid="relay-shutter"
           onClick={handleCapture}
           disabled={!cameraReady || pages.length >= MAX_PAGE_STACK_COUNT}
-          aria-label="Capture this page"
+          aria-label={t.relayCapturePage}
           style={{
             width: 76,
             height: 76,
@@ -740,8 +1051,8 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: pages.length >= MAX_PAGE_STACK_COUNT ? 'not-allowed' : 'pointer',
-            opacity: pages.length >= MAX_PAGE_STACK_COUNT ? 0.4 : 1,
+            cursor: !cameraReady || pages.length >= MAX_PAGE_STACK_COUNT ? 'not-allowed' : 'pointer',
+            opacity: !cameraReady || pages.length >= MAX_PAGE_STACK_COUNT ? 0.4 : 1,
           }}
         >
           <span style={{ width: 60, height: 60, borderRadius: 30, background: '#F5F4F2' }} />
@@ -752,6 +1063,7 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
           {hasPages ? (
             <button
               type="button"
+              data-testid="relay-proceed"
               onClick={handleProceed}
               disabled={isConnecting}
               style={{
@@ -770,7 +1082,7 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              {isConnecting ? 'Starting…' : 'Proceed'}
+              {isConnecting ? t.relayStarting : t.relayProceed}
               <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.6}>
                 <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -778,7 +1090,8 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
           ) : (
             <button
               type="button"
-              onClick={handleClose}
+              data-testid="relay-end"
+              onClick={handleCloseToHome}
               style={{
                 height: 52,
                 padding: '0 18px',
@@ -793,7 +1106,7 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
                 cursor: 'pointer',
               }}
             >
-              End
+              {t.relayEnd}
             </button>
           )}
         </div>
@@ -801,18 +1114,17 @@ export default function CameraScreen({ onClose }: CameraScreenProps) {
 
       {/* LiveSheet Over Camera */}
       <LiveSheet
-        isOpen={isLiveSheetOpen}
+        isOpen={isLiveSheetOpen && !relayError}
         isLive={isLive}
         isSpeaking={isSpeaking}
         isReconnecting={isReconnecting}
         isUsingFallback={isUsingFallback}
         fallbackModelName={fallbackModelName}
         captions={captions}
-        errorMsg={sessionError || undefined}
         onSendText={(text) => {
           clientRef.current?.sendText(text, true)
         }}
-        onEnd={handleClose}
+        onEnd={handleCloseToHome}
         onToggleMic={() => setIsMuted((m) => !m)}
         onToggleMicMode={() => setMicMode((m) => (m === 'vad' ? 'hold' : 'vad'))}
         isMuted={isMuted}

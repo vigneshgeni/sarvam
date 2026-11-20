@@ -299,7 +299,20 @@ export class FirebaseLiveClient implements LiveClient {
     }
 
     try {
-      this.session = await liveModel.connect(sessionResumptionConfig)
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Gemini Live connection timed out'))
+        }, 10000)
+      })
+      try {
+        this.session = await Promise.race([
+          liveModel.connect(sessionResumptionConfig),
+          timeoutPromise,
+        ])
+      } finally {
+        if (timeoutId !== undefined) clearTimeout(timeoutId)
+      }
       this.startReceiveLoop()
     } catch (err) {
       const close = this.getLastCloseInfo()

@@ -2,7 +2,7 @@
  * LiveAudioManager — Reusable Web Audio pipeline for Gemini Live.
  *
  * Requirements:
- * - One AudioContext created on the user's tap (iOS requirement).
+ * - One AudioContext created/resumed synchronously on the user's tap (iOS requirement).
  * - Mic captured with echoCancellation, noiseSuppression and autoGainControl.
  * - Downsampled to 16 kHz mono PCM16 in 40 ms chunks (640 samples).
  * - 24 kHz playback via AudioWorklet with instant flush on barge-in.
@@ -102,42 +102,141 @@ export function calculateDownsampleMath(
   }
 }
 
+/**
+ * Synchronously create or resume a single AudioContext inside a user tap handler.
+ * Required by iOS Safari so playback and mic capture stay unlocked.
+ */
+export function createOrResumeRelayAudioContext(existing?: AudioContext | null): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  const Ctor =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!Ctor) return null
+
+  let ctx: AudioContext | null = existing && existing.state !== 'closed' ? existing : null
+  if (!ctx) {
+    try {
+      ctx = new Ctor({ sampleRate: 24000 })
+    } catch {
+      ctx = new Ctor()
+    }
+  }
+  if (ctx.state === 'suspended') {
+    void ctx.resume().catch(() => {})
+  }
+  return ctx
+}
+
+/**
+ * Request camera and microphone in a single user-gesture getUserMedia call.
+ */
+export async function requestRelayMediaStream(
+  facing: 'user' | 'environment' = 'environment',
+): Promise<MediaStream> {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    const err = new Error('Camera API (mediaDevices) is unavailable in this browser.')
+    err.name = 'NotFoundError'
+    throw err
+  }
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    })
+  } catch (err) {
+    const name = (err as { name?: string })?.name || ''
+    // If combined constraints fail due to missing mic or strict resolution, fall back to video-only
+    if (name === 'OverconstrainedError') {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facing } },
+        audio: false,
+      })
+    }
+    throw err
+  }
+}
+
+const registeredWorkletContexts = new WeakSet<AudioContext>()
+
+export interface LiveAudioStartOptions {
+  audioCtx?: AudioContext | null
+  audioStream?: MediaStream | null
+}
+
 export class LiveAudioManager {
   private ctx: AudioContext | null = null
+  private ownsCtx = true
   private playerNode: AudioWorkletNode | null = null
   private recorderNode: AudioWorkletNode | null = null
   private micStream: MediaStream | null = null
+  private ownsMicStream = true
   private isMuted = false
 
-  async start(onAudioChunk: (pcm16: ArrayBuffer) => void): Promise<void> {
-    // 1. Create AudioContext (must be invoked inside user-gesture tap on iOS)
-    const ctx = new AudioContext({ sampleRate: 24000 })
+  async start(
+    onAudioChunk: (pcm16: ArrayBuffer) => void,
+    options?: LiveAudioStartOptions,
+  ): Promise<void> {
+    // 1. Reuse pre-unlocked AudioContext from user tap, or create one now
+    let ctx: AudioContext
+    if (options?.audioCtx && options.audioCtx.state !== 'closed') {
+      ctx = options.audioCtx
+      this.ownsCtx = false
+    } else {
+      const created = createOrResumeRelayAudioContext()
+      if (!created) {
+        throw new Error('AudioContext is not supported in this browser')
+      }
+      ctx = created
+      this.ownsCtx = true
+    }
     this.ctx = ctx
 
     if (ctx.state === 'suspended') {
       await ctx.resume()
     }
 
-    // 2. Register worklets
-    const recUrl = blobUrl(RECORDER_WORKLET_CODE)
-    const playUrl = blobUrl(PLAYER_WORKLET_CODE)
-    await ctx.audioWorklet.addModule(recUrl)
-    await ctx.audioWorklet.addModule(playUrl)
+    // 2. Register worklets once per AudioContext
+    if (!registeredWorkletContexts.has(ctx)) {
+      const recUrl = blobUrl(RECORDER_WORKLET_CODE)
+      const playUrl = blobUrl(PLAYER_WORKLET_CODE)
+      try {
+        await ctx.audioWorklet.addModule(recUrl)
+        await ctx.audioWorklet.addModule(playUrl)
+        registeredWorkletContexts.add(ctx)
+      } finally {
+        URL.revokeObjectURL(recUrl)
+        URL.revokeObjectURL(playUrl)
+      }
+    }
 
     // 3. Output player node (24 kHz)
     const playerNode = new AudioWorkletNode(ctx, 'player-processor')
     playerNode.connect(ctx.destination)
     this.playerNode = playerNode
 
-    // 4. Capture mic with full noise cancellation and automatic gain control
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        sampleRate: 16000,
-      },
-    })
+    // 4. Reuse pre-granted mic stream if available; otherwise request mic
+    let stream: MediaStream | null = null
+    if (options?.audioStream && options.audioStream.getAudioTracks().some((tr) => tr.readyState === 'live')) {
+      stream = new MediaStream(options.audioStream.getAudioTracks())
+      this.ownsMicStream = false
+    } else {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      this.ownsMicStream = true
+    }
     this.micStream = stream
 
     const micSource = ctx.createMediaStreamSource(stream)
@@ -174,7 +273,9 @@ export class LiveAudioManager {
 
   async stop(): Promise<void> {
     if (this.micStream) {
-      this.micStream.getTracks().forEach((track) => track.stop())
+      if (this.ownsMicStream) {
+        this.micStream.getTracks().forEach((track) => track.stop())
+      }
       this.micStream = null
     }
     if (this.recorderNode) {
@@ -186,7 +287,9 @@ export class LiveAudioManager {
       this.playerNode = null
     }
     if (this.ctx) {
-      await this.ctx.close()
+      if (this.ownsCtx && this.ctx.state !== 'closed') {
+        await this.ctx.close().catch(() => {})
+      }
       this.ctx = null
     }
     this.isMuted = false

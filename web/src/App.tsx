@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react'
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import {
   SUPPORTED_LANGS,
   getDictionary,
@@ -66,7 +66,11 @@ import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.
 
 // Dev-only: Gemini Live spike page
 const RelaySpikeScreen = lazy(() => import('./features/relay/RelaySpikeScreen.js'))
+const RelayIntro = lazy(() => import('./features/relay/RelayIntro.js'))
 const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
+import type { RelayLaunchContext } from './features/relay/CameraScreen.js'
+import { createOrResumeRelayAudioContext, requestRelayMediaStream } from './features/relay/audio/LiveAudioManager.js'
+import { logRelayStage } from './features/relay/relaySessionState.js'
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -131,6 +135,7 @@ export default function App() {
   )
 
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [relayLaunch, setRelayLaunch] = useState<RelayLaunchContext | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const saved = loadActiveSession()
     let seen = false
@@ -444,6 +449,9 @@ export default function App() {
         setScreen(next.screen)
         return
       }
+      if (targetScreen !== 'relay-camera') {
+        setRelayLaunch(null)
+      }
       setScreen(targetScreen)
     }
 
@@ -451,10 +459,56 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [isA11yOpen, passwordState.isOpen, deleteConfirm, resultData])
 
-  const navigateToScreen = (target: AppScreen) => {
+  const navigateToScreen = useCallback((target: AppScreen) => {
     setScreen(target)
     pushBrowserHistory({ screen: target, overlay: null })
-  }
+  }, [])
+
+  const handleOpenRelayIntro = useCallback(() => {
+    logRelayStage('tap', { action: 'open-intro' })
+    setRelayLaunch(null)
+    navigateToScreen('relay-intro')
+  }, [navigateToScreen])
+
+  const handleStartRelayScanning = useCallback(async () => {
+    logRelayStage('tap', { action: 'start-scanning' })
+    // Synchronously unlock/resume the single AudioContext inside the user tap
+    const audioCtx = createOrResumeRelayAudioContext()
+    // First await in this tap handler: request camera & microphone synchronously inside the tap
+    const mediaPromise = requestRelayMediaStream('environment')
+    // Navigate immediately — never wait for Gemini or permissions before showing the camera screen
+    setRelayLaunch({ audioCtx, mediaPromise, facingMode: 'environment' })
+    navigateToScreen('relay-camera')
+    try {
+      await mediaPromise
+    } catch {
+      // Handled and rendered visibly inside CameraScreen with Try again + Back to Home
+    }
+  }, [navigateToScreen])
+
+  const handleBackFromRelayIntro = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.state?.screen === 'relay-intro') {
+      window.history.back()
+    } else {
+      setScreen('home')
+      replaceBrowserHistory({ screen: 'home', overlay: null })
+    }
+  }, [])
+
+  const handleBackFromRelayCamera = useCallback(() => {
+    setRelayLaunch(null)
+    if (typeof window !== 'undefined' && window.history.state?.screen === 'relay-camera') {
+      window.history.back()
+    } else {
+      setScreen('relay-intro')
+    }
+  }, [])
+
+  const handleCloseRelayToHome = useCallback(() => {
+    setRelayLaunch(null)
+    setScreen('home')
+    replaceBrowserHistory({ screen: 'home', overlay: null })
+  }, [])
 
   const handleOpenA11y = () => {
     pushBrowserHistory({ screen, overlay: 'accessibility' })
@@ -1529,7 +1583,7 @@ export default function App() {
             onOpenReminder={openReminderDoc}
             onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
-            onOpenRelay={() => setScreen('relay-camera')}
+            onOpenRelay={handleOpenRelayIntro}
             onChooseFiles={handleChooseFileClick}
             onChooseFolder={handleChooseFolderClick}
             onSample={handleSampleClick}
@@ -1645,13 +1699,29 @@ export default function App() {
         )}
 
         {/* ========================================================
-            SCREEN 5: RELAY CAMERA (Live Relay)
+            SCREEN 5: RELAY INTRO (Animated "How Live Relay works")
+           ======================================================== */}
+        {screen === 'relay-intro' && (
+          <Suspense fallback={<div className="fixed inset-0 bg-[#214D47]" />}>
+            <RelayIntro
+              lang={selectedLang}
+              reduceMotion={getStoredA11ySettings().reduceMotion}
+              onStart={() => { void handleStartRelayScanning() }}
+              onBack={handleBackFromRelayIntro}
+            />
+          </Suspense>
+        )}
+
+        {/* ========================================================
+            SCREEN 6: RELAY CAMERA (Live Relay)
            ======================================================== */}
         {screen === 'relay-camera' && (
           <Suspense fallback={<div className="fixed inset-0 bg-[#0E0E0E]" />}>
             <CameraScreen
-              onClose={() => setScreen('home')}
+              onClose={handleCloseRelayToHome}
+              onBack={handleBackFromRelayCamera}
               lang={selectedLang}
+              initialLaunch={relayLaunch}
             />
           </Suspense>
         )}

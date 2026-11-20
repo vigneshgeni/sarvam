@@ -39,7 +39,9 @@ export function restoreActiveOverlay(currentData, callbacks) {
     callbacks.onClose(calmMessage)
   }
   if (typeof window !== 'undefined') {
-    if (window.history && window.history.replaceState) {
+    const currentScreen = window.history?.state?.screen
+    const isRelayScreen = currentScreen === 'relay-intro' || currentScreen === 'relay-camera'
+    if (!isRelayScreen && window.history && window.history.replaceState) {
       window.history.replaceState({ screen: 'home', overlay: null }, '')
     }
     if (window.dispatchEvent) {
