@@ -41,6 +41,7 @@ import { ConversationGate, type ConversationGateMetrics } from './audio/Conversa
 import { RelayTurnController, type RelayTurnSnapshot } from './relayTurnState.js'
 import { TranscriptAssembler } from './transcriptAssembler.js'
 import RelayDebugOverlay, { isRelayDebugEnabled } from './RelayDebugOverlay.js'
+import RoomHost, { type RoomHostHandle } from './room/RoomHost.js'
 import type { SheetDetent } from './sheetDetents.js'
 import PageViewer from './PageViewer.js'
 import { pushBrowserHistory } from '../../utils/history.js'
@@ -172,6 +173,7 @@ export default function CameraScreen({
   const audioManagerRef = useRef<LiveAudioManager | null>(null)
   const cadenceRef = useRef<FrameCadenceController | null>(null)
   const idleGuardRef = useRef<IdleGuardController | null>(null)
+  const roomHostRef = useRef<RoomHostHandle | null>(null)
   const gateRef = useRef<ConversationGate>(new ConversationGate())
   const turnCtrlRef = useRef<RelayTurnController | null>(null)
   const transcriptRef = useRef<TranscriptAssembler>(new TranscriptAssembler())
@@ -378,6 +380,7 @@ export default function CameraScreen({
     if (endingRef.current) return
     endingRef.current = true
     setIdlePromptOpen(false)
+    await roomHostRef.current?.endRoom().catch(() => {})
     await cleanupAllResources()
     await saveSessionToRecent()
     onClose()
@@ -387,6 +390,7 @@ export default function CameraScreen({
     if (endingRef.current) return
     endingRef.current = true
     setIdlePromptOpen(false)
+    void roomHostRef.current?.endRoom().catch(() => {})
     void cleanupAllResources()
     onClose()
   }, [cleanupAllResources, onClose])
@@ -571,6 +575,11 @@ export default function CameraScreen({
       // Preview uses video-only MediaStream so local mic never echoes through <video>
       const videoOnlyStream = new MediaStream(stream.getVideoTracks())
       videoEl.srcObject = videoOnlyStream
+      // If a LiveKit room is active (e.g. after Flip camera), replace the published video track seamlessly
+      const newVideoTrack = stream.getVideoTracks()[0]
+      if (newVideoTrack && roomHostRef.current?.isInRoom()) {
+        void roomHostRef.current.replaceVideoTrack(newVideoTrack).catch(() => {})
+      }
       logRelayStage('stream started')
       setSessionState((prev) => transitionRelayState(prev, { type: 'STREAM_STARTED' }))
 
@@ -1495,7 +1504,13 @@ export default function CameraScreen({
               pointerEvents: 'none',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+              <RoomHost
+                ref={roomHostRef}
+                lang={resolvedLang}
+                getMediaStream={() => activeStreamRef.current}
+                t={t}
+              />
               {videoPaused && (
                 <span
                   data-testid="relay-paused-badge"

@@ -168,11 +168,14 @@ if env_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https://sarvam-510715--[a-z0-9-]+\.web\.app$",
+    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://[a-z0-9-]+\.(web\.app|firebaseapp\.com|trycloudflare\.com))$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from relay import router as relay_router
+app.include_router(relay_router)
 
 logger = logging.getLogger("sarvam-api")
 logging.basicConfig(level=logging.INFO)
