@@ -2,12 +2,14 @@ import type { RecentResult, ExplainResponse, AskTurn } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const STORE_NAME = 'recent_results'
 const ORIGINALS_STORE = 'original_files'
 const READ_CACHE_STORE = 'read_cache'
 const PROFILE_STORE = 'profile'
 const DRAFTS_STORE = 'drafts'
+const REMINDERS_STORE = 'reminders'
+const RELAY_SESSIONS_STORE = 'relaySessions'
 const MAX_ENTRIES = 20
 export const MAX_ORIGINALS_BYTES = 40 * 1024 * 1024 // 40 MB
 const SETTING_KEY = 'sarvam.save_recent'
@@ -71,6 +73,14 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(DRAFTS_STORE)) {
         const draftsStore = db.createObjectStore(DRAFTS_STORE, { keyPath: 'id' })
         draftsStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(REMINDERS_STORE)) {
+        const remStore = db.createObjectStore(REMINDERS_STORE, { keyPath: 'id' })
+        remStore.createIndex('date', 'date', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) {
+        const relStore = db.createObjectStore(RELAY_SESSIONS_STORE, { keyPath: 'id' })
+        relStore.createIndex('startedAt', 'startedAt', { unique: false })
       }
     }
 

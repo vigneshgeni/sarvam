@@ -351,6 +351,8 @@ export interface AskTurn {
   evidence?: string
   answered_from?: string
   lang?: string
+  sources?: MemoryExcerpt[]
+  proposals?: AskProposal[]
 }
 
 export interface RecentResult {
@@ -416,4 +418,39 @@ export interface FormDraft {
   status: 'draft' | 'ready'
 }
 
-export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera' | 'form-fill'
+export interface MemoryExcerpt {
+  sourceId: string
+  sourceType: 'document' | 'draft' | 'history' | 'gmail' | 'relaySession'
+  title: string
+  excerpt: string
+  timestamp: number
+}
+
+export type AskProposal =
+  | { id: string; type: 'propose_reminder'; title: string; when: string }
+  | { id: string; type: 'propose_calendar_event'; title: string; start: string; end?: string; notes?: string }
+  | { id: string; type: 'open_session'; sourceId: string; title?: string }
+
+export interface SavedReminder {
+  id: string
+  title: string
+  date: string
+  time: string
+  when?: string
+  source: string
+  sourceId?: string
+  createdAt: number
+}
+
+export interface RelaySessionRecord {
+  id: string
+  title: string
+  startedAt: number
+  endedAt?: number
+  participants?: string[]
+  captions?: Array<{ id?: string; speaker?: string; lang?: string; text: string; final?: boolean }>
+  pins?: unknown[]
+  cards?: unknown[]
+}
+
+export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera' | 'form-fill' | 'ask'

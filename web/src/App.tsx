@@ -17,6 +17,9 @@ import type {
   MultiReportCard,
   AskTurn,
   FormDraft,
+  SavedReminder,
+  MemoryExcerpt,
+  RelaySessionRecord,
 } from './types'
 import {
   isHeicFile,
@@ -72,7 +75,14 @@ const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
 const FormFillScreen = lazy(() => import('./features/formfill/FormFillScreen'))
 import FormFillPickerSheet from './features/formfill/FormFillPickerSheet'
 import { registerFormFillOpener, type FormFillLaunchOptions } from './features/formfill/openFormFill'
-import { getFormDrafts, deleteFormDraft } from './features/formfill/profileStorage.js'
+import { getFormDrafts, deleteFormDraft, getFormDraft } from './features/formfill/profileStorage.js'
+import AskSheet from './components/AskSheet'
+import RelaySessionModal from './features/askHome/RelaySessionModal'
+import {
+  getSavedReminders,
+  getRelaySessionById,
+  seedAskDemoSession,
+} from './features/askHome/reminderStorage.js'
 import type { RelayLaunchContext } from './features/relay/CameraScreen.js'
 import { createOrResumeRelayAudioContext, requestRelayMediaStream } from './features/relay/audio/LiveAudioManager.js'
 import { logRelayStage } from './features/relay/relaySessionState.js'
@@ -142,6 +152,9 @@ export default function App() {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [relayLaunch, setRelayLaunch] = useState<RelayLaunchContext | null>(null)
   const [formDrafts, setFormDrafts] = useState<FormDraft[]>([])
+  const [savedReminders, setSavedReminders] = useState<SavedReminder[]>([])
+  const [viewedSession, setViewedSession] = useState<RelaySessionRecord | null>(null)
+  const [globalToast, setGlobalToast] = useState<string | null>(null)
   const [formPickerOpen, setFormPickerOpen] = useState(false)
   const [formFillState, setFormFillState] = useState<{
     images: string[]
@@ -257,6 +270,9 @@ export default function App() {
           .catch((err) => {
             console.warn('[DEV] Failed to load fixture:', fixtureName, err)
           })
+      }
+      if (params.get('seed') === 'ask') {
+        void seedAskDemoSession()
       }
     }
   }, [])
@@ -566,10 +582,64 @@ export default function App() {
   }, [])
 
   const loadRecents = async () => {
-    const [items, drafts] = await Promise.all([getRecentResults(), getFormDrafts()])
+    const [items, drafts, rems] = await Promise.all([
+      getRecentResults(),
+      getFormDrafts(),
+      getSavedReminders(),
+    ])
     setRecentResults(items)
     setFormDrafts(drafts)
+    setSavedReminders(rems)
   }
+
+  const showGlobalToast = useCallback((msg: string) => {
+    setGlobalToast(msg)
+    window.setTimeout(() => {
+      setGlobalToast((prev) => (prev === msg ? null : prev))
+    }, 3200)
+  }, [])
+
+  const handleOpenAskSource = useCallback(
+    async (source: MemoryExcerpt) => {
+      if (source.sourceType === 'document') {
+        const match = recentResults.find((r) => r.id === source.sourceId)
+        if (match) {
+          await handleOpenRecent(match)
+          return
+        }
+      }
+      if (source.sourceType === 'draft') {
+        const draft = await getFormDraft(source.sourceId)
+        if (draft) {
+          handleOpenFormFillWithImages(draft.pageImages, { formTitle: draft.title, draft })
+          return
+        }
+      }
+      if (source.sourceType === 'relaySession') {
+        const session = await getRelaySessionById(source.sourceId)
+        if (session) {
+          setViewedSession(session)
+          return
+        }
+      }
+    },
+    [recentResults, handleOpenFormFillWithImages]
+  )
+
+  const handleOpenAskSessionId = useCallback(
+    async (sourceId: string) => {
+      const session = await getRelaySessionById(sourceId)
+      if (session) {
+        setViewedSession(session)
+        return
+      }
+      const match = recentResults.find((r) => r.id === sourceId)
+      if (match) {
+        await handleOpenRecent(match)
+      }
+    },
+    [recentResults]
+  )
 
   const cleanerTitle = (result: ExplainResponse) => {
     const kind = getLocalisedDocType(resolveLang(selectedLang), result.document_kind || result.doc_type || result.document_type)
@@ -1617,6 +1687,8 @@ export default function App() {
             onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
             onOpenRelay={handleOpenRelayIntro}
+            onOpenAskHome={() => navigateToScreen('ask')}
+            savedReminders={savedReminders}
             onOpenFormFill={() => setFormPickerOpen(true)}
             formDrafts={formDrafts}
             onOpenFormDraft={(draft) => {
@@ -1794,6 +1866,38 @@ export default function App() {
           handleOpenFormFillWithImages(images, { formTitle, sourcePdfBytes })
         }}
       />
+
+      <AskSheet
+        isOpen={screen === 'ask'}
+        mode="home"
+        onClose={() => {
+          setScreen('home')
+          replaceBrowserHistory({ screen: 'home', overlay: null })
+        }}
+        lang={selectedLang}
+        t={t}
+        onOpenSource={(src) => { void handleOpenAskSource(src) }}
+        onOpenSessionId={(id) => { void handleOpenAskSessionId(id) }}
+        onReminderAdded={() => { void loadRecents() }}
+        onToast={showGlobalToast}
+      />
+
+      <RelaySessionModal
+        session={viewedSession}
+        lang={selectedLang}
+        onClose={() => setViewedSession(null)}
+      />
+
+      {globalToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="sarvam-toast"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-[380px] px-4 py-2.5 rounded-full bg-[#214D47] text-white border-[2px] border-[#1B1B1B] text-[13.5px] font-bold shadow-lg text-center"
+        >
+          {globalToast}
+        </div>
+      )}
 
       {/* Accessibility Panel Sheet (WEB-10) */}
       <A11ySheet

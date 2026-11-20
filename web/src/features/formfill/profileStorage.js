@@ -5,7 +5,7 @@
 import { sanitizeProfileForStorage } from './formMath.js'
 
 export const SARVAM_DB_NAME = 'sarvam_db'
-export const SARVAM_DB_VERSION = 4
+export const SARVAM_DB_VERSION = 5
 export const PROFILE_STORE = 'profile'
 export const DRAFTS_STORE = 'drafts'
 const MAX_DRAFTS = 20
@@ -36,6 +36,14 @@ function openFormFillDB() {
       if (!db.objectStoreNames.contains(DRAFTS_STORE)) {
         const drafts = db.createObjectStore(DRAFTS_STORE, { keyPath: 'id' })
         drafts.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+      if (!db.objectStoreNames.contains('reminders')) {
+        const rem = db.createObjectStore('reminders', { keyPath: 'id' })
+        rem.createIndex('date', 'date', { unique: false })
+      }
+      if (!db.objectStoreNames.contains('relaySessions')) {
+        const rel = db.createObjectStore('relaySessions', { keyPath: 'id' })
+        rel.createIndex('startedAt', 'startedAt', { unique: false })
       }
     }
     request.onsuccess = () => resolve(request.result)

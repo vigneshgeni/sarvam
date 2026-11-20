@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import type { ExplainResponse, AskResponse, AskTurn } from '../types'
+import type { ExplainResponse, AskResponse, AskTurn, MemoryExcerpt, SavedReminder } from '../types'
 import Sheet from './Sheet'
 import {
   MicIcon,
@@ -11,15 +11,18 @@ import {
 } from './icons'
 import { askDocument, transcribeAudio } from '../api'
 import { saveRecentAsks } from '../utils/db'
-import { resolveLang } from '../i18n'
+import { resolveLang, getSection } from '../i18n'
 import { starterChipKeys } from '../utils/askChips'
 import { isSampleResultId } from '../utils/activity'
 import { turnsForThread } from '../utils/askThread'
+import { searchMemory } from '../utils/askMemory'
+import { buildHomeAskContext, parseAskProposals } from '../features/askHome/askProposals.js'
+import AskHomeCards from '../features/askHome/AskHomeCards'
 
 interface AskSheetProps {
   isOpen: boolean
   onClose: () => void
-  result: ExplainResponse
+  result?: ExplainResponse | null
   files?: File[]
   lang: string
   t: Record<string, string>
@@ -27,6 +30,11 @@ interface AskSheetProps {
   initialAsks?: AskTurn[]
   onSaveAsks?: (asks: AskTurn[]) => void
   onSpeakAnswer?: (text: string) => void
+  mode?: 'document' | 'home'
+  onOpenSource?: (source: MemoryExcerpt) => void
+  onOpenSessionId?: (sourceId: string) => void
+  onReminderAdded?: (reminder: SavedReminder, wasNew: boolean) => void
+  onToast?: (message: string) => void
 }
 
 export default function AskSheet({
@@ -40,7 +48,14 @@ export default function AskSheet({
   initialAsks,
   onSaveAsks,
   onSpeakAnswer,
+  mode = 'document',
+  onOpenSource,
+  onOpenSessionId,
+  onReminderAdded,
+  onToast,
 }: AskSheetProps) {
+  const isHomeMode = mode === 'home'
+  const ah = getSection(lang, 'askHome')
   const [question, setQuestion] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [speechError, setSpeechError] = useState<string | null>(null)
@@ -55,9 +70,9 @@ export default function AskSheet({
   const recorderRef = useRef<MediaRecorder | null>(null)
   const silenceTimerRef = useRef<number | null>(null)
   const [recordSeconds, setRecordSeconds] = useState(0)
-  const threadKey = resultId || `title:${result.title}`
+  const threadKey = isHomeMode ? 'home-ask' : (resultId || `title:${result?.title || 'doc'}`)
   const clearedRef = useRef(false)
-  const sampleThread = isSampleResultId(resultId)
+  const sampleThread = !isHomeMode && isSampleResultId(resultId)
   const initialAsksRef = useRef(initialAsks)
   initialAsksRef.current = initialAsks
 
@@ -224,11 +239,22 @@ export default function AskSheet({
       .slice(-8)
       .map((turn) => `Q: ${turn.question}\nA: ${turn.answer}`)
       .join('\n')
+
+    const concreteLang = resolveLang(lang)
+    let matchedSources: MemoryExcerpt[] = []
+    let effectiveResult: ExplainResponse
+    if (isHomeMode) {
+      matchedSources = await searchMemory(targetQ)
+      effectiveResult = buildHomeAskContext(matchedSources, concreteLang)
+    } else {
+      effectiveResult = result!
+    }
+
     const askOnce = () => askDocument({
       question: targetQ,
-      lang: resolveLang(lang),
-      result,
-      files: files && files.length > 0 ? files : undefined,
+      lang: concreteLang,
+      result: effectiveResult,
+      files: !isHomeMode && files && files.length > 0 ? files : undefined,
       history: history || undefined,
     })
 
@@ -246,9 +272,18 @@ export default function AskSheet({
         setAskError(t.retry || 'Try again')
         return
       }
+
+      const rawAnswer = resp.not_found
+        ? (isHomeMode ? (ah.emptyNoMemory || 'I did not find anything matching that in your saved documents or Live Relay chats.') : (t.askNotFound || "This document doesn't say"))
+        : resp.answer
+      const { cleanAnswer, proposals } = parseAskProposals(
+        rawAnswer,
+        (resp as unknown as { proposals?: unknown[] }).proposals
+      )
+
       const nextTurn: AskTurn = {
         question: targetQ,
-        answer: resp.not_found ? (t.askNotFound || "This document doesn't say") : resp.answer,
+        answer: cleanAnswer || rawAnswer,
         points: resp.points || [],
         steps: resp.steps || [],
         facts: resp.facts || [],
@@ -258,7 +293,9 @@ export default function AskSheet({
         not_found: resp.not_found,
         evidence: resp.evidence,
         answered_from: resp.answered_from,
-        lang: resolveLang(lang),
+        lang: concreteLang,
+        sources: isHomeMode && !resp.not_found && matchedSources.length > 0 ? matchedSources : undefined,
+        proposals: proposals.length > 0 ? proposals : undefined,
       }
       setPendingQuestion(null)
       setThread((prev) => (
@@ -277,9 +314,9 @@ export default function AskSheet({
     }
   }
 
-  const suggestionChips = turns.length || pendingQuestion
+  const suggestionChips = isHomeMode || turns.length || pendingQuestion
     ? []
-    : starterChipKeys(result.document_kind || result.doc_type).map((key) => t[key]).filter(Boolean)
+    : starterChipKeys(result?.document_kind || result?.doc_type).map((key) => t[key]).filter(Boolean)
 
   const userBubble = (text: string) => (
     <div className="self-end max-w-[78%] bg-[#1A1A1A] text-[#F4F5F2] px-4 py-3 rounded-[24px_24px_6px_24px] text-[15.5px] leading-[1.35] break-words">
@@ -291,16 +328,18 @@ export default function AskSheet({
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
-      title={t.askBtnLabel || 'Ask'}
+      title={isHomeMode ? (ah.screenTitle || 'Ask Sarvam') : (t.askBtnLabel || 'Ask')}
       fill
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3 pt-1">
+      <div data-testid={isHomeMode ? 'ask-home-screen' : 'ask-doc-screen'} className="flex min-h-0 flex-1 flex-col gap-3 pt-1">
         <div className="flex shrink-0 items-start justify-between">
           <div className="flex flex-col gap-0.5">
             <h2 className="sv-display m-0 text-[36px] leading-none text-[#1A1A1A]">
-              {t.askBtnLabel || 'Ask'}<span className="text-[#D9603B]">.</span>
+              {isHomeMode ? (ah.screenTitle || 'Ask Sarvam') : (t.askBtnLabel || 'Ask')}<span className="text-[#D9603B]">.</span>
             </h2>
-            <span className="text-[14px] text-[#575B58]">{t.askHint || 'Type or speak, in any of 9 languages'}</span>
+            <span className="text-[14px] text-[#575B58]">
+              {isHomeMode ? (ah.screenSub || 'Ask about anything you scanned, saved or discussed in Live Relay.') : (t.askHint || 'Type or speak, in any of 9 languages')}
+            </span>
             {(turns.length > 0 || pendingQuestion) && (
               <button
                 type="button"
@@ -383,6 +422,18 @@ export default function AskSheet({
                         </button>
                       )}
                     </span>
+                    {((turn.sources && turn.sources.length > 0) || (turn.proposals && turn.proposals.length > 0)) && (
+                      <AskHomeCards
+                        sources={turn.sources}
+                        proposals={turn.proposals}
+                        lang={lang}
+                        t={t}
+                        onOpenSource={onOpenSource}
+                        onOpenSessionId={onOpenSessionId}
+                        onReminderAdded={onReminderAdded}
+                        onToast={onToast}
+                      />
+                    )}
                   </div>
               </div>
             </div>
@@ -431,6 +482,7 @@ export default function AskSheet({
           <div className="flex items-end gap-2">
             <textarea
               ref={composerRef}
+              data-testid="ask-composer-input"
               value={question}
               maxLength={500}
               rows={1}
@@ -456,6 +508,7 @@ export default function AskSheet({
             </button>
             <button
               type="button"
+              data-testid="ask-send-btn"
               disabled={!question.trim() || isLoading}
               onClick={() => handleAskSubmit()}
               className="sv-press w-12 h-12 shrink-0 box-border rounded-full border-[1.5px] border-[#1A1A1A] bg-[#E9B44C] disabled:opacity-40 text-[#1A1A1A] flex items-center justify-center"

@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react'
-import type { FormDraft, RecentResult } from '../../types'
+import type { FormDraft, RecentResult, SavedReminder } from '../../types'
 import type { ReminderRow } from '../../utils/reminders'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType, getSection } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
@@ -29,6 +29,8 @@ interface HomeProps {
   onDismissNext: (id: string) => void
   onTakePhoto: () => void
   onOpenRelay?: () => void
+  onOpenAskHome?: () => void
+  savedReminders?: SavedReminder[]
   onOpenFormFill?: () => void
   formDrafts?: FormDraft[]
   onOpenFormDraft?: (draft: FormDraft) => void
@@ -297,6 +299,25 @@ export default function HomeScreen(props: HomeProps) {
   useEffect(() => {
     if (remindersOpen) window.scrollTo(0, 0)
   }, [remindersOpen])
+  const shown = recent.slice(0, 4)
+  const formDrafts = props.formDrafts || []
+  const savedReminders = props.savedReminders || []
+  const ff = getSection(selectedLang, 'formFill')
+  const ah = getSection(selectedLang, 'askHome')
+  const allUpcomingForPanel: ReminderRow[] = [
+    ...savedReminders.map((r) => ({
+      id: r.id,
+      kind: 'deadline' as const,
+      summary: r.title,
+      date: r.date,
+      time: r.time || '',
+      documentName: r.source || ah.fromAskSarvam || 'From Ask Sarvam',
+      status: 'upcoming' as const,
+      recentId: r.sourceId || '',
+    })),
+    ...props.upcomingReminders,
+  ]
+  const totalBadgeCount = allUpcomingForPanel.length
   if (props.library) return <AllDocuments {...props} />
   if (remindersOpen) {
     return (
@@ -306,10 +327,10 @@ export default function HomeScreen(props: HomeProps) {
         indic={indic}
         tab={reminderTab}
         onTab={setReminderTab}
-        upcoming={props.upcomingReminders}
+        upcoming={allUpcomingForPanel}
         past={props.pastReminders}
         onBack={() => setRemindersOpen(false)}
-        onOpen={(id) => { setRemindersOpen(false); props.onOpenReminder(id) }}
+        onOpen={(id) => { setRemindersOpen(false); if (id) props.onOpenReminder(id) }}
       />
     )
   }
@@ -319,23 +340,41 @@ export default function HomeScreen(props: HomeProps) {
       {t.offlineBody || 'Your saved results still open. Reading a new document needs the internet.'}
     </div>
   ) : null
-  const shown = recent.slice(0, 4)
-  const formDrafts = props.formDrafts || []
-  const ff = getSection(selectedLang, 'formFill')
   return (
     <div className="sv-screen-in bg-[#F4F5F2] text-[#1A1A1A] px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <div className="text-[32px] font-bold tracking-[-1px]">
           Sarvam<span className="text-[#D9603B]">.</span>
         </div>
-        <button
-          type="button"
-          onClick={props.onA11y}
-          aria-label={t.a11yOptions || 'Accessibility options'}
-          className="sv-press w-14 h-14 box-border rounded-full border-4 border-[#FADCD1] bg-[#D9603B] flex items-center justify-center shadow-[0_0_0_2px_#1A1A1A]"
-        >
-          <IconA11y />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            data-testid="home-notifications-btn"
+            onClick={() => { setReminderTab('upcoming'); setRemindersOpen(true) }}
+            aria-label={ah.notificationsAria || 'Notifications'}
+            className="sv-press relative w-12 h-12 box-border rounded-full border-[2px] border-[#1B1B1B] bg-[#F5F4F2] flex items-center justify-center"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1B1B1B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" />
+            </svg>
+            {totalBadgeCount > 0 && (
+              <span
+                data-testid="home-notifications-badge"
+                className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#C96846] border-2 border-[#F5F4F2] text-[11px] font-bold text-[#1B1B1B] flex items-center justify-center"
+              >
+                {totalBadgeCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={props.onA11y}
+            aria-label={t.a11yOptions || 'Accessibility options'}
+            className="sv-press w-14 h-14 box-border rounded-full border-4 border-[#FADCD1] bg-[#D9603B] flex items-center justify-center shadow-[0_0_0_2px_#1A1A1A]"
+          >
+            <IconA11y />
+          </button>
+        </div>
       </header>
       {offlineBanner}
 
@@ -374,6 +413,72 @@ export default function HomeScreen(props: HomeProps) {
           {t.heroSub || 'Snap any letter, bill or report. Sarvam explains it simply, in your language.'}
         </p>
       </section>
+
+      {props.onOpenAskHome && (
+        <button
+          type="button"
+          data-testid="home-ask-sarvam-bar"
+          onClick={props.onOpenAskHome}
+          aria-label={ah.barTitle || 'Ask Sarvam'}
+          className="sv-press min-h-[60px] py-2 pl-4 pr-2 rounded-[30px] border-[2px] border-[#1B1B1B] bg-white text-[#1B1B1B] flex items-center gap-2.5 text-left"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="shrink-0">
+            <path d="M12 3c.6 4 2.2 5.7 6.5 6.4-4.3.8-5.9 2.4-6.5 6.6-.6-4.2-2.2-5.8-6.5-6.6C9.8 8.7 11.4 7 12 3z" fill="#C96846" />
+            <path d="M18.5 14.5c.3 1.8 1 2.6 2.8 2.9-1.8.3-2.5 1.1-2.8 2.9-.3-1.8-1-2.6-2.8-2.9 1.8-.3 2.5-1.1 2.8-2.9z" fill="#E3B660" />
+          </svg>
+          <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <span className="text-[16px] font-bold leading-tight">{ah.barTitle || 'Ask Sarvam'}</span>
+            <span className="text-[12.5px] text-[#5E5E5A] leading-snug">
+              {ah.barSub || 'Remembers your documents and Live Relay chats'}
+            </span>
+          </span>
+          <span
+            aria-hidden="true"
+            className="w-11 h-11 rounded-full bg-[#214D47] flex items-center justify-center shrink-0"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          </span>
+        </button>
+      )}
+
+      {savedReminders.length > 0 && (
+        <section
+          data-testid="home-today-tomorrow"
+          aria-label={ah.todayAndTomorrow || 'Today and tomorrow'}
+          className="bg-white border-[2px] border-[#1B1B1B] rounded-[26px] px-4 py-3.5 flex flex-col gap-2.5"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-bold tracking-[0.06em] uppercase text-[#1B1B1B]">
+              {ah.todayAndTomorrow || 'Today and tomorrow'}
+            </span>
+            <button
+              type="button"
+              onClick={() => { setReminderTab('upcoming'); setRemindersOpen(true) }}
+              className="text-[12.5px] font-bold text-[#214D47] underline min-h-[32px] px-1"
+            >
+              {t.viewAllCount || 'View all'}
+            </button>
+          </div>
+          {savedReminders.slice(0, 4).map((rem) => (
+            <div key={rem.id} data-testid={`home-reminder-row-${rem.id}`} className="flex items-center gap-3 min-h-[48px]">
+              <span className="shrink-0 w-[68px] text-[12.5px] font-bold text-[#1B1B1B] leading-tight">
+                {formatWhen(rem.date, rem.time, selectedLang)}
+              </span>
+              <span aria-hidden="true" className="shrink-0 w-1 self-stretch rounded-sm bg-[#214D47]" />
+              <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="text-[15px] font-semibold leading-snug text-[#1B1B1B] truncate">{rem.title}</span>
+                <span className="text-[12px] text-[#5E5E5A] truncate">{rem.source || ah.fromAskSarvam || 'From Ask Sarvam'}</span>
+              </span>
+              <span className="shrink-0 text-[12px] font-bold text-[#214D47]">
+                {ah.addedTag || 'Added'}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {props.nextUp && (
         <div className="flex items-stretch gap-1 py-3.5 pl-4 pr-2 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F8D9CB] text-[#1A1A1A]">

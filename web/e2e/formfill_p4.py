@@ -136,28 +136,7 @@ def main():
                 """
                 async () => {
                   const db = await new Promise((resolve, reject) => {
-                    const req = indexedDB.open('sarvam_db', 4);
-                    req.onupgradeneeded = (e) => {
-                      const d = e.target.result;
-                      if (!d.objectStoreNames.contains('recent_results')) {
-                        const s = d.createObjectStore('recent_results', { keyPath: 'id' });
-                        s.createIndex('timestamp', 'timestamp', { unique: false });
-                      }
-                      if (!d.objectStoreNames.contains('original_files')) {
-                        const s = d.createObjectStore('original_files', { keyPath: 'resultId' });
-                        s.createIndex('timestamp', 'timestamp', { unique: false });
-                      }
-                      if (!d.objectStoreNames.contains('read_cache')) {
-                        d.createObjectStore('read_cache', { keyPath: 'id' });
-                      }
-                      if (!d.objectStoreNames.contains('profile')) {
-                        d.createObjectStore('profile', { keyPath: 'id' });
-                      }
-                      if (!d.objectStoreNames.contains('drafts')) {
-                        const s = d.createObjectStore('drafts', { keyPath: 'id' });
-                        s.createIndex('createdAt', 'createdAt', { unique: false });
-                      }
-                    };
+                    const req = indexedDB.open('sarvam_db');
                     req.onsuccess = () => resolve(req.result);
                     req.onerror = () => reject(req.error);
                   });
