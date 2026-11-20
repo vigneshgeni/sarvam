@@ -536,5 +536,9 @@
   "relayCollapseSheet": "Gemini Live शीट बदलें",
   "relayTapToTurnOnSound": "आवाज़ चालू करने के लिए टैप करें",
   "relayNoSoundHelp": "आवाज़ नहीं आ रही? रिंग/साइलेंट स्विच और वॉल्यूम जाँचें।",
-  "relayTypeQuestion": "प्रश्न लिखें…"
+  "relayTypeQuestion": "प्रश्न लिखें…",
+  "relayStillThinking": "अभी सोच रहा है…",
+  "relayNoAnswerTitle": "Gemini ने उत्तर नहीं दिया",
+  "relayNoAnswerBody": "Gemini ने उत्तर नहीं दिया। फिर से प्रयास करें।",
+  "relayListeningYou": "आपकी बात सुन रहा है…"
 }

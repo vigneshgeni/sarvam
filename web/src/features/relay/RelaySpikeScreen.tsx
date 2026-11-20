@@ -112,9 +112,12 @@ const LANGUAGES: { id: RelayLanguage; label: string; desc: string; code?: string
 
 export interface CaptionTurn {
   id: string
-  who: 'You' | 'Gemini' | 'System'
+  who: string
   text: string
   isComplete?: boolean
+  interrupted?: boolean
+  speakerLang?: string
+  ts?: number
 }
 
 // ── Component ───────────────────────────────────────────────────────

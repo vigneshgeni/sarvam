@@ -95,6 +95,9 @@ export interface LiveClient {
   /** Set session resumption handle. */
   setResumeHandle(handle: string | undefined): void
 
+  /** Reconnect using the saved session resumption handle if supported. */
+  reconnectWithResumption?(): Promise<void>
+
   /** Close the connection. */
   close(): Promise<void>
 }

@@ -536,5 +536,9 @@
   "relayCollapseSheet": "Resize Gemini Live sheet",
   "relayTapToTurnOnSound": "Tap to turn on sound",
   "relayNoSoundHelp": "No sound? Check the ring/silent switch and the volume.",
-  "relayTypeQuestion": "Type a question…"
+  "relayTypeQuestion": "Type a question…",
+  "relayStillThinking": "Still thinking…",
+  "relayNoAnswerTitle": "Gemini did not answer",
+  "relayNoAnswerBody": "Gemini did not answer. Try again.",
+  "relayListeningYou": "Listening to you…"
 }

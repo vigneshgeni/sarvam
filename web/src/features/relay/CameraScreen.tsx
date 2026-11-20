@@ -29,7 +29,7 @@ import {
   buildLiveVideoSystemPrompt,
   buildSoloSystemPrompt,
 } from './live/relayPrompt.js'
-import type { RelayLanguage } from './live/LiveClient.js'
+import type { LiveClient, RelayLanguage } from './live/LiveClient.js'
 import {
   addPageToStack,
   calculateLongEdgeDimensions,
@@ -37,10 +37,10 @@ import {
   type CapturedPage,
   MAX_PAGE_STACK_COUNT,
 } from './pageStack.js'
-import {
-  sanitizeCaption,
-  shouldDropInputDuringPlayback,
-} from './captionSanitizer.js'
+import { ConversationGate, type ConversationGateMetrics } from './audio/ConversationGate.js'
+import { RelayTurnController, type RelayTurnSnapshot } from './relayTurnState.js'
+import { TranscriptAssembler } from './transcriptAssembler.js'
+import RelayDebugOverlay, { isRelayDebugEnabled } from './RelayDebugOverlay.js'
 import type { SheetDetent } from './sheetDetents.js'
 import PageViewer from './PageViewer.js'
 import { pushBrowserHistory } from '../../utils/history.js'
@@ -150,16 +150,33 @@ export default function CameraScreen({
   const [isMuted, setIsMuted] = useState(false)
   const [isHoldingTalk, setIsHoldingTalk] = useState(false)
 
+  // P1.7 Turn state machine, watchdog no-answer card & ?debug=1 HUD
+  const [turnSnapshot, setTurnSnapshot] = useState<RelayTurnSnapshot>({
+    state: 'idle',
+    stillThinking: false,
+    lastServerMessageAt: Date.now(),
+    reconnectCount: 0,
+    recentEvents: [],
+  })
+  const [noAnswerError, setNoAnswerError] = useState(false)
+  const [debugGateMetrics, setDebugGateMetrics] = useState<ConversationGateMetrics | null>(null)
+  const debugEnabled = isRelayDebugEnabled()
+
   // DOM & Manager refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const activeStreamRef = useRef<MediaStream | null>(null)
   const sharedAudioCtxRef = useRef<AudioContext | null>(initialLaunch?.audioCtx || null)
-  const clientRef = useRef<FirebaseLiveClient | null>(null)
+  const clientRef = useRef<LiveClient | null>(null)
   const audioManagerRef = useRef<LiveAudioManager | null>(null)
   const cadenceRef = useRef<FrameCadenceController | null>(null)
   const idleGuardRef = useRef<IdleGuardController | null>(null)
+  const gateRef = useRef<ConversationGate>(new ConversationGate())
+  const turnCtrlRef = useRef<RelayTurnController | null>(null)
+  const transcriptRef = useRef<TranscriptAssembler>(new TranscriptAssembler())
+  const lastGateActiveAtRef = useRef<number>(0)
+  const lastEndedSpeechMsRef = useRef<number>(0)
   const isMountedRef = useRef(true)
   const autoConnectAttemptedRef = useRef(false)
   const endingRef = useRef(false)
@@ -175,12 +192,6 @@ export default function CameraScreen({
   const micModeRef = useRef<'vad' | 'hold'>('vad')
   const isMutedRef = useRef(false)
   const isHoldingTalkRef = useRef(false)
-
-  // Turn grouping tracking refs
-  const activeInputTurnId = useRef<string | null>(null)
-  const activeOutputTurnId = useRef<string | null>(null)
-  const activeInputText = useRef<string>('')
-  const activeOutputText = useRef<string>('')
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg)
@@ -212,6 +223,7 @@ export default function CameraScreen({
 
   useEffect(() => {
     micModeRef.current = micMode
+    gateRef.current.setMode(micMode === 'hold' ? 'hold' : 'auto')
   }, [micMode])
 
   useEffect(() => {
@@ -221,7 +233,30 @@ export default function CameraScreen({
 
   useEffect(() => {
     isHoldingTalkRef.current = isHoldingTalk
+    const transition = gateRef.current.setHolding(isHoldingTalk, Date.now())
+    if (transition.speechStarted) {
+      lastGateActiveAtRef.current = Date.now()
+      turnCtrlRef.current?.onUserSpeechStart()
+    } else if (transition.speechEnded) {
+      lastEndedSpeechMsRef.current = transition.endedSpeechDurationMs
+      const committed = transcriptRef.current.commitUserTurn(transition.endedSpeechDurationMs)
+      if (committed) {
+        setCaptions(transcriptRef.current.getTurns())
+      }
+      turnCtrlRef.current?.onUserSpeechEnd(committed?.text || null)
+    }
   }, [isHoldingTalk])
+
+  // Poll gate metrics for ?debug=1 overlay only when debug mode is explicitly enabled
+  useEffect(() => {
+    if (!debugEnabled) return
+    const id = setInterval(() => {
+      if (isMountedRef.current) {
+        setDebugGateMetrics(gateRef.current.getMetrics())
+      }
+    }, 250)
+    return () => clearInterval(id)
+  }, [debugEnabled])
 
   // ── Resource Cleanup (NEVER calls onClose — safe under StrictMode) ─
 
@@ -240,6 +275,9 @@ export default function CameraScreen({
   const stopGeminiSession = useCallback(async () => {
     cadenceRef.current?.stop()
     idleGuardRef.current?.stop()
+    turnCtrlRef.current?.stop()
+    turnCtrlRef.current = null
+    gateRef.current.reset()
     if (clientRef.current) {
       const c = clientRef.current
       clientRef.current = null
@@ -735,11 +773,71 @@ export default function CameraScreen({
       setIsConnecting(true)
       setIsThinking(true)
       setRelayError(null)
+      setNoAnswerError(false)
       logRelayStage('Gemini connecting', { mode: forMode })
       setSessionState((prev) => transitionRelayState(prev, { type: 'GEMINI_CONNECTING' }))
 
-      const client = new FirebaseLiveClient()
+      const win = typeof window !== 'undefined' ? (window as unknown as {
+        __relayMockLiveClientFactory?: () => LiveClient
+        __relayWatchdogTimings?: {
+          stillThinkingMs?: number
+          reconnectResendMs?: number
+          noAnswerMs?: number
+          modelAudioStallMs?: number
+          socketSilenceMs?: number
+        }
+      }) : undefined
+      const client: LiveClient = win?.__relayMockLiveClientFactory
+        ? win.__relayMockLiveClientFactory()
+        : new FirebaseLiveClient()
       const audioManager = new LiveAudioManager()
+
+      // Initialize P1.7 Turn State Machine + Watchdog
+      turnCtrlRef.current?.stop()
+      const turnCtrl = new RelayTurnController(
+        {
+          onStateChange: (snap) => {
+            if (!isMountedRef.current) return
+            setTurnSnapshot(snap)
+            setIsThinking(snap.state === 'thinking')
+          },
+          onStillThinkingNudge: () => {
+            if (clientRef.current?.isConnected()) {
+              clientRef.current.sendText('Please answer my last question.', true)
+            }
+          },
+          onReconnectAndResend: (lastText) => {
+            void (async () => {
+              const activeClient = clientRef.current
+              if (!activeClient) return
+              if (activeClient.reconnectWithResumption) {
+                await activeClient.reconnectWithResumption().catch(() => {})
+              }
+              if (lastText && clientRef.current?.isConnected()) {
+                clientRef.current.sendText(lastText, true)
+              }
+            })()
+          },
+          onNoAnswerTimeout: () => {
+            if (isMountedRef.current) {
+              setNoAnswerError(true)
+            }
+          },
+          onSocketSilenceReconnect: () => {
+            void clientRef.current?.reconnectWithResumption?.().catch(() => {})
+          },
+          onModelSpeakingForceIdle: () => {
+            if (!isMountedRef.current) return
+            isPlayingAudioRef.current = false
+            gateRef.current.setPlaybackState(false, 0)
+            setIsSpeaking(false)
+            transcriptRef.current.completeModelTurn()
+            setCaptions(transcriptRef.current.getTurns())
+          },
+        },
+        win?.__relayWatchdogTimings,
+      )
+      turnCtrlRef.current = turnCtrl
 
       try {
         // Start & connect the 24 kHz playback worklet BEFORE connecting the Live session
@@ -749,12 +847,27 @@ export default function CameraScreen({
             if (modeRef.current === 'scan' && !isLiveSheetOpenRef.current) {
               return
             }
-            if (micModeRef.current === 'vad') {
-              if (!isMutedRef.current) {
-                client.sendAudio(pcm)
+            if (micModeRef.current === 'vad' && isMutedRef.current) {
+              return
+            }
+            const now = Date.now()
+            const res = gateRef.current.processFrame(pcm, now)
+            if (res.isOpen) {
+              lastGateActiveAtRef.current = now
+            }
+            if (res.speechStarted) {
+              turnCtrl.onUserSpeechStart()
+            }
+            for (const frame of res.framesToSend) {
+              client.sendAudio(frame)
+            }
+            if (res.speechEnded) {
+              lastEndedSpeechMsRef.current = res.endedSpeechDurationMs
+              const committed = transcriptRef.current.commitUserTurn(res.endedSpeechDurationMs)
+              if (committed && isMountedRef.current) {
+                setCaptions(transcriptRef.current.getTurns())
               }
-            } else if (isHoldingTalkRef.current) {
-              client.sendAudio(pcm)
+              turnCtrl.onUserSpeechEnd(committed?.text || null)
             }
           },
           {
@@ -762,10 +875,14 @@ export default function CameraScreen({
             audioStream: activeStreamRef.current,
             onPlaybackStateChange: (playing) => {
               isPlayingAudioRef.current = playing
+              gateRef.current.setPlaybackState(playing, audioManager.getPlaybackLevel())
               if (isMountedRef.current) {
                 setIsSpeaking(playing)
                 if (playing) setShowSoundBanner(false)
               }
+            },
+            onPlaybackLevel: (rms) => {
+              gateRef.current.setPlaybackState(isPlayingAudioRef.current, rms)
             },
             onPlaybackStalled: () => {
               if (isMountedRef.current) {
@@ -781,113 +898,64 @@ export default function CameraScreen({
         // Output audio (24 kHz) — speaking indicator follows actual playback from worklet
         client.onAudio = (pcm) => {
           idleGuardRef.current?.recordActivity()
-          setIsThinking(false)
+          setNoAnswerError(false)
+          turnCtrl.onModelOutput(true)
           audioManager.playAudio(pcm)
         }
 
-        // Interrupted (barge-in flush — never appends emoji)
+        // Interrupted — FALSE BARGE-IN GUARD: only stop Gemini if local gate saw >=200ms speech in last 400ms
         client.onInterrupted = () => {
-          audioManager.flush()
-          isPlayingAudioRef.current = false
-          setIsSpeaking(false)
-          setIsThinking(false)
-          if (activeOutputTurnId.current) {
-            const turnId = activeOutputTurnId.current
-            activeOutputTurnId.current = null
-            activeOutputText.current = ''
-            setCaptions((prev) =>
-              prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)),
-            )
-          }
-        }
-
-        // Input captions (sanitized, dropped if noise or echo during playback)
-        client.onInputText = (text: string) => {
-          const candidate = activeInputTurnId.current ? activeInputText.current + text : text
-          if (shouldDropInputDuringPlayback(candidate, isPlayingAudioRef.current)) {
+          if (!gateRef.current.shouldAcceptServerInterrupt(Date.now())) {
+            console.info('[relay] ignored false server interrupt (local gate closed or <200ms)')
             return
           }
-          const cleaned = sanitizeCaption(candidate, 'input')
-          if (!cleaned) return
+          audioManager.flush()
+          isPlayingAudioRef.current = false
+          gateRef.current.setPlaybackState(false, 0)
+          setIsSpeaking(false)
+          turnCtrl.onRealInterrupt()
+          transcriptRef.current.interruptModelTurn()
+          setCaptions(transcriptRef.current.getTurns())
+        }
 
-          idleGuardRef.current?.recordActivity()
-          setIdlePromptOpen(false)
-          setIsThinking(true)
-          if (activeOutputTurnId.current) {
-            const prevId = activeOutputTurnId.current
-            activeOutputTurnId.current = null
-            activeOutputText.current = ''
-            setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
-          }
-
-          if (!activeInputTurnId.current) {
-            const turnId = `you-${Date.now()}`
-            activeInputTurnId.current = turnId
-            activeInputText.current = candidate
-            setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'You', text: cleaned }])
-          } else {
-            activeInputText.current = candidate
-            const turnId = activeInputTurnId.current
-            setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
+        // Input captions — buffered in TranscriptAssembler; dropped when gate closed
+        client.onInputText = (text: string) => {
+          turnCtrl.recordServerMessage()
+          const now = Date.now()
+          const gateActive =
+            gateRef.current.getIsOpen() ||
+            now - lastGateActiveAtRef.current <= 1200
+          const accepted = transcriptRef.current.pushInputFragment(text, { gateActive })
+          if (accepted) {
+            idleGuardRef.current?.recordActivity()
+            setIdlePromptOpen(false)
           }
         }
 
-        // Output captions (sanitized, one row per turn)
+        // Output captions — streamed live via TranscriptAssembler
         client.onOutputText = (text: string) => {
-          const candidate = activeOutputTurnId.current ? activeOutputText.current + text : text
-          const cleaned = sanitizeCaption(candidate, 'output')
-          if (!cleaned) return
-
           idleGuardRef.current?.recordActivity()
-          setIsThinking(false)
-          if (activeInputTurnId.current) {
-            const prevId = activeInputTurnId.current
-            activeInputTurnId.current = null
-            activeInputText.current = ''
-            setCaptions((prev) => prev.map((c) => (c.id === prevId ? { ...c, isComplete: true } : c)))
-          }
-
-          if (!activeOutputTurnId.current) {
-            const turnId = `gemini-${Date.now()}`
-            activeOutputTurnId.current = turnId
-            activeOutputText.current = candidate
-            setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'Gemini', text: cleaned }])
-          } else {
-            activeOutputText.current = candidate
-            const turnId = activeOutputTurnId.current
-            setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
-          }
+          setNoAnswerError(false)
+          turnCtrl.onModelOutput(false)
+          transcriptRef.current.pushOutputFragment(text, lastEndedSpeechMsRef.current || 500)
+          setCaptions(transcriptRef.current.getTurns())
         }
 
         client.onTurnComplete = () => {
-          setIsThinking(false)
+          turnCtrl.onTurnComplete()
+          transcriptRef.current.completeModelTurn()
+          setCaptions(transcriptRef.current.getTurns())
           if (!isPlayingAudioRef.current) {
             setIsSpeaking(false)
-          }
-          if (activeOutputTurnId.current) {
-            const turnId = activeOutputTurnId.current
-            activeOutputTurnId.current = null
-            activeOutputText.current = ''
-            setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
-          }
-          if (activeInputTurnId.current) {
-            const turnId = activeInputTurnId.current
-            activeInputTurnId.current = null
-            activeInputText.current = ''
-            setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
           }
         }
 
         client.onGenerationComplete = () => {
-          setIsThinking(false)
+          turnCtrl.recordServerMessage()
+          transcriptRef.current.completeModelTurn()
+          setCaptions(transcriptRef.current.getTurns())
           if (!isPlayingAudioRef.current) {
             setIsSpeaking(false)
-          }
-          if (activeOutputTurnId.current) {
-            const turnId = activeOutputTurnId.current
-            activeOutputTurnId.current = null
-            activeOutputText.current = ''
-            setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)))
           }
         }
 
@@ -898,12 +966,14 @@ export default function CameraScreen({
 
         client.onReconnecting = () => {
           setIsReconnecting(true)
+          turnCtrl.onReconnecting()
           setSessionState((prev) => transitionRelayState(prev, { type: 'RECONNECTING' }))
         }
 
         client.onReconnected = () => {
           setIsReconnecting(false)
           setIsLive(true)
+          turnCtrl.onReconnected()
           void audioManager.resumeContext()
           // Re-send existing pages as small thumbnails only when session reconnects
           const currentPages = pagesRef.current
@@ -963,6 +1033,7 @@ export default function CameraScreen({
         setIsThinking(false)
         setIsUsingFallback(usingFb)
         setFallbackModelName(activeModel)
+        turnCtrl.setSocketActive(true)
         return client
       } catch (err: unknown) {
         setIsConnecting(false)
@@ -1213,23 +1284,33 @@ export default function CameraScreen({
 
   const hasPages = pages.length > 0
   const isFront = facingMode === 'user'
-  const orbState = deriveGeminiOrbState({ isSpeaking, isThinking, isLive })
-  const statusLabel = isReconnecting
-    ? t.relayStatusReconnecting
-    : isLive
-      ? t.relayStatusLive
-      : t.relayStatusConnecting
-  const statusDotClass = isReconnecting
-    ? 'rc-status-dot-reconnecting'
-    : isLive
-      ? 'rc-status-dot-live'
-      : 'rc-status-dot-connecting'
+  const orbState = deriveGeminiOrbState({
+    isSpeaking: isSpeaking || turnSnapshot.state === 'modelSpeaking',
+    isThinking: isThinking || turnSnapshot.state === 'thinking',
+    isLive,
+  })
+  const statusLabel =
+    isReconnecting || turnSnapshot.state === 'reconnecting'
+      ? t.relayStatusReconnecting
+      : isLive
+        ? t.relayStatusLive
+        : t.relayStatusConnecting
+  const statusDotClass =
+    isReconnecting || turnSnapshot.state === 'reconnecting'
+      ? 'rc-status-dot-reconnecting'
+      : isLive
+        ? 'rc-status-dot-live'
+        : 'rc-status-dot-connecting'
   const orbLabel =
-    orbState === 'speaking'
-      ? t.relayOrbSpeaking
-      : orbState === 'thinking'
-        ? t.relayOrbThinking
-        : t.relayOrbListening
+    turnSnapshot.state === 'userSpeaking'
+      ? t.relayListeningYou || 'Listening to you…'
+      : turnSnapshot.state === 'thinking' && turnSnapshot.stillThinking
+        ? t.relayStillThinking || 'Still thinking…'
+        : orbState === 'speaking'
+          ? t.relayOrbSpeaking
+          : orbState === 'thinking'
+            ? t.relayOrbThinking
+            : t.relayOrbListening
   const visibleCaptions = captions.slice(-2)
 
   return (
@@ -1239,6 +1320,7 @@ export default function CameraScreen({
         data-testid="relay-camera-screen"
         data-relay-stage={sessionState.stage}
         data-relay-mode={mode}
+        data-turn-state={turnSnapshot.state}
         data-frames-sent={framesSent}
         data-video-paused={videoPaused ? 'true' : 'false'}
       >
@@ -2254,6 +2336,73 @@ export default function CameraScreen({
           </div>
         )}
 
+        {/* Watchdog 20s No-Answer Card with Retry */}
+        {noAnswerError && !relayError && (
+          <div
+            role="alert"
+            data-testid="relay-no-answer-card"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 68,
+              background: 'rgba(14, 14, 14, 0.78)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 336,
+                background: '#F4F5F2',
+                color: '#1B1B1B',
+                borderRadius: 24,
+                border: '2px solid #1B1B1B',
+                padding: 22,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <h2 style={{ margin: 0, fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 600 }}>
+                {t.relayNoAnswerTitle || 'Gemini did not answer'}
+              </h2>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.45, color: '#3D3B37' }}>
+                {t.relayNoAnswerBody || 'Gemini did not answer. Try again.'}
+              </p>
+              <button
+                type="button"
+                data-testid="relay-no-answer-retry"
+                onClick={() => {
+                  setNoAnswerError(false)
+                  turnCtrlRef.current?.resetToIdle()
+                  void clientRef.current?.reconnectWithResumption?.().catch(() => {})
+                }}
+                style={{
+                  width: '100%',
+                  minHeight: 48,
+                  borderRadius: 999,
+                  border: '2px solid #1B1B1B',
+                  background: '#E3B660',
+                  color: '#1B1B1B',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.relayTryAgain}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dev Debug Overlay (?debug=1 only) */}
+        {debugEnabled && debugGateMetrics && (
+          <RelayDebugOverlay turn={turnSnapshot} gate={debugGateMetrics} />
+        )}
+
         {/* LiveSheet 3-Detent Transcript & Pages Drawer */}
         <LiveSheet
           isOpen={isLiveSheetOpen && !relayError}
@@ -2276,7 +2425,10 @@ export default function CameraScreen({
           t={t}
           onSendText={(text) => {
             idleGuardRef.current?.recordActivity()
-            setIsThinking(true)
+            setNoAnswerError(false)
+            transcriptRef.current.addTypedUserTurn(text)
+            setCaptions(transcriptRef.current.getTurns())
+            turnCtrlRef.current?.onUserTextSent(text)
             clientRef.current?.sendText(text, true)
           }}
           onEnd={() => { void handleEndAndSave() }}

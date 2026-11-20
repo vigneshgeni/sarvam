@@ -536,5 +536,9 @@
   "relayCollapseSheet": "Gemini Live தாளை மாற்றவும்",
   "relayTapToTurnOnSound": "ஒலியை இயக்க தட்டவும்",
   "relayNoSoundHelp": "ஒலி வரவில்லையா? சைலண்ட் சுவிட்ச் மற்றும் ஒலி அளவை சரிபார்க்கவும்.",
-  "relayTypeQuestion": "கேள்வி தட்டச்சு செய்யவும்…"
+  "relayTypeQuestion": "கேள்வி தட்டச்சு செய்யவும்…",
+  "relayStillThinking": "இன்னும் யோசிக்கிறது…",
+  "relayNoAnswerTitle": "Gemini பதிலளிக்கவில்லை",
+  "relayNoAnswerBody": "Gemini பதிலளிக்கவில்லை. மீண்டும் முயற்சிக்கவும்.",
+  "relayListeningYou": "உங்கள் குரலைக் கேட்கிறது…"
 }

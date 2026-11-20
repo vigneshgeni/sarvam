@@ -343,6 +343,10 @@ export class FirebaseLiveClient implements LiveClient {
     void this.session.send(text, turnComplete)
   }
 
+  async reconnectWithResumption(): Promise<void> {
+    await this.triggerReconnect()
+  }
+
   async close(): Promise<void> {
     this.receiveLoopRunning = false
     this.reconnecting = false
