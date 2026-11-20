@@ -467,6 +467,8 @@ export default function App() {
   const handleOpenRelayIntro = useCallback(() => {
     logRelayStage('tap', { action: 'open-intro' })
     setRelayLaunch(null)
+    // Preload CameraScreen chunk while user views the intro so Start scanning opens instantaneously
+    void import('./features/relay/CameraScreen.js').catch(() => {})
     navigateToScreen('relay-intro')
   }, [navigateToScreen])
 
@@ -1720,6 +1722,7 @@ export default function App() {
             <CameraScreen
               onClose={handleCloseRelayToHome}
               onBack={handleBackFromRelayCamera}
+              onSessionSaved={loadRecents}
               lang={selectedLang}
               initialLaunch={relayLaunch}
             />

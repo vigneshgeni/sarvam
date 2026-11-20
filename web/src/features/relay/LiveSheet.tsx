@@ -25,6 +25,7 @@ interface LiveSheetProps {
   langLabel?: string
   onSendText: (text: string) => void
   onEnd: () => void
+  onDismiss?: () => void
   onToggleMic?: () => void
   onToggleMicMode?: () => void
   isMuted?: boolean
@@ -46,6 +47,7 @@ export default function LiveSheet({
   langLabel = 'தமிழ் / EN',
   onSendText,
   onEnd,
+  onDismiss,
   onToggleMic,
   onToggleMicMode,
   isMuted,
@@ -77,6 +79,7 @@ export default function LiveSheet({
 
   return (
     <div
+      data-testid="relay-live-sheet"
       style={{
         position: 'absolute',
         left: 0,
@@ -227,6 +230,30 @@ export default function LiveSheet({
           >
             {langLabel}
           </span>
+
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="Close transcript"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                border: 0,
+                background: 'rgba(255,255,255,0.12)',
+                color: '#F5F4F2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.4}>
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

@@ -20,13 +20,27 @@
 
 .lr-root {
   width: 100%;
-  max-width: 390px;
+  max-width: 430px;
   min-height: 100dvh;
   position: relative;
   display: flex;
   flex-direction: column;
   background: #214D47;
   color: #F4F3F1;
+}
+
+@media (min-width: 601px) {
+  .lr-screen {
+    background: #173632;
+    align-items: center;
+  }
+
+  .lr-root {
+    max-width: 430px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+    border-left: 1px solid rgba(244, 243, 241, 0.12);
+    border-right: 1px solid rgba(244, 243, 241, 0.12);
+  }
 }
 
 .lr-topbar {

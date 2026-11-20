@@ -33,6 +33,12 @@ export interface LiveClient {
   /** Send a camera frame as JPEG bytes. */
   sendFrame(jpeg: ArrayBuffer): void
 
+  /** Send a camera video frame as JPEG bytes (Live video realtime stream). */
+  sendVideo(jpeg: ArrayBuffer): void
+
+  /** Whether the Live session socket is currently open. */
+  isConnected(): boolean
+
   /** Send a text message, optionally marking it as a complete user turn. */
   sendText(text: string, turnComplete: boolean): void
 

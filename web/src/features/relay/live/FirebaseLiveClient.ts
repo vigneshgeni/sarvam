@@ -336,9 +336,17 @@ export class FirebaseLiveClient implements LiveClient {
   }
 
   sendFrame(jpeg: ArrayBuffer): void {
+    this.sendVideo(jpeg)
+  }
+
+  sendVideo(jpeg: ArrayBuffer): void {
     if (!this.session) return
     const data = arrayBufferToBase64(jpeg)
     void this.session.sendVideoRealtime({ mimeType: 'image/jpeg', data })
+  }
+
+  isConnected(): boolean {
+    return this.session !== null
   }
 
   sendText(text: string, turnComplete: boolean): void {

@@ -33,3 +33,24 @@ export function buildSoloSystemPrompt(lang: RelayLanguage = 'auto'): string {
 
   return `${base} ${langLock}`
 }
+
+/**
+ * Live video system prompt for real-time 1 fps camera + continuous audio mode.
+ */
+export function buildLiveVideoSystemPrompt(lang: RelayLanguage = 'auto'): string {
+  const liveVideoBlock =
+    'You can see the camera about once a second. Say what you see in one or two sentences when asked. If the picture is blurry or too far, tell the person to move closer. Do not guess text you cannot read. Answer in the language of the last speaker.'
+  const safety =
+    'You do not know anyone\'s personal details, emails or past conversations unless a line starting with "[shared by …]" gives them to you. Never read out ID numbers. Never invent amounts, dates or names.'
+
+  let langLock: string
+  if (lang === 'en') {
+    langLock = 'The user is speaking English. Always answer in English. If the audio is unclear, ask the user to repeat in English.'
+  } else if (lang === 'ta') {
+    langLock = 'The user is speaking Tamil (or Tanglish). Always answer in Tamil. If the audio is unclear, ask the user to repeat in Tamil.'
+  } else {
+    langLock = 'The user speaks English, Tamil, or another Indian language. Always answer in the language of the last speaker.'
+  }
+
+  return `You are Sarvam, a calm, friendly helper in Live video mode. ${liveVideoBlock} ${safety} ${langLock}`
+}
