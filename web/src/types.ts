@@ -351,6 +351,8 @@ export interface AskTurn {
   evidence?: string
   answered_from?: string
   lang?: string
+  sources?: MemoryExcerpt[]
+  proposals?: AskProposal[]
 }
 
 export interface RecentResult {
@@ -368,4 +370,97 @@ export interface RecentResult {
   activity?: import('./utils/activity').DocumentActivity
 }
 
-export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera'
+export type FormFieldType = 'text' | 'date' | 'checkbox' | 'signature' | 'photo' | 'charGrid'
+
+export interface FormField {
+  id: string
+  label: string
+  type: FormFieldType
+  box: [number, number, number, number]
+  page: number
+  profileKey?: string | null
+  cells?: number | null
+  dateFormat?: string | null
+  required?: boolean
+}
+
+export interface UserProfile {
+  id: string
+  fullName: string
+  dob: string
+  gender: string
+  mobile: string
+  email: string
+  addressLine: string
+  city: string
+  state: string
+  pin: string
+  occupation: string
+  fatherOrSpouseName: string
+  nomineeName: string
+  nomineeRelation: string
+  nomineeDob: string
+  saveIds: boolean
+  pan: string
+  aadhaar: string
+  updatedAt: number
+}
+
+export interface FormDraft {
+  id: string
+  title: string
+  pageImages: string[]
+  fields: FormField[]
+  values: Record<string, string>
+  pdfBlob?: Blob | null
+  createdAt: number
+  updatedAt: number
+  status: 'draft' | 'ready'
+}
+
+export interface MemoryExcerpt {
+  sourceId: string
+  sourceType: 'document' | 'draft' | 'history' | 'gmail' | 'relaySession'
+  title: string
+  excerpt: string
+  timestamp: number
+}
+
+export type AskProposal =
+  | { id: string; type: 'propose_reminder'; title: string; when: string }
+  | { id: string; type: 'propose_calendar_event'; title: string; start: string; end?: string; notes?: string }
+  | { id: string; type: 'open_session'; sourceId: string; title?: string }
+
+export interface SavedReminder {
+  id: string
+  title: string
+  date: string
+  time: string
+  when?: string
+  source: string
+  sourceId?: string
+  createdAt: number
+}
+
+export interface RelaySessionPage {
+  id: string
+  dataUrl: string
+  thumbDataUrl: string
+  width: number
+  height: number
+  timestamp: number
+}
+
+export interface RelaySessionRecord {
+  id: string
+  title: string
+  startedAt: number
+  endedAt?: number
+  participants?: string[]
+  captions?: Array<{ id?: string; speaker?: string; lang?: string; text: string; final?: boolean; ts?: number }>
+  pages?: RelaySessionPage[]
+  pins?: unknown[]
+  cards?: unknown[]
+}
+
+export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera' | 'form-fill' | 'ask'

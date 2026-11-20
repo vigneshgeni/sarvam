@@ -98,7 +98,7 @@ export const LANGUAGES = SUPPORTED_LANGS
 
 export type TranslationKey = keyof typeof en
 
-const dictionaries: Record<string, Record<string, string>> = {
+const dictionaries: Record<string, Record<string, unknown>> = {
   en,
   ta,
   hi,
@@ -113,12 +113,20 @@ const dictionaries: Record<string, Record<string, string>> = {
 export function getTranslation(langId: string, key: TranslationKey): string {
   const concrete = resolveLang(langId)
   const dict = dictionaries[concrete] || dictionaries.en
-  return dict[key] || dictionaries.en[key] || key
+  const val = dict[key] ?? dictionaries.en[key]
+  return typeof val === 'string' ? val : key
 }
 
 export function getDictionary(langId: string): Record<string, string> {
   const concrete = resolveLang(langId)
-  return dictionaries[concrete] || dictionaries.en
+  return (dictionaries[concrete] || dictionaries.en) as Record<string, string>
+}
+
+export function getSection(langId: string, section: string): Record<string, string> {
+  const concrete = resolveLang(langId)
+  const dict = dictionaries[concrete] || dictionaries.en
+  const sec = dict[section] ?? dictionaries.en[section]
+  return (sec && typeof sec === 'object' ? sec : {}) as Record<string, string>
 }
 
 export function getLocalisedDocType(langId: string, docType?: string | null): string {
@@ -126,8 +134,10 @@ export function getLocalisedDocType(langId: string, docType?: string | null): st
   if (!docType) return getTranslation(concrete, 'doctype_document' as TranslationKey)
   const key = `doctype_${docType}` as TranslationKey
   const dict = dictionaries[concrete] || dictionaries.en
-  if (dict[key]) return dict[key]
-  if (dictionaries.en[key]) return dictionaries.en[key]
+  const localVal = dict[key]
+  if (typeof localVal === 'string' && localVal) return localVal
+  const enVal = dictionaries.en[key]
+  if (typeof enVal === 'string' && enVal) return enVal
   return getTranslation(concrete, 'doctype_document' as TranslationKey)
 }
 

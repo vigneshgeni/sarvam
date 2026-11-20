@@ -16,6 +16,10 @@ import type {
   RecentResult,
   MultiReportCard,
   AskTurn,
+  FormDraft,
+  SavedReminder,
+  MemoryExcerpt,
+  RelaySessionRecord,
 } from './types'
 import {
   isHeicFile,
@@ -64,13 +68,26 @@ import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 import { isNative } from './native/isNative.js'
 import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.js'
 
-// Dev-only: Gemini Live spike page
-const RelaySpikeScreen = lazy(() => import('./features/relay/RelaySpikeScreen.js'))
+// Dev-only: Gemini Live spike page (tree-shaken out of production builds)
+const RelaySpikeScreen = import.meta.env.DEV
+  ? lazy(() => import('./features/relay/RelaySpikeScreen.js'))
+  : null
 const RelayIntro = lazy(() => import('./features/relay/RelayIntro.js'))
 const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
 const RelaySessionViewer = lazy(() => import('./features/relay/RelaySessionViewer.js'))
+const FormFillScreen = lazy(() => import('./features/formfill/FormFillScreen'))
+import FormFillPickerSheet from './features/formfill/FormFillPickerSheet'
+import { registerFormFillOpener, type FormFillLaunchOptions } from './features/formfill/openFormFill'
+import { getFormDrafts, deleteFormDraft, getFormDraft } from './features/formfill/profileStorage.js'
+import AskSheet from './components/AskSheet'
+import RelaySessionModal from './features/askHome/RelaySessionModal'
+import {
+  getSavedReminders,
+  getRelaySessionById,
+  seedAskDemoSession,
+} from './features/askHome/reminderStorage.js'
 import type { RelayLaunchContext } from './features/relay/CameraScreen.js'
-import { getRelaySession, type RelaySessionRecord } from './utils/db.js'
+import { getRelaySession } from './utils/db.js'
 import { createOrResumeRelayAudioContext, requestRelayMediaStream } from './features/relay/audio/LiveAudioManager.js'
 import { logRelayStage } from './features/relay/relaySessionState.js'
 
@@ -139,6 +156,15 @@ export default function App() {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [relayLaunch, setRelayLaunch] = useState<RelayLaunchContext | null>(null)
   const [activeRelaySession, setActiveRelaySession] = useState<RelaySessionRecord | null>(null)
+  const [formDrafts, setFormDrafts] = useState<FormDraft[]>([])
+  const [savedReminders, setSavedReminders] = useState<SavedReminder[]>([])
+  const [viewedSession, setViewedSession] = useState<RelaySessionRecord | null>(null)
+  const [globalToast, setGlobalToast] = useState<string | null>(null)
+  const [formPickerOpen, setFormPickerOpen] = useState(false)
+  const [formFillState, setFormFillState] = useState<{
+    images: string[]
+    options?: FormFillLaunchOptions
+  } | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const saved = loadActiveSession()
     let seen = false
@@ -249,6 +275,9 @@ export default function App() {
           .catch((err) => {
             console.warn('[DEV] Failed to load fixture:', fixtureName, err)
           })
+      }
+      if (params.get('seed') === 'ask') {
+        void seedAskDemoSession()
       }
     }
   }, [])
@@ -515,6 +544,29 @@ export default function App() {
     replaceBrowserHistory({ screen: 'home', overlay: null })
   }, [])
 
+  const handleOpenFormFillWithImages = useCallback(
+    (images: string[], options?: FormFillLaunchOptions) => {
+      if (!images || images.length === 0) {
+        setFormPickerOpen(true)
+        return
+      }
+      setFormFillState({ images, options })
+      navigateToScreen('form-fill')
+    },
+    [navigateToScreen]
+  )
+
+  useEffect(() => {
+    registerFormFillOpener(handleOpenFormFillWithImages)
+    return () => registerFormFillOpener(null)
+  }, [handleOpenFormFillWithImages])
+
+  const handleBackFromFormFill = useCallback(() => {
+    setFormFillState(null)
+    setScreen('home')
+    replaceBrowserHistory({ screen: 'home', overlay: null })
+  }, [])
+
   const handleOpenA11y = () => {
     pushBrowserHistory({ screen, overlay: 'accessibility' })
     setIsA11yOpen(true)
@@ -539,9 +591,64 @@ export default function App() {
   }, [])
 
   const loadRecents = async () => {
-    const items = await getRecentResults()
+    const [items, drafts, rems] = await Promise.all([
+      getRecentResults(),
+      getFormDrafts(),
+      getSavedReminders(),
+    ])
     setRecentResults(items)
+    setFormDrafts(drafts)
+    setSavedReminders(rems)
   }
+
+  const showGlobalToast = useCallback((msg: string) => {
+    setGlobalToast(msg)
+    window.setTimeout(() => {
+      setGlobalToast((prev) => (prev === msg ? null : prev))
+    }, 3200)
+  }, [])
+
+  const handleOpenAskSource = useCallback(
+    async (source: MemoryExcerpt) => {
+      if (source.sourceType === 'document') {
+        const match = recentResults.find((r) => r.id === source.sourceId)
+        if (match) {
+          await handleOpenRecent(match)
+          return
+        }
+      }
+      if (source.sourceType === 'draft') {
+        const draft = await getFormDraft(source.sourceId)
+        if (draft) {
+          handleOpenFormFillWithImages(draft.pageImages, { formTitle: draft.title, draft })
+          return
+        }
+      }
+      if (source.sourceType === 'relaySession') {
+        const session = await getRelaySessionById(source.sourceId)
+        if (session) {
+          setViewedSession(session)
+          return
+        }
+      }
+    },
+    [recentResults, handleOpenFormFillWithImages]
+  )
+
+  const handleOpenAskSessionId = useCallback(
+    async (sourceId: string) => {
+      const session = await getRelaySessionById(sourceId)
+      if (session) {
+        setViewedSession(session)
+        return
+      }
+      const match = recentResults.find((r) => r.id === sourceId)
+      if (match) {
+        await handleOpenRecent(match)
+      }
+    },
+    [recentResults]
+  )
 
   const cleanerTitle = (result: ExplainResponse) => {
     const kind = getLocalisedDocType(resolveLang(selectedLang), result.document_kind || result.doc_type || result.document_type)
@@ -1532,7 +1639,7 @@ export default function App() {
   }
 
   // Dev-only: /relay-spike route for Gemini Live spike testing
-  if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.pathname === '/relay-spike') {
+  if (import.meta.env.DEV && RelaySpikeScreen && typeof window !== 'undefined' && window.location.pathname === '/relay-spike') {
     return (
       <Suspense fallback={<div style={{ background: '#1B1B1B', color: '#F5F4F2', minHeight: '100dvh', padding: 32 }}>Loading spike…</div>}>
         <RelaySpikeScreen />
@@ -1596,6 +1703,17 @@ export default function App() {
             onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
             onOpenRelay={handleOpenRelayIntro}
+            onOpenAskHome={() => navigateToScreen('ask')}
+            savedReminders={savedReminders}
+            onOpenFormFill={() => setFormPickerOpen(true)}
+            formDrafts={formDrafts}
+            onOpenFormDraft={(draft) => {
+              handleOpenFormFillWithImages(draft.pageImages, { formTitle: draft.title, draft })
+            }}
+            onRemoveFormDraft={(e, draft) => {
+              e.stopPropagation()
+              void deleteFormDraft(draft.id).then(loadRecents)
+            }}
             onChooseFiles={handleChooseFileClick}
             onChooseFolder={handleChooseFolderClick}
             onSample={handleSampleClick}
@@ -1751,7 +1869,64 @@ export default function App() {
             </Suspense>
           </div>
         )}
+
+        {screen === 'form-fill' && formFillState && (
+          <Suspense fallback={<div className="fixed inset-0 bg-[#E9E6DF]" />}>
+            <FormFillScreen
+              lang={selectedLang}
+              images={formFillState.images}
+              initialTitle={formFillState.options?.formTitle}
+              sourcePdfBytes={formFillState.options?.sourcePdfBytes}
+              initialDraft={formFillState.options?.draft}
+              liveBridge={formFillState.options?.liveBridge}
+              isInRoom={formFillState.options?.isInRoom}
+              onBack={handleBackFromFormFill}
+              onDraftSaved={loadRecents}
+            />
+          </Suspense>
+        )}
       </main>
+
+      <FormFillPickerSheet
+        isOpen={formPickerOpen}
+        lang={selectedLang}
+        onClose={() => setFormPickerOpen(false)}
+        onPickImages={(images, formTitle, sourcePdfBytes) => {
+          handleOpenFormFillWithImages(images, { formTitle, sourcePdfBytes })
+        }}
+      />
+
+      <AskSheet
+        isOpen={screen === 'ask'}
+        mode="home"
+        onClose={() => {
+          setScreen('home')
+          replaceBrowserHistory({ screen: 'home', overlay: null })
+        }}
+        lang={selectedLang}
+        t={t}
+        onOpenSource={(src) => { void handleOpenAskSource(src) }}
+        onOpenSessionId={(id) => { void handleOpenAskSessionId(id) }}
+        onReminderAdded={() => { void loadRecents() }}
+        onToast={showGlobalToast}
+      />
+
+      <RelaySessionModal
+        session={viewedSession}
+        lang={selectedLang}
+        onClose={() => setViewedSession(null)}
+      />
+
+      {globalToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="sarvam-toast"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-[380px] px-4 py-2.5 rounded-full bg-[#214D47] text-white border-[2px] border-[#1B1B1B] text-[13.5px] font-bold shadow-lg text-center"
+        >
+          {globalToast}
+        </div>
+      )}
 
       {/* Accessibility Panel Sheet (WEB-10) */}
       <A11ySheet

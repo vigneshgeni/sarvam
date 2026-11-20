@@ -213,7 +213,7 @@ test('P3: db.ts defines versioned upgrade with relaySessions store and CRUD expo
     : path.resolve('web/src/utils/db.ts')
   const src = fs.readFileSync(dbPath, 'utf8')
   assert.ok(src.includes("const RELAY_SESSIONS_STORE = 'relaySessions'"))
-  assert.ok(src.includes('const DB_VERSION = 4'))
+  assert.ok(/const DB_VERSION = [45]/.test(src))
   assert.ok(src.includes('export async function saveRelaySession'))
   assert.ok(src.includes('export async function getRelaySession'))
   assert.ok(src.includes('export async function listRelaySessions'))

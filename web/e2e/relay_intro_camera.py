@@ -301,12 +301,8 @@ def run_tests():
             page_err.locator('[data-testid="relay-intro-start"]').click()
             assert_camera_live(page_err, "Gemini error flow")
 
-            # Capture 1 page, then cut network so Gemini Live cannot connect
-            page_err.locator('[data-testid="relay-shutter"]').click()
-            proceed_btn = page_err.locator('[data-testid="relay-proceed"]')
-            proceed_btn.wait_for(state="visible", timeout=5000)
+            # Cut network while live -> friendly error card appears with Try again & Back to Home
             ctx_err.set_offline(True)
-            proceed_btn.click()
 
             err_card = page_err.locator('[data-testid="relay-error-card"]')
             err_card.wait_for(state="visible", timeout=15000)

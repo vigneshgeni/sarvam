@@ -18,6 +18,7 @@ Phase P3 Two-Context WebRTC Playwright E2E test (Gemini in the room, camera hand
 import os
 import re
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -26,6 +27,7 @@ from playwright.sync_api import sync_playwright
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_DIR = REPO_ROOT / "api"
 WEB_DIR = REPO_ROOT / "web"
+TRACE_DIR = REPO_ROOT / "docs" / "buildathon" / "shots" / "trace"
 API_PORT = 8013
 WEB_PORT = 5180
 
@@ -161,15 +163,18 @@ MOCK_GEMINI_SCRIPT = """
 
 
 def run_tests():
+    headed_trace = "--headed-trace" in sys.argv
+    if headed_trace:
+        TRACE_DIR.mkdir(parents=True, exist_ok=True)
     api_proc = start_uvicorn()
     web_proc, base_url = start_vite()
-    print(f"[e2e-p3] API on :{API_PORT}, Web on {base_url}")
+    print(f"[e2e-p3] API on :{API_PORT}, Web on {base_url} (headed_trace={headed_trace})")
 
     passed = []
     try:
         with sync_playwright() as p:
             launch_kwargs = {
-                "headless": True,
+                "headless": not headed_trace,
                 "args": [
                     "--use-fake-device-for-media-stream",
                     "--use-fake-ui-for-media-stream",
@@ -189,6 +194,8 @@ def run_tests():
                     ignore_https_errors=True,
                     permissions=["camera", "microphone"],
                 )
+                if headed_trace:
+                    host_ctx.tracing.start(snapshots=True, sources=False, screenshots=False)
                 host_ctx.add_init_script(MOCK_GEMINI_SCRIPT)
                 host_page = host_ctx.new_page()
                 host_page.goto(base_url, wait_until="domcontentloaded")
@@ -219,6 +226,8 @@ def run_tests():
                     ignore_https_errors=True,
                     permissions=["camera", "microphone"],
                 )
+                if headed_trace:
+                    guest_ctx.tracing.start(snapshots=True, sources=False, screenshots=False)
                 guest_page = guest_ctx.new_page()
                 guest_page.goto(f"{base_url}/r/{room_code}", wait_until="domcontentloaded")
                 guest_page.locator('[data-testid="guest-name-input"]').fill("Arun")
@@ -283,6 +292,9 @@ def run_tests():
                 passed.append("end-and-save: Guest sees Room ended and Host Recent opens saved read-only transcript")
                 print("[e2e-p3] PASS end-and-save")
 
+                if headed_trace:
+                    host_ctx.tracing.stop(path=str(TRACE_DIR / "p3-host-trace.zip"))
+                    guest_ctx.tracing.stop(path=str(TRACE_DIR / "p3-guest-trace.zip"))
                 guest_ctx.close()
                 host_ctx.close()
             finally:

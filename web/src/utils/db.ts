@@ -1,11 +1,14 @@
-import type { RecentResult, ExplainResponse, AskTurn } from '../types'
+import type { RecentResult, ExplainResponse, AskTurn, RelaySessionRecord, RelaySessionPage } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const STORE_NAME = 'recent_results'
 const ORIGINALS_STORE = 'original_files'
 const READ_CACHE_STORE = 'read_cache'
+const PROFILE_STORE = 'profile'
+const DRAFTS_STORE = 'drafts'
+const REMINDERS_STORE = 'reminders'
 const RELAY_SESSIONS_STORE = 'relaySessions'
 const MAX_ENTRIES = 20
 export const MAX_ORIGINALS_BYTES = 40 * 1024 * 1024 // 40 MB
@@ -64,9 +67,21 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(READ_CACHE_STORE)) {
         db.createObjectStore(READ_CACHE_STORE, { keyPath: 'id' })
       }
+      if (!db.objectStoreNames.contains(PROFILE_STORE)) {
+        db.createObjectStore(PROFILE_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(DRAFTS_STORE)) {
+        const draftsStore = db.createObjectStore(DRAFTS_STORE, { keyPath: 'id' })
+        draftsStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(REMINDERS_STORE)) {
+        const remStore = db.createObjectStore(REMINDERS_STORE, { keyPath: 'id' })
+        remStore.createIndex('date', 'date', { unique: false })
+      }
       if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) {
-        const relayStore = db.createObjectStore(RELAY_SESSIONS_STORE, { keyPath: 'id' })
-        relayStore.createIndex('endedAt', 'endedAt', { unique: false })
+        const relStore = db.createObjectStore(RELAY_SESSIONS_STORE, { keyPath: 'id' })
+        relStore.createIndex('startedAt', 'startedAt', { unique: false })
+        relStore.createIndex('endedAt', 'endedAt', { unique: false })
       }
     }
 
@@ -431,31 +446,13 @@ export async function idbPutReadCache(record: ReadCacheRecord): Promise<void> {
   }
 }
 
+export type { RelaySessionRecord, RelaySessionPage }
+
 export interface RelaySessionCaption {
   speaker: string
   text: string
   lang: string
   ts: number
-}
-
-export interface RelaySessionPage {
-  id: string
-  dataUrl: string
-  thumbDataUrl: string
-  width: number
-  height: number
-  timestamp: number
-}
-
-export interface RelaySessionRecord {
-  id: string
-  title: string
-  startedAt: number
-  endedAt: number
-  participants: string[]
-  captions: RelaySessionCaption[]
-  pages: RelaySessionPage[]
-  pins: string[]
 }
 
 export async function saveRelaySession(record: RelaySessionRecord): Promise<void> {

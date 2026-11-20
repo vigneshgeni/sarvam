@@ -54,6 +54,7 @@ import {
   type CameraHandoffTransitionResult,
 } from './room/cameraHandoff.js'
 import { updateRelayGuestPermission } from './room/relayApi.js'
+import { openFormFill } from '../formfill/openFormFill.js'
 import type { RemoteTrack } from 'livekit-client'
 import type { SheetDetent } from './sheetDetents.js'
 import PageViewer from './PageViewer.js'
@@ -2061,29 +2062,56 @@ export default function CameraScreen({
                 </span>
               )}
               {hasPages && (
-                <button
-                  type="button"
-                  data-testid="relay-pinned-badge"
-                  onClick={() => openPageViewer(pages.length - 1)}
-                  aria-label={(t.relayOpenPageN || 'Open page {n}').replace('{n}', String(pages.length))}
-                  style={{
-                    pointerEvents: 'auto',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    minHeight: 44,
-                    padding: '4px 12px',
-                    borderRadius: 22,
-                    background: 'rgba(27,27,27,0.85)',
-                    border: '1.5px solid rgba(227,182,96,0.65)',
-                    color: '#E3B660',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {pages.length} pinned
-                </button>
+                <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    data-testid="relay-pinned-badge"
+                    onClick={() => openPageViewer(pages.length - 1)}
+                    aria-label={(t.relayOpenPageN || 'Open page {n}').replace('{n}', String(pages.length))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      minHeight: 44,
+                      padding: '4px 12px',
+                      borderRadius: 22,
+                      background: 'rgba(27,27,27,0.85)',
+                      border: '1.5px solid rgba(227,182,96,0.65)',
+                      color: '#E3B660',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {pages.length} pinned
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="relay-fill-form-chip"
+                    onClick={() => {
+                      openFormFill(
+                        pages.map((p) => p.dataUrl),
+                        { isInRoom: roomHostRef.current?.isInRoom() ?? false },
+                      )
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      minHeight: 44,
+                      padding: '4px 12px',
+                      borderRadius: 22,
+                      background: '#E3B660',
+                      border: '1.5px solid #1B1B1B',
+                      color: '#1B1B1B',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t.relayFillAForm || 'Fill a form'}
+                  </button>
+                </div>
               )}
             </div>
 

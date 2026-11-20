@@ -149,3 +149,81 @@ cd web && node --test
 - The samples are fictional. They are not real people's documents.
 - A 5-page PDF can take about 45 s, and a photo about 71 s (measured 14–15 Oct 2026).
 - A photo has no text layer, so a value is never labelled Found in your document.
+
+
+## What I built at the buildathon (20 Nov 2026)
+
+### What existed before this branch
+Before this buildathon branch (`feat/buildathon-live-relay`, branched from `main` at commit `3a69b3d`), Sarvam was a single-user document reader: upload or snap a notice/bill/report, read the plain-language explanation in 9 Indian languages, ask follow-up questions about that document, listen aloud, share redacted summaries, and save reminders/calendar events.
+
+### What was built on 20 Nov 2026 (branch `feat/buildathon-live-relay`, range `3a69b3d..HEAD`)
+1. **Live Relay — Live video mode & scanned pages**:
+   - Animated 3-scene intro card (`RelayIntro`) on Sarvam's cream background, with reduced-motion fallback.
+   - Real-time 1 fps camera + continuous bidirectional Gemini Live voice mode (`CameraScreen`) with Pause video, Flip camera, Freeze and ask, 10-minute idle cost guard, and desktop 430 px centered phone frame.
+   - Multi-page scanner (up to 10 pages) with full-screen pinch-to-zoom / swipe `PageViewer`, 3-detent draggable `LiveSheet` (`collapsed` / `half` / `full`), `"Add page"` from the sheet without restarting Gemini, and iPhone audio reliability (`AudioWorklet` ready queue, `navigator.audioSession = 'play-and-record'`, `"Tap to turn on sound"` recovery banner).
+2. **Seamless conversation reliability in noisy rooms**:
+   - Pure local `ConversationGate` (20 ms PCM16 frames, 1.5 s adaptive noise floor, 300 ms pre-roll, 700 ms hangover, playback echo ducking, Hold-to-Talk fallback).
+   - False barge-in guard (ignores server `"interrupted"` unless local speech >= 200 ms occurred within 400 ms).
+   - Turn state machine + watchdogs (`relayTurnState.ts`: 6 s `"Still thinking…"` + nudge, 12 s resumption reconnect + resend, 20 s friendly retry, 5 s speaking stall guard, 30 s socket silence ping) and `TranscriptAssembler` + `sanitizeCaption`.
+3. **Invite family video room (LiveKit Cloud) + Gemini in the room**:
+   - Host taps **Invite family** -> gets QR code, 4-character room code, WhatsApp share link, Copy link, `"Guests can show their camera"` toggle, and live member list, publishing existing camera/mic tracks without disturbing Gemini.
+   - Code-split guest route `/r/:code` (`RoomGuest.tsx`, 17 kB chunk with zero Gemini SDK code) — family joins with name, language, and mic on, no login required.
+   - Host per-source gated audio mixer (`RoomAudioMixerGraph`) feeds host + remote guest speech to Gemini while strictly rejecting feedback from Gemini's own `"gemini"` output track broadcast back to the room.
+   - Debounced speaker notes `"(Name is speaking, Language)"`, reliable caption broadcast over LiveKit data channel with optional Vertex Gemini Flash caption translation (`/api/relay/translate`, 2 s timeout with graceful fallback), one-active-camera-at-a-time handoff (`/api/relay/permissions`), pinned page thumbnail broadcast (`<= 150 KB`), and **End and save** into IndexedDB `relaySessions` (opens read-only transcript + pages from Recent).
+4. **Form fill to PDF (merged from Lane B)**:
+   - Detects form fields (including character grids and checkboxes) via Vertex Gemini (`/api/formfill/detect`), extracts spoken/typed values (`/api/formfill/extract`), autofills from on-device **My details**, keeps signatures blank (`sign by hand`), exports a filled PDF via `pdf-lib`, and launches from Home, Live camera (`"Fill a form"` chip), or Ask (`"fill this form"`).
+5. **Ask Sarvam on Home (merged from Lane B)**:
+   - On-device Unicode search across saved documents, form drafts, reminders, and Live Relay transcripts (`IndexedDB`), returning grounded answers with tappable source cards and explicit-approval reminder / calendar cards (nothing is saved without a tap).
+
+### Architecture
+
+```text
+  [Host Phone (iPhone / Chrome)]                [Guest Phone (/r/CODE, no login)]
+  ├── Camera + Mic ──► LiveKit Cloud (WebRTC) ◄──► Guest Mic (+ optional Guest Camera)
+  │       │                     ▲                             │
+  │       ▼                     │ "gemini" audio track        │ reliable data channel
+  │  Per-source gated mixer     │ + captions + pins + handoff │ (captions, pins, requests)
+  │       │                     │                             ▼
+  │       ▼                     │                    [RoomGuest (17 kB split chunk)]
+  │  Gemini Live API ───────────┘
+  │  (Firebase AI Logic / Vertex AI)
+  │
+  ├── On-device IndexedDB (sarvam_db v5): recent_results, relaySessions, profile, drafts, reminders
+  └── FastAPI (Cloud Run: sarvam-relay-api)
+        ├── /api/relay/{rooms,join,settings,end,permissions,translate,health}
+        └── /api/formfill/{detect,extract}  (Vertex Gemini Flash via api/reader.py get_client)
+```
+
+### How Google AI & Google Cloud are used
+- **Gemini Live API via Firebase AI Logic** (`gemini-3.8-live` with automatic fallback to `gemini-live-2.5-flash-native-audio`): real-time multimodal voice + 1 fps video conversation on the host, authenticated via a named Firebase app (`'relay'`) and App Check.
+- **Vertex AI Gemini Flash** (`api/reader.py` `get_client()`): document explanation, form field bounding-box detection & spoken value extraction, and optional cross-language room caption translation.
+- **Cloud Run (`sarvam-relay-api`, `asia-south1`)** + **Secret Manager**: token minting, LiveKit room lifecycle/permissions, form-fill endpoints, and caption translation — isolated from production `sarvam-api`.
+- **Firebase Hosting preview channel (`relay`)**: deploys the buildathon prototype without touching the live site.
+
+### Running locally (Live Relay + Form Fill + Ask)
+
+```bash
+# Terminal 1: API (with api/.env.relay.local containing LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+cd api
+set -a && source .env.relay.local && set +a
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2: Web (with web/.env.relay.local)
+cd web
+VITE_API_URL=http://127.0.0.1:8000 npm run dev -- --mode relay --host
+```
+
+See [docs/buildathon/DEPLOY.md](docs/buildathon/DEPLOY.md) for Cloud Run and Firebase Hosting preview channel deploy commands, and [docs/buildathon/STATUS.md](docs/buildathon/STATUS.md) for verified test counts.
+
+### Privacy rules enforced in code
+- Memory, saved Live Relay sessions, chats, **My details**, and form drafts live **on-device only** (IndexedDB).
+- The shared Gemini Live session never receives private memory or personal details unless the user explicitly taps Share.
+- Nothing is added to reminders, calendar, or sent without an explicit user tap.
+- ID numbers are never read aloud by Gemini; form signatures are always left blank to sign by hand.
+- Audio, page images, and caption contents are never logged on the server.
+
+### Buildathon known limits
+- LiveKit Cloud free tier is used for WebRTC media relay (rooms capped at host + 3 guests, 30 min idle / 3 h max).
+- iPhone Safari requires a user gesture to unlock Web Audio; if audio starts suspended, the `"Tap to turn on sound"` banner resumes it in one tap, and the hardware ring/silent switch must be unmuted.
+- Deployed to a Firebase Hosting preview channel (`relay`), not the live production channel.
+- Gmail integration (P6) was intentionally excluded from this build to keep production OAuth safe.

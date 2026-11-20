@@ -80,9 +80,9 @@ export default function RelaySessionViewer({ session, onClose, t }: RelaySession
       </div>
 
       {/* Participants */}
-      {session.participants.length > 0 && (
+      {(session.participants?.length || 0) > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {session.participants.map((name, idx) => (
+          {(session.participants || []).map((name, idx) => (
             <span
               key={`${name}-${idx}`}
               style={{
@@ -101,13 +101,13 @@ export default function RelaySessionViewer({ session, onClose, t }: RelaySession
       )}
 
       {/* Pages */}
-      {session.pages.length > 0 && (
+      {(session.pages?.length || 0) > 0 && (
         <section>
           <h2 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: '#575B58' }}>
-            Pages ({session.pages.length})
+            Pages ({(session.pages || []).length})
           </h2>
           <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-            {session.pages.map((p, idx) => (
+            {(session.pages || []).map((p, idx) => (
               <div
                 key={p.id}
                 style={{
@@ -138,16 +138,16 @@ export default function RelaySessionViewer({ session, onClose, t }: RelaySession
         <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: '#575B58' }}>
           Transcript
         </h2>
-        {session.captions.length === 0 ? (
+        {(session.captions?.length || 0) === 0 ? (
           <div style={{ fontSize: 14.5, color: '#575B58', padding: '12px 14px', borderRadius: 18, background: '#EAE7E0' }}>
             No captions were recorded in this session.
           </div>
         ) : (
-          session.captions.map((c, idx) => {
+          (session.captions || []).map((c, idx) => {
             const isGemini = c.speaker === 'Gemini'
             return (
               <div
-                key={`${c.ts}-${idx}`}
+                key={`${c.ts || idx}-${idx}`}
                 style={{
                   padding: '12px 14px',
                   borderRadius: 18,
@@ -157,7 +157,7 @@ export default function RelaySessionViewer({ session, onClose, t }: RelaySession
                 }}
               >
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: isGemini ? '#E3B660' : '#214D47', marginBottom: 4 }}>
-                  {c.speaker}
+                  {c.speaker || 'Speaker'}
                 </div>
                 <div style={{ fontSize: 15, lineHeight: 1.45 }}>{c.text}</div>
               </div>
