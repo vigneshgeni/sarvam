@@ -20,6 +20,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from livekit import api as lk_api
+from livekit.protocol import models as lk_models
 
 logger = logging.getLogger("sarvam-relay")
 
@@ -306,5 +307,38 @@ class LiveKitRoomServiceClient:
             await lk.room.delete_room(lk_api.DeleteRoomRequest(room=room_name))
         except Exception as exc:
             logger.info("livekit_delete_room_note kind=%s", type(exc).__name__)
+        finally:
+            await lk.aclose()
+
+    async def update_participant_camera_permission(
+        self,
+        room_name: str,
+        identity: str,
+        can_publish_camera: bool,
+    ) -> None:
+        url, key, secret = get_livekit_config()
+        if not (url and key and secret):
+            return
+        sources = (
+            [lk_models.TrackSource.MICROPHONE, lk_models.TrackSource.CAMERA]
+            if can_publish_camera
+            else [lk_models.TrackSource.MICROPHONE]
+        )
+        lk = lk_api.LiveKitAPI(livekit_http_url(url), key, secret)
+        try:
+            await lk.room.update_participant(
+                lk_api.UpdateParticipantRequest(
+                    room=room_name,
+                    identity=identity,
+                    permission=lk_api.ParticipantPermission(
+                        can_subscribe=True,
+                        can_publish=True,
+                        can_publish_data=True,
+                        can_publish_sources=sources,
+                    ),
+                )
+            )
+        except Exception as exc:
+            logger.info("livekit_update_perm_note kind=%s", type(exc).__name__)
         finally:
             await lk.aclose()

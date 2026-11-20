@@ -570,5 +570,11 @@
   "relayRoomErrExpired": "இந்த அறை காலாவதியானது. புதிய இணைப்பைக் கேளுங்கள்.",
   "relayRoomErrEnded": "இந்த அறை ஏற்கனவே முடிந்துவிட்டது.",
   "relayRoomErrFull": "இந்த அறை நிரம்பிவிட்டது (அதிகபட்சம் 3 விருந்தினர்கள்).",
-  "relayRoomErrGeneric": "அறையுடன் இணைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
+  "relayRoomErrGeneric": "அறையுடன் இணைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+  "relayRoomPrivacyBanner": "அறையில் உள்ள அனைவரும் கேமராவைப் பார்க்கலாம்",
+  "relayCameraRequestText": "{name} தங்கள் கேமராவைக் காட்ட விரும்புகிறார்",
+  "relayAllowCamera": "அனுமதி",
+  "relayNotNow": "இப்போது வேண்டாம்",
+  "relayTakeBackCamera": "என் கேமராவிற்கு திரும்பு",
+  "relayShowingCamera": "{name}-இன் கேமரா"
 }

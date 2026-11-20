@@ -50,3 +50,28 @@ class EndRoomRequest(BaseModel):
 class EndRoomResponse(BaseModel):
     ok: bool
     code: str
+
+
+class UpdatePermissionsRequest(BaseModel):
+    code: Optional[str] = None
+    identity: str = Field(min_length=1, max_length=120)
+    canPublishCamera: bool
+
+
+class UpdatePermissionsResponse(BaseModel):
+    ok: bool
+    identity: str
+    canPublishCamera: bool
+
+
+class TranslateCaptionRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+    from_lang: str = Field(default="auto", alias="from", max_length=24)
+    to_lang: str = Field(default="en", alias="to", max_length=24)
+
+    model_config = {"populate_by_name": True}
+
+
+class TranslateCaptionResponse(BaseModel):
+    translated: str
+    fallback: bool = False

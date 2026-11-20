@@ -15,6 +15,7 @@ class DummyLiveKitService:
         self.created = []
         self.updated = []
         self.deleted = []
+        self.permissions = []
 
     async def ensure_room_metadata(self, room):
         self.created.append(room.code)
@@ -24,6 +25,9 @@ class DummyLiveKitService:
 
     async def delete_room(self, room_name):
         self.deleted.append(room_name)
+
+    async def update_participant_camera_permission(self, room_name, identity, can_publish_camera):
+        self.permissions.append((room_name, identity, can_publish_camera))
 
 
 @pytest.fixture
@@ -168,3 +172,54 @@ def test_room_creation_rate_limit_30_per_hour(relay_client):
     blocked = client.post("/api/relay/rooms", json={"hostName": "Vignesh", "language": "en"})
     assert blocked.status_code == 429
     assert blocked.json()["detail"]["code"] == "rate_limited"
+
+
+def test_permissions_requires_host_key_and_updates_camera_grant(relay_client):
+    client, _, dummy_lk, _ = relay_client
+    created = client.post("/api/relay/rooms", json={"hostName": "Vignesh", "language": "en"}).json()
+
+    assert client.post(
+        "/api/relay/permissions",
+        json={"identity": "guest-1", "canPublishCamera": True},
+    ).status_code == 401
+
+    ok = client.post(
+        "/api/relay/permissions",
+        json={"code": created["code"], "identity": "guest-1", "canPublishCamera": True},
+        headers={"X-Host-Key": created["hostKey"]},
+    )
+    assert ok.status_code == 200
+    assert ok.json() == {"ok": True, "identity": "guest-1", "canPublishCamera": True}
+    assert dummy_lk.permissions[-1] == (f"relay-{created['code']}", "guest-1", True)
+
+    rev = client.post(
+        "/api/relay/permissions",
+        json={"code": created["code"], "identity": "guest-1", "canPublishCamera": False},
+        headers={"X-Host-Key": created["hostKey"]},
+    )
+    assert rev.status_code == 200
+    assert dummy_lk.permissions[-1] == (f"relay-{created['code']}", "guest-1", False)
+
+
+def test_translate_caption_success_and_graceful_fallback(relay_client, monkeypatch):
+    client, _, _, _ = relay_client
+
+    # Same language short-circuit
+    same = client.post("/api/relay/translate", json={"text": "Hello", "from": "en", "to": "en"})
+    assert same.status_code == 200
+    assert same.json() == {"translated": "Hello", "fallback": False}
+
+    # Mocked Vertex Gemini Flash success
+    monkeypatch.setattr(relay_router_mod, "_translate_caption_sync", lambda text, f, t: "What is the due date?")
+    ok = client.post("/api/relay/translate", json={"text": "கடைசி தேதி என்ன?", "from": "ta", "to": "en"})
+    assert ok.status_code == 200
+    assert ok.json() == {"translated": "What is the due date?", "fallback": False}
+
+    # Error falls back to original text cleanly without 500
+    def boom(*args):
+        raise RuntimeError("vertex unavailable")
+
+    monkeypatch.setattr(relay_router_mod, "_translate_caption_sync", boom)
+    fb = client.post("/api/relay/translate", json={"text": "கடைசி தேதி என்ன?", "from": "ta", "to": "en"})
+    assert fb.status_code == 200
+    assert fb.json() == {"translated": "கடைசி தேதி என்ன?", "fallback": True}

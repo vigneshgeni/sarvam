@@ -642,5 +642,11 @@
   "relayRoomErrExpired": "This room has expired. Ask the host for a new link.",
   "relayRoomErrEnded": "This room has already ended.",
   "relayRoomErrFull": "This room is full (maximum 3 guests).",
-  "relayRoomErrGeneric": "Could not connect to the room. Please try again."
+  "relayRoomErrGeneric": "Could not connect to the room. Please try again.",
+  "relayRoomPrivacyBanner": "Everyone in the room can see the camera",
+  "relayCameraRequestText": "{name} wants to show their camera",
+  "relayAllowCamera": "Allow",
+  "relayNotNow": "Not now",
+  "relayTakeBackCamera": "Take back camera",
+  "relayShowingCamera": "{name}'s camera"
 }

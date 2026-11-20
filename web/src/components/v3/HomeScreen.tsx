@@ -73,20 +73,31 @@ function RecentRow({
   const date = new Intl.DateTimeFormat(resolveLang(lang), { day: 'numeric', month: 'short' }).format(
     new Date(item.timestamp)
   )
-  const type = getLocalisedDocType(lang, String(doc || 'other'))
+  const isLiveRelay = item.result?.document_kind === 'live_relay'
+  const type = isLiveRelay ? 'Live Relay' : getLocalisedDocType(lang, String(doc || 'other'))
   return (
     <div className="flex items-center gap-3 py-3 pr-2 pl-3 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F4F5F2]">
       <button type="button" onClick={onOpen} className="sv-press flex items-center gap-3 flex-1 min-w-0 text-left text-[#1A1A1A]">
         <span
           className="w-[46px] h-[46px] shrink-0 box-border rounded-2xl border-[1.5px] border-[#1A1A1A] flex items-center justify-center"
-          style={{ background: visual.bg }}
+          style={{ background: isLiveRelay ? '#214D47' : visual.bg }}
         >
-          <DocIcon name={visual.icon} stroke={visual.ink} />
+          <DocIcon name={visual.icon} stroke={isLiveRelay ? '#F4F5F2' : visual.ink} />
         </span>
         <span className="flex flex-col gap-[3px] flex-1 min-w-0">
           <span className="text-[15.5px] font-semibold leading-[1.3] line-clamp-2">{item.displayName || item.title}</span>
-          <span className="text-[13px] text-[#575B58]">
-            {type} · {date}
+          <span className="flex items-center gap-1.5 text-[13px] text-[#575B58]">
+            {isLiveRelay ? (
+              <span
+                data-testid="recent-live-relay-badge"
+                className="inline-block px-2 py-0.5 rounded-full bg-[#214D47] text-[#F4F5F2] text-[11px] font-bold"
+              >
+                Live Relay
+              </span>
+            ) : (
+              <span>{type}</span>
+            )}
+            <span>· {date}</span>
           </span>
         </span>
       </button>

@@ -2,10 +2,11 @@ import type { RecentResult, ExplainResponse, AskTurn } from '../types'
 import { downscaleImageForStorage } from './image'
 
 const DB_NAME = 'sarvam_db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 const STORE_NAME = 'recent_results'
 const ORIGINALS_STORE = 'original_files'
 const READ_CACHE_STORE = 'read_cache'
+const RELAY_SESSIONS_STORE = 'relaySessions'
 const MAX_ENTRIES = 20
 export const MAX_ORIGINALS_BYTES = 40 * 1024 * 1024 // 40 MB
 const SETTING_KEY = 'sarvam.save_recent'
@@ -62,6 +63,10 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(READ_CACHE_STORE)) {
         db.createObjectStore(READ_CACHE_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) {
+        const relayStore = db.createObjectStore(RELAY_SESSIONS_STORE, { keyPath: 'id' })
+        relayStore.createIndex('endedAt', 'endedAt', { unique: false })
       }
     }
 
@@ -423,6 +428,102 @@ export async function idbPutReadCache(record: ReadCacheRecord): Promise<void> {
     })
   } catch {
     /* a missed cache write still leaves the result on screen */
+  }
+}
+
+export interface RelaySessionCaption {
+  speaker: string
+  text: string
+  lang: string
+  ts: number
+}
+
+export interface RelaySessionPage {
+  id: string
+  dataUrl: string
+  thumbDataUrl: string
+  width: number
+  height: number
+  timestamp: number
+}
+
+export interface RelaySessionRecord {
+  id: string
+  title: string
+  startedAt: number
+  endedAt: number
+  participants: string[]
+  captions: RelaySessionCaption[]
+  pages: RelaySessionPage[]
+  pins: string[]
+}
+
+export async function saveRelaySession(record: RelaySessionRecord): Promise<void> {
+  if (!isSaveRecentEnabled()) return
+  if (typeof indexedDB === 'undefined') return
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) return
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(RELAY_SESSIONS_STORE, 'readwrite')
+      tx.objectStore(RELAY_SESSIONS_STORE).put(record)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch {
+    // Non-fatal if IndexedDB write fails
+  }
+}
+
+export async function getRelaySession(id: string): Promise<RelaySessionRecord | null> {
+  if (typeof indexedDB === 'undefined' || !id) return null
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) return null
+    return await new Promise((resolve) => {
+      const tx = db.transaction(RELAY_SESSIONS_STORE, 'readonly')
+      const req = tx.objectStore(RELAY_SESSIONS_STORE).get(id)
+      req.onsuccess = () => resolve((req.result as RelaySessionRecord) || null)
+      req.onerror = () => resolve(null)
+    })
+  } catch {
+    return null
+  }
+}
+
+export async function listRelaySessions(): Promise<RelaySessionRecord[]> {
+  if (typeof indexedDB === 'undefined') return []
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) return []
+    return await new Promise((resolve) => {
+      const tx = db.transaction(RELAY_SESSIONS_STORE, 'readonly')
+      const req = tx.objectStore(RELAY_SESSIONS_STORE).getAll()
+      req.onsuccess = () => {
+        const items = (req.result as RelaySessionRecord[]) || []
+        items.sort((a, b) => (b.endedAt || b.startedAt) - (a.endedAt || a.startedAt))
+        resolve(items)
+      }
+      req.onerror = () => resolve([])
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function deleteRelaySession(id: string): Promise<void> {
+  if (typeof indexedDB === 'undefined' || !id) return
+  try {
+    const db = await openDB()
+    if (!db.objectStoreNames.contains(RELAY_SESSIONS_STORE)) return
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(RELAY_SESSIONS_STORE, 'readwrite')
+      tx.objectStore(RELAY_SESSIONS_STORE).delete(id)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    })
+  } catch {
+    // ignore
   }
 }
 

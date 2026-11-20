@@ -301,6 +301,9 @@ export class LiveAudioManager {
   private ownsCtx = true
   private playerNode: AudioWorkletNode | null = null
   private recorderNode: AudioWorkletNode | null = null
+  private geminiDestNode: MediaStreamAudioDestinationNode | null = null
+  private geminiBroadcastTrackId: string | null = null
+  private remoteChains: Map<string, { source: MediaStreamAudioSourceNode; gain: GainNode; recorder: AudioWorkletNode }> = new Map()
   private micStream: MediaStream | null = null
   private ownsMicStream = true
   private isMuted = false
@@ -517,6 +520,78 @@ export class LiveAudioManager {
     return this.playerNode
   }
 
+  /**
+   * Routes Gemini's 24 kHz playback worklet output into a MediaStreamAudioDestinationNode
+   * so RoomHost can publish it to LiveKit as the "gemini" audio track.
+   * Records its track ID so it is NEVER accepted as a remote mixer input.
+   */
+  createGeminiBroadcastTrack(): MediaStreamTrack | null {
+    if (!this.ctx || !this.playerNode) return null
+    if (!this.geminiDestNode) {
+      this.geminiDestNode = this.ctx.createMediaStreamDestination()
+      this.playerNode.connect(this.geminiDestNode)
+    }
+    const track = this.geminiDestNode.stream.getAudioTracks()[0] || null
+    if (track) {
+      this.geminiBroadcastTrackId = track.id
+    }
+    return track
+  }
+
+  getGeminiBroadcastTrackId(): string | null {
+    return this.geminiBroadcastTrackId
+  }
+
+  /**
+   * Connects a remote guest MediaStreamTrack through a GainNode into its own
+   * 16 kHz PCM16 recorder worklet so the caller can run per-source ConversationGate
+   * before mixing. Strictly refuses Gemini's own broadcast track.
+   */
+  attachRemoteAudioTrack(
+    sourceId: string,
+    track: MediaStreamTrack,
+    onPcm16: (pcm: ArrayBuffer) => void,
+  ): boolean {
+    if (!this.ctx || this.ctx.state === 'closed') return false
+    if (
+      sourceId.toLowerCase() === 'gemini' ||
+      (this.geminiBroadcastTrackId && track.id === this.geminiBroadcastTrackId)
+    ) {
+      return false
+    }
+    this.detachRemoteAudioTrack(sourceId)
+    try {
+      const stream = new MediaStream([track])
+      const source = this.ctx.createMediaStreamSource(stream)
+      const gain = this.ctx.createGain()
+      gain.gain.value = 1.0
+      const recorder = new AudioWorkletNode(this.ctx, 'recorder-processor')
+      source.connect(gain)
+      gain.connect(recorder)
+      recorder.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+        onPcm16(e.data)
+      }
+      this.remoteChains.set(sourceId, { source, gain, recorder })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  detachRemoteAudioTrack(sourceId: string): void {
+    const chain = this.remoteChains.get(sourceId)
+    if (!chain) return
+    try {
+      chain.recorder.port.onmessage = null
+      chain.source.disconnect()
+      chain.gain.disconnect()
+      chain.recorder.disconnect()
+    } catch {
+      // ignore
+    }
+    this.remoteChains.delete(sourceId)
+  }
+
   getIsPlayingAudio(): boolean {
     return this.isPlayingAudio
   }
@@ -547,6 +622,18 @@ export class LiveAudioManager {
         this.micStream.getTracks().forEach((track) => track.stop())
       }
       this.micStream = null
+    }
+    for (const id of Array.from(this.remoteChains.keys())) {
+      this.detachRemoteAudioTrack(id)
+    }
+    if (this.geminiDestNode) {
+      try {
+        this.geminiDestNode.disconnect()
+      } catch {
+        // ignore
+      }
+      this.geminiDestNode = null
+      this.geminiBroadcastTrackId = null
     }
     if (this.recorderNode) {
       this.recorderNode.disconnect()

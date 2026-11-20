@@ -26,7 +26,7 @@ import {
   requestRelayMediaStream,
 } from './audio/LiveAudioManager.js'
 import {
-  buildLiveVideoSystemPrompt,
+  buildRoomSystemPrompt,
   buildSoloSystemPrompt,
 } from './live/relayPrompt.js'
 import type { LiveClient, RelayLanguage } from './live/LiveClient.js'
@@ -37,11 +37,24 @@ import {
   type CapturedPage,
   MAX_PAGE_STACK_COUNT,
 } from './pageStack.js'
-import { ConversationGate, type ConversationGateMetrics } from './audio/ConversationGate.js'
+import type { ConversationGateMetrics } from './audio/ConversationGate.js'
+import { RoomAudioMixerGraph } from './audio/RoomAudioMixer.js'
 import { RelayTurnController, type RelayTurnSnapshot } from './relayTurnState.js'
 import { TranscriptAssembler } from './transcriptAssembler.js'
 import RelayDebugOverlay, { isRelayDebugEnabled } from './RelayDebugOverlay.js'
-import RoomHost, { type RoomHostHandle } from './room/RoomHost.js'
+import RoomHost, { type RoomHostHandle, type RoomMemberInfo } from './room/RoomHost.js'
+import {
+  buildCaptionBroadcast,
+  SpeakerNoteTracker,
+} from './room/speakerTracker.js'
+import {
+  createInitialCameraHandoffState,
+  transitionCameraHandoff,
+  type CameraHandoffState,
+  type CameraHandoffTransitionResult,
+} from './room/cameraHandoff.js'
+import { updateRelayGuestPermission } from './room/relayApi.js'
+import type { RemoteTrack } from 'livekit-client'
 import type { SheetDetent } from './sheetDetents.js'
 import PageViewer from './PageViewer.js'
 import { pushBrowserHistory } from '../../utils/history.js'
@@ -67,7 +80,11 @@ import {
 import LiveSheet from './LiveSheet.js'
 import type { CaptionTurn } from './RelaySpikeScreen.js'
 import { getDictionary, resolveLang } from '../../i18n/index.js'
-import { isSaveRecentEnabled, saveRecentResult } from '../../utils/db.js'
+import {
+  isSaveRecentEnabled,
+  saveRecentResult,
+  saveRelaySession,
+} from '../../utils/db.js'
 import type { ExplainResponse } from '../../types.js'
 import './cameraScreen.css'
 
@@ -163,8 +180,15 @@ export default function CameraScreen({
   const [debugGateMetrics, setDebugGateMetrics] = useState<ConversationGateMetrics | null>(null)
   const debugEnabled = isRelayDebugEnabled()
 
+  // P3 Room handoff & privacy state
+  const [handoffState, setHandoffState] = useState<CameraHandoffState>(() => createInitialCameraHandoffState())
+  const [guestCount, setGuestCount] = useState(0)
+  const [roomPrivacyShown, setRoomPrivacyShown] = useState(false)
+
   // DOM & Manager refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const remoteGuestVideoRef = useRef<HTMLVideoElement | null>(null)
+  const activeGuestVideoTrackRef = useRef<RemoteTrack | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const activeStreamRef = useRef<MediaStream | null>(null)
@@ -174,9 +198,15 @@ export default function CameraScreen({
   const cadenceRef = useRef<FrameCadenceController | null>(null)
   const idleGuardRef = useRef<IdleGuardController | null>(null)
   const roomHostRef = useRef<RoomHostHandle | null>(null)
-  const gateRef = useRef<ConversationGate>(new ConversationGate())
+  const mixerRef = useRef<RoomAudioMixerGraph>(new RoomAudioMixerGraph())
+  const speakerTrackerRef = useRef<SpeakerNoteTracker | null>(null)
   const turnCtrlRef = useRef<RelayTurnController | null>(null)
   const transcriptRef = useRef<TranscriptAssembler>(new TranscriptAssembler())
+  const handoffStateRef = useRef<CameraHandoffState>(handoffState)
+  const allowGuestCameraRef = useRef(false)
+  const videoPausedRef = useRef(videoPaused)
+  const sessionStartedAtRef = useRef<number>(Date.now())
+  const participantsSetRef = useRef<Set<string>>(new Set(['You']))
   const lastGateActiveAtRef = useRef<number>(0)
   const lastEndedSpeechMsRef = useRef<number>(0)
   const isMountedRef = useRef(true)
@@ -224,8 +254,45 @@ export default function CameraScreen({
   }, [pages])
 
   useEffect(() => {
+    handoffStateRef.current = handoffState
+  }, [handoffState])
+
+  useEffect(() => {
+    videoPausedRef.current = videoPaused
+  }, [videoPaused])
+
+  // Ensure host source is registered in mixer graph and speaker tracker is initialized once
+  useEffect(() => {
+    mixerRef.current.addSource({ id: 'host', name: 'You', isHost: true })
+    const tracker = new SpeakerNoteTracker((note) => {
+      if (clientRef.current?.isConnected()) {
+        clientRef.current.sendText(note, false)
+      }
+    }, 600)
+    speakerTrackerRef.current = tracker
+    return () => {
+      tracker.reset()
+      speakerTrackerRef.current = null
+    }
+  }, [])
+
+  // Attach guest remote video track once the guest <video> element mounts
+  useEffect(() => {
+    if (handoffState.kind !== 'guestCamera') return
+    const el = remoteGuestVideoRef.current
+    const tr = activeGuestVideoTrackRef.current
+    if (el && tr) {
+      tr.attach(el)
+      el.muted = true
+      el.playsInline = true
+      el.autoplay = true
+      void el.play().catch(() => {})
+    }
+  }, [handoffState])
+
+  useEffect(() => {
     micModeRef.current = micMode
-    gateRef.current.setMode(micMode === 'hold' ? 'hold' : 'auto')
+    mixerRef.current.setHostMode('host', micMode === 'hold' ? 'hold' : 'auto')
   }, [micMode])
 
   useEffect(() => {
@@ -235,7 +302,7 @@ export default function CameraScreen({
 
   useEffect(() => {
     isHoldingTalkRef.current = isHoldingTalk
-    const transition = gateRef.current.setHolding(isHoldingTalk, Date.now())
+    const transition = mixerRef.current.setHostHolding('host', isHoldingTalk, Date.now())
     if (transition.speechStarted) {
       lastGateActiveAtRef.current = Date.now()
       turnCtrlRef.current?.onUserSpeechStart()
@@ -244,17 +311,26 @@ export default function CameraScreen({
       const committed = transcriptRef.current.commitUserTurn(transition.endedSpeechDurationMs)
       if (committed) {
         setCaptions(transcriptRef.current.getTurns())
+        const payload = buildCaptionBroadcast({
+          id: committed.id,
+          speaker: committed.who,
+          lang: committed.speakerLang || resolvedLang,
+          text: committed.text,
+          ts: committed.ts,
+          kind: 'input',
+        })
+        if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
       }
       turnCtrlRef.current?.onUserSpeechEnd(committed?.text || null)
     }
-  }, [isHoldingTalk])
+  }, [isHoldingTalk, resolvedLang])
 
   // Poll gate metrics for ?debug=1 overlay only when debug mode is explicitly enabled
   useEffect(() => {
     if (!debugEnabled) return
     const id = setInterval(() => {
       if (isMountedRef.current) {
-        setDebugGateMetrics(gateRef.current.getMetrics())
+        setDebugGateMetrics(mixerRef.current.getSourceMetrics('host'))
       }
     }, 250)
     return () => clearInterval(id)
@@ -279,7 +355,7 @@ export default function CameraScreen({
     idleGuardRef.current?.stop()
     turnCtrlRef.current?.stop()
     turnCtrlRef.current = null
-    gateRef.current.reset()
+    mixerRef.current.resetAll()
     if (clientRef.current) {
       const c = clientRef.current
       clientRef.current = null
@@ -319,12 +395,13 @@ export default function CameraScreen({
     })
   }, [])
 
-  // ── Save Session to IndexedDB Recent (End and save) ────────────────
+  // ── Save Session to IndexedDB relaySessions + Recent (End and save) ─
 
   const saveSessionToRecent = useCallback(async () => {
     if (!isSaveRecentEnabled()) return
     const currentCaptions = captionsRef.current
     const currentPages = pagesRef.current
+    const sessionId = `relay-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
     const summaryLines =
       currentCaptions.length > 0
@@ -334,9 +411,9 @@ export default function CameraScreen({
             .filter(Boolean)
         : [t.relayModeLive]
 
-    const firstUserTurn = currentCaptions.find((c) => c.who === 'You' && c.text.trim())
-    const sessionTitle = firstUserTurn
-      ? firstUserTurn.text.trim().slice(0, 60)
+    const firstCaption = currentCaptions.find((c) => c.text.trim())
+    const sessionTitle = firstCaption
+      ? firstCaption.text.trim().slice(0, 60)
       : t.relaySessionTitle
 
     const syntheticResult: ExplainResponse = {
@@ -359,8 +436,31 @@ export default function CameraScreen({
     }
 
     try {
+      await saveRelaySession({
+        id: sessionId,
+        title: sessionTitle,
+        startedAt: sessionStartedAtRef.current,
+        endedAt: Date.now(),
+        participants: Array.from(participantsSetRef.current),
+        captions: currentCaptions.map((c) => ({
+          speaker: c.who,
+          text: c.text,
+          lang: c.speakerLang || resolvedLang,
+          ts: c.ts || Date.now(),
+        })),
+        pages: currentPages.map((p) => ({
+          id: p.id,
+          dataUrl: p.dataUrl,
+          thumbDataUrl: p.dataUrl,
+          width: p.width,
+          height: p.height,
+          timestamp: p.timestamp,
+        })),
+        pins: currentPages.map((p) => p.id),
+      })
+
       await saveRecentResult({
-        id: `relay-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: sessionId,
         title: sessionTitle,
         fileCount: Math.max(currentPages.length, 1),
         fileNames:
@@ -395,12 +495,19 @@ export default function CameraScreen({
     onClose()
   }, [cleanupAllResources, onClose])
 
-  // ── 1 fps Live Video Frame Sender (768 px, JPEG ~0.6) ──────────────
+  // ── 1 fps Live Video Frame Sender (reads from ACTIVE camera: host or guest) ─
 
   const sendLiveVideoFrame = useCallback(() => {
-    const video = videoRef.current
+    const isGuestActive = handoffStateRef.current.kind === 'guestCamera'
+    const guestEl = remoteGuestVideoRef.current
+    const useGuest = isGuestActive && guestEl && guestEl.readyState >= 2 && guestEl.videoWidth > 0
+    const video = useGuest ? guestEl : videoRef.current
     const client = clientRef.current
     if (!video || !client || !client.isConnected() || video.readyState < 2) return
+
+    if (typeof window !== 'undefined') {
+      ;(window as unknown as { __relayFrameSource?: string }).__relayFrameSource = useGuest ? 'guest' : 'host'
+    }
 
     const origWidth = video.videoWidth || 640
     const origHeight = video.videoHeight || 480
@@ -838,15 +945,57 @@ export default function CameraScreen({
           onModelSpeakingForceIdle: () => {
             if (!isMountedRef.current) return
             isPlayingAudioRef.current = false
-            gateRef.current.setPlaybackState(false, 0)
+            mixerRef.current.setPlaybackState(false, 0)
             setIsSpeaking(false)
-            transcriptRef.current.completeModelTurn()
+            const done = transcriptRef.current.completeModelTurn()
             setCaptions(transcriptRef.current.getTurns())
+            if (done) {
+              const payload = buildCaptionBroadcast({
+                id: done.id,
+                speaker: done.who,
+                lang: done.speakerLang || resolvedLang,
+                text: done.text,
+                ts: done.ts,
+                kind: 'output',
+              })
+              if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+            }
           },
         },
         win?.__relayWatchdogTimings,
       )
       turnCtrlRef.current = turnCtrl
+
+      const handleMixedSourcePcm = (sourceId: string, pcm: ArrayBuffer) => {
+        const now = Date.now()
+        const res = mixerRef.current.processSourceFrame(sourceId, pcm, now)
+        if (res.activeSourceIds.length > 0) {
+          lastGateActiveAtRef.current = now
+        }
+        if (res.anySpeechStarted) {
+          turnCtrl.onUserSpeechStart()
+        }
+        for (const frame of res.framesToSend) {
+          client.sendAudio(frame)
+        }
+        if (res.anySpeechEnded) {
+          lastEndedSpeechMsRef.current = res.endedSpeechDurationMs
+          const committed = transcriptRef.current.commitUserTurn(res.endedSpeechDurationMs)
+          if (committed && isMountedRef.current) {
+            setCaptions(transcriptRef.current.getTurns())
+            const payload = buildCaptionBroadcast({
+              id: committed.id,
+              speaker: committed.who,
+              lang: committed.speakerLang || resolvedLang,
+              text: committed.text,
+              ts: committed.ts,
+              kind: 'input',
+            })
+            if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+          }
+          turnCtrl.onUserSpeechEnd(committed?.text || null)
+        }
+      }
 
       try {
         // Start & connect the 24 kHz playback worklet BEFORE connecting the Live session
@@ -859,39 +1008,21 @@ export default function CameraScreen({
             if (micModeRef.current === 'vad' && isMutedRef.current) {
               return
             }
-            const now = Date.now()
-            const res = gateRef.current.processFrame(pcm, now)
-            if (res.isOpen) {
-              lastGateActiveAtRef.current = now
-            }
-            if (res.speechStarted) {
-              turnCtrl.onUserSpeechStart()
-            }
-            for (const frame of res.framesToSend) {
-              client.sendAudio(frame)
-            }
-            if (res.speechEnded) {
-              lastEndedSpeechMsRef.current = res.endedSpeechDurationMs
-              const committed = transcriptRef.current.commitUserTurn(res.endedSpeechDurationMs)
-              if (committed && isMountedRef.current) {
-                setCaptions(transcriptRef.current.getTurns())
-              }
-              turnCtrl.onUserSpeechEnd(committed?.text || null)
-            }
+            handleMixedSourcePcm('host', pcm)
           },
           {
             audioCtx: sharedAudioCtxRef.current,
             audioStream: activeStreamRef.current,
             onPlaybackStateChange: (playing) => {
               isPlayingAudioRef.current = playing
-              gateRef.current.setPlaybackState(playing, audioManager.getPlaybackLevel())
+              mixerRef.current.setPlaybackState(playing, audioManager.getPlaybackLevel())
               if (isMountedRef.current) {
                 setIsSpeaking(playing)
                 if (playing) setShowSoundBanner(false)
               }
             },
             onPlaybackLevel: (rms) => {
-              gateRef.current.setPlaybackState(isPlayingAudioRef.current, rms)
+              mixerRef.current.setPlaybackState(isPlayingAudioRef.current, rms)
             },
             onPlaybackStalled: () => {
               if (isMountedRef.current) {
@@ -904,6 +1035,15 @@ export default function CameraScreen({
         clientRef.current = client
         audioManagerRef.current = audioManager
 
+        // If a LiveKit room is already open, publish Gemini's 24 kHz audio track as "gemini"
+        if (roomHostRef.current?.isInRoom()) {
+          const geminiTrack = audioManager.createGeminiBroadcastTrack()
+          if (geminiTrack) {
+            mixerRef.current.setGeminiOutputTrackId(geminiTrack.id)
+            void roomHostRef.current.publishGeminiAudioTrack(geminiTrack).catch(() => {})
+          }
+        }
+
         // Output audio (24 kHz) — speaking indicator follows actual playback from worklet
         client.onAudio = (pcm) => {
           idleGuardRef.current?.recordActivity()
@@ -912,29 +1052,45 @@ export default function CameraScreen({
           audioManager.playAudio(pcm)
         }
 
-        // Interrupted — FALSE BARGE-IN GUARD: only stop Gemini if local gate saw >=200ms speech in last 400ms
+        // Interrupted — FALSE BARGE-IN GUARD: only stop Gemini if local/guest gate saw >=200ms speech in last 400ms
         client.onInterrupted = () => {
-          if (!gateRef.current.shouldAcceptServerInterrupt(Date.now())) {
+          if (!mixerRef.current.shouldAcceptServerInterrupt(Date.now())) {
             console.info('[relay] ignored false server interrupt (local gate closed or <200ms)')
             return
           }
           audioManager.flush()
           isPlayingAudioRef.current = false
-          gateRef.current.setPlaybackState(false, 0)
+          mixerRef.current.setPlaybackState(false, 0)
           setIsSpeaking(false)
           turnCtrl.onRealInterrupt()
-          transcriptRef.current.interruptModelTurn()
+          const cut = transcriptRef.current.interruptModelTurn()
           setCaptions(transcriptRef.current.getTurns())
+          if (cut) {
+            const payload = buildCaptionBroadcast({
+              id: cut.id,
+              speaker: cut.who,
+              lang: resolvedLang,
+              text: cut.text,
+              ts: cut.ts,
+              kind: 'output',
+            })
+            if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+          }
         }
 
-        // Input captions — buffered in TranscriptAssembler; dropped when gate closed
+        // Input captions — buffered in TranscriptAssembler; labeled with active speaker; dropped when gate closed
         client.onInputText = (text: string) => {
           turnCtrl.recordServerMessage()
           const now = Date.now()
           const gateActive =
-            gateRef.current.getIsOpen() ||
+            mixerRef.current.isAnyGateOpen() ||
             now - lastGateActiveAtRef.current <= 1200
-          const accepted = transcriptRef.current.pushInputFragment(text, { gateActive })
+          const activeSpk = speakerTrackerRef.current?.getCurrentSpeaker()
+          const accepted = transcriptRef.current.pushInputFragment(text, {
+            gateActive,
+            speaker: activeSpk?.name || 'You',
+            lang: activeSpk?.lang || resolvedLang,
+          })
           if (accepted) {
             idleGuardRef.current?.recordActivity()
             setIdlePromptOpen(false)
@@ -952,8 +1108,19 @@ export default function CameraScreen({
 
         client.onTurnComplete = () => {
           turnCtrl.onTurnComplete()
-          transcriptRef.current.completeModelTurn()
+          const done = transcriptRef.current.completeModelTurn()
           setCaptions(transcriptRef.current.getTurns())
+          if (done) {
+            const payload = buildCaptionBroadcast({
+              id: done.id,
+              speaker: done.who,
+              lang: done.speakerLang || resolvedLang,
+              text: done.text,
+              ts: done.ts,
+              kind: 'output',
+            })
+            if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+          }
           if (!isPlayingAudioRef.current) {
             setIsSpeaking(false)
           }
@@ -961,8 +1128,19 @@ export default function CameraScreen({
 
         client.onGenerationComplete = () => {
           turnCtrl.recordServerMessage()
-          transcriptRef.current.completeModelTurn()
+          const done = transcriptRef.current.completeModelTurn()
           setCaptions(transcriptRef.current.getTurns())
+          if (done) {
+            const payload = buildCaptionBroadcast({
+              id: done.id,
+              speaker: done.who,
+              lang: done.speakerLang || resolvedLang,
+              text: done.text,
+              ts: done.ts,
+              kind: 'output',
+            })
+            if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+          }
           if (!isPlayingAudioRef.current) {
             setIsSpeaking(false)
           }
@@ -1017,7 +1195,7 @@ export default function CameraScreen({
         const relayLang = toRelayLanguage(lang)
         const systemInstruction =
           forMode === 'live'
-            ? buildLiveVideoSystemPrompt(relayLang)
+            ? buildRoomSystemPrompt(relayLang)
             : buildSoloSystemPrompt(relayLang)
 
         await client.connect({ language: relayLang, systemInstruction })
@@ -1169,6 +1347,203 @@ export default function CameraScreen({
     })
   }, [captureCurrentPage, showToast, t.relayPageAdded])
 
+  // Broadcast a small JPEG thumbnail (<= 150 KB) of a newly pinned page to the room
+  const broadcastPinnedPage = useCallback((page: CapturedPage, pageNum: number) => {
+    if (!roomHostRef.current?.isInRoom()) return
+    void (async () => {
+      try {
+        const img = new Image()
+        img.src = page.dataUrl
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve()
+          img.onerror = () => reject(new Error('pin thumb load failed'))
+        })
+        const { targetWidth, targetHeight } = calculateLongEdgeDimensions(
+          img.naturalWidth || page.width,
+          img.naturalHeight || page.height,
+          480,
+        )
+        const c = document.createElement('canvas')
+        c.width = targetWidth
+        c.height = targetHeight
+        const ctx = c.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+        const thumb = c.toDataURL('image/jpeg', 0.62)
+        // Enforce <= 150 KB cap for data channel safety
+        if (thumb.length <= 150_000) {
+          roomHostRef.current?.broadcastData({ type: 'pin', pin: page.id, pageNumber: pageNum, thumb }, true)
+        }
+      } catch {
+        // ignore thumbnail errors
+      }
+    })()
+  }, [])
+
+  const applyHandoffResult = useCallback((res: CameraHandoffTransitionResult) => {
+    if (!res.changed) return
+    setHandoffState(res.state)
+    handoffStateRef.current = res.state
+    const code = roomHostRef.current?.getRoomCode()
+    const hostKey = roomHostRef.current?.getHostKey()
+
+    if (res.grantGuestId && code && hostKey) {
+      const guestName = res.state.kind === 'guestCamera' ? res.state.guestName : 'Guest'
+      void updateRelayGuestPermission({
+        hostKey,
+        code,
+        identity: res.grantGuestId,
+        canPublishCamera: true,
+      }).then(() => {
+        roomHostRef.current?.broadcastData(
+          {
+            type: 'camera_grant',
+            identity: res.grantGuestId,
+            activeCameraLabel: `${guestName}'s camera`,
+          },
+          true,
+        )
+      }).catch(() => {})
+    }
+
+    if (res.revokeGuestId && code && hostKey) {
+      void updateRelayGuestPermission({
+        hostKey,
+        code,
+        identity: res.revokeGuestId,
+        canPublishCamera: false,
+      }).catch(() => {})
+      roomHostRef.current?.broadcastData(
+        { type: 'camera_revoke', activeCameraLabel: "Host's camera" },
+        true,
+      )
+      if (activeGuestVideoTrackRef.current && remoteGuestVideoRef.current) {
+        activeGuestVideoTrackRef.current.detach(remoteGuestVideoRef.current)
+      }
+      activeGuestVideoTrackRef.current = null
+    }
+
+    if (res.geminiNote && clientRef.current?.isConnected()) {
+      clientRef.current.sendText(res.geminiNote, false)
+    }
+  }, [])
+
+  const handleRoomActiveChange = useCallback(
+    (info: { active: boolean; code: string | null; hostKey: string | null; memberCount: number; members: RoomMemberInfo[] }) => {
+      const guests = info.members.filter((m) => m.role === 'guest')
+      setGuestCount(guests.length)
+      info.members.forEach((m) => participantsSetRef.current.add(m.name))
+      if (info.active && audioManagerRef.current && roomHostRef.current) {
+        const geminiTrack = audioManagerRef.current.createGeminiBroadcastTrack()
+        if (geminiTrack) {
+          mixerRef.current.setGeminiOutputTrackId(geminiTrack.id)
+          void roomHostRef.current.publishGeminiAudioTrack(geminiTrack).catch(() => {})
+        }
+      }
+    },
+    [],
+  )
+
+  const handleGuestJoined = useCallback((member: RoomMemberInfo) => {
+    participantsSetRef.current.add(member.name)
+    setRoomPrivacyShown(true)
+  }, [])
+
+  const handleGuestLeft = useCallback(
+    (identity: string) => {
+      audioManagerRef.current?.detachRemoteAudioTrack(identity)
+      mixerRef.current.removeSource(identity)
+      const res = transitionCameraHandoff(
+        handoffStateRef.current,
+        { type: 'GUEST_LEFT', guestId: identity },
+        { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+      )
+      applyHandoffResult(res)
+    },
+    [applyHandoffResult],
+  )
+
+  const handleRemoteAudioTrack = useCallback(
+    (identity: string, name: string, track: MediaStreamTrack | null) => {
+      if (!track) {
+        audioManagerRef.current?.detachRemoteAudioTrack(identity)
+        mixerRef.current.removeSource(identity)
+        return
+      }
+      const added = mixerRef.current.addSource({ id: identity, name, trackId: track.id })
+      if (!added) return
+      audioManagerRef.current?.attachRemoteAudioTrack(identity, track, (pcm) => {
+        const now = Date.now()
+        const res = mixerRef.current.processSourceFrame(identity, pcm, now)
+        if (res.activeSourceIds.length > 0) {
+          lastGateActiveAtRef.current = now
+        }
+        if (res.anySpeechStarted) {
+          turnCtrlRef.current?.onUserSpeechStart()
+        }
+        for (const frame of res.framesToSend) {
+          clientRef.current?.sendAudio(frame)
+        }
+        if (res.anySpeechEnded) {
+          lastEndedSpeechMsRef.current = res.endedSpeechDurationMs
+          const committed = transcriptRef.current.commitUserTurn(res.endedSpeechDurationMs)
+          if (committed && isMountedRef.current) {
+            setCaptions(transcriptRef.current.getTurns())
+            const payload = buildCaptionBroadcast({
+              id: committed.id,
+              speaker: committed.who,
+              lang: committed.speakerLang || resolvedLang,
+              text: committed.text,
+              ts: committed.ts,
+              kind: 'input',
+            })
+            if (payload) roomHostRef.current?.broadcastData(payload as unknown as Record<string, unknown>, true)
+          }
+          turnCtrlRef.current?.onUserSpeechEnd(committed?.text || null)
+        }
+      })
+    },
+    [resolvedLang],
+  )
+
+  const handleRemoteVideoTrack = useCallback((_identity: string, _name: string, track: RemoteTrack | null) => {
+    activeGuestVideoTrackRef.current = track
+    const el = remoteGuestVideoRef.current
+    if (!el) return
+    if (!track) {
+      el.srcObject = null
+      return
+    }
+    track.attach(el)
+    el.muted = true
+    el.playsInline = true
+    el.autoplay = true
+    void el.play().catch(() => {})
+  }, [])
+
+  const handleRoomDataMessage = useCallback(
+    (payload: Record<string, unknown>, sender: RoomMemberInfo | null) => {
+      if (!sender) return
+      if (payload.type === 'camera_request') {
+        const guestName = typeof payload.name === 'string' && payload.name.trim() ? payload.name.trim() : sender.name
+        const res = transitionCameraHandoff(
+          handoffStateRef.current,
+          { type: 'GUEST_REQUEST', guestId: sender.identity, guestName },
+          { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+        )
+        applyHandoffResult(res)
+      } else if (payload.type === 'camera_release') {
+        const res = transitionCameraHandoff(
+          handoffStateRef.current,
+          { type: 'GUEST_RELEASE', guestId: sender.identity },
+          { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+        )
+        applyHandoffResult(res)
+      }
+    },
+    [applyHandoffResult],
+  )
+
   const handleFreezeAndAsk = useCallback(() => {
     idleGuardRef.current?.recordActivity()
     const prevDetent = sheetDetent
@@ -1177,6 +1552,7 @@ export default function CameraScreen({
     }
     captureCurrentPage((page, pageNum) => {
       showToast((t.relayPageAdded || 'Page {n} added').replace('{n}', String(pageNum)))
+      broadcastPinnedPage(page, pageNum)
       const client = clientRef.current
       if (client?.isConnected()) {
         setIsThinking(true)
@@ -1190,7 +1566,7 @@ export default function CameraScreen({
         setSheetDetent(prevDetent)
       }
     })
-  }, [captureCurrentPage, isLiveSheetOpen, sheetDetent, showToast, t.relayPageAdded])
+  }, [broadcastPinnedPage, captureCurrentPage, isLiveSheetOpen, sheetDetent, showToast, t.relayPageAdded])
 
   const handleAddPageFromSheet = useCallback(() => {
     if (pagesRef.current.length >= MAX_PAGE_STACK_COUNT) {
@@ -1204,6 +1580,7 @@ export default function CameraScreen({
       if (!isMountedRef.current) return
       captureCurrentPage((page, pageNum) => {
         showToast((t.relayPageAdded || 'Page {n} added').replace('{n}', String(pageNum)))
+        broadcastPinnedPage(page, pageNum)
         if (clientRef.current?.isConnected()) {
           setIsThinking(true)
           void page.blob.arrayBuffer().then((buf) => {
@@ -1215,7 +1592,7 @@ export default function CameraScreen({
         setSheetDetent(prevDetent)
       })
     }, 80)
-  }, [captureCurrentPage, sheetDetent, showToast, t.relayMaxPagesReached, t.relayPageAdded])
+  }, [broadcastPinnedPage, captureCurrentPage, sheetDetent, showToast, t.relayMaxPagesReached, t.relayPageAdded])
 
   // ── Page Viewer handlers (with history back support) ───────────────
 
@@ -1333,7 +1710,7 @@ export default function CameraScreen({
         data-frames-sent={framesSent}
         data-video-paused={videoPaused ? 'true' : 'false'}
       >
-        {/* Video Viewport */}
+        {/* Video Viewport (Host camera + full-screen Guest camera during handoff) */}
         <video
           ref={videoRef}
           data-testid="relay-camera-video"
@@ -1343,10 +1720,21 @@ export default function CameraScreen({
           autoPlay
           style={{
             transform: isFront ? 'scaleX(-1)' : 'none',
-            opacity: mode === 'live' && videoPaused ? 0.35 : 1,
+            opacity: handoffState.kind === 'guestCamera' ? 0 : mode === 'live' && videoPaused ? 0.35 : 1,
             transition: 'opacity 0.2s ease',
           }}
         />
+        {handoffState.kind === 'guestCamera' && (
+          <video
+            ref={remoteGuestVideoRef}
+            data-testid="relay-active-guest-video"
+            className="rc-video"
+            playsInline
+            muted
+            autoPlay
+            style={{ zIndex: 2 }}
+          />
+        )}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Shutter Flash Animation */}
@@ -1510,7 +1898,150 @@ export default function CameraScreen({
                 lang={resolvedLang}
                 getMediaStream={() => activeStreamRef.current}
                 t={t}
+                onRoomActiveChange={handleRoomActiveChange}
+                onGuestJoined={handleGuestJoined}
+                onGuestLeft={handleGuestLeft}
+                onRemoteAudioTrack={handleRemoteAudioTrack}
+                onRemoteVideoTrack={handleRemoteVideoTrack}
+                onActiveSpeakersChanged={(speakers) => speakerTrackerRef.current?.updateActiveSpeakers(speakers)}
+                onDataMessage={handleRoomDataMessage}
+                onAllowGuestCameraChange={(allowed) => {
+                  allowGuestCameraRef.current = allowed
+                }}
               />
+              {roomPrivacyShown && guestCount > 0 && (
+                <span
+                  data-testid="relay-room-privacy-banner"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '4px 10px',
+                    borderRadius: 12,
+                    background: 'rgba(14,14,14,0.78)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#F5F4F2',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t.relayRoomPrivacyBanner || 'Everyone in the room can see the camera'}
+                </span>
+              )}
+              {handoffState.kind === 'guestCamera' && (
+                <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span
+                    data-testid="relay-active-camera-chip"
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 999,
+                      background: '#E3B660',
+                      color: '#1B1B1B',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {(t.relayShowingCamera || "{name}'s camera").replace('{name}', handoffState.guestName)}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="relay-take-back-camera-btn"
+                    onClick={() => {
+                      const res = transitionCameraHandoff(
+                        handoffStateRef.current,
+                        { type: 'HOST_TAKE_BACK' },
+                        { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+                      )
+                      applyHandoffResult(res)
+                    }}
+                    style={{
+                      minHeight: 44,
+                      padding: '0 12px',
+                      borderRadius: 999,
+                      border: '1.5px solid #F5F4F2',
+                      background: 'rgba(27,27,27,0.88)',
+                      color: '#F5F4F2',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t.relayTakeBackCamera || 'Take back camera'}
+                  </button>
+                </div>
+              )}
+              {handoffState.kind === 'requested' && (
+                <div
+                  data-testid="relay-camera-request-banner"
+                  style={{
+                    pointerEvents: 'auto',
+                    background: '#F4F5F2',
+                    color: '#1B1B1B',
+                    borderRadius: 16,
+                    border: '2px solid #1B1B1B',
+                    padding: '10px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    maxWidth: 250,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    {(t.relayCameraRequestText || '{name} wants to show their camera').replace('{name}', handoffState.guestName)}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      data-testid="relay-camera-allow-btn"
+                      onClick={() => {
+                        const res = transitionCameraHandoff(
+                          handoffStateRef.current,
+                          { type: 'HOST_ALLOW' },
+                          { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+                        )
+                        applyHandoffResult(res)
+                      }}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: 999,
+                        border: 0,
+                        background: '#214D47',
+                        color: '#F5F4F2',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {t.relayAllowCamera || 'Allow'}
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="relay-camera-deny-btn"
+                      onClick={() => {
+                        const res = transitionCameraHandoff(
+                          handoffStateRef.current,
+                          { type: 'HOST_DENY' },
+                          { allowGuestCamera: allowGuestCameraRef.current, hostCameraOff: videoPausedRef.current },
+                        )
+                        applyHandoffResult(res)
+                      }}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: 999,
+                        border: '1.5px solid #1B1B1B',
+                        background: 'transparent',
+                        color: '#1B1B1B',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {t.relayNotNow || 'Not now'}
+                    </button>
+                  </div>
+                </div>
+              )}
               {videoPaused && (
                 <span
                   data-testid="relay-paused-badge"

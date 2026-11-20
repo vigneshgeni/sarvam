@@ -57,3 +57,14 @@ export function buildLiveVideoSystemPrompt(lang: RelayLanguage = 'auto'): string
 
   return `You are Sarvam, a calm, friendly helper in Live video mode. ${liveVideoBlock} ${safety} ${langLock}`
 }
+
+/**
+ * Multi-speaker room system prompt (P3).
+ * Uses one fixed short speaker note format and instructs Gemini never to read notes aloud.
+ */
+export function buildRoomSystemPrompt(lang: RelayLanguage = 'auto'): string {
+  const base = buildLiveVideoSystemPrompt(lang)
+  const roomInstructions =
+    'Several people may talk. A note like (Name is speaking, Tamil) tells you who. Answer each person in their own language, address them by name, and keep answers short. Never read the notes aloud.'
+  return `${base} ${roomInstructions}`
+}

@@ -68,7 +68,9 @@ import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.
 const RelaySpikeScreen = lazy(() => import('./features/relay/RelaySpikeScreen.js'))
 const RelayIntro = lazy(() => import('./features/relay/RelayIntro.js'))
 const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
+const RelaySessionViewer = lazy(() => import('./features/relay/RelaySessionViewer.js'))
 import type { RelayLaunchContext } from './features/relay/CameraScreen.js'
+import { getRelaySession, type RelaySessionRecord } from './utils/db.js'
 import { createOrResumeRelayAudioContext, requestRelayMediaStream } from './features/relay/audio/LiveAudioManager.js'
 import { logRelayStage } from './features/relay/relaySessionState.js'
 
@@ -136,6 +138,7 @@ export default function App() {
 
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [relayLaunch, setRelayLaunch] = useState<RelayLaunchContext | null>(null)
+  const [activeRelaySession, setActiveRelaySession] = useState<RelaySessionRecord | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const saved = loadActiveSession()
     let seen = false
@@ -617,6 +620,13 @@ export default function App() {
   }
 
   const handleOpenRecent = async (item: RecentResult) => {
+    if (item.result?.document_kind === 'live_relay') {
+      const savedRelay = await getRelaySession(item.id)
+      if (savedRelay) {
+        setActiveRelaySession(savedRelay)
+        return
+      }
+    }
     currentResultIdRef.current = item.id
     asksOwnerRef.current = item.id
     asksRef.current = item.asks || []
@@ -1727,6 +1737,19 @@ export default function App() {
               initialLaunch={relayLaunch}
             />
           </Suspense>
+        )}
+
+        {/* Saved Live Relay Read-Only Transcript & Pages Viewer */}
+        {activeRelaySession && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-[#F4F5F2]">
+            <Suspense fallback={<div className="fixed inset-0 bg-[#F4F5F2]" />}>
+              <RelaySessionViewer
+                session={activeRelaySession}
+                onClose={() => setActiveRelaySession(null)}
+                t={t}
+              />
+            </Suspense>
+          </div>
         )}
       </main>
 

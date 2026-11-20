@@ -570,5 +570,11 @@
   "relayRoomErrExpired": "यह रूम समाप्त हो गया है। नया लिंक माँगें।",
   "relayRoomErrEnded": "यह रूम पहले ही समाप्त हो चुका है।",
   "relayRoomErrFull": "यह रूम भरा हुआ है (अधिकतम 3 मेहमान)।",
-  "relayRoomErrGeneric": "रूम से जुड़ नहीं सके। फिर से प्रयास करें।"
+  "relayRoomErrGeneric": "रूम से जुड़ नहीं सके। फिर से प्रयास करें।",
+  "relayRoomPrivacyBanner": "रूम में मौजूद सभी लोग कैमरा देख सकते हैं",
+  "relayCameraRequestText": "{name} अपना कैमरा दिखाना चाहते हैं",
+  "relayAllowCamera": "अनुमति दें",
+  "relayNotNow": "अभी नहीं",
+  "relayTakeBackCamera": "अपना कैमरा वापस लें",
+  "relayShowingCamera": "{name} का कैमरा"
 }
