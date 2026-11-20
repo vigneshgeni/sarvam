@@ -519,5 +519,22 @@
   "relayUnmuteMic": "మైక్ అన్‌మ్యూట్ చేయి",
   "relaySwitchToHold": "హోల్డ్-టు-టాక్‌కు మార్చు",
   "relaySwitchToVad": "ఓపెన్ మైక్‌కు మార్చు",
-  "relaySessionTitle": "లైవ్ రిలే సెషన్"
+  "relaySessionTitle": "లైవ్ రిలే సెషన్",
+  "relayOpenPageN": "Open page {n}",
+  "relayPageOfTotal": "Page {n} of {total}",
+  "relayDiscussPage": "Discuss this page",
+  "relayPageSentToGemini": "Sent to Gemini",
+  "relayDeletePage": "Delete page",
+  "relayDeletePageTitle": "Delete this page?",
+  "relayDeletePageBody": "This removes the page from your scanned stack.",
+  "relayPreviousPage": "Previous page",
+  "relayNextPage": "Next page",
+  "relayAddPage": "Add page",
+  "relayPageAdded": "Page {n} added",
+  "relayMaxPagesReached": "Maximum 10 pages reached",
+  "relayExpandSheet": "Expand Gemini Live sheet",
+  "relayCollapseSheet": "Resize Gemini Live sheet",
+  "relayTapToTurnOnSound": "Tap to turn on sound",
+  "relayNoSoundHelp": "No sound? Check the ring/silent switch and the volume.",
+  "relayTypeQuestion": "Type a question…"
 }

@@ -174,13 +174,6 @@ export class FirebaseLiveClient implements LiveClient {
     const profile = options?.profile ?? 'resumption'
     const language = options?.language ?? 'auto'
 
-    let languageCode: string | undefined
-    if (language === 'en') {
-      languageCode = 'en-IN'
-    } else if (language === 'ta') {
-      languageCode = 'ta-IN'
-    }
-
     const ai = getAI(app, { backend: new AgentPlatformBackend(location) })
 
     // Build generationConfig adapted for 3.8 and 2.5:
@@ -189,7 +182,6 @@ export class FirebaseLiveClient implements LiveClient {
       responseModalities: [ResponseModality.AUDIO],
     }
 
-    const isNativeAudio = model.includes('native-audio')
     const speechConfig: SingleSpeakerSpeechConfig = {}
 
     if (voice) {
@@ -200,12 +192,9 @@ export class FirebaseLiveClient implements LiveClient {
       }
     }
 
-    // Pass languageCode if model is non-native audio (e.g. gemini-live-2.5-flash)
-    if (languageCode && !isNativeAudio) {
-      speechConfig.languageCode = languageCode
-    }
-
-    if (speechConfig.voiceConfig || speechConfig.languageCode) {
+    // Do not set a single speechConfig.languageCode or input language hint so multilingual
+    // speakers (Tamil, English, Hindi) are never locked to one language.
+    if (speechConfig.voiceConfig) {
       generationConfig.speechConfig = speechConfig
     }
 

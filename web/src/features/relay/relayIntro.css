@@ -5,8 +5,8 @@
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: #214D47;
-  color: #F4F3F1;
+  background: #F4F5F2;
+  color: #1B1B1B;
   display: flex;
   justify-content: center;
   overflow-y: auto;
@@ -25,21 +25,21 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #214D47;
-  color: #F4F3F1;
+  padding: max(14px, env(safe-area-inset-top, 14px)) 20px max(14px, env(safe-area-inset-bottom, 14px));
+  gap: 12px;
+  background: #F4F5F2;
+  color: #1B1B1B;
 }
 
 @media (min-width: 601px) {
   .lr-screen {
-    background: #173632;
+    background: #F4F5F2;
     align-items: center;
   }
 
   .lr-root {
     max-width: 430px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
-    border-left: 1px solid rgba(244, 243, 241, 0.12);
-    border-right: 1px solid rgba(244, 243, 241, 0.12);
+    min-height: auto;
   }
 }
 
@@ -47,8 +47,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: max(18px, env(safe-area-inset-top, 18px)) 24px 0;
-  min-height: 44px;
+  min-height: 36px;
   flex: none;
 }
 
@@ -61,9 +60,9 @@
 .lr-brand-title {
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 600;
-  font-size: 22px;
-  letter-spacing: -0.2px;
-  color: #F4F3F1;
+  font-size: 24px;
+  letter-spacing: -0.3px;
+  color: #1B1B1B;
 }
 
 .lr-beta-badge {
@@ -77,6 +76,19 @@
   text-transform: uppercase;
 }
 
+/* Rounded teal card on cream page */
+.lr-card {
+  background: #214D47;
+  color: #F4F3F1;
+  border-radius: 32px;
+  padding: 16px 16px 16px;
+  box-shadow: 0 16px 36px rgba(27, 27, 27, 0.14);
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  overflow: hidden;
+}
+
 .lr-animated-shell {
   display: flex;
   flex-direction: column;
@@ -85,15 +97,27 @@
 
 .lr-stage {
   position: relative;
-  margin: 10px 24px 0;
+  width: 100%;
+  height: 362px;
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.lr-stage-inner {
+  position: relative;
+  width: 332px;
   height: 392px;
   flex: none;
+  transform-origin: top center;
+  transform: scale(0.91);
 }
 
 .lr-copy {
   position: relative;
-  margin: 14px 24px 0;
-  height: 160px;
+  margin-top: 10px;
+  height: 152px;
   flex: none;
 }
 
@@ -103,27 +127,27 @@
 }
 
 .lr-copy-title {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 600;
-  font-size: 29px;
-  line-height: 35px;
+  font-size: 27px;
+  line-height: 33px;
   letter-spacing: -0.4px;
   color: #F4F3F1;
 }
 
 .lr-copy-body {
   margin: 0;
-  font-size: 15.5px;
-  line-height: 23px;
-  color: rgba(244, 243, 241, 0.88);
+  font-size: 15px;
+  line-height: 22px;
+  color: rgba(244, 243, 241, 0.9);
 }
 
 .lr-dots {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin: 8px 24px 0;
+  margin-top: 8px;
   height: 8px;
   flex: none;
 }
@@ -138,16 +162,16 @@
 
 .lr-actions {
   margin-top: auto;
-  padding: 14px 24px max(18px, env(safe-area-inset-bottom, 18px));
+  padding-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: none;
 }
 
 .lr-go {
   width: 100%;
-  min-height: 54px;
+  min-height: 56px;
   border: 0;
   border-radius: 999px;
   background: #E3B660;
@@ -158,6 +182,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  box-shadow: 0 4px 14px rgba(27, 27, 27, 0.12);
 }
 
 .lr-skip {
@@ -165,25 +190,71 @@
   min-height: 44px;
   background: transparent;
   border: 0;
-  color: #F4F3F1;
-  font: 500 16px 'DM Sans', system-ui, sans-serif;
+  color: #1B1B1B;
+  font: 600 15.5px 'DM Sans', system-ui, sans-serif;
   cursor: pointer;
-  opacity: 0.92;
+  opacity: 0.85;
   border-radius: 999px;
 }
 
 .lr-go:focus-visible,
 .lr-skip:focus-visible {
-  outline: 3px solid #F4F3F1;
+  outline: 3px solid #214D47;
   outline-offset: 3px;
 }
 
-/* Reduced-motion static three-step list (hidden by default) */
+/* Compact viewport (e.g. 375x667 iPhone SE): shrink the animation stage, keep copy & buttons crisp */
+@media (max-height: 740px) {
+  .lr-root {
+    padding-top: max(10px, env(safe-area-inset-top, 10px));
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
+    gap: 8px;
+  }
+
+  .lr-topbar {
+    min-height: 30px;
+  }
+
+  .lr-card {
+    border-radius: 26px;
+    padding: 12px 14px 12px;
+  }
+
+  .lr-stage {
+    height: 260px;
+  }
+
+  .lr-stage-inner {
+    transform: scale(0.66);
+  }
+
+  .lr-copy {
+    margin-top: 8px;
+    height: 138px;
+  }
+
+  .lr-copy-title {
+    font-size: 24px;
+    line-height: 29px;
+    margin-bottom: 4px;
+  }
+
+  .lr-copy-body {
+    font-size: 14.5px;
+    line-height: 20px;
+  }
+
+  .lr-actions {
+    gap: 4px;
+  }
+}
+
+/* Reduced-motion static three-step list (inside the teal card, hidden by default) */
 .lr-static-list {
   display: none;
   flex-direction: column;
-  gap: 14px;
-  margin: 18px 24px 0;
+  gap: 12px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }

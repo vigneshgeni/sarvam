@@ -28,15 +28,22 @@ import {
 import {
   buildLiveVideoSystemPrompt,
   buildSoloSystemPrompt,
-  stripSpeakerNotes,
 } from './live/relayPrompt.js'
 import type { RelayLanguage } from './live/LiveClient.js'
 import {
   addPageToStack,
   calculateLongEdgeDimensions,
+  removePageFromStack,
   type CapturedPage,
   MAX_PAGE_STACK_COUNT,
 } from './pageStack.js'
+import {
+  sanitizeCaption,
+  shouldDropInputDuringPlayback,
+} from './captionSanitizer.js'
+import type { SheetDetent } from './sheetDetents.js'
+import PageViewer from './PageViewer.js'
+import { pushBrowserHistory } from '../../utils/history.js'
 import {
   classifyRelayError,
   createInitialRelayState,
@@ -119,11 +126,16 @@ export default function CameraScreen({
   // Idle cost-guard state
   const [idlePromptOpen, setIdlePromptOpen] = useState(false)
 
-  // Pages stack state
+  // Pages stack & viewer state
   const [pages, setPages] = useState<CapturedPage[]>([])
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
 
-  // Live session state
+  // Live session & sheet state
   const [isLiveSheetOpen, setIsLiveSheetOpen] = useState(false)
+  const [sheetDetent, setSheetDetent] = useState<SheetDetent>('half')
+  const [showSoundBanner, setShowSoundBanner] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isLive, setIsLive] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -157,6 +169,9 @@ export default function CameraScreen({
   const isLiveSheetOpenRef = useRef(isLiveSheetOpen)
   const captionsRef = useRef<CaptionTurn[]>(captions)
   const pagesRef = useRef<CapturedPage[]>(pages)
+  const viewerIndexRef = useRef<number | null>(viewerIndex)
+  const isPlayingAudioRef = useRef(false)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const micModeRef = useRef<'vad' | 'hold'>('vad')
   const isMutedRef = useRef(false)
   const isHoldingTalkRef = useRef(false)
@@ -166,6 +181,18 @@ export default function CameraScreen({
   const activeOutputTurnId = useRef<string | null>(null)
   const activeInputText = useRef<string>('')
   const activeOutputText = useRef<string>('')
+
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) setToastMsg(null)
+    }, 2400)
+  }, [])
+
+  useEffect(() => {
+    viewerIndexRef.current = viewerIndex
+  }, [viewerIndex])
 
   useEffect(() => {
     modeRef.current = mode
@@ -398,13 +425,66 @@ export default function CameraScreen({
     })
   }, [mode, videoPaused, tabHidden, isLive, isReconnecting, cameraReady])
 
-  // Pause video frames when browser tab is hidden, resume on return
+  // Pause video frames when browser tab is hidden; resume frames and AudioContext on return
   useEffect(() => {
     const onVisChange = () => {
-      setTabHidden(document.hidden)
+      const hidden = document.hidden
+      setTabHidden(hidden)
+      if (!hidden) {
+        const ctx = sharedAudioCtxRef.current || audioManagerRef.current?.getAudioContext()
+        if (ctx && ctx.state === 'suspended') {
+          void ctx.resume().then(() => {
+            if (isMountedRef.current && ctx.state === 'running') {
+              setShowSoundBanner(false)
+            }
+          }).catch(() => {})
+        }
+      }
     }
     document.addEventListener('visibilitychange', onVisChange)
     return () => document.removeEventListener('visibilitychange', onVisChange)
+  }, [])
+
+  // Resume AudioContext on first user touch/pointer gesture on CameraScreen (iOS Safari safety)
+  useEffect(() => {
+    const onFirstGesture = () => {
+      const ctx = sharedAudioCtxRef.current || audioManagerRef.current?.getAudioContext()
+      if (ctx && ctx.state === 'suspended') {
+        void ctx.resume().then(() => {
+          if (isMountedRef.current && ctx.state === 'running') {
+            setShowSoundBanner(false)
+          }
+        }).catch(() => {})
+      }
+    }
+    window.addEventListener('pointerdown', onFirstGesture, { passive: true })
+    return () => window.removeEventListener('pointerdown', onFirstGesture)
+  }, [])
+
+  // 2 seconds after Live connects, if AudioContext is not running, show "Tap to turn on sound" banner
+  useEffect(() => {
+    if (!isLive) return
+    const timer = setTimeout(() => {
+      if (!isMountedRef.current) return
+      const state = audioManagerRef.current?.getContextState() ?? sharedAudioCtxRef.current?.state ?? null
+      if (state && state !== 'running') {
+        console.info('[relay-audio] context not running 2s after connect', { state })
+        setShowSoundBanner(true)
+      }
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [isLive])
+
+  // Browser back gesture closes PageViewer first before leaving CameraScreen
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const st = event.state as { screen?: string; overlay?: string | null } | null
+      if (viewerIndexRef.current !== null && st?.overlay !== 'relay_page_viewer') {
+        setViewerIndex(null)
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
   // Idle cost guard (10 min no speech -> "Still there?" -> 30 s auto-end)
@@ -547,10 +627,13 @@ export default function CameraScreen({
     return () => window.removeEventListener('offline', handleOffline)
   }, [isLive, isConnecting])
 
-  // Escape key returns to intro or Home cleanly
+  // Escape key closes viewer first, collapses sheet if expanded, else returns to intro/Home
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (viewerIndexRef.current !== null) {
+          return
+        }
         e.preventDefault()
         void cleanupAllResources()
         if (onBack) {
@@ -601,6 +684,41 @@ export default function CameraScreen({
     void startCameraInGesture(nextFacing)
   }
 
+  const handleEnableSound = useCallback(async () => {
+    const state = audioManagerRef.current
+      ? await audioManagerRef.current.resumeContext()
+      : sharedAudioCtxRef.current
+        ? await sharedAudioCtxRef.current.resume().then(() => sharedAudioCtxRef.current?.state ?? null).catch(() => null)
+        : null
+    if (state === 'running' && isMountedRef.current) {
+      setShowSoundBanner(false)
+    }
+  }, [])
+
+  /** Helper to create a small JPEG thumbnail (~512 px) from a CapturedPage for reconnect context. */
+  const pageToSmallThumbnailBuffer = useCallback(async (page: CapturedPage): Promise<ArrayBuffer> => {
+    try {
+      const img = new Image()
+      img.src = page.dataUrl
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('thumbnail load failed'))
+      })
+      const { targetWidth, targetHeight } = calculateLongEdgeDimensions(img.naturalWidth || page.width, img.naturalHeight || page.height, 512)
+      const c = document.createElement('canvas')
+      c.width = targetWidth
+      c.height = targetHeight
+      const ctx = c.getContext('2d')
+      if (!ctx) return await page.blob.arrayBuffer()
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+      const smallBlob = await new Promise<Blob | null>((resolve) => c.toBlob(resolve, 'image/jpeg', 0.65))
+      if (smallBlob) return await smallBlob.arrayBuffer()
+    } catch {
+      // Fallback to original blob
+    }
+    return await page.blob.arrayBuffer()
+  }, [])
+
   // ── Audio & LiveClient Lifecycle ───────────────────────────────────
 
   const initLiveClient = useCallback(
@@ -624,6 +742,7 @@ export default function CameraScreen({
       const audioManager = new LiveAudioManager()
 
       try {
+        // Start & connect the 24 kHz playback worklet BEFORE connecting the Live session
         await audioManager.start(
           (pcm) => {
             // In Scan mode, only stream mic while LiveSheet is open
@@ -641,23 +760,35 @@ export default function CameraScreen({
           {
             audioCtx: sharedAudioCtxRef.current,
             audioStream: activeStreamRef.current,
+            onPlaybackStateChange: (playing) => {
+              isPlayingAudioRef.current = playing
+              if (isMountedRef.current) {
+                setIsSpeaking(playing)
+                if (playing) setShowSoundBanner(false)
+              }
+            },
+            onPlaybackStalled: () => {
+              if (isMountedRef.current) {
+                setShowSoundBanner(true)
+              }
+            },
           },
         )
 
         clientRef.current = client
         audioManagerRef.current = audioManager
 
-        // Output audio (24 kHz)
+        // Output audio (24 kHz) — speaking indicator follows actual playback from worklet
         client.onAudio = (pcm) => {
           idleGuardRef.current?.recordActivity()
           setIsThinking(false)
-          setIsSpeaking(true)
           audioManager.playAudio(pcm)
         }
 
-        // Interrupted (barge-in flush)
+        // Interrupted (barge-in flush — never appends emoji)
         client.onInterrupted = () => {
           audioManager.flush()
+          isPlayingAudioRef.current = false
           setIsSpeaking(false)
           setIsThinking(false)
           if (activeOutputTurnId.current) {
@@ -665,15 +796,20 @@ export default function CameraScreen({
             activeOutputTurnId.current = null
             activeOutputText.current = ''
             setCaptions((prev) =>
-              prev.map((c) =>
-                c.id === turnId ? { ...c, isComplete: true, text: c.text ? `${c.text} ⚡` : '⚡' } : c,
-              ),
+              prev.map((c) => (c.id === turnId ? { ...c, isComplete: true } : c)),
             )
           }
         }
 
-        // Input captions (one row per turn)
+        // Input captions (sanitized, dropped if noise or echo during playback)
         client.onInputText = (text: string) => {
+          const candidate = activeInputTurnId.current ? activeInputText.current + text : text
+          if (shouldDropInputDuringPlayback(candidate, isPlayingAudioRef.current)) {
+            return
+          }
+          const cleaned = sanitizeCaption(candidate, 'input')
+          if (!cleaned) return
+
           idleGuardRef.current?.recordActivity()
           setIdlePromptOpen(false)
           setIsThinking(true)
@@ -687,22 +823,23 @@ export default function CameraScreen({
           if (!activeInputTurnId.current) {
             const turnId = `you-${Date.now()}`
             activeInputTurnId.current = turnId
-            activeInputText.current = text
-            const cleaned = stripSpeakerNotes(activeInputText.current)
+            activeInputText.current = candidate
             setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'You', text: cleaned }])
           } else {
-            activeInputText.current += text
-            const cleaned = stripSpeakerNotes(activeInputText.current)
+            activeInputText.current = candidate
             const turnId = activeInputTurnId.current
             setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
           }
         }
 
-        // Output captions (one row per turn)
+        // Output captions (sanitized, one row per turn)
         client.onOutputText = (text: string) => {
+          const candidate = activeOutputTurnId.current ? activeOutputText.current + text : text
+          const cleaned = sanitizeCaption(candidate, 'output')
+          if (!cleaned) return
+
           idleGuardRef.current?.recordActivity()
           setIsThinking(false)
-          setIsSpeaking(true)
           if (activeInputTurnId.current) {
             const prevId = activeInputTurnId.current
             activeInputTurnId.current = null
@@ -713,20 +850,20 @@ export default function CameraScreen({
           if (!activeOutputTurnId.current) {
             const turnId = `gemini-${Date.now()}`
             activeOutputTurnId.current = turnId
-            activeOutputText.current = text
-            const cleaned = stripSpeakerNotes(activeOutputText.current)
+            activeOutputText.current = candidate
             setCaptions((prev) => [...prev.slice(-49), { id: turnId, who: 'Gemini', text: cleaned }])
           } else {
-            activeOutputText.current += text
-            const cleaned = stripSpeakerNotes(activeOutputText.current)
+            activeOutputText.current = candidate
             const turnId = activeOutputTurnId.current
             setCaptions((prev) => prev.map((c) => (c.id === turnId ? { ...c, text: cleaned } : c)))
           }
         }
 
         client.onTurnComplete = () => {
-          setIsSpeaking(false)
           setIsThinking(false)
+          if (!isPlayingAudioRef.current) {
+            setIsSpeaking(false)
+          }
           if (activeOutputTurnId.current) {
             const turnId = activeOutputTurnId.current
             activeOutputTurnId.current = null
@@ -742,8 +879,10 @@ export default function CameraScreen({
         }
 
         client.onGenerationComplete = () => {
-          setIsSpeaking(false)
           setIsThinking(false)
+          if (!isPlayingAudioRef.current) {
+            setIsSpeaking(false)
+          }
           if (activeOutputTurnId.current) {
             const turnId = activeOutputTurnId.current
             activeOutputTurnId.current = null
@@ -765,6 +904,20 @@ export default function CameraScreen({
         client.onReconnected = () => {
           setIsReconnecting(false)
           setIsLive(true)
+          void audioManager.resumeContext()
+          // Re-send existing pages as small thumbnails only when session reconnects
+          const currentPages = pagesRef.current
+          if (currentPages.length > 0) {
+            void (async () => {
+              for (let i = 0; i < currentPages.length; i++) {
+                if (!clientRef.current?.isConnected()) break
+                const thumbBuf = await pageToSmallThumbnailBuffer(currentPages[i])
+                if (!clientRef.current?.isConnected()) break
+                clientRef.current.sendVideo(thumbBuf)
+                clientRef.current.sendText(`(Context page ${i + 1})`, false)
+              }
+            })()
+          }
         }
 
         client.onClose = (info) => {
@@ -832,7 +985,7 @@ export default function CameraScreen({
         throw err
       }
     },
-    [lang],
+    [lang, pageToSmallThumbnailBuffer],
   )
 
   // Auto-connect Gemini immediately when entering Live video mode with camera ready
@@ -867,13 +1020,16 @@ export default function CameraScreen({
     }
   }
 
-  // ── Shared Full-Resolution Page Capture (Shutter + Freeze and ask) ─
+  // ── Shared Full-Resolution Page Capture (Shutter + Freeze and ask + Add page) ─
 
   const captureCurrentPage = useCallback(
-    (onCaptured?: (page: CapturedPage) => void) => {
+    (onCaptured?: (page: CapturedPage, pageNumber: number) => void) => {
       const video = videoRef.current
       if (!video || !cameraReady) return
-      if (pagesRef.current.length >= MAX_PAGE_STACK_COUNT) return
+      if (pagesRef.current.length >= MAX_PAGE_STACK_COUNT) {
+        showToast(t.relayMaxPagesReached || 'Maximum 10 pages reached')
+        return
+      }
 
       setFlash(true)
       setTimeout(() => setFlash(false), 350)
@@ -892,8 +1048,9 @@ export default function CameraScreen({
         (blob) => {
           if (!blob) return
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+          const nextNumber = pagesRef.current.length + 1
           const newPage: CapturedPage = {
-            id: `page-${Date.now()}-${pagesRef.current.length + 1}`,
+            id: `page-${Date.now()}-${nextNumber}`,
             blob,
             dataUrl,
             width: targetWidth,
@@ -904,38 +1061,126 @@ export default function CameraScreen({
           const res = addPageToStack(pagesRef.current, newPage)
           if (res.accepted) {
             setPages(res.pages)
-            onCaptured?.(newPage)
+            setSelectedPageId(newPage.id)
+            onCaptured?.(newPage, res.pages.length)
+          } else {
+            showToast(t.relayMaxPagesReached || 'Maximum 10 pages reached')
           }
         },
         'image/jpeg',
         0.85,
       )
     },
-    [cameraReady],
+    [cameraReady, showToast, t.relayMaxPagesReached],
   )
 
   const handleCapture = useCallback(() => {
-    captureCurrentPage()
-  }, [captureCurrentPage])
+    captureCurrentPage((page, pageNum) => {
+      // If Gemini is already connected in Scan mode (e.g. sheet collapsed), send the new page directly
+      if (clientRef.current?.isConnected()) {
+        setIsThinking(true)
+        void page.blob.arrayBuffer().then((buf) => {
+          if (!clientRef.current?.isConnected()) return
+          clientRef.current.sendVideo(buf)
+          clientRef.current.sendText(`(Added page ${pageNum})`, true)
+        })
+        showToast((t.relayPageAdded || 'Page {n} added').replace('{n}', String(pageNum)))
+      }
+    })
+  }, [captureCurrentPage, showToast, t.relayPageAdded])
 
   const handleFreezeAndAsk = useCallback(() => {
     idleGuardRef.current?.recordActivity()
-    captureCurrentPage((page) => {
+    const prevDetent = sheetDetent
+    if (isLiveSheetOpen && sheetDetent !== 'collapsed') {
+      setSheetDetent('collapsed')
+    }
+    captureCurrentPage((page, pageNum) => {
+      showToast((t.relayPageAdded || 'Page {n} added').replace('{n}', String(pageNum)))
       const client = clientRef.current
-      if (!client?.isConnected()) return
-      setIsThinking(true)
-      void page.blob.arrayBuffer().then((buf) => {
-        if (!clientRef.current?.isConnected()) return
-        clientRef.current.sendVideo(buf)
-        clientRef.current.sendText('Pinned page', true)
-      })
+      if (client?.isConnected()) {
+        setIsThinking(true)
+        void page.blob.arrayBuffer().then((buf) => {
+          if (!clientRef.current?.isConnected()) return
+          clientRef.current.sendVideo(buf)
+          clientRef.current.sendText(`(Added page ${pageNum})`, true)
+        })
+      }
+      if (isLiveSheetOpen && prevDetent !== 'collapsed') {
+        setSheetDetent(prevDetent)
+      }
     })
-  }, [captureCurrentPage])
+  }, [captureCurrentPage, isLiveSheetOpen, sheetDetent, showToast, t.relayPageAdded])
+
+  const handleAddPageFromSheet = useCallback(() => {
+    if (pagesRef.current.length >= MAX_PAGE_STACK_COUNT) {
+      showToast(t.relayMaxPagesReached || 'Maximum 10 pages reached')
+      return
+    }
+    const prevDetent = sheetDetent
+    setSheetDetent('collapsed')
+    // Wait briefly for collapse animation frame, then capture full-resolution still & return
+    setTimeout(() => {
+      if (!isMountedRef.current) return
+      captureCurrentPage((page, pageNum) => {
+        showToast((t.relayPageAdded || 'Page {n} added').replace('{n}', String(pageNum)))
+        if (clientRef.current?.isConnected()) {
+          setIsThinking(true)
+          void page.blob.arrayBuffer().then((buf) => {
+            if (!clientRef.current?.isConnected()) return
+            clientRef.current.sendVideo(buf)
+            clientRef.current.sendText(`(Added page ${pageNum})`, true)
+          })
+        }
+        setSheetDetent(prevDetent)
+      })
+    }, 80)
+  }, [captureCurrentPage, sheetDetent, showToast, t.relayMaxPagesReached, t.relayPageAdded])
+
+  // ── Page Viewer handlers (with history back support) ───────────────
+
+  const openPageViewer = useCallback((index: number) => {
+    if (pagesRef.current.length === 0) return
+    const clamped = Math.max(0, Math.min(pagesRef.current.length - 1, index))
+    setViewerIndex(clamped)
+    pushBrowserHistory({ screen: 'relay-camera', overlay: 'relay_page_viewer' })
+  }, [])
+
+  const closePageViewer = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.state?.overlay === 'relay_page_viewer') {
+      window.history.back()
+    } else {
+      setViewerIndex(null)
+    }
+  }, [])
+
+  const handleDiscussPage = useCallback((page: CapturedPage, pageNumber: number) => {
+    idleGuardRef.current?.recordActivity()
+    const client = clientRef.current
+    if (!client?.isConnected()) return
+    setIsThinking(true)
+    void page.blob.arrayBuffer().then((buf) => {
+      if (!clientRef.current?.isConnected()) return
+      clientRef.current.sendVideo(buf)
+      clientRef.current.sendText(`(Now looking at page ${pageNumber})`, true)
+    })
+  }, [])
+
+  const handleDeletePage = useCallback((pageId: string) => {
+    const next = removePageFromStack(pagesRef.current, pageId)
+    setPages(next)
+    if (next.length === 0) {
+      setSelectedPageId(null)
+    } else if (selectedPageId === pageId) {
+      setSelectedPageId(next[next.length - 1].id)
+    }
+  }, [selectedPageId])
 
   // ── Scan pages: Proceed ────────────────────────────────────────────
 
   const handleProceed = useCallback(async () => {
     setIsLiveSheetOpen(true)
+    setSheetDetent('half')
     setRelayError(null)
     try {
       const client = await initLiveClient('scan')
@@ -1188,22 +1433,29 @@ export default function CameraScreen({
                 </span>
               )}
               {hasPages && (
-                <span
+                <button
+                  type="button"
+                  data-testid="relay-pinned-badge"
+                  onClick={() => openPageViewer(pages.length - 1)}
+                  aria-label={(t.relayOpenPageN || 'Open page {n}').replace('{n}', String(pages.length))}
                   style={{
+                    pointerEvents: 'auto',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '4px 10px',
-                    borderRadius: 12,
-                    background: 'rgba(27,27,27,0.78)',
-                    border: '1px solid rgba(227,182,96,0.45)',
+                    minHeight: 44,
+                    padding: '4px 12px',
+                    borderRadius: 22,
+                    background: 'rgba(27,27,27,0.85)',
+                    border: '1.5px solid rgba(227,182,96,0.65)',
                     color: '#E3B660',
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 700,
+                    cursor: 'pointer',
                   }}
                 >
                   {pages.length} pinned
-                </span>
+                </button>
               )}
             </div>
 
@@ -1242,6 +1494,63 @@ export default function CameraScreen({
                 {orbLabel}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Sound Resume Banner (appears if AudioContext is still suspended 2s after connect or playback stalled) */}
+        {showSoundBanner && !relayError && (
+          <div style={{ position: 'relative', zIndex: 35, padding: '6px 16px 0' }}>
+            <button
+              type="button"
+              data-testid="relay-sound-banner"
+              onClick={() => { void handleEnableSound() }}
+              style={{
+                width: '100%',
+                minHeight: 44,
+                padding: '8px 14px',
+                borderRadius: 16,
+                border: '1.5px solid #1B1B1B',
+                background: '#E3B660',
+                color: '#1B1B1B',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+              }}
+            >
+              {t.relayTapToTurnOnSound || 'Tap to turn on sound'}
+            </button>
+          </div>
+        )}
+
+        {/* Short Page Added / Max Pages Toast */}
+        {toastMsg && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="relay-page-toast"
+            style={{
+              position: 'absolute',
+              top: 74,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 62,
+              padding: '8px 16px',
+              borderRadius: 999,
+              background: 'rgba(27,27,27,0.92)',
+              border: '1px solid rgba(227,182,96,0.55)',
+              color: '#F5F4F2',
+              fontSize: 13.5,
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+            }}
+          >
+            {toastMsg}
           </div>
         )}
 
@@ -1422,11 +1731,13 @@ export default function CameraScreen({
               zIndex: 20,
               flex: 'none',
               padding: '12px 14px calc(20px + env(safe-area-inset-bottom, 12px))',
+              marginBottom: isLiveSheetOpen && sheetDetent === 'collapsed' ? 74 : 0,
               background: 'rgba(10, 10, 10, 0.86)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 8,
+              transition: 'margin-bottom 250ms ease',
             }}
           >
             {/* Mic Mute */}
@@ -1572,16 +1883,34 @@ export default function CameraScreen({
               zIndex: 20,
               flex: 'none',
               padding: '12px 20px calc(22px + env(safe-area-inset-bottom, 12px))',
+              marginBottom: isLiveSheetOpen && sheetDetent === 'collapsed' ? 74 : 0,
               background: 'rgba(10, 10, 10, 0.84)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              transition: 'margin-bottom 250ms ease',
             }}
           >
-            {/* Left: Thumbnail stack (when hasPages) OR Mic mute toggle */}
+            {/* Left: Tappable Thumbnail stack (when hasPages) OR Mic mute toggle */}
             <div style={{ width: 92, display: 'flex', justifyContent: 'flex-start' }}>
               {hasPages ? (
-                <div style={{ position: 'relative', width: 48, height: 60 }}>
+                <button
+                  type="button"
+                  data-testid="relay-page-thumb"
+                  onClick={() => openPageViewer(pages.length - 1)}
+                  aria-label={(t.relayOpenPageN || 'Open page {n}').replace('{n}', String(pages.length))}
+                  style={{
+                    position: 'relative',
+                    width: 48,
+                    height: 60,
+                    minWidth: 44,
+                    minHeight: 44,
+                    padding: 0,
+                    border: 0,
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
                   {pages.length > 1 && (
                     <span
                       style={{
@@ -1598,7 +1927,7 @@ export default function CameraScreen({
                   )}
                   <img
                     src={pages[pages.length - 1].dataUrl}
-                    alt="Captured page thumbnail"
+                    alt=""
                     style={{
                       position: 'absolute',
                       left: 0,
@@ -1611,6 +1940,7 @@ export default function CameraScreen({
                     }}
                   />
                   <span
+                    data-testid="relay-page-count-badge"
                     style={{
                       position: 'absolute',
                       right: -8,
@@ -1631,7 +1961,7 @@ export default function CameraScreen({
                   >
                     {pages.length}
                   </span>
-                </div>
+                </button>
               ) : (
                 <button
                   type="button"
@@ -1872,6 +2202,16 @@ export default function CameraScreen({
               >
                 {t[relayError.bodyKey]}
               </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: '#575B58',
+                }}
+              >
+                {t.relayNoSoundHelp || 'No sound? Check the ring/silent switch and the volume.'}
+              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
                 <button
                   type="button"
@@ -1914,15 +2254,26 @@ export default function CameraScreen({
           </div>
         )}
 
-        {/* LiveSheet Transcript Drawer */}
+        {/* LiveSheet 3-Detent Transcript & Pages Drawer */}
         <LiveSheet
           isOpen={isLiveSheetOpen && !relayError}
+          detent={sheetDetent}
+          onDetentChange={setSheetDetent}
           isLive={isLive}
           isSpeaking={isSpeaking}
+          isThinking={isThinking}
           isReconnecting={isReconnecting}
           isUsingFallback={isUsingFallback}
           fallbackModelName={fallbackModelName}
           captions={captions}
+          pages={pages}
+          selectedPageId={selectedPageId}
+          onOpenPage={(idx) => openPageViewer(idx)}
+          onAddPage={handleAddPageFromSheet}
+          canAddPage={cameraReady && pages.length < MAX_PAGE_STACK_COUNT}
+          showSoundBanner={showSoundBanner}
+          onEnableSound={() => { void handleEnableSound() }}
+          t={t}
           onSendText={(text) => {
             idleGuardRef.current?.recordActivity()
             setIsThinking(true)
@@ -1938,6 +2289,19 @@ export default function CameraScreen({
           onHoldTalkStart={() => setIsHoldingTalk(true)}
           onHoldTalkEnd={() => setIsHoldingTalk(false)}
         />
+
+        {/* Full-Screen Scanned Page Viewer */}
+        {viewerIndex !== null && pages.length > 0 && (
+          <PageViewer
+            pages={pages}
+            initialIndex={viewerIndex}
+            isGeminiConnected={isLive}
+            onClose={closePageViewer}
+            onDiscussPage={handleDiscussPage}
+            onDeletePage={handleDeletePage}
+            t={t}
+          />
+        )}
       </div>
     </div>
   )

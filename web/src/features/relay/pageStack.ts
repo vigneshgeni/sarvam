@@ -39,6 +39,40 @@ export function addPageToStack(
 }
 
 /**
+ * Removes a page by ID, preserving the order of remaining pages.
+ */
+export function removePageFromStack(
+  existingPages: readonly CapturedPage[],
+  pageId: string,
+): CapturedPage[] {
+  return existingPages.filter((p) => p.id !== pageId)
+}
+
+/**
+ * Reorders a page from `fromIndex` to `toIndex`, clamping out-of-range indices safely.
+ */
+export function reorderPageInStack(
+  existingPages: readonly CapturedPage[],
+  fromIndex: number,
+  toIndex: number,
+): CapturedPage[] {
+  if (
+    existingPages.length <= 1 ||
+    fromIndex < 0 ||
+    fromIndex >= existingPages.length ||
+    toIndex < 0 ||
+    toIndex >= existingPages.length ||
+    fromIndex === toIndex
+  ) {
+    return [...existingPages]
+  }
+  const next = [...existingPages]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved)
+  return next
+}
+
+/**
  * Calculates long-edge scaling dimensions preserving aspect ratio.
  */
 export function calculateLongEdgeDimensions(

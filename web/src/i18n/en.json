@@ -519,5 +519,22 @@
   "relayUnmuteMic": "Unmute microphone",
   "relaySwitchToHold": "Switch to Hold to Talk",
   "relaySwitchToVad": "Switch to Open Mic",
-  "relaySessionTitle": "Live Relay session"
+  "relaySessionTitle": "Live Relay session",
+  "relayOpenPageN": "Open page {n}",
+  "relayPageOfTotal": "Page {n} of {total}",
+  "relayDiscussPage": "Discuss this page",
+  "relayPageSentToGemini": "Sent to Gemini",
+  "relayDeletePage": "Delete page",
+  "relayDeletePageTitle": "Delete this page?",
+  "relayDeletePageBody": "This removes the page from your scanned stack.",
+  "relayPreviousPage": "Previous page",
+  "relayNextPage": "Next page",
+  "relayAddPage": "Add page",
+  "relayPageAdded": "Page {n} added",
+  "relayMaxPagesReached": "Maximum 10 pages reached",
+  "relayExpandSheet": "Expand Gemini Live sheet",
+  "relayCollapseSheet": "Resize Gemini Live sheet",
+  "relayTapToTurnOnSound": "Tap to turn on sound",
+  "relayNoSoundHelp": "No sound? Check the ring/silent switch and the volume.",
+  "relayTypeQuestion": "Type a question…"
 }

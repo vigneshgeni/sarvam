@@ -519,5 +519,22 @@
   "relayUnmuteMic": "மைக்கை இயக்கு",
   "relaySwitchToHold": "அழுத்திப் பேசும் முறைக்கு மாற்று",
   "relaySwitchToVad": "திறந்த மைக் முறைக்கு மாற்று",
-  "relaySessionTitle": "லைவ் ரிலே அமர்வு"
+  "relaySessionTitle": "லைவ் ரிலே அமர்வு",
+  "relayOpenPageN": "பக்கம் {n} திறக்கவும்",
+  "relayPageOfTotal": "பக்கம் {n} / {total}",
+  "relayDiscussPage": "இந்த பக்கத்தைப் பற்றி கேட்கவும்",
+  "relayPageSentToGemini": "Gemini-க்கு அனுப்பப்பட்டது",
+  "relayDeletePage": "பக்கத்தை நீக்கவும்",
+  "relayDeletePageTitle": "இந்த பக்கத்தை நீக்கவா?",
+  "relayDeletePageBody": "இது ஸ்கேன் செய்த பக்கங்களில் இருந்து நீக்கப்படும்.",
+  "relayPreviousPage": "முந்தைய பக்கம்",
+  "relayNextPage": "அடுத்த பக்கம்",
+  "relayAddPage": "பக்கம் சேர்க்கவும்",
+  "relayPageAdded": "பக்கம் {n} சேர்க்கப்பட்டது",
+  "relayMaxPagesReached": "அதிகபட்சம் 10 பக்கங்கள் மட்டுமே",
+  "relayExpandSheet": "Gemini Live தாளை விரிக்கவும்",
+  "relayCollapseSheet": "Gemini Live தாளை மாற்றவும்",
+  "relayTapToTurnOnSound": "ஒலியை இயக்க தட்டவும்",
+  "relayNoSoundHelp": "ஒலி வரவில்லையா? சைலண்ட் சுவிட்ச் மற்றும் ஒலி அளவை சரிபார்க்கவும்.",
+  "relayTypeQuestion": "கேள்வி தட்டச்சு செய்யவும்…"
 }

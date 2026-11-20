@@ -591,5 +591,22 @@
   "relayUnmuteMic": "माइक अनम्यूट करा",
   "relaySwitchToHold": "होल्ड-टू-टॉक वर स्विच करा",
   "relaySwitchToVad": "ओपन माइक वर स्विच करा",
-  "relaySessionTitle": "लाइव्ह रिले सत्र"
+  "relaySessionTitle": "लाइव्ह रिले सत्र",
+  "relayOpenPageN": "Open page {n}",
+  "relayPageOfTotal": "Page {n} of {total}",
+  "relayDiscussPage": "Discuss this page",
+  "relayPageSentToGemini": "Sent to Gemini",
+  "relayDeletePage": "Delete page",
+  "relayDeletePageTitle": "Delete this page?",
+  "relayDeletePageBody": "This removes the page from your scanned stack.",
+  "relayPreviousPage": "Previous page",
+  "relayNextPage": "Next page",
+  "relayAddPage": "Add page",
+  "relayPageAdded": "Page {n} added",
+  "relayMaxPagesReached": "Maximum 10 pages reached",
+  "relayExpandSheet": "Expand Gemini Live sheet",
+  "relayCollapseSheet": "Resize Gemini Live sheet",
+  "relayTapToTurnOnSound": "Tap to turn on sound",
+  "relayNoSoundHelp": "No sound? Check the ring/silent switch and the volume.",
+  "relayTypeQuestion": "Type a question…"
 }

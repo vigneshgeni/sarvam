@@ -1704,7 +1704,7 @@ export default function App() {
             SCREEN 5: RELAY INTRO (Animated "How Live Relay works")
            ======================================================== */}
         {screen === 'relay-intro' && (
-          <Suspense fallback={<div className="fixed inset-0 bg-[#214D47]" />}>
+          <Suspense fallback={<div className="fixed inset-0 bg-[#F4F5F2]" />}>
             <RelayIntro
               lang={selectedLang}
               reduceMotion={getStoredA11ySettings().reduceMotion}

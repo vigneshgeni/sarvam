@@ -519,5 +519,22 @@
   "relayUnmuteMic": "माइक अनम्यूट करें",
   "relaySwitchToHold": "होल्ड-टू-टॉक पर जाएँ",
   "relaySwitchToVad": "ओपन माइक पर जाएँ",
-  "relaySessionTitle": "लाइव रिले सत्र"
+  "relaySessionTitle": "लाइव रिले सत्र",
+  "relayOpenPageN": "पृष्ठ {n} खोलें",
+  "relayPageOfTotal": "पृष्ठ {n} / {total}",
+  "relayDiscussPage": "इस पृष्ठ पर बात करें",
+  "relayPageSentToGemini": "Gemini को भेजा गया",
+  "relayDeletePage": "पृष्ठ हटाएँ",
+  "relayDeletePageTitle": "यह पृष्ठ हटाएँ?",
+  "relayDeletePageBody": "यह आपके स्कैन किए गए पृष्ठों से हट जाएगा।",
+  "relayPreviousPage": "पिछला पृष्ठ",
+  "relayNextPage": "अगला पृष्ठ",
+  "relayAddPage": "पृष्ठ जोड़ें",
+  "relayPageAdded": "पृष्ठ {n} जोड़ा गया",
+  "relayMaxPagesReached": "अधिकतम 10 पृष्ठ पूरे हो गए",
+  "relayExpandSheet": "Gemini Live शीट खोलें",
+  "relayCollapseSheet": "Gemini Live शीट बदलें",
+  "relayTapToTurnOnSound": "आवाज़ चालू करने के लिए टैप करें",
+  "relayNoSoundHelp": "आवाज़ नहीं आ रही? रिंग/साइलेंट स्विच और वॉल्यूम जाँचें।",
+  "relayTypeQuestion": "प्रश्न लिखें…"
 }

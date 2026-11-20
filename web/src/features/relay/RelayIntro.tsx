@@ -48,7 +48,7 @@ export default function RelayIntro({
       aria-label={t.relayIntroHowItWorks}
     >
       <div className="lr-root">
-        {/* Top bar */}
+        {/* Top bar (cream background, ink title + mustard BETA badge) */}
         <header className="lr-topbar">
           <div className="lr-brand">
             <span className="lr-brand-title">{t.liveRelay}</span>
@@ -56,10 +56,13 @@ export default function RelayIntro({
           </div>
         </header>
 
-        {/* Animated stage + fixed 160px copy block + progress dots */}
-        <div className="lr-animated-shell" data-testid="relay-intro-animated-shell">
-          {/* Decorative stage (aria-hidden; copy below gives screen readers all 3 steps) */}
-          <div className="lr-stage" aria-hidden="true" data-testid="relay-intro-stage">
+        {/* Rounded Teal Card on Cream Page */}
+        <div className="lr-card" data-testid="relay-intro-card">
+          {/* Animated stage + copy block + progress dots */}
+          <div className="lr-animated-shell" data-testid="relay-intro-animated-shell">
+            {/* Decorative stage (aria-hidden; copy below gives screen readers all 3 steps) */}
+            <div className="lr-stage" aria-hidden="true" data-testid="relay-intro-stage">
+              <div className="lr-stage-inner">
             {/* SCENE 1: Invite sheet, family joins, Gemini joins */}
             <div className="lr-an lr-sc1" style={{ position: 'absolute', inset: 0 }}>
               <div
@@ -751,9 +754,10 @@ export default function RelayIntro({
                 </svg>
               </div>
             </div>
+            </div>
           </div>
 
-          {/* Copy block (fixed 160 px; all 3 scenes readable by screen readers) */}
+          {/* Copy block (all 3 scenes readable by screen readers) */}
           <div className="lr-copy" data-testid="relay-intro-copy">
             <div className="lr-an lr-t1 lr-copy-slide">
               <h1 className="lr-copy-title">{t.relayIntroStep1Title}</h1>
@@ -777,7 +781,7 @@ export default function RelayIntro({
           </div>
         </div>
 
-        {/* Reduced-motion static three-step list */}
+        {/* Reduced-motion static three-step list (inside same teal card) */}
         <ol className="lr-static-list" data-testid="relay-intro-static-list">
           <li className="lr-static-card">
             <span className="lr-static-num" aria-hidden="true">1</span>
@@ -801,8 +805,9 @@ export default function RelayIntro({
             </div>
           </li>
         </ol>
+        </div>
 
-        {/* Actions — Focus order: Start scanning, then Skip */}
+        {/* Actions on cream background — Focus order: Start scanning, then Skip */}
         <div className="lr-actions">
           <button
             type="button"
