@@ -88,6 +88,7 @@ from reader import (
     translate_result_text,
 )
 from tts import render_iso_dates_natural, synthesize_speech, to_speech
+from formfill import router as formfill_router
 
 # Multi-file limits as constants in one place
 MAX_IMAGES = 10
@@ -151,6 +152,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+app.include_router(formfill_router)
 
 # CORS configuration
 allowed_origins = [

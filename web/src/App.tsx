@@ -16,6 +16,7 @@ import type {
   RecentResult,
   MultiReportCard,
   AskTurn,
+  FormDraft,
 } from './types'
 import {
   isHeicFile,
@@ -68,6 +69,10 @@ import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.
 const RelaySpikeScreen = lazy(() => import('./features/relay/RelaySpikeScreen.js'))
 const RelayIntro = lazy(() => import('./features/relay/RelayIntro.js'))
 const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
+const FormFillScreen = lazy(() => import('./features/formfill/FormFillScreen'))
+import FormFillPickerSheet from './features/formfill/FormFillPickerSheet'
+import { registerFormFillOpener, type FormFillLaunchOptions } from './features/formfill/openFormFill'
+import { getFormDrafts, deleteFormDraft } from './features/formfill/profileStorage.js'
 import type { RelayLaunchContext } from './features/relay/CameraScreen.js'
 import { createOrResumeRelayAudioContext, requestRelayMediaStream } from './features/relay/audio/LiveAudioManager.js'
 import { logRelayStage } from './features/relay/relaySessionState.js'
@@ -136,6 +141,12 @@ export default function App() {
 
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [relayLaunch, setRelayLaunch] = useState<RelayLaunchContext | null>(null)
+  const [formDrafts, setFormDrafts] = useState<FormDraft[]>([])
+  const [formPickerOpen, setFormPickerOpen] = useState(false)
+  const [formFillState, setFormFillState] = useState<{
+    images: string[]
+    options?: FormFillLaunchOptions
+  } | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(() => {
     const saved = loadActiveSession()
     let seen = false
@@ -512,6 +523,25 @@ export default function App() {
     replaceBrowserHistory({ screen: 'home', overlay: null })
   }, [])
 
+  const handleOpenFormFillWithImages = useCallback(
+    (images: string[], options?: FormFillLaunchOptions) => {
+      setFormFillState({ images, options })
+      navigateToScreen('form-fill')
+    },
+    [navigateToScreen]
+  )
+
+  useEffect(() => {
+    registerFormFillOpener(handleOpenFormFillWithImages)
+    return () => registerFormFillOpener(null)
+  }, [handleOpenFormFillWithImages])
+
+  const handleBackFromFormFill = useCallback(() => {
+    setFormFillState(null)
+    setScreen('home')
+    replaceBrowserHistory({ screen: 'home', overlay: null })
+  }, [])
+
   const handleOpenA11y = () => {
     pushBrowserHistory({ screen, overlay: 'accessibility' })
     setIsA11yOpen(true)
@@ -536,8 +566,9 @@ export default function App() {
   }, [])
 
   const loadRecents = async () => {
-    const items = await getRecentResults()
+    const [items, drafts] = await Promise.all([getRecentResults(), getFormDrafts()])
     setRecentResults(items)
+    setFormDrafts(drafts)
   }
 
   const cleanerTitle = (result: ExplainResponse) => {
@@ -1586,6 +1617,15 @@ export default function App() {
             onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
             onOpenRelay={handleOpenRelayIntro}
+            onOpenFormFill={() => setFormPickerOpen(true)}
+            formDrafts={formDrafts}
+            onOpenFormDraft={(draft) => {
+              handleOpenFormFillWithImages(draft.pageImages, { formTitle: draft.title, draft })
+            }}
+            onRemoveFormDraft={(e, draft) => {
+              e.stopPropagation()
+              void deleteFormDraft(draft.id).then(loadRecents)
+            }}
             onChooseFiles={handleChooseFileClick}
             onChooseFolder={handleChooseFolderClick}
             onSample={handleSampleClick}
@@ -1728,7 +1768,32 @@ export default function App() {
             />
           </Suspense>
         )}
+
+        {screen === 'form-fill' && formFillState && (
+          <Suspense fallback={<div className="fixed inset-0 bg-[#E9E6DF]" />}>
+            <FormFillScreen
+              lang={selectedLang}
+              images={formFillState.images}
+              initialTitle={formFillState.options?.formTitle}
+              sourcePdfBytes={formFillState.options?.sourcePdfBytes}
+              initialDraft={formFillState.options?.draft}
+              liveBridge={formFillState.options?.liveBridge}
+              isInRoom={formFillState.options?.isInRoom}
+              onBack={handleBackFromFormFill}
+              onDraftSaved={loadRecents}
+            />
+          </Suspense>
+        )}
       </main>
+
+      <FormFillPickerSheet
+        isOpen={formPickerOpen}
+        lang={selectedLang}
+        onClose={() => setFormPickerOpen(false)}
+        onPickImages={(images, formTitle, sourcePdfBytes) => {
+          handleOpenFormFillWithImages(images, { formTitle, sourcePdfBytes })
+        }}
+      />
 
       {/* Accessibility Panel Sheet (WEB-10) */}
       <A11ySheet

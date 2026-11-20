@@ -368,4 +368,52 @@ export interface RecentResult {
   activity?: import('./utils/activity').DocumentActivity
 }
 
-export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera'
+export type FormFieldType = 'text' | 'date' | 'checkbox' | 'signature' | 'photo' | 'charGrid'
+
+export interface FormField {
+  id: string
+  label: string
+  type: FormFieldType
+  box: [number, number, number, number]
+  page: number
+  profileKey?: string | null
+  cells?: number | null
+  dateFormat?: string | null
+  required?: boolean
+}
+
+export interface UserProfile {
+  id: string
+  fullName: string
+  dob: string
+  gender: string
+  mobile: string
+  email: string
+  addressLine: string
+  city: string
+  state: string
+  pin: string
+  occupation: string
+  fatherOrSpouseName: string
+  nomineeName: string
+  nomineeRelation: string
+  nomineeDob: string
+  saveIds: boolean
+  pan: string
+  aadhaar: string
+  updatedAt: number
+}
+
+export interface FormDraft {
+  id: string
+  title: string
+  pageImages: string[]
+  fields: FormField[]
+  values: Record<string, string>
+  pdfBlob?: Blob | null
+  createdAt: number
+  updatedAt: number
+  status: 'draft' | 'ready'
+}
+
+export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-intro' | 'relay-camera' | 'form-fill'

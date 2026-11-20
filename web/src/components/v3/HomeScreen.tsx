@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
-import type { RecentResult } from '../../types'
+import type { FormDraft, RecentResult } from '../../types'
 import type { ReminderRow } from '../../utils/reminders'
-import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
+import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType, getSection } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
 import { chipFont, ensureOnboardingFonts } from '../../design/indicFont'
 import { DocIcon, IconA11y, IconArrow, IconCalendar, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconSearch, IconTick } from '../../ui/icons'
@@ -29,6 +29,10 @@ interface HomeProps {
   onDismissNext: (id: string) => void
   onTakePhoto: () => void
   onOpenRelay?: () => void
+  onOpenFormFill?: () => void
+  formDrafts?: FormDraft[]
+  onOpenFormDraft?: (draft: FormDraft) => void
+  onRemoveFormDraft?: (e: MouseEvent, draft: FormDraft) => void
   onChooseFiles: () => void
   onChooseFolder?: () => void
   onSample: (file: string) => void
@@ -316,6 +320,8 @@ export default function HomeScreen(props: HomeProps) {
     </div>
   ) : null
   const shown = recent.slice(0, 4)
+  const formDrafts = props.formDrafts || []
+  const ff = getSection(selectedLang, 'formFill')
   return (
     <div className="sv-screen-in bg-[#F4F5F2] text-[#1A1A1A] px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-4">
       <header className="flex items-center justify-between">
@@ -439,6 +445,30 @@ export default function HomeScreen(props: HomeProps) {
           </span>
           <IconChevron size={22} stroke="#FFFFFF" className="shrink-0" />
         </button>
+        {props.onOpenFormFill && (
+          <button
+            type="button"
+            data-testid="home-fill-form-btn"
+            onClick={props.onOpenFormFill}
+            className="sv-press flex items-center gap-3.5 py-3.5 px-4 border-[2px] border-[#1B1B1B] rounded-[28px] bg-[#F5F4F2] text-[#1B1B1B] text-left min-h-[64px]"
+          >
+            <span className="w-12 h-12 rounded-full bg-[#E3B660] border-[1.5px] border-[#1B1B1B] shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1B1B1B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="8" y1="13" x2="16" y2="13" />
+                <line x1="8" y1="17" x2="13" y2="17" />
+              </svg>
+            </span>
+            <span className="flex flex-col gap-0.5 flex-1 min-w-0">
+              <span className="text-[17px] font-bold">{ff.homeCardTitle || 'Fill a form'}</span>
+              <span className="text-[13.5px] text-[#575B58] leading-[1.35]">
+                {ff.homeCardSub || 'Scan a paper form, fill from your details, get a ready PDF.'}
+              </span>
+            </span>
+            <IconChevron size={20} stroke="#1B1B1B" className="shrink-0" />
+          </button>
+        )}
         <button type="button" onClick={props.onChooseFiles} className="sv-press flex items-center gap-4 py-4 px-5 border-[1.5px] border-[#1A1A1A] rounded-[32px] bg-[#F4F5F2] text-[#1A1A1A] text-left">
           <span className="w-14 h-14 rounded-full bg-[#CFE5E0] shrink-0 flex items-center justify-center">
             <IconFile size={24} stroke="#034F46" />
@@ -530,8 +560,45 @@ export default function HomeScreen(props: HomeProps) {
           </button>
         )}
       </div>
-      {shown.length > 0 && (
+      {(shown.length > 0 || formDrafts.length > 0) && (
         <div className="flex flex-col gap-2.5">
+          {formDrafts.map((draft) => (
+            <div
+              key={draft.id}
+              data-testid={`recent-draft-${draft.id}`}
+              className="flex items-center gap-3 py-3 pr-2 pl-3 border-[1.5px] border-[#1A1A1A] rounded-[28px] bg-[#F4F5F2]"
+            >
+              <button
+                type="button"
+                onClick={() => props.onOpenFormDraft?.(draft)}
+                className="sv-press flex items-center gap-3 flex-1 min-w-0 text-left text-[#1A1A1A]"
+              >
+                <span className="w-[46px] h-[46px] shrink-0 box-border rounded-2xl border-[1.5px] border-[#1A1A1A] bg-[#E3B660] flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1B1B1B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="8" y1="13" x2="16" y2="13" />
+                  </svg>
+                </span>
+                <span className="flex flex-col gap-[3px] flex-1 min-w-0">
+                  <span className="text-[15.5px] font-semibold leading-[1.3] line-clamp-2">{draft.title}</span>
+                  <span className="text-[13px] font-semibold text-[#C96846]">
+                    {ff.draftBadge || 'Draft · sign by hand'}
+                  </span>
+                </span>
+              </button>
+              {props.onRemoveFormDraft && (
+                <button
+                  type="button"
+                  aria-label="Remove"
+                  onClick={(e) => props.onRemoveFormDraft?.(e, draft)}
+                  className="w-11 h-11 shrink-0 rounded-full bg-transparent flex items-center justify-center"
+                >
+                  <IconClose size={16} stroke="#575B58" />
+                </button>
+              )}
+            </div>
+          ))}
           {shown.map((item) => (
             <RecentRow
               key={item.id}
