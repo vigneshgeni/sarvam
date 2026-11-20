@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fill a form with Gemini Live</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Caveat:wght@600&family=Noto+Sans+Tamil:wght@400;600&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #C96846;outline-offset:3px}
+@keyframes sv-wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@keyframes sv-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sv-up{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion: reduce){.sv-anim{animation:none !important}}
+.hide-scroll{scrollbar-width:none}
+.hide-scroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #E9E6DF; color: #1B1B1B; font-family: 'DM Sans','Noto Sans Tamil',system-ui,sans-serif; overflow: hidden">
+
+<div style="flex: none; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #F5F4F2">
+<a href="LiveScanner.dc.html" aria-label="Back to camera" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1px"><span style="font-size: 16px; font-weight: 700">KYC update form</span><span style="font-size: 12px; color: #5E5E5A">{{ progress }}</span></div>
+<span style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><span style="padding: 3px 8px; border-radius: 8px; background: #E3B660; font-size: 11px; font-weight: 700">Form</span></span>
+</div>
+
+<div style="flex: none; height: 330px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 300px; height: 310px; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,0.16); padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; font-size: 10.5px">
+<span style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em">BANK ACCOUNT · KYC UPDATE FORM (SAMPLE)</span>
+<span style="height: 2px; background: #1B1B1B"></span>
+<sc-for list="{{ boxes }}" as="b" hint-placeholder-count="8">
+<div style="display: flex; align-items: flex-end; gap: 8px; min-height: 22px">
+<span style="flex: none; width: 92px; color: #4A4A46">{{ b.label }}</span>
+<span style="flex: 1; min-height: 20px; border-bottom: 1px solid #8A8A85; background: {{ b.hl }}; font-family: 'Caveat',cursive; font-size: 16px; line-height: 1; color: #2B4DB0; padding: 0 4px">{{ b.value }}</span>
+</div>
+</sc-for>
+<span style="margin-top: auto; align-self: flex-end; font-size: 9.5px; color: #8A8A85">Blue = filled by Sarvam · you review before saving</span>
+</div>
+</div>
+
+<div style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: #1B1B1B; color: #F5F4F2; border-radius: 28px 28px 0 0">
+<div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 18px 6px">
+<span aria-hidden="true" style="display: inline-flex; align-items: center; gap: 3px; height: 18px"><span class="sv-anim" style="width: 3px; height: 18px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out infinite"></span><span class="sv-anim" style="width: 3px; height: 18px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out 0.15s infinite"></span><span class="sv-anim" style="width: 3px; height: 18px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out 0.3s infinite"></span></span>
+<span style="font-size: 14px; font-weight: 700">Gemini Live · filling with you</span>
+</div>
+
+<div class="hide-scroll" style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 16px 10px">
+<span style="font-size: 14.5px; line-height: 1.45"><b style="color: #F6DCD2">You:</b> Fill this with my details.</span>
+<span style="font-size: 14.5px; line-height: 1.45"><b style="color: #E3B660">Gemini:</b> I filled 6 of 9 boxes from your saved details. Who should be your nominee, and how are they related to you?</span>
+<sc-if value="{{ answered }}" hint-placeholder-val="{{ false }}">
+<span class="sv-anim" style="font-size: 14.5px; line-height: 1.45; animation: sv-fade 0.25s ease both"><b style="color: #F6DCD2">You:</b> Priya S, my wife.</span>
+<span class="sv-anim" style="font-size: 14.5px; line-height: 1.45; animation: sv-fade 0.25s ease both"><b style="color: #E3B660">Gemini:</b> Done. The signature box is left for you to sign by hand. Please check the blue text before you save.</span>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+<span style="padding: 5px 10px; border-radius: 12px; background: {{ c.bg }}; color: {{ c.fg }}; font-size: 12px; font-weight: 700">{{ c.text }}</span>
+</sc-for>
+</div>
+</div>
+
+<div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 16px 24px">
+<sc-if value="{{ notAnswered }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ answer }}" style="flex: 1; min-height: 56px; border-radius: 28px; border: 0; background: #E3B660; color: #1B1B1B; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15.5px; font-weight: 700; cursor: pointer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Answer by voice</button>
+</sc-if>
+<sc-if value="{{ answered }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ openShare }}" style="flex: 1; min-height: 56px; border-radius: 28px; border: 0; background: #E3B660; color: #1B1B1B; font-size: 15.5px; font-weight: 700; cursor: pointer">Review and save</button>
+</sc-if>
+<a href="LiveSaved.dc.html" style="flex: none; min-height: 56px; padding: 0 18px; border-radius: 28px; background: rgba(255,255,255,0.14); display: flex; align-items: center; font-size: 15px; font-weight: 700">Later</a>
+</div>
+</div>
+
+<sc-if value="{{ share }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); display: flex; flex-direction: column; justify-content: flex-end; z-index: 5">
+<div role="dialog" aria-label="Save or share the filled form" class="sv-anim" style="background: #F5F4F2; border-radius: 28px 28px 0 0; padding: 18px 22px 28px; display: flex; flex-direction: column; gap: 12px; animation: sv-up 0.3s ease both">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-size: 20px; font-weight: 700">Your filled form is ready</span><button onClick="{{ closeShare }}" aria-label="Close" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: #EAE7E0; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1B1B1B" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div style="display: flex; gap: 8px" role="group" aria-label="Format">
+<sc-for list="{{ formats }}" as="f" hint-placeholder-count="3">
+<button onClick="{{ f.pick }}" aria-pressed="{{ f.on }}" style="flex: 1; min-height: 64px; border-radius: 18px; border: 2px solid #1B1B1B; background: {{ f.bg }}; color: #1B1B1B; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer"><span style="font-size: 14.5px; font-weight: 700">{{ f.name }}</span><span style="font-size: 11px; color: #5E5E5A">{{ f.sub }}</span></button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #5E5E5A">{{ formatNote }}</span>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+<button style="min-height: 52px; border-radius: 26px; border: 2px solid #1B1B1B; background: #214D47; color: #fff; font-size: 14.5px; font-weight: 700; cursor: pointer">WhatsApp</button>
+<button style="min-height: 52px; border-radius: 26px; border: 2px solid #1B1B1B; background: #fff; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">Email</button>
+<button style="min-height: 52px; border-radius: 26px; border: 2px solid #1B1B1B; background: #fff; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">Save to Files</button>
+<a href="VoiceHome.dc.html" style="min-height: 52px; border-radius: 26px; border: 2px solid #1B1B1B; background: #E3B660; color: #1B1B1B; display: flex; align-items: center; justify-content: center; font-size: 14.5px; font-weight: 700">Keep in Sarvam</a>
+</div>
+<span style="display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45; color: #2E4F49; padding: 10px 12px; border-radius: 14px; background: #D3E5E0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>Kept forms stay on this phone under Recent, marked "Draft · sign by hand". Your ID numbers are never read aloud in a call.</span>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { answered: false, share: false, fmt: 0 };
+}
+renderVals() {
+const s = this.state;
+const MISSING = 'rgba(201,104,70,0.18)';
+const fmts = [
+{ name: 'PDF', sub: 'Looks like the paper form', note: 'Your answers are written onto the scanned form, ready to print or send.' },
+{ name: 'Word', sub: 'Typed, editable', note: 'A typed copy you can edit. Same answers, plain layout.' },
+{ name: 'Google Doc', sub: 'Needs Google', note: 'Saved to your Google Drive. Connect Google first; Sarvam only sees files it creates.' }
+];
+return {
+progress: s.answered ? '8 of 9 filled · sign by hand' : '6 of 9 filled · 2 need you',
+boxes: [
+{ label: 'Full name', value: 'Vignesh S', hl: 'transparent' },
+{ label: 'Date of birth', value: '01-01-1990', hl: 'transparent' },
+{ label: 'Mobile', value: '98••• ••234', hl: 'transparent' },
+{ label: 'Address', value: '12, 3rd Cross, E-City, Bengaluru 560100', hl: 'transparent' },
+{ label: 'PAN', value: 'ABCDE1234F', hl: 'transparent' },
+{ label: 'Occupation', value: 'Salaried', hl: 'transparent' },
+{ label: 'Nominee', value: s.answered ? 'Priya S' : '', hl: s.answered ? 'transparent' : MISSING },
+{ label: 'Relation', value: s.answered ? 'Spouse' : '', hl: s.answered ? 'transparent' : MISSING },
+{ label: 'Signature', value: '', hl: 'rgba(227,182,96,0.25)' }
+],
+chips: s.answered ? [
+{ text: '6 from your details', bg: '#2E4F49', fg: '#D3E5E0' },
+{ text: '2 you said', bg: '#5a3a30', fg: '#F6DCD2' },
+{ text: 'Signature: by hand', bg: '#4a4230', fg: '#E3B660' }
+] : [
+{ text: '6 from your details', bg: '#2E4F49', fg: '#D3E5E0' },
+{ text: '2 need you', bg: '#5a3a30', fg: '#F6DCD2' },
+{ text: 'Signature: by hand', bg: '#4a4230', fg: '#E3B660' }
+],
+answered: s.answered,
+notAnswered: !s.answered,
+answer: () => this.setState({ answered: true }),
+share: s.share,
+openShare: () => this.setState({ share: true }),
+closeShare: () => this.setState({ share: false }),
+formats: fmts.map((f, i) => ({ name: f.name, sub: f.sub, on: i === s.fmt, bg: i === s.fmt ? '#E3B660' : '#fff', pick: () => this.setState({ fmt: i }) })),
+formatNote: fmts.at(s.fmt).note
+};
+}
+}
+</script>
+</body>
+</html>

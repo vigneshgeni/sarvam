@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ask Sarvam</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #C96846;outline-offset:2px}
+@keyframes sv-spin{to{transform:rotate(360deg)}}
+@keyframes sv-dot{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1);opacity:1}}
+@keyframes sv-pulse{0%{transform:scale(.6);opacity:.55}100%{transform:scale(1.25);opacity:0}}
+@keyframes sv-wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@keyframes sv-blink{50%{opacity:0}}
+@keyframes sv-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes sv-drop{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.sv-anim{animation:none !important}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #F5F4F2; color: #1B1B1B; font-family: 'DM Sans','Noto Sans Devanagari','Noto Sans Tamil',system-ui,sans-serif; overflow: hidden">
+
+<div style="flex: none; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px">
+<div style="display: flex">
+<a href="Main.dc.html" aria-label="Back to Home" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+</a>
+<button aria-label="Chats, activity and memory" onClick="{{ openDrawer }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h16M4 16h10"/></svg>
+</button>
+</div>
+<span style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Ask Sarvam</span>
+<div style="display: flex">
+<button aria-label="{{ bellLabel }}" onClick="{{ openNotes }}" style="position: relative; width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>
+<sc-if value="{{ hasUnread }}" hint-placeholder-val="{{ true }}"><span style="position: absolute; top: 4px; right: 2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #C96846; color: #1B1B1B; border: 2px solid #F5F4F2; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{ unread }}</span></sc-if>
+</button>
+<button aria-label="New chat" onClick="{{ newChat }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+</button>
+</div>
+</div>
+
+<sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 14px 24px 12px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h1 style="margin: 0; font-family: 'Fraunces',Georgia,serif; font-weight: 500; font-size: 33px; line-height: 1.1; letter-spacing: -0.01em">{{ greeting }}</h1>
+<p style="margin: 0; font-size: 16px; line-height: 1.5; color: #5E5E5A">Ask about anything you scanned or saved. I can also set reminders and add events for you.</p>
+<button onClick="{{ openName }}" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 12px; border-radius: 22px; border: 2px dashed #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 600; cursor: pointer">
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>{{ nameBtn }}</button>
+</div>
+
+<div style="background: #E3B660; border: 2px solid #1B1B1B; border-radius: 28px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase">
+<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Heads up</div>
+<p style="margin: 0; font-size: 17px; line-height: 1.4; font-weight: 600">Your Dr. Rao follow-up tomorrow at 10:00 overlaps with the Sprint review at 10:30.</p>
+<button onClick="{{ askClash }}" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; border-radius: 22px; border: 0; background: #1B1B1B; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer">Sort it out
+<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Try asking</span>
+<sc-for list="{{ suggestions }}" as="q" hint-placeholder-count="4">
+<button onClick="{{ q.pick }}" style="min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-radius: 20px; border: 2px solid #1B1B1B; background: #F5F4F2; color: #1B1B1B; font-size: 16px; font-weight: 500; text-align: left; cursor: pointer">
+<span>{{ q.text }}</span>
+<span style="flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 9px; border-radius: 10px; background: {{ q.tagBg }}">{{ q.tag }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasMsgs }}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column-reverse">
+<div style="display: flex; flex-direction: column; gap: 28px; padding: 12px 20px 22px">
+<sc-for list="{{ items }}" as="m" hint-placeholder-count="2">
+
+<sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="align-self: flex-end; max-width: 84%; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; animation: sv-fade 0.3s ease both">
+<sc-if value="{{ m.hasAttach }}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 14px; background: #F5F4F2; border: 2px solid #1B1B1B; font-size: 13px; font-weight: 600">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></svg>{{ m.attach }}</span>
+</sc-if>
+<div style="background: #EAE7E0; padding: 12px 16px; border-radius: 22px 22px 6px 22px; font-size: 16px; line-height: 1.45">{{ m.text }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isLive }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; animation: sv-fade 0.3s ease both">
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="flex: none; width: 42px; height: 42px; border-radius: 21px; background: #1B1B1B; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 16px; font-weight: 700">Live conversation</span><span style="font-size: 13px; color: #5E5E5A">{{ m.liveSub }}</span></span>
+</div>
+<sc-if value="{{ m.hasLiveTasks }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{ m.ltasks }}" as="lt" hint-placeholder-count="1">
+<span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; min-height: 34px; padding: 0 12px; border-radius: 17px; background: #D3E5E0; font-size: 13px; font-weight: 700"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#214D47" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>{{ lt.t }}</span>
+</sc-for>
+</div>
+</sc-if>
+<button aria-expanded="{{ m.ex }}" onClick="{{ m.toggleEx }}" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 4px 0 0; border: 0; background: transparent; color: #214D47; font-size: 14px; font-weight: 700; cursor: pointer">{{ m.liveToggle }}
+<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{ m.chevRot }}; transition: transform 0.2s ease"><path d="M6 9l6 6 6-6"/></svg></button>
+<sc-if value="{{ m.ex }}" hint-placeholder-val="{{ false }}">
+<div lang="hi" style="display: flex; flex-direction: column; gap: 12px; padding-top: 2px">
+<sc-for list="{{ m.lturns }}" as="lt" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">{{ lt.who }}</span><span style="font-size: 16px; line-height: 1.5">{{ lt.text }}</span></div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.isAi }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="display: flex; flex-direction: column; gap: 14px; animation: sv-fade 0.3s ease both">
+
+<sc-if value="{{ m.thinking }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; gap: 10px; align-items: center; min-height: 32px" role="img" aria-label="Sarvam is thinking">
+<span class="sv-anim" style="width: 14px; height: 14px; border-radius: 7px; background: #C96846; animation: sv-dot 1.1s ease-in-out infinite"></span>
+<span style="font-size: 15px; color: #5E5E5A">Thinking</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.showHead }}" hint-placeholder-val="{{ false }}">
+<button aria-expanded="{{ m.ex }}" onClick="{{ m.toggleEx }}" style="align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 14px; border-radius: 22px; border: 0; background: #EAE7E0; color: #3A3A37; font-size: 14px; font-weight: 600; cursor: pointer">
+<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#214D47" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>{{ m.headText }}
+<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{ m.chevRot }}; transition: transform 0.2s ease"><path d="M6 9l6 6 6-6"/></svg></button>
+</sc-if>
+
+<sc-if value="{{ m.showSteps }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 2px 0 2px 14px; border-left: 2px solid #CFCBC1">
+<sc-for list="{{ m.steps }}" as="s" hint-placeholder-count="3">
+<div class="sv-anim" style="display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 500; color: #3A3A37; animation: sv-fade 0.3s ease both">
+<sc-if value="{{ s.done }}" hint-placeholder-val="{{ true }}">
+<span style="flex: none; width: 18px; height: 18px; border-radius: 9px; background: #214D47; color: #fff; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>
+</sc-if>
+<sc-if value="{{ s.active }}" hint-placeholder-val="{{ false }}">
+<span class="sv-anim" style="flex: none; width: 18px; height: 18px; border-radius: 9px; border: 3px solid #CFCBC1; border-top-color: #C96846; animation: sv-spin 0.8s linear infinite"></span>
+</sc-if>
+<span>{{ s.label }}</span>
+</div>
+</sc-for>
+<sc-if value="{{ m.showDetail }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 6px; font-size: 13.5px; line-height: 1.45; color: #5E5E5A">
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{ m.tools }}" as="t" hint-placeholder-count="2">
+<span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 13px; border: 1.5px solid #1B1B1B; color: #1B1B1B; font-size: 12px; font-weight: 600">{{ t.t }}</span>
+</sc-for>
+</div>
+<span>{{ m.modelLine }}</span>
+<span>{{ m.did }}</span>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.hasText }}" hint-placeholder-val="{{ false }}">
+<p lang="{{ m.langCode }}" style="margin: 0; font-size: 17px; line-height: 1.6">{{ m.text }}<sc-if value="{{ m.cursor }}" hint-placeholder-val="{{ false }}"><span class="sv-anim" style="display: inline-block; width: 8px; height: 17px; margin-left: 3px; border-radius: 2px; background: #1B1B1B; vertical-align: -3px; animation: sv-blink 0.9s steps(2) infinite"></span></sc-if></p>
+</sc-if>
+
+<sc-if value="{{ m.done }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="display: flex; flex-direction: column; gap: 14px; animation: sv-fade 0.35s ease both">
+
+<sc-if value="{{ m.hasLangs }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; line-height: 1.45; color: #5E5E5A">{{ m.langNote }}</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ m.langs }}" as="l" hint-placeholder-count="3">
+<button aria-pressed="{{ l.on }}" lang="{{ l.code }}" onClick="{{ l.pick }}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: {{ l.bg }}; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">{{ l.label }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wDose }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 20px; font-weight: 500; letter-spacing: -0.01em">Today's Metformin</span>
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 20px; background: #E3B660; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15.5px; font-weight: 700">Morning · 8:30 AM</span><span style="font-size: 13.5px; color: #5E5E5A">After breakfast. Did you take it?</span></span>
+<sc-if value="{{ m.doseOpen }}" hint-placeholder-val="{{ true }}">
+<span style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{ m.takeAM }}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: #D3E5E0; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">I took it</button>
+<button onClick="{{ m.missAM }}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">I missed it</button>
+</span>
+</sc-if>
+<sc-if value="{{ m.doseTaken }}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 14px; background: #D3E5E0; color: #214D47">Taken · logged</span></sc-if>
+<sc-if value="{{ m.doseMissed }}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; font-size: 13px; font-weight: 700; line-height: 1.4; padding: 6px 12px; border-radius: 14px; background: #F6DCD2; color: #B5472B">Missed · do not double up tonight</span></sc-if>
+</span>
+</div>
+<div style="height: 1.5px; background: #EAE7E0"></div>
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 20px; background: #214D47; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+<span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15.5px; font-weight: 700">Tonight · 8:30 PM</span><span style="font-size: 13.5px; color: #5E5E5A">After dinner. Your next dose.</span></span>
+<sc-if value="{{ m.doseRemOpen }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ m.remindPM }}" style="align-self: flex-start; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer">Remind me at 8:15 PM</button>
+</sc-if>
+<sc-if value="{{ m.doseRemDone }}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 14px; background: #D3E5E0; color: #214D47">Reminder set · Apple Reminders</span></sc-if>
+</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 16px; background: #F5F4F2">
+<span style="font-size: 12.5px; line-height: 1.45; color: #5E5E5A">Not medical advice. If you feel unwell, call your doctor.</span>
+<a href="tel:" style="flex: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 22px; border: 2px solid #1B1B1B; font-size: 13.5px; font-weight: 700">Call clinic</a>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wMeds }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 20px; font-weight: 500; letter-spacing: -0.01em">{{ m.medsTitle }}</span>
+<sc-for list="{{ m.medRows }}" as="r" hint-placeholder-count="3">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 20px; background: #D3E5E0; color: #214D47; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ r.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 16px; font-weight: 700; line-height: 1.3">{{ r.t }}</span><span style="font-size: 14px; line-height: 1.4; color: #5E5E5A">{{ r.s }}</span><span style="align-self: flex-start; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 12px; background: #EAE7E0">{{ r.n }}</span></span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wWeek }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 20px; font-weight: 500; letter-spacing: -0.01em">Your week</span>
+<sc-for list="{{ m.weekRows }}" as="r" hint-placeholder-count="5">
+<sc-if value="{{ r.head }}" hint-placeholder-val="{{ false }}">
+<span style="margin-top: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">{{ r.label }}</span>
+</sc-if>
+<sc-if value="{{ r.item }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: stretch; gap: 12px">
+<span style="flex: none; width: 52px; padding-top: 2px; font-size: 13px; font-weight: 700; color: #3A3A37">{{ r.time }}</span>
+<span style="flex: none; width: 4px; border-radius: 2px; background: {{ r.color }}"></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; font-weight: 600; line-height: 1.3">{{ r.title }}</span><span style="font-size: 12.5px; color: #5E5E5A">{{ r.src }}</span></span>
+<sc-if value="{{ r.clash }}" hint-placeholder-val="{{ false }}"><span style="flex: none; align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 11px; background: #F6DCD2; color: #B5472B">Clash</span></sc-if>
+</div>
+</sc-if>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wApprove }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 20px; font-weight: 500; letter-spacing: -0.01em">{{ m.apTitle }}</span>
+<sc-for list="{{ m.apItems }}" as="r" hint-placeholder-count="3">
+<button role="checkbox" aria-checked="{{ r.on }}" onClick="{{ r.toggle }}" style="display: flex; align-items: flex-start; gap: 12px; min-height: 48px; padding: 0; border: 0; background: transparent; color: #1B1B1B; text-align: left; cursor: pointer; opacity: {{ r.op }}">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 20px; background: {{ r.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ r.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 15.5px; font-weight: 700; line-height: 1.3">{{ r.t }}</span><span style="font-size: 13.5px; line-height: 1.4; color: #5E5E5A">{{ r.s }}</span><span style="font-size: 12.5px; font-weight: 700; color: {{ r.whereColor }}">{{ r.where }}</span></span>
+<sc-if value="{{ r.showBox }}" hint-placeholder-val="{{ true }}"><span style="flex: none; margin-top: 8px; width: 26px; height: 26px; border-radius: 8px; border: 2px solid #1B1B1B; background: {{ r.boxBg }}; color: #fff; display: flex; align-items: center; justify-content: center"><sc-if value="{{ r.on }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></sc-if></span></sc-if>
+</button>
+</sc-for>
+<sc-if value="{{ m.apOpen }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Add to</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ m.dests }}" as="d" hint-placeholder-count="3">
+<sc-if value="{{ d.locked }}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; background: #D3E5E0; border: 2px solid #214D47; font-size: 14px; font-weight: 700">{{ d.label }}<span style="font-size: 11px; font-weight: 600; color: #5E5E5A">always</span></span>
+</sc-if>
+<sc-if value="{{ d.toggleable }}" hint-placeholder-val="{{ true }}">
+<button aria-pressed="{{ d.on }}" onClick="{{ d.toggle }}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 2px solid #1B1B1B; background: {{ d.bg }}; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">
+<sc-if value="{{ d.on }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></sc-if>{{ d.label }}</button>
+</sc-if>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; line-height: 1.45; color: #5E5E5A">iPhone asks once for permission to use Reminders and Calendar. Nothing is added until you tap below.</span>
+<sc-if value="{{ m.canApprove }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ m.approve }}" style="align-self: flex-start; min-height: 48px; padding: 0 24px; border-radius: 24px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer">{{ m.apButton }}</button>
+</sc-if>
+<sc-if value="{{ m.noneSel }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 14px; font-weight: 600; color: #B5472B">Tick at least one item to add.</span>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ m.apDone }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; line-height: 1.4; color: #214D47"><span style="flex: none; width: 26px; height: 26px; border-radius: 13px; background: #214D47; color: #fff; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>{{ m.apDoneText }}</div>
+<sc-if value="{{ m.showVerify }}" hint-placeholder-val="{{ true }}">
+<span style="display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #3A3A37"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#214D47" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>{{ m.verifyText }}</span>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-if value="{{ m.showOpenRem }}" hint-placeholder-val="{{ true }}">
+<button style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: #D3E5E0; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">Open Reminders</button>
+</sc-if>
+<sc-if value="{{ m.showOpenCal }}" hint-placeholder-val="{{ false }}">
+<button style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: #E3B660; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">Open Calendar</button>
+</sc-if>
+<button onClick="{{ m.undo }}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 600; cursor: pointer">Undo</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ m.apUndone }}" hint-placeholder-val="{{ false }}">
+<div style="font-size: 14.5px; font-weight: 600; line-height: 1.4; color: #5E5E5A">Undone. I removed them from everywhere I added them.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wClash }}" hint-placeholder-val="{{ false }}">
+<div style="background: #E4DFF7; border: 2px solid #1B1B1B; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase">Clash · Thu 12 Nov</div>
+<div style="position: relative; height: 96px; background: #fff; border-radius: 14px">
+<div style="position: absolute; left: 12px; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="position: relative; height: 28px"><div style="position: absolute; left: 25%; width: 37.5%; height: 28px; border-radius: 8px; background: #214D47; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; padding-left: 8px; white-space: nowrap; overflow: hidden">Dr. Rao</div></div>
+<div style="position: relative; height: 28px"><div style="position: absolute; left: 50%; width: 25%; height: 28px; border-radius: 8px; background: #E3B660; color: #1B1B1B; font-size: 12px; font-weight: 600; display: flex; align-items: center; padding-left: 8px; white-space: nowrap; overflow: hidden">Review</div></div>
+</div>
+<div style="position: absolute; left: calc(12px + (100% - 24px) * 0.5); width: calc((100% - 24px) * 0.125); top: 8px; height: 64px; border: 1.5px dashed #B5472B; background: rgba(201,104,70,0.18); border-radius: 6px"></div>
+<div style="position: absolute; left: 12px; right: 12px; bottom: 6px; display: flex; justify-content: space-between; font-size: 10.5px; color: #5E5E5A"><span>9:30</span><span>10:30</span><span>11:30</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #214D47"></span>10:00 Dr. Rao follow-up</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #E3B660"></span>10:30 Sprint review</span>
+<span style="display: flex; align-items: center; gap: 8px; color: #B5472B"><span style="width: 10px; height: 10px; border-radius: 5px; background: #B5472B"></span>15 minutes overlap</span>
+</div>
+
+<sc-if value="{{ m.cOpen }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{ m.pickDraft }}" style="min-height: 46px; padding: 0 18px; border-radius: 23px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer">Draft a message</button>
+<button onClick="{{ m.pickKeep }}" style="min-height: 46px; padding: 0 18px; border-radius: 23px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">Keep both</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.cDraft }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 12px; font-weight: 700; color: #214D47; letter-spacing: 0.04em; text-transform: uppercase">Draft message</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.5">"Can we move Thursday's Sprint review to 11:30? I have a doctor's visit at 10:00."</p>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Open in</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ m.channels }}" as="c" hint-placeholder-count="3">
+<button aria-pressed="{{ c.on }}" onClick="{{ c.pick }}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 2px solid #1B1B1B; background: {{ c.bg }}; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">{{ c.label }}</button>
+</sc-for>
+</div>
+</div>
+<button onClick="{{ m.openComposer }}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; border-radius: 23px; border: 2px solid #1B1B1B; background: #E3B660; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">{{ m.openLabel }}</button>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.45; color: #5E5E5A">You pick who gets it and tap Send yourself. Sarvam never sends a message on its own.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.cOpened }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; line-height: 1.4"><span style="flex: none; width: 26px; height: 26px; border-radius: 13px; background: #E3B660; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1B1B1B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span>{{ m.openedText }}</div>
+<span style="font-size: 13.5px; line-height: 1.45; color: #5E5E5A">It is waiting in Activity until you send it.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.cKeep }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 15px; font-weight: 600; line-height: 1.5">Okay, keeping both. Want a reminder at 10:15 so you can join the review from the clinic?</span>
+<button onClick="{{ m.keepAdd }}" style="align-self: flex-start; min-height: 46px; padding: 0 20px; border-radius: 23px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer">Add to Apple Reminders</button>
+</div>
+</sc-if>
+<sc-if value="{{ m.cKeepDone }}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; line-height: 1.4"><span style="flex: none; width: 26px; height: 26px; border-radius: 13px; background: #214D47; color: #fff; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>Reminder added for Thu 10:15 AM in Apple Reminders and Sarvam.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.wSaved }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: 17px; background: #D3E5E0; color: #214D47; font-size: 13px; font-weight: 700"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Saved to Scanned documents</span>
+<span style="display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 17px; background: #EAE7E0; font-size: 13px; font-weight: 700">Due Fri 13 Nov</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.showSources }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">From your documents</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ m.sources }}" as="x" hint-placeholder-count="2">
+<span style="display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: 17px; background: #D3E5E0; font-size: 13px; font-weight: 700"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></svg>{{ x.t }}</span>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m.showRemembered }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ m.openMem }}" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px 8px 12px; border-radius: 20px; background: transparent; border: 2px dashed #1B1B1B; color: #1B1B1B; text-align: left; cursor: pointer">
+<span style="flex: none; width: 38px; height: 38px; border-radius: 19px; background: #D3E5E0; color: #214D47; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3zM9.5 19h5M10.5 21h3"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px; font-weight: 700; line-height: 1.3">{{ m.remText }}</span><span style="font-size: 13px; color: #5E5E5A">Manage memory</span></span>
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+</button>
+</sc-if>
+
+<div style="display: flex; margin-left: -10px">
+<button aria-label="Listen to this answer" style="width: 44px; height: 44px; border: 0; background: transparent; color: #5E5E5A; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+<button aria-label="Copy answer" style="width: 44px; height: 44px; border: 0; background: transparent; color: #5E5E5A; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+<button aria-label="Good answer" style="width: 44px; height: 44px; border: 0; background: transparent; color: #5E5E5A; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9H19a2 2 0 0 1 2 2.3l-1.2 6.5a2 2 0 0 1-2 1.7H7"/></svg></button>
+<button aria-label="Bad answer" style="width: 44px; height: 44px; border: 0; background: transparent; color: #5E5E5A; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(180deg)"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9H19a2 2 0 0 1 2 2.3l-1.2 6.5a2 2 0 0 1-2 1.7H7"/></svg></button>
+</div>
+
+<sc-if value="{{ m.hasFollow }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start">
+<sc-for list="{{ m.follow }}" as="f" hint-placeholder-count="2">
+<button onClick="{{ f.pick }}" style="min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 14px; border-radius: 22px; border: 1.5px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14.5px; font-weight: 500; text-align: left; cursor: pointer">
+<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>{{ f.t }}</button>
+</sc-for>
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+</div>
+</sc-if>
+
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<div style="flex: none; padding: 8px 12px 6px; background: #F5F4F2">
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 30px; padding: 6px; display: flex; flex-direction: column; gap: 6px">
+<sc-if value="{{ hasAtt }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; padding: 4px 4px 0">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 4px 0 12px; border-radius: 14px; background: #EAE7E0; font-size: 13px; font-weight: 600">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></svg>
+<span style="margin-left: 4px">{{ att }}</span>
+<button aria-label="Remove attachment" onClick="{{ removeAtt }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</span>
+</div>
+</sc-if>
+<div style="display: flex; align-items: center; gap: 4px">
+<button aria-label="Add a scan, photo or file" onClick="{{ openAttach }}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #EAE7E0; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+<input aria-label="Message Sarvam" placeholder="Ask Sarvam" value="{{ input }}" onChange="{{ onInput }}" style="flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; padding: 0 8px; font-size: 16px; font-family: inherit; color: #1B1B1B">
+<sc-if value="{{ showLive }}" hint-placeholder-val="{{ true }}">
+<button aria-label="Start live voice conversation" onClick="{{ openLive }}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #1B1B1B; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg>
+</button>
+</sc-if>
+<sc-if value="{{ showSend }}" hint-placeholder-val="{{ false }}">
+<button aria-label="Send" onClick="{{ send }}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #C96846; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+</sc-if>
+<sc-if value="{{ showStop }}" hint-placeholder-val="{{ false }}">
+<button aria-label="Stop answering" onClick="{{ stop }}" style="flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: #1B1B1B; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>
+</button>
+</sc-if>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 4px">
+<button aria-label="Model. {{ modelLine }}. Change" aria-haspopup="dialog" onClick="{{ openModel }}" style="min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 0; background: transparent; color: #3A3A37; font-size: 13px; font-weight: 600; cursor: pointer">
+<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>{{ modelLine }}
+<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+<span style="font-size: 12px; color: #5E5E5A">Check important details</span>
+</div>
+</div>
+
+<sc-if value="{{ showAttach }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 20">
+<button aria-label="Close attachment menu" onClick="{{ closeAttach }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 0; background: rgba(27,27,27,0.5); cursor: pointer"></button>
+<div class="sv-anim" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F4F2; border-top: 2px solid #1B1B1B; border-radius: 30px 30px 0 0; padding: 10px 16px 26px; display: flex; flex-direction: column; gap: 4px; animation: sv-fade 0.25s ease both">
+<div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #CFCBC1; margin-bottom: 10px"></div>
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 22px; font-weight: 500; padding: 0 4px 8px">Add to chat</span>
+<button onClick="{{ addScan }}" style="min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 8px; border: 0; border-radius: 16px; background: transparent; color: #1B1B1B; font-size: 17px; font-weight: 700; text-align: left; cursor: pointer">
+<span style="flex: none; width: 46px; height: 46px; border-radius: 23px; background: #E3B660; border: 2px solid #1B1B1B; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.4"/></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px"><span>Scan a document</span><span style="font-size: 13px; font-weight: 400; color: #5E5E5A">Saved to Scanned documents</span></span>
+</button>
+<button onClick="{{ addPhoto }}" style="min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 8px; border: 0; border-radius: 16px; background: transparent; color: #1B1B1B; font-size: 17px; font-weight: 700; text-align: left; cursor: pointer">
+<span style="flex: none; width: 46px; height: 46px; border-radius: 23px; background: #EAE7E0; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></span>
+<span>Photo</span>
+</button>
+<button onClick="{{ addFile }}" style="min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 8px; border: 0; border-radius: 16px; background: transparent; color: #1B1B1B; font-size: 17px; font-weight: 700; text-align: left; cursor: pointer">
+<span style="flex: none; width: 46px; height: 46px; border-radius: 23px; background: #EAE7E0; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></svg></span>
+<span>File</span>
+</button>
+</div>
+</div>
+</sc-if>
+
+<button aria-label="Close menu" onClick="{{ closeDrawer }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; border: 0; background: rgba(27,27,27,0.5); opacity: {{ scrimOp }}; visibility: {{ drawerVis }}; transition: opacity 0.28s ease, visibility 0.28s; cursor: pointer"></button>
+<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 330px; z-index: 31; background: #F5F4F2; border-right: 2px solid #1B1B1B; display: flex; flex-direction: column; transform: {{ drawerTx }}; visibility: {{ drawerVis }}; transition: transform 0.28s ease, visibility 0.28s">
+<div style="flex: none; padding: 14px 14px 8px 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<div style="font-size: 26px; font-weight: 700; letter-spacing: -0.03em; line-height: 1">Sarvam<span style="color: #C96846">.</span></div>
+<button aria-label="Close menu" onClick="{{ closeDrawer }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<button onClick="{{ newChat }}" style="min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 16px; border: 2px solid #1B1B1B; border-radius: 24px; background: #1B1B1B; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer">
+<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>New chat</button>
+<div style="display: flex; padding: 4px; border-radius: 26px; background: #EAE7E0; gap: 4px" role="tablist">
+<button role="tab" aria-selected="{{ tabChats }}" onClick="{{ pickChats }}" style="flex: 1; min-height: 44px; border: 0; border-radius: 22px; background: {{ tabChatsBg }}; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">Chats</button>
+<button role="tab" aria-selected="{{ tabActivity }}" onClick="{{ pickActivity }}" style="flex: 1; min-height: 44px; border: 0; border-radius: 22px; background: {{ tabActBg }}; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">Activity</button>
+</div>
+<sc-if value="{{ tabChats }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 14px; border-radius: 23px; border: 2px solid #1B1B1B; background: #fff">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5E5E5A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+<input aria-label="Search chats" placeholder="Search chats" value="{{ q }}" onChange="{{ onSearch }}" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; font-family: inherit; color: #1B1B1B">
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ tabChats }}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 6px 14px 12px; display: flex; flex-direction: column; gap: 14px">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="padding: 0 12px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">{{ g.label }}</span>
+<sc-for list="{{ g.items }}" as="h" hint-placeholder-count="2">
+<button onClick="{{ h.pick }}" style="min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border: 0; border-radius: 16px; background: {{ h.bg }}; color: #1B1B1B; text-align: left; cursor: pointer">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 600">{{ h.title }}</span><span style="font-size: 12.5px; color: #5E5E5A">{{ h.sub }}</span></span>
+<sc-if value="{{ h.hasTasks }}" hint-placeholder-val="{{ false }}"><span style="flex: none; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 11px; background: #E3B660">{{ h.tasksLabel }}</span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-for>
+<sc-if value="{{ noChats }}" hint-placeholder-val="{{ false }}">
+<div style="padding: 20px 12px; font-size: 15px; line-height: 1.5; color: #5E5E5A">No chats match that.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ tabActivity }}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 6px 14px 12px; display: flex; flex-direction: column; gap: 6px">
+<span style="padding: 0 12px 6px; font-size: 13.5px; line-height: 1.45; color: #5E5E5A">Everything Sarvam did for you, and where it went.</span>
+<sc-for list="{{ tasks }}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 16px; background: #EAE7E0">
+<span style="flex: none; width: 38px; height: 38px; border-radius: 19px; background: {{ t.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.icon }}"/></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14.5px; font-weight: 700; line-height: 1.3">{{ t.title }}</span><span style="font-size: 12.5px; line-height: 1.4; color: #5E5E5A">{{ t.sub }}</span><span style="align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 11px; background: {{ t.sbg }}">{{ t.status }}</span></span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<button aria-label="Open memory. {{ memStatus }}" onClick="{{ openMem }}" style="flex: none; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 12px 16px 20px; border: 0; border-top: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; text-align: left; cursor: pointer">
+<span style="flex: none; width: 42px; height: 42px; border-radius: 21px; background: #D3E5E0; color: #214D47; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3zM9.5 19h5M10.5 21h3"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 700">Memory</span><span style="font-size: 12.5px; color: #5E5E5A">{{ memStatus }}</span></span>
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+</button>
+</div>
+
+<sc-if value="{{ showBanner }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" role="status" style="position: absolute; left: 12px; right: 12px; top: 10px; z-index: 45; display: flex; align-items: center; gap: 12px; padding: 10px 6px 10px 12px; border-radius: 24px; background: #1B1B1B; color: #F5F4F2; box-shadow: 0 12px 30px rgba(27,27,27,0.28); animation: sv-drop 0.35s ease both">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 20px; background: #E3B660; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1B1B1B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14.5px; font-weight: 700; line-height: 1.3">{{ bannerTitle }}</span><span style="font-size: 12.5px; line-height: 1.35; color: #C9C6BD">{{ bannerSub }}</span></span>
+<button onClick="{{ openNotes }}" style="flex: none; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: #E3B660; font-size: 14px; font-weight: 700; cursor: pointer">View</button>
+<button aria-label="Dismiss" onClick="{{ closeBanner }}" style="flex: none; width: 40px; height: 44px; border: 0; background: transparent; color: #F5F4F2; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+</sc-if>
+
+<sc-if value="{{ notesOpen }}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="Notifications" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 38">
+<button aria-label="Close" onClick="{{ closeNotes }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 0; background: rgba(27,27,27,0.5); cursor: pointer"></button>
+<div class="sv-anim" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; background: #F5F4F2; border-top: 2px solid #1B1B1B; border-radius: 30px 30px 0 0; padding: 10px 16px 22px; display: flex; flex-direction: column; gap: 10px; animation: sv-fade 0.25s ease both">
+<div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #CFCBC1; margin-bottom: 4px"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 24px; font-weight: 500">Notifications</span>
+<button aria-label="Close notifications" onClick="{{ closeNotes }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<span style="padding: 0 4px; font-size: 13.5px; line-height: 1.45; color: #5E5E5A">What Sarvam did or is waiting on. Once the app is on your iPhone, these also arrive as iPhone notifications.</span>
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{ notes }}" as="t" hint-placeholder-count="4">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 18px; background: {{ t.rowBg }}; border: 2px solid {{ t.rowBd }}">
+<span style="flex: none; width: 38px; height: 38px; border-radius: 19px; background: {{ t.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ t.icon }}"/></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px"><span style="display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 700; line-height: 1.3">{{ t.title }}<sc-if value="{{ t.isNew }}" hint-placeholder-val="{{ false }}"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 9px; background: #C96846; color: #1B1B1B">New</span></sc-if></span><span style="font-size: 12.5px; line-height: 1.4; color: #5E5E5A">{{ t.sub }}</span><span style="align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 11px; background: {{ t.sbg }}">{{ t.status }}</span></span>
+</div>
+</sc-for>
+</div>
+<button onClick="{{ seeActivity }}" style="flex: none; min-height: 48px; border-radius: 24px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 15px; font-weight: 700; cursor: pointer">See all in Activity</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ modelOpen }}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="Model" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 35">
+<button aria-label="Close" onClick="{{ closeModel }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 0; background: rgba(27,27,27,0.5); cursor: pointer"></button>
+<div class="sv-anim" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F4F2; border-top: 2px solid #1B1B1B; border-radius: 30px 30px 0 0; padding: 10px 16px 24px; display: flex; flex-direction: column; gap: 8px; animation: sv-fade 0.25s ease both">
+<div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #CFCBC1; margin-bottom: 4px"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 22px; font-weight: 500">Model</span>
+<span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: {{ planBg }}">{{ planLabel }}</span>
+</div>
+<span style="padding: 0 4px 4px; font-size: 14px; line-height: 1.45; color: #5E5E5A">{{ modelInfo }}</span>
+<sc-for list="{{ models }}" as="o" hint-placeholder-count="3">
+<button onClick="{{ o.pick }}" aria-pressed="{{ o.on }}" style="min-height: 72px; display: flex; align-items: center; gap: 14px; padding: 10px 16px 10px 14px; border-radius: 22px; border: 2px solid #1B1B1B; background: {{ o.bg }}; color: #1B1B1B; text-align: left; cursor: pointer">
+<span style="flex: none; width: 42px; height: 42px; border-radius: 21px; background: {{ o.iconBg }}; border: 2px solid #1B1B1B; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ o.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16.5px; font-weight: 700">{{ o.name }}</span><span style="font-size: 13px; line-height: 1.4; color: #3A3A37">{{ o.sub }}</span></span>
+<sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><span style="flex: none; width: 26px; height: 26px; border-radius: 13px; background: #1B1B1B; color: #fff; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span></sc-if>
+<sc-if value="{{ o.locked }}" hint-placeholder-val="{{ false }}"><span style="flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 12px; background: #E3B660"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Plus</span></sc-if>
+</button>
+</sc-for>
+<sc-if value="{{ upsell }}" hint-placeholder-val="{{ false }}">
+<div style="background: #E3B660; border: 2px solid #1B1B1B; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 16px; font-weight: 700; line-height: 1.35">Choose your own model with Sarvam Plus</span>
+<span style="font-size: 14px; line-height: 1.45">The list always shows Google's newest Gemini models, so you never need to update the app.</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{ startPlus }}" style="min-height: 46px; padding: 0 20px; border-radius: 23px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 14.5px; font-weight: 700; cursor: pointer">Try Sarvam Plus</button>
+<button onClick="{{ notNow }}" style="min-height: 46px; padding: 0 16px; border-radius: 23px; border: 0; background: transparent; color: #1B1B1B; font-size: 14.5px; font-weight: 700; cursor: pointer">Not now</button>
+</div>
+</div>
+</sc-if>
+<span style="padding: 4px 4px 0; font-size: 12.5px; line-height: 1.45; color: #5E5E5A">{{ modelFoot }}</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ memOpen }}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="Memory" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 36">
+<button aria-label="Close" onClick="{{ closeMem }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 0; background: rgba(27,27,27,0.5); cursor: pointer"></button>
+<div class="sv-anim" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; background: #F5F4F2; border-top: 2px solid #1B1B1B; border-radius: 30px 30px 0 0; padding: 10px 16px 22px; display: flex; flex-direction: column; gap: 10px; animation: sv-fade 0.25s ease both">
+<div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #CFCBC1; margin-bottom: 4px"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 24px; font-weight: 500">Memory</span>
+<button aria-label="Close memory" onClick="{{ closeMem }}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 6px 12px 6px 16px; border-radius: 20px; border: 2px solid #1B1B1B; background: #fff">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Call me</span><span style="font-size: 16px; font-weight: 700">{{ nameShown }}</span></span>
+<button onClick="{{ openName }}" style="flex: none; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 700; cursor: pointer">{{ nameEdit }}</button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 6px 12px 6px 16px; border-radius: 20px; border: 2px solid #1B1B1B; background: #fff">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 700">Remember things for me</span><span style="font-size: 12.5px; line-height: 1.35; color: #5E5E5A">{{ rememberNote }}</span></span>
+<button role="switch" aria-checked="{{ remember }}" aria-label="Remember things for me" onClick="{{ toggleRemember }}" style="flex: none; width: 56px; height: 44px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center">
+<span style="display: block; position: relative; width: 52px; height: 30px; border-radius: 15px; background: {{ remBg }}; border: 2px solid #1B1B1B"><span style="position: absolute; top: 2px; left: {{ remKnob }}px; width: 22px; height: 22px; border-radius: 11px; background: {{ remKnobBg }}; transition: left 0.2s ease"></span></span>
+</button>
+</div>
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{ mems }}" as="x" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 6px 10px 16px; border-radius: 20px; background: #EAE7E0">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 15px; font-weight: 600; line-height: 1.4">{{ x.text }}</span><span style="font-size: 12px; font-weight: 700; color: #214D47">From {{ x.src }}</span></span>
+<button aria-label="Forget this: {{ x.text }}" onClick="{{ x.forget }}" style="flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: #B5472B; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+</div>
+</sc-for>
+<sc-if value="{{ memEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="padding: 22px 16px; border-radius: 20px; border: 2px dashed #1B1B1B; font-size: 15px; line-height: 1.5; text-align: center; color: #5E5E5A">Nothing saved yet. When you tell me something useful, I will show it here first.</div>
+</sc-if>
+</div>
+<button onClick="{{ forgetAll }}" style="flex: none; min-height: 48px; border-radius: 24px; border: 2px solid #B5472B; background: {{ forgetBg }}; color: {{ forgetFg }}; font-size: 15px; font-weight: 700; cursor: pointer">{{ forgetLabel }}</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ nameOpen }}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-label="Your name" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 37">
+<button aria-label="Close" onClick="{{ closeName }}" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 0; background: rgba(27,27,27,0.5); cursor: pointer"></button>
+<div class="sv-anim" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F4F2; border-top: 2px solid #1B1B1B; border-radius: 30px 30px 0 0; padding: 10px 16px 26px; display: flex; flex-direction: column; gap: 12px; animation: sv-fade 0.25s ease both">
+<div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #CFCBC1; margin-bottom: 4px"></div>
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 22px; font-weight: 500; padding: 0 4px">What should I call you?</span>
+<div style="display: flex; align-items: center; height: 52px; padding: 0 16px; border-radius: 26px; border: 2px solid #1B1B1B; background: #fff">
+<input aria-label="Your name" placeholder="Your name" value="{{ nameDraft }}" onChange="{{ onName }}" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 17px; font-family: inherit; color: #1B1B1B">
+</div>
+<span style="padding: 0 4px; font-size: 13px; line-height: 1.45; color: #5E5E5A">Optional. Leave it empty and I will not use a name. You can also say "call me" in the chat, and change or remove it any time in Memory.</span>
+<div style="display: flex; gap: 8px">
+<button onClick="{{ saveName }}" style="flex: 1; min-height: 48px; border-radius: 24px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer">Save</button>
+<button onClick="{{ closeName }}" style="min-height: 48px; padding: 0 20px; border-radius: 24px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 15px; font-weight: 700; cursor: pointer">Cancel</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ liveOpen }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 40; background: #1B1B1B; color: #F5F4F2; display: flex; flex-direction: column; align-items: center; padding: 22px 20px 26px; animation: sv-fade 0.3s ease both">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(255,255,255,0.12); font-size: 13px; font-weight: 700"><span style="width: 8px; height: 8px; border-radius: 4px; background: #C96846"></span>Live</span>
+<span lang="hi" style="display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 17px; background: #E3B660; color: #1B1B1B; font-size: 13px; font-weight: 700">हिंदी detected</span>
+</div>
+<div style="flex: 1; min-height: 190px; width: 100%; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center">
+<span class="sv-anim" style="position: absolute; width: 140px; height: 140px; border-radius: 70px; background: rgba(201,104,70,0.5); animation: sv-pulse 2.4s ease-out infinite; animation-play-state: {{ orbPlay }}"></span>
+<span class="sv-anim" style="position: absolute; width: 140px; height: 140px; border-radius: 70px; background: rgba(201,104,70,0.5); animation: sv-pulse 2.4s ease-out 1.2s infinite; animation-play-state: {{ orbPlay }}"></span>
+<div style="position: relative; width: 84px; height: 84px; border-radius: 42px; background: #E3B660; display: flex; align-items: center; justify-content: center; gap: 5px">
+<span class="sv-anim" style="width: 5px; height: 28px; border-radius: 3px; background: #1B1B1B; animation: sv-wave 0.9s ease-in-out infinite; animation-play-state: {{ orbPlay }}"></span>
+<span class="sv-anim" style="width: 5px; height: 28px; border-radius: 3px; background: #1B1B1B; animation: sv-wave 0.9s ease-in-out 0.15s infinite; animation-play-state: {{ orbPlay }}"></span>
+<span class="sv-anim" style="width: 5px; height: 28px; border-radius: 3px; background: #1B1B1B; animation: sv-wave 0.9s ease-in-out 0.3s infinite; animation-play-state: {{ orbPlay }}"></span>
+<span class="sv-anim" style="width: 5px; height: 28px; border-radius: 3px; background: #1B1B1B; animation: sv-wave 0.9s ease-in-out 0.45s infinite; animation-play-state: {{ orbPlay }}"></span>
+<span class="sv-anim" style="width: 5px; height: 28px; border-radius: 3px; background: #1B1B1B; animation: sv-wave 0.9s ease-in-out 0.6s infinite; animation-play-state: {{ orbPlay }}"></span>
+</div>
+</div>
+</div>
+
+<div lang="hi" style="flex: 0 1 auto; min-height: 0; max-height: 330px; width: 100%; overflow-y: auto; display: flex; flex-direction: column-reverse">
+<div style="display: flex; flex-direction: column; gap: 18px; padding: 6px 2px 10px">
+<sc-for list="{{ liveItems }}" as="t" hint-placeholder-count="4">
+<sc-if value="{{ t.isYou }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="align-self: flex-end; max-width: 86%; padding: 11px 15px; border-radius: 20px 20px 6px 20px; background: rgba(255,255,255,0.14); font-size: 16px; line-height: 1.5; animation: sv-fade 0.35s ease both">{{ t.text }}</div>
+</sc-if>
+<sc-if value="{{ t.isAi }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="display: flex; flex-direction: column; gap: 8px; animation: sv-fade 0.35s ease both">
+<span style="font-size: 16.5px; line-height: 1.6">{{ t.text }}</span>
+<sc-if value="{{ t.hasTask }}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid rgba(255,255,255,0.3); font-size: 13px; font-weight: 600"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#E3B660" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>{{ t.task }}</span>
+</sc-if>
+</div>
+</sc-if>
+</sc-for>
+</div>
+</div>
+
+<div style="flex: none; font-size: 14px; font-weight: 600; color: #C9C6BD; margin: 4px 0 12px">{{ liveStatus }}</div>
+<div style="flex: none; display: flex; gap: 40px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<button aria-label="{{ muteLabel }}" aria-pressed="{{ muted }}" onClick="{{ toggleMute }}" style="width: 60px; height: 60px; border-radius: 30px; border: 0; background: {{ muteBg }}; color: {{ muteFg }}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><sc-if value="{{ muted }}" hint-placeholder-val="{{ false }}"><path d="M4 4l16 16"/></sc-if></svg>
+</button>
+<span style="font-size: 12px; color: #C9C6BD">{{ muteText }}</span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<button aria-label="End live conversation and save it to the chat" onClick="{{ closeLive }}" style="width: 60px; height: 60px; border-radius: 30px; border: 0; background: #C96846; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+</button>
+<span style="font-size: 12px; color: #C9C6BD">End and save</span>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = {
+msgs: [], input: '', att: '', streaming: false,
+drawer: false, tab: 'chats', q: '', showAttach: false, active: '',
+live: false, muted: false, liveN: 0,
+name: '', nameOpen: false, nameDraft: '',
+memOpen: false, remember: true, confirmForget: false,
+mems: [
+{ id: 'm1', text: 'You take Metformin 500 mg after breakfast and dinner', src: 'Apollo prescription' },
+{ id: 'm2', text: 'Your follow-ups are with Dr. Rao', src: 'Apollo prescription' },
+{ id: 'm3', text: 'You like a reminder 15 minutes before appointments', src: 'your chats' },
+{ id: 'm4', text: 'You prefer answers in Hindi, with dates in English', src: 'your chats' }
+],
+model: 'Auto', modelOpen: false, plan: 'free', upsell: false,
+dest: { rem: true, cal: true },
+done: {}, undone: {}, sel: {}, snap: {},
+conflict: '', channel: 'Messages',
+banner: null, notesOpen: false, fresh: [],
+doseAM: '', doseRem: false,
+tasks: [
+{ id: 't3', kind: 'msg', title: 'Draft about the clinic visit', sub: 'Opened in Messages · Yesterday · waiting for you to send', status: 'Waiting', ref: 'seed', read: false },
+{ id: 't1', kind: 'rem', title: 'Medicine reminders', sub: 'Apple Reminders and Sarvam · Today 9:12 AM', status: 'Done', ref: 'seed', read: true },
+{ id: 't2', kind: 'cal', title: 'Dr. Rao follow-up added', sub: 'Apple Calendar · Thu 12 Nov, 10:00 AM', status: 'Done', ref: 'seed', read: true }
+]
+};
+this.timer = null;
+this.btimer = null;
+this.ltimers = [];
+}
+componentDidMount() {
+this.btimer = setTimeout(() => this.notify('1 thing is waiting for you', 'Your draft about the clinic visit is still in Messages'), 900);
+}
+componentWillUnmount() {
+if (this.timer) clearTimeout(this.timer);
+if (this.btimer) clearTimeout(this.btimer);
+this.clearLive();
+}
+notify(title, sub) {
+if (this.btimer) clearTimeout(this.btimer);
+this.setState({ banner: { title: title, sub: sub } });
+this.btimer = setTimeout(() => this.setState({ banner: null }), 4500);
+}
+isSel(key, k) {
+const v = this.state.sel[key + ':' + k];
+return v === undefined ? true : v;
+}
+setLang(i, c) {
+const msgs = this.state.msgs.slice();
+const m = Object.assign({}, msgs[i], { lang: c });
+m.words = this.scriptFor(m).text.split(' ').length;
+msgs[i] = m;
+this.setState({ msgs: msgs });
+}
+clearLive() {
+this.ltimers.forEach((t) => clearTimeout(t));
+this.ltimers = [];
+}
+scripts() {
+const PILL = 'M10.5 20.5l-6-6a4.2 4.2 0 0 1 6-6l6 6a4.2 4.2 0 0 1-6 6zM8 11l5 5';
+const VISIT = 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4';
+return {
+A: {
+model: 'Flash', secs: 3, tools: ['Documents'],
+steps: ['Reading Apollo prescription'],
+text: 'Two medicines from your 3 Nov Apollo prescription. Metformin is every day, and Vitamin D3 is once a week.',
+did: 'Read 1 document. Nothing was changed.',
+meds: { title: 'From your 3 Nov prescription', rows: [
+{ icon: PILL, t: 'Metformin 500 mg', s: 'After breakfast and dinner', n: '30 days' },
+{ icon: PILL, t: 'Vitamin D3 60,000 IU', s: 'Once a week', n: '8 weeks' }
+] },
+sources: ['Apollo prescription'],
+follow: ['Any medicines to follow up this week?', 'Remind me to take these']
+},
+G: {
+model: 'Flash', secs: 4, tools: ['Documents'],
+steps: ['Reading Apollo prescription', 'Picking what falls this week'],
+text: 'This week you need to keep taking Metformin, take one Vitamin D3 on Sunday, and go for your check-up with Dr. Rao tomorrow.',
+did: 'Read 1 document. Nothing was changed.',
+meds: { title: 'Your medicines this week', rows: [
+{ icon: PILL, t: 'Metformin 500 mg', s: 'Every day after breakfast and dinner', n: 'Next: tonight 8:30 PM' },
+{ icon: PILL, t: 'Vitamin D3 60,000 IU', s: 'One tablet this week', n: 'Sun 15 Nov, 8:00 AM' },
+{ icon: VISIT, t: 'Check-up with Dr. Rao', s: 'Follow-up from your prescription', n: 'Thu 12 Nov, 10:00 AM' }
+] },
+sources: ['Apollo prescription'],
+follow: ['Remind me to take these', 'Is anything clashing this week?']
+},
+B: {
+model: 'Flash', secs: 4, tools: ['Documents', 'Calendar'],
+steps: ['Searching your scanned documents', 'Checking your calendar'],
+text: 'Here is your week. Thursday is the only day with a clash.',
+did: 'Read 2 documents and your calendar. Nothing was changed.',
+week: [
+{ head: true, label: 'Thu 12 Nov' },
+{ time: '10:00', title: 'Dr. Rao follow-up', src: 'Apollo prescription', color: '#214D47' },
+{ time: '10:30', title: 'Sprint review', src: 'Calendar', color: '#E3B660', clash: true },
+{ head: true, label: 'Fri 13 Nov' },
+{ time: 'All day', title: 'Electricity bill due', src: 'BESCOM bill', color: '#C96846' },
+{ head: true, label: 'Sun 15 Nov' },
+{ time: '8:00', title: 'Vitamin D3', src: 'Apollo prescription', color: '#214D47' }
+],
+sources: ['Apollo prescription', 'BESCOM bill'],
+follow: ['Help me sort out Thursday\'s clash', 'What did Apollo prescribe me?']
+},
+D: {
+model: 'Pro', secs: 5, tools: ['Documents', 'Calendar'],
+steps: ['Reading Apollo prescription', 'Checking your calendar', 'Comparing the two times'],
+text: 'Your follow-up with Dr. Rao is tomorrow at 10:00, from your Apollo prescription. The Sprint review at 10:30 is from your calendar. They overlap by 15 minutes.',
+did: 'Read 1 document and your calendar. Nothing was changed yet.',
+clash: true,
+sources: ['Apollo prescription'],
+follow: ['What is due this week?']
+},
+E: {
+model: 'Flash', secs: 6, tools: ['Scanner', 'Documents', 'Calendar'],
+steps: ['Reading your scan', 'Saving to Scanned documents', 'Checking dates against your calendar'],
+text: 'This is your BESCOM electricity bill, due Fri 13 Nov. I saved it to Scanned documents, and nothing in your calendar clashes with it.',
+did: 'Saved 1 scan to Scanned documents. Nothing else was changed.',
+saved: true,
+approve: { title: 'Want a reminder?', button: 'Add reminder', dests: ['rem', 'app'], taskRem: 'Pay electricity bill', taskCal: '',
+items: [{ t: 'Pay electricity bill', s: 'Thu 12 Nov, 8:00 PM · bill due Fri 13 Nov', k: 'rem' }] },
+follow: ['What is due this week?']
+},
+F: {
+model: 'Pro', secs: 5, tools: ['Documents', 'Calendar', 'Reminders'],
+steps: ['Reading Apollo prescription', 'Checking your calendar for clashes', 'Preparing reminders'],
+text: 'I found these in your prescription and calendar, with no clashes. Choose where to add them.',
+did: 'Read 1 document and your calendar. Nothing is added until you approve.',
+approve: { title: 'Ready to add', button: 'Add 3 items', dests: ['rem', 'cal', 'app'], taskRem: 'Medicine reminders', taskCal: 'Dr. Rao follow-up added',
+items: [
+{ t: 'Metformin 500 mg', s: 'Every day, 8:30 AM and 8:30 PM · 30 days', k: 'rem' },
+{ t: 'Vitamin D3 60,000 IU', s: 'Every Sunday, 8:00 AM · 8 weeks', k: 'rem' },
+{ t: 'Dr. Rao follow-up', s: 'Thu 12 Nov, 10:00 AM', k: 'cal' }
+] },
+remText: 'Remembered: you take Metformin after dinner',
+follow: ['Is anything clashing this week?']
+},
+T: {
+model: 'Flash', secs: 3, tools: ['Documents', 'Reminders'],
+steps: ['Understanding your Tanglish question', 'Reading Apollo prescription', 'Checking today\'s doses'],
+defLang: 'tl',
+langs: {
+tl: 'Oru dose miss aana periya problem illa, aana sugar konjam ethalaam. Rendu dose-a serthu edukkadheenga. Adutha dose inniku night 8:30-ku saapadu apram edunga. Adikadi miss aana Dr. Rao kitta pesunga.',
+ta: 'ஒரு டோஸ் தவறினால் பெரிய பிரச்சனை இல்லை, ஆனால் சர்க்கரை அளவு கொஞ்சம் ஏறலாம். இரண்டு டோஸை சேர்த்து எடுக்காதீர்கள். அடுத்த டோஸை இன்று இரவு 8:30-க்கு சாப்பாட்டுக்குப் பிறகு எடுங்கள். அடிக்கடி தவறினால் டாக்டர் ராவிடம் பேசுங்கள்.',
+en: 'Missing one dose is usually not serious, but your sugar may go up a little. Do not take two doses together to make up. Take the next one tonight at 8:30 PM after dinner. If you miss doses often, talk to Dr. Rao.'
+},
+text: '',
+did: 'Read 1 document. Nothing was changed.',
+dose: true,
+sources: ['Apollo prescription'],
+follow: ['Any medicines to follow up this week?']
+},
+N: {
+model: 'Flash', secs: 1, tools: ['Memory'],
+steps: ['Updating your name'],
+text: 'Okay.',
+did: 'Saved your name. Nothing else was changed.',
+remText: 'Remembered how to address you',
+follow: []
+},
+Z: {
+model: 'Flash', secs: 2, tools: ['Documents'],
+steps: ['Searching your scanned documents'],
+text: 'I did not find anything about that in your scanned documents. Scan it or attach it with the plus button and I will read it.',
+did: 'Read your documents. Nothing was changed.',
+follow: ['What did Apollo prescribe me?', 'What is due this week?']
+}
+};
+}
+scriptFor(m) {
+const b = this.scripts()[m.key];
+const o = m.override ? Object.assign({}, b, m.override) : b;
+if (o.langs) return Object.assign({}, o, { text: o.langs[m.lang || o.defLang] });
+return o;
+}
+liveTurns() {
+return [
+{ who: 'you', text: 'गुरुवार की अपॉइंटमेंट से पहले मुझे याद दिलाओ।' },
+{ who: 'ai', text: 'ठीक है, मैंने गुरुवार सुबह 9:30 बजे का रिमाइंडर लगा दिया है।', task: 'Reminder set · Thu 9:30 AM · Apple Reminders' },
+{ who: 'you', text: 'और आज मुझे कौन सी दवाई लेनी है?' },
+{ who: 'ai', text: 'आज रात 8:30 बजे खाने के बाद मेटफॉर्मिन 500 mg लेनी है।', task: 'Read your Apollo prescription' }
+];
+}
+pickKey(text) {
+const t = (text || '').toLowerCase();
+if (/call me /.test(t)) return 'N';
+if (/\b(inaiku|inniku|innaiku|sapda|saapda|sapdala|sapdalana|sapdama|ena|enna|agum|aagum|aagidum|pannanum|edukkanum|edukala|marandhuten|maranthuten|venuma|illana)\b/.test(t)) return 'T';
+if (t.indexOf('remind') > -1) return 'F';
+if (t.indexOf('clash') > -1 || t.indexOf('overlap') > -1) return 'D';
+if (t.indexOf('medic') > -1 || t.indexOf('tablet') > -1 || t.indexOf('vitamin') > -1 || t.indexOf('metformin') > -1) return 'G';
+if (t.indexOf('prescri') > -1 || t.indexOf('apollo') > -1) return 'A';
+if (t.indexOf('due') > -1 || t.indexOf('bill') > -1 || t.indexOf('week') > -1 || t.indexOf('schedule') > -1) return 'B';
+return 'Z';
+}
+submit(text, attach) {
+const mm = (text || '').match(/call me ([^\s.,!?]+)/i);
+if (mm && !attach) {
+const nm = mm[1].charAt(0).toUpperCase() + mm[1].slice(1);
+this.start('N', text, '', { text: 'Okay, I will call you ' + nm + '. You can change this any time in Memory.', remText: 'Remembered: call you ' + nm });
+this.setState({ name: nm });
+return;
+}
+this.start(attach ? 'E' : this.pickKey(text), text, attach);
+}
+start(key, userText, attach, override) {
+if (this.timer) clearTimeout(this.timer);
+const turn = [{ role: 'user', text: userText, attach: attach || '' }, { role: 'ai', key: key, override: override || null, steps: 0, words: 0, done: false, ex: false }];
+this.setState({ msgs: this.state.msgs.concat(turn), input: '', att: '', streaming: true, showAttach: false, active: '' });
+this.timer = setTimeout(() => this.step(), 900);
+}
+step() {
+const msgs = this.state.msgs.slice();
+const i = msgs.length - 1;
+const m = Object.assign({}, msgs[i]);
+const script = this.scriptFor(m);
+const total = script.text.split(' ').length;
+let wait = 0;
+if (m.steps < script.steps.length) { m.steps += 1; wait = 800; }
+else if (m.words < total) { m.words += 1; wait = m.words === 1 ? 500 : 40; }
+else { m.done = true; }
+msgs[i] = m;
+this.setState({ msgs: msgs, streaming: !m.done });
+if (!m.done) this.timer = setTimeout(() => this.step(), wait);
+}
+finishNow() {
+if (this.timer) clearTimeout(this.timer);
+const msgs = this.state.msgs.slice();
+const i = msgs.length - 1;
+if (i < 0 || msgs[i].role !== 'ai') return;
+const script = this.scriptFor(msgs[i]);
+msgs[i] = Object.assign({}, msgs[i], { steps: script.steps.length, words: script.text.split(' ').length, done: true });
+this.setState({ msgs: msgs, streaming: false });
+}
+load(key, q, attach, id) {
+if (this.timer) clearTimeout(this.timer);
+const script = this.scripts()[key];
+this.setState({
+msgs: [{ role: 'user', text: q, attach: attach || '' }, { role: 'ai', key: key, override: null, steps: script.steps.length, words: script.text.split(' ').length, done: true, ex: false }],
+streaming: false, drawer: false, active: id, input: '', att: ''
+});
+}
+toggleEx(i) {
+const msgs = this.state.msgs.slice();
+msgs[i] = Object.assign({}, msgs[i], { ex: !msgs[i].ex });
+this.setState({ msgs: msgs });
+}
+addTasks(list) {
+this.setState({ tasks: list.concat(this.state.tasks) });
+}
+approve(key, script) {
+const d = Object.assign({}, this.state.dest);
+const ap = script.approve;
+const chosen = ap.items.filter((r, k) => this.isSel(key, k));
+if (!chosen.length) return;
+const remN = chosen.filter((r) => r.k === 'rem').length;
+const calN = chosen.filter((r) => r.k === 'cal').length;
+const toRem = remN > 0 && ap.dests.indexOf('rem') > -1 && d.rem;
+const toCal = calN > 0 && ap.dests.indexOf('cal') > -1 && d.cal;
+const parts = [];
+const list = [];
+const now = Date.now();
+let appOnly = 0;
+if (remN) {
+if (toRem) { parts.push(remN + (remN === 1 ? ' reminder' : ' reminders') + ' in Apple Reminders'); list.push({ id: 'n' + now + 'r', kind: 'rem', title: ap.taskRem + ' (' + remN + ')', sub: 'Apple Reminders and Sarvam · Just now', status: 'Done', ref: key, read: false }); }
+else appOnly += remN;
+}
+if (calN) {
+if (toCal) { parts.push(calN + (calN === 1 ? ' event' : ' events') + ' in Apple Calendar'); list.push({ id: 'n' + now + 'c', kind: 'cal', title: ap.taskCal, sub: 'Apple Calendar and Sarvam · Just now', status: 'Done', ref: key, read: false }); }
+else appOnly += calN;
+}
+if (appOnly) { parts.push(appOnly + ' only in Sarvam'); list.push({ id: 'n' + now + 'a', kind: 'rem', title: appOnly + (appOnly === 1 ? ' item' : ' items') + ' saved in Sarvam only', sub: 'Not sent to your iPhone apps · Just now', status: 'Done', ref: key, read: false }); }
+const text = 'Added ' + parts.join(', ') + '.';
+this.setState({
+done: Object.assign({}, this.state.done, { [key]: true }),
+undone: Object.assign({}, this.state.undone, { [key]: false }),
+snap: Object.assign({}, this.state.snap, { [key]: { dest: d, text: text, rem: toRem, cal: toCal } })
+});
+this.addTasks(list);
+this.notify(toRem || toCal ? 'Added to your iPhone' : 'Saved in Sarvam', parts.join(' · '));
+}
+undo(key) {
+this.setState({
+undone: Object.assign({}, this.state.undone, { [key]: true }),
+tasks: this.state.tasks.map((t) => (t.ref === key ? Object.assign({}, t, { status: 'Undone' }) : t))
+});
+}
+closeLiveSave() {
+this.clearLive();
+const n = this.state.liveN;
+const add = [];
+if (n > 0) {
+const msgs = this.state.msgs.concat([{ role: 'live', n: n, ex: false }]);
+this.setState({ msgs: msgs });
+}
+if (n >= 2) add.push({ id: 'n' + Date.now() + 'l', kind: 'rem', title: 'Reminder before the appointment', sub: 'Apple Reminders and Sarvam · Thu 9:30 AM · from Live', status: 'Done', ref: 'live' });
+if (add.length) { this.addTasks(add); this.notify('Live conversation saved', 'Reminder set for Thu 9:30 AM'); }
+this.setState({ live: false, drawer: false });
+}
+renderVals() {
+const s = this.state;
+const sc = this.scripts();
+const lastAi = s.msgs.filter((m) => m.role === 'ai').pop();
+const plus = s.plan === 'plus';
+const modelUsed = (m) => (s.model === 'Auto' ? this.scriptFor(m).model : s.model);
+const items = s.msgs.map((m, i) => {
+if (m.role === 'user') {
+return { isUser: true, isAi: false, isLive: false, text: m.text, hasAttach: !!m.attach, attach: m.attach };
+}
+if (m.role === 'live') {
+const turns = this.liveTurns().slice(0, m.n);
+const tasks = turns.filter((t) => t.task && t.who === 'ai' && t.task.indexOf('Reminder') === 0).map((t) => ({ t: t.task }));
+return {
+isUser: false, isAi: false, isLive: true,
+liveSub: 'Hindi · ' + m.n + ' messages',
+hasLiveTasks: tasks.length > 0,
+ltasks: tasks,
+ex: m.ex,
+liveToggle: m.ex ? 'Hide transcript' : 'Show transcript',
+chevRot: m.ex ? 'rotate(180deg)' : 'rotate(0deg)',
+toggleEx: () => this.toggleEx(i),
+lturns: turns.map((t) => ({ who: t.who === 'you' ? 'You' : 'Sarvam', text: t.text }))
+};
+}
+const script = this.scriptFor(m);
+const words = script.text.split(' ');
+const started = m.words > 0;
+const steps = script.steps.slice(0, m.steps).map((label, k) => {
+const dn = started || m.done || k < m.steps - 1;
+return { label: label, done: dn, active: !dn };
+});
+const key = m.key;
+const ap = script.approve;
+const d = s.dest;
+const destNames = { rem: 'Apple Reminders', cal: 'Apple Calendar', app: 'Sarvam' };
+const names = ap ? ap.dests.filter((k) => k === 'app' || d[k]).map((k) => destNames[k]) : [];
+const doneText = 'Added to ' + (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]) + '.';
+const apDone = !!s.done[key] && !s.undone[key];
+const snap = s.snap[key];
+const selN = ap ? ap.items.filter((r, k) => this.isSel(key, k)).length : 0;
+const mu = modelUsed(m);
+const cf = s.conflict;
+const showDetail = m.done && m.ex;
+return {
+isUser: false, isAi: true, isLive: false,
+thinking: !m.done && m.steps === 0,
+showHead: m.done,
+headText: 'Worked for ' + script.secs + 's · ' + script.steps.length + (script.steps.length === 1 ? ' step' : ' steps'),
+ex: m.ex,
+chevRot: m.ex ? 'rotate(180deg)' : 'rotate(0deg)',
+toggleEx: () => this.toggleEx(i),
+showSteps: m.steps > 0 && (!m.done || m.ex),
+steps: steps,
+showDetail: showDetail,
+tools: script.tools.map((t) => ({ t: t })),
+modelLine: 'Model: Gemini ' + mu + (s.model === 'Auto' ? ', picked automatically.' : ', chosen by you.'),
+did: script.did,
+hasText: started,
+text: words.slice(0, m.words).join(' '),
+cursor: !m.done && started,
+done: m.done,
+wMeds: !!script.meds,
+medsTitle: script.meds ? script.meds.title : '',
+medRows: script.meds ? script.meds.rows : [],
+wWeek: !!script.week,
+weekRows: (script.week || []).map((r) => (r.head ? { head: true, item: false, label: r.label } : { head: false, item: true, time: r.time, title: r.title, src: r.src, color: r.color, clash: !!r.clash })),
+wApprove: !!ap,
+apTitle: ap ? ap.title : '',
+apButton: 'Add ' + selN + (selN === 1 ? ' item' : ' items'),
+canApprove: selN > 0,
+noneSel: !!ap && selN === 0,
+apItems: ap ? ap.items.map((r, k) => {
+const on = this.isSel(key, k);
+const dd = s.done[key] && snap ? snap.dest : d;
+const iphone = r.k === 'rem' ? (ap.dests.indexOf('rem') > -1 && dd.rem) : (ap.dests.indexOf('cal') > -1 && dd.cal);
+const app = r.k === 'rem' ? 'Apple Reminders' : 'Apple Calendar';
+let where;
+if (!on) where = s.done[key] ? 'Not added' : 'Will not be added';
+else if (s.done[key]) where = iphone ? 'In ' + app + ' and Sarvam' : 'Only in Sarvam';
+else where = iphone ? 'Goes to ' + app + ' and Sarvam' : 'Only Sarvam · ' + app + ' is off';
+return {
+t: r.t, s: r.s, on: on, where: where,
+whereColor: on ? (iphone ? '#214D47' : '#B5472B') : '#5E5E5A',
+op: on ? 1 : 0.5,
+showBox: !s.done[key],
+boxBg: on ? '#214D47' : '#fff',
+bg: r.k === 'cal' ? '#E3B660' : '#D3E5E0',
+icon: r.k === 'cal' ? 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4' : 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
+toggle: () => { if (this.state.done[key]) return; this.setState({ sel: Object.assign({}, this.state.sel, { [key + ':' + k]: !on }) }); }
+};
+}) : [],
+apOpen: !s.done[key],
+apDone: apDone,
+apUndone: !!s.done[key] && !!s.undone[key],
+apDoneText: snap ? snap.text : '',
+showVerify: !!snap && (snap.rem || snap.cal),
+verifyText: snap ? 'Checked: I read them back from ' + (snap.rem && snap.cal ? 'Reminders and Calendar' : (snap.rem ? 'Reminders' : 'Calendar')) + ' and they are there.' : '',
+showOpenRem: !!snap && snap.rem,
+showOpenCal: !!snap && snap.cal,
+hasLangs: !!script.langs,
+langNote: 'You wrote in Tanglish, so I answered in Tanglish. Switch any time.',
+langs: script.langs ? [['tl', 'Tanglish', 'ta-Latn'], ['ta', 'தமிழ்', 'ta'], ['en', 'English', 'en']].map((x) => ({
+label: x[1], code: x[2],
+on: (m.lang || script.defLang) === x[0],
+bg: (m.lang || script.defLang) === x[0] ? '#E3B660' : 'transparent',
+pick: () => this.setLang(i, x[0])
+})) : [],
+langCode: script.langs ? ({ tl: 'ta-Latn', ta: 'ta', en: 'en' })[m.lang || script.defLang] : 'en',
+wDose: !!script.dose,
+doseOpen: s.doseAM === '',
+doseTaken: s.doseAM === 'taken',
+doseMissed: s.doseAM === 'missed',
+takeAM: () => this.setState({ doseAM: 'taken' }),
+missAM: () => this.setState({ doseAM: 'missed' }),
+doseRemOpen: !s.doseRem,
+doseRemDone: s.doseRem,
+remindPM: () => {
+this.setState({ doseRem: true });
+this.addTasks([{ id: 'n' + Date.now() + 'd', kind: 'rem', title: 'Metformin tonight', sub: 'Apple Reminders and Sarvam · Today 8:15 PM', status: 'Done', ref: 'T' }]);
+this.notify('Reminder set for 8:15 PM', 'Metformin after dinner · Apple Reminders');
+},
+dests: ap ? ap.dests.map((k) => ({
+label: destNames[k],
+locked: k === 'app',
+toggleable: k !== 'app',
+on: k === 'app' ? true : !!d[k],
+bg: d[k] ? '#D3E5E0' : 'transparent',
+toggle: () => this.setState({ dest: Object.assign({}, this.state.dest, { [k]: !this.state.dest[k] }) })
+})) : [],
+approve: () => this.approve(key, script),
+undo: () => this.undo(key),
+wClash: !!script.clash,
+cOpen: cf === '',
+cDraft: cf === 'draft',
+cOpened: cf === 'opened',
+cKeep: cf === 'keep',
+cKeepDone: cf === 'keepDone',
+channels: ['Messages', 'WhatsApp', 'Mail'].map((c) => ({ label: c, on: s.channel === c, bg: s.channel === c ? '#E3B660' : 'transparent', pick: () => this.setState({ channel: c }) })),
+openLabel: 'Open in ' + s.channel,
+openedText: 'Opened in ' + s.channel + ' with your message ready. Tap Send there.',
+pickDraft: () => this.setState({ conflict: 'draft' }),
+pickKeep: () => this.setState({ conflict: 'keep' }),
+openComposer: () => {
+this.setState({ conflict: 'opened' });
+this.addTasks([{ id: 'n' + Date.now() + 'm', kind: 'msg', title: 'Draft about the Sprint review', sub: 'Opened in ' + this.state.channel + ' · waiting for you to send', status: 'Waiting', ref: 'D' }]);
+this.notify('Draft ready in ' + this.state.channel, 'Tap Send there when you are ready');
+},
+keepAdd: () => {
+this.setState({ conflict: 'keepDone' });
+this.addTasks([{ id: 'n' + Date.now() + 'k', kind: 'rem', title: 'Join the Sprint review', sub: 'Apple Reminders and Sarvam · Thu 10:15 AM', status: 'Done', ref: 'D' }]);
+this.notify('Reminder set for Thu 10:15 AM', 'Join the Sprint review from the clinic');
+},
+wSaved: !!script.saved,
+showSources: !!script.sources && script.sources.length > 0,
+sources: (script.sources || []).map((t) => ({ t: t })),
+showRemembered: !!script.remText && s.remember && (key !== 'F' || apDone || true),
+remText: script.remText || '',
+openMem: () => this.setState({ memOpen: true, drawer: false }),
+hasFollow: !!script.follow && script.follow.length > 0,
+follow: (script.follow || []).map((t) => ({ t: t, pick: () => this.submit(t) }))
+};
+});
+const mkSuggestion = (text, tag, tagBg) => ({ text: text, tag: tag, tagBg: tagBg, pick: () => this.submit(text) });
+const hist = [
+{ id: 'h1', group: 'Today', title: 'Tablet reminders', sub: 'Apollo prescription', key: 'F', q: 'Remind me to take my tablets after dinner', attach: '', tasks: 3 },
+{ id: 'h2', group: 'Today', title: 'Thursday clash', sub: 'Prescription and calendar', key: 'D', q: 'Help me sort out Thursday\'s clash', attach: '', tasks: 1 },
+{ id: 'h3', group: 'Yesterday', title: 'Medicines this week', sub: 'Apollo prescription', key: 'G', q: 'Any medicines to follow up this week?', attach: '', tasks: 0 },
+{ id: 'h4', group: 'Yesterday', title: 'What is due this week', sub: 'All documents', key: 'B', q: 'What is due this week?', attach: '', tasks: 0 },
+{ id: 'h5', group: 'Previous 7 days', title: 'Electricity bill', sub: 'BESCOM bill', key: 'E', q: 'Scan · Electricity bill', attach: 'Scan · Electricity bill', tasks: 1 }
+];
+const ql = (s.q || '').trim().toLowerCase();
+const shown = hist.filter((h) => !ql || (h.title + ' ' + h.sub).toLowerCase().indexOf(ql) > -1);
+const groups = ['Today', 'Yesterday', 'Previous 7 days'].map((label) => ({
+label: label,
+items: shown.filter((h) => h.group === label).map((h) => ({
+title: h.title,
+sub: h.sub,
+hasTasks: h.tasks > 0,
+tasksLabel: h.tasks + (h.tasks === 1 ? ' task' : ' tasks'),
+bg: s.active === h.id ? '#D3E5E0' : 'transparent',
+pick: () => this.load(h.key, h.q, h.attach, h.id)
+}))
+})).filter((g) => g.items.length > 0);
+const kindIcon = { rem: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2', cal: 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4', msg: 'M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z' };
+const kindBg = { rem: '#D3E5E0', cal: '#E3B660', msg: '#E4DFF7' };
+const statusBg = { Done: '#D3E5E0', Waiting: '#E3B660', Undone: '#D9D6CD' };
+const tasks = s.tasks.map((t) => ({ title: t.title, sub: t.sub, status: t.status, icon: kindIcon[t.kind], bg: kindBg[t.kind], sbg: statusBg[t.status] || '#D9D6CD' }));
+const unread = s.tasks.filter((t) => !t.read).length;
+const notes = s.tasks.map((t) => {
+const isNew = s.fresh.indexOf(t.id) > -1;
+return { title: t.title, sub: t.sub, status: t.status, icon: kindIcon[t.kind], bg: kindBg[t.kind], sbg: statusBg[t.status] || '#D9D6CD', isNew: isNew, rowBg: isNew ? '#fff' : '#EAE7E0', rowBd: isNew ? '#1B1B1B' : 'transparent' };
+});
+const modelDefs = [
+{ id: 'Auto', name: 'Auto', sub: 'Sarvam picks the best Gemini model for each question.', icon: 'M13 3L5 14h6l-1 7 8-11h-6z', iconBg: '#E3B660', locked: false },
+{ id: 'Flash', name: 'Gemini Flash · latest', sub: 'Fastest answers for everyday questions.', icon: 'M4 12h6M4 7h10M4 17h10M16 9l5 3-5 3z', iconBg: '#D3E5E0', locked: !plus },
+{ id: 'Pro', name: 'Gemini Pro · latest', sub: 'Slower, better for long or tricky documents.', icon: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6', iconBg: '#E4DFF7', locked: !plus }
+];
+const models = modelDefs.map((o) => ({
+name: o.name, sub: o.sub, icon: o.icon, iconBg: o.iconBg,
+on: s.model === o.id,
+locked: o.locked,
+bg: s.model === o.id ? '#D3E5E0' : '#F5F4F2',
+pick: () => (o.locked ? this.setState({ upsell: true }) : this.setState({ model: o.id, modelOpen: false, upsell: false }))
+}));
+const lastModelName = lastAi ? this.scriptFor(lastAi).model : 'Flash';
+const modelLine = s.model === 'Auto' ? 'Auto · ' + lastModelName : 'Gemini ' + s.model;
+const mems = s.mems.map((x) => ({
+text: x.text, src: x.src,
+forget: () => this.setState({ mems: this.state.mems.filter((y) => y.id !== x.id) })
+}));
+const hasText = (s.input || '').trim().length > 0 || !!s.att;
+const live = this.liveTurns().slice(0, s.liveN).map((t) => ({ isYou: t.who === 'you', isAi: t.who === 'ai', text: t.text, hasTask: !!t.task, task: t.task || '' }));
+return {
+isEmpty: s.msgs.length === 0,
+hasMsgs: s.msgs.length > 0,
+hasUnread: unread > 0,
+unread: unread,
+bellLabel: unread ? 'Notifications, ' + unread + ' new' : 'Notifications',
+openNotes: () => this.setState({
+notesOpen: true, banner: null,
+fresh: this.state.tasks.filter((t) => !t.read).map((t) => t.id),
+tasks: this.state.tasks.map((t) => Object.assign({}, t, { read: true }))
+}),
+closeNotes: () => this.setState({ notesOpen: false }),
+notesOpen: s.notesOpen,
+notes: notes,
+seeActivity: () => this.setState({ notesOpen: false, drawer: true, tab: 'activity' }),
+showBanner: !!s.banner,
+bannerTitle: s.banner ? s.banner.title : '',
+bannerSub: s.banner ? s.banner.sub : '',
+closeBanner: () => this.setState({ banner: null }),
+items: items,
+greeting: s.name ? 'Hello, ' + s.name : 'What can I help with?',
+nameBtn: s.name ? 'Edit name' : 'Add your name',
+suggestions: [
+mkSuggestion('What did Apollo prescribe me?', 'Ask', '#D3E5E0'),
+mkSuggestion('Inniku Metformin sapdala na enna aagum?', 'Tanglish', '#E4DFF7'),
+mkSuggestion('Remind me to take my tablets after dinner', 'Does it', '#E3B660'),
+mkSuggestion('What is due this week?', 'Dates', '#EAE7E0')
+],
+askClash: () => this.start('D', 'Help me sort out Thursday\'s clash'),
+input: s.input,
+onInput: (e) => this.setState({ input: e.target.value }),
+hasAtt: !!s.att,
+att: s.att,
+removeAtt: () => this.setState({ att: '' }),
+showLive: !s.streaming && !hasText,
+showSend: !s.streaming && hasText,
+showStop: s.streaming,
+send: () => {
+const text = (s.input || '').trim();
+if (s.att) this.submit(text || s.att, s.att);
+else if (text) this.submit(text);
+},
+stop: () => this.finishNow(),
+newChat: () => {
+if (this.timer) clearTimeout(this.timer);
+this.setState({ msgs: [], input: '', att: '', streaming: false, drawer: false, active: '' });
+},
+openAttach: () => this.setState({ showAttach: true }),
+closeAttach: () => this.setState({ showAttach: false }),
+addScan: () => this.setState({ att: 'Scan · Electricity bill', showAttach: false }),
+addPhoto: () => this.setState({ att: 'Photo · IMG_2041', showAttach: false }),
+addFile: () => this.setState({ att: 'Lab report.pdf', showAttach: false }),
+showAttach: s.showAttach,
+modelLine: modelLine,
+openModel: () => this.setState({ modelOpen: true, upsell: false }),
+closeModel: () => this.setState({ modelOpen: false, upsell: false }),
+modelOpen: s.modelOpen,
+models: models,
+upsell: s.upsell,
+startPlus: () => this.setState({ plan: 'plus', upsell: false }),
+notNow: () => this.setState({ upsell: false }),
+planLabel: plus ? 'Sarvam Plus' : 'Free',
+planBg: plus ? '#E3B660' : '#EAE7E0',
+modelInfo: plus ? 'Leave it on Auto, or pick a model yourself.' : 'On the free plan Sarvam picks the model for you. Plus lets you choose.',
+modelFoot: plus ? 'This list updates by itself when Google releases a newer model.' : 'Right now Auto uses Flash for quick questions and Pro for harder ones.',
+openDrawer: () => this.setState({ drawer: true }),
+closeDrawer: () => this.setState({ drawer: false }),
+scrimOp: s.drawer ? 1 : 0,
+drawerVis: s.drawer ? 'visible' : 'hidden',
+drawerTx: s.drawer ? 'translateX(0)' : 'translateX(-100%)',
+tabChats: s.tab === 'chats',
+tabActivity: s.tab === 'activity',
+tabChatsBg: s.tab === 'chats' ? '#fff' : 'transparent',
+tabActBg: s.tab === 'activity' ? '#fff' : 'transparent',
+pickChats: () => this.setState({ tab: 'chats' }),
+pickActivity: () => this.setState({ tab: 'activity' }),
+q: s.q,
+onSearch: (e) => this.setState({ q: e.target.value }),
+groups: groups,
+noChats: groups.length === 0,
+tasks: tasks,
+memStatus: s.remember ? (s.mems.length + (s.mems.length === 1 ? ' thing remembered' : ' things remembered')) : 'Off',
+memOpen: s.memOpen,
+openMem: () => this.setState({ memOpen: true, drawer: false, confirmForget: false }),
+closeMem: () => this.setState({ memOpen: false, confirmForget: false }),
+mems: mems,
+memEmpty: s.mems.length === 0,
+remember: s.remember,
+rememberNote: s.remember ? 'Saved on this phone, only for you' : 'Paused. Nothing new is saved. What is below stays until you delete it.',
+toggleRemember: () => this.setState({ remember: !this.state.remember }),
+remBg: s.remember ? '#214D47' : '#CFCBC1',
+remKnob: s.remember ? 24 : 2,
+remKnobBg: s.remember ? '#E3B660' : '#fff',
+forgetLabel: s.confirmForget ? 'Tap again to forget everything' : 'Forget everything',
+forgetBg: s.confirmForget ? '#B5472B' : 'transparent',
+forgetFg: s.confirmForget ? '#fff' : '#B5472B',
+forgetAll: () => {
+if (!this.state.confirmForget) this.setState({ confirmForget: true });
+else this.setState({ mems: [], name: '', confirmForget: false });
+},
+nameShown: s.name ? s.name : 'Not set',
+nameEdit: s.name ? 'Edit' : 'Add name',
+nameOpen: s.nameOpen,
+nameDraft: s.nameDraft,
+openName: () => this.setState({ nameOpen: true, nameDraft: this.state.name }),
+closeName: () => this.setState({ nameOpen: false }),
+onName: (e) => this.setState({ nameDraft: e.target.value }),
+saveName: () => this.setState({ name: (this.state.nameDraft || '').trim(), nameOpen: false }),
+liveOpen: s.live,
+liveItems: live,
+openLive: () => {
+this.clearLive();
+this.setState({ live: true, muted: false, liveN: 1 });
+[1800, 3800, 5800].forEach((ms, k) => this.ltimers.push(setTimeout(() => this.setState({ liveN: k + 2 }), ms)));
+},
+closeLive: () => this.closeLiveSave(),
+muted: s.muted,
+toggleMute: () => this.setState({ muted: !this.state.muted }),
+muteLabel: s.muted ? 'Unmute microphone' : 'Mute microphone',
+muteText: s.muted ? 'Unmute' : 'Mute',
+muteBg: s.muted ? '#F5F4F2' : 'rgba(255,255,255,0.14)',
+muteFg: s.muted ? '#1B1B1B' : '#F5F4F2',
+orbPlay: s.muted ? 'paused' : 'running',
+liveStatus: s.muted ? 'Microphone is muted' : 'Listening…'
+};
+}
+}
+</script>
+</body>
+</html>

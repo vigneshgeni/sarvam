@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notifications</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #C96846;outline-offset:3px}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #F5F4F2; color: #1B1B1B; font-family: 'DM Sans',system-ui,sans-serif; overflow: hidden">
+
+<div style="flex: none; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px">
+<a href="VoiceHome.dc.html" aria-label="Back to Home" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+<span style="font-size: 17px; font-weight: 700">Notifications</span>
+<span style="width: 44px"></span>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 12px">
+
+<sc-if value="{{ notConnected }}" hint-placeholder-val="{{ true }}">
+<div style="background: #1B1B1B; color: #F5F4F2; border-radius: 26px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 22px; font-weight: 500; line-height: 1.15">Let Sarvam watch your inbox</span>
+<span style="font-size: 14px; line-height: 1.45; color: #D9D8D3">It looks for bills, tickets, bookings and meeting invites, and asks before adding anything. Read-only. Disconnect any time.</span>
+<button onClick="{{ connect }}" style="align-self: flex-start; min-height: 48px; padding: 0 20px; border-radius: 24px; border: 0; background: #F5F4F2; color: #1B1B1B; font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Connect Gmail</button>
+</div>
+</sc-if>
+<sc-if value="{{ connected }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; border-radius: 18px; background: #D3E5E0">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+<span style="flex: 1; font-size: 13.5px; font-weight: 600; color: #214D47">Gmail connected · read-only · checked 2 min ago</span>
+</div>
+</sc-if>
+
+<span style="margin-top: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Needs you</span>
+<sc-for list="{{ needs }}" as="n" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 22px; background: #fff; border: 2px solid #1B1B1B">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: none; width: 38px; height: 38px; border-radius: 19px; background: {{ n.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ n.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 700; line-height: 1.3">{{ n.title }}</span><span style="font-size: 12.5px; color: #5E5E5A">{{ n.src }}</span></span>
+</div>
+<sc-if value="{{ n.open }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button onClick="{{ n.accept }}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid #1B1B1B; background: #1B1B1B; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer">{{ n.action }}</button>
+<button onClick="{{ n.dismiss }}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; border: 2px solid #1B1B1B; background: transparent; color: #1B1B1B; font-size: 14px; font-weight: 600; cursor: pointer">Not now</button>
+</div>
+</sc-if>
+<sc-if value="{{ n.done }}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: #D3E5E0; color: #214D47">{{ n.doneText }}</span></sc-if>
+<sc-if value="{{ n.skipped }}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; font-size: 12.5px; font-weight: 600; color: #5E5E5A">Dismissed</span></sc-if>
+</div>
+</sc-for>
+
+<span style="margin-top: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Done by Sarvam today</span>
+<sc-for list="{{ done }}" as="d" hint-placeholder-count="3">
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 18px; background: #EAE7E0">
+<span style="flex: none; width: 34px; height: 34px; border-radius: 17px; background: {{ d.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ d.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14.5px; font-weight: 700; line-height: 1.3">{{ d.title }}</span><span style="font-size: 12.5px; color: #5E5E5A">{{ d.sub }}</span></span>
+</div>
+</sc-for>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { gmail: false, st: {} };
+}
+renderVals() {
+const s = this.state;
+const REM = 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2';
+const CAL = 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4';
+const MAIL = 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l9 6 9-6';
+const items = [
+{ id: 'meet', title: 'Team call invite · Fri 21 Nov, 3:00 PM', src: 'Found in Gmail', action: 'Add to calendar', doneText: 'Added to Apple Calendar', bg: '#E3B660', icon: CAL },
+{ id: 'bill', title: 'Electricity bill due Mon 24 Nov', src: 'Found in Gmail', action: 'Remind me Sunday', doneText: 'Reminder set · Sun 8:00 PM', bg: '#D3E5E0', icon: REM },
+{ id: 'draft', title: 'Voice note for Amma is ready', src: 'From your Live session', action: 'Share on WhatsApp', doneText: 'Opened WhatsApp', bg: '#E4DFF7', icon: MAIL }
+];
+const needs = items.map((n) => {
+const v = s.st[n.id] || '';
+return {
+title: n.title, src: n.src, action: n.action, doneText: n.doneText, bg: n.bg, icon: n.icon,
+open: v === '', done: v === 'yes', skipped: v === 'no',
+accept: () => this.setState({ st: Object.assign({}, this.state.st, { [n.id]: 'yes' }) }),
+dismiss: () => this.setState({ st: Object.assign({}, this.state.st, { [n.id]: 'no' }) })
+};
+});
+return {
+notConnected: !s.gmail,
+connected: s.gmail,
+connect: () => this.setState({ gmail: true }),
+needs: needs,
+done: [
+{ title: 'Reminder · 5:30 PM, Metformin', sub: 'From your Live session · Apple Reminders', bg: '#D3E5E0', icon: REM },
+{ title: 'Train to Chennai added', sub: 'Apple Calendar · today 6:10 PM', bg: '#E3B660', icon: CAL },
+{ title: 'Train ticket saved', sub: 'Scanned documents · with its chat', bg: '#EAE7E0', icon: 'M7 3h7l5 5v13H7zM14 3v5h5' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

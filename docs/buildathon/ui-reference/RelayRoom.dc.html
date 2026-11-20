@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live Relay video call (host)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #E3B660;outline-offset:3px}
+@keyframes sv-glow{0%,100%{box-shadow:0 0 0 2px #E3B660,0 0 0 0 rgba(227,182,96,.6)}50%{box-shadow:0 0 0 2px #E3B660,0 0 0 8px rgba(227,182,96,0)}}
+@keyframes sv-orb{0%,100%{transform:scale(.92)}50%{transform:scale(1.06)}}
+@keyframes sv-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sv-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes sv-flash{0%{opacity:.8}100%{opacity:0}}
+@keyframes sv-drift{0%,100%{transform:rotate(-7deg) translate(0,0)}50%{transform:rotate(-6deg) translate(2px,-3px)}}
+@keyframes sv-rec{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.sv-anim{animation:none !important}}
+.hide-scroll{scrollbar-width:none}
+.hide-scroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; background: #0E0E0E; color: #F5F4F2; font-family: 'DM Sans','Noto Sans Tamil',system-ui,sans-serif; overflow: hidden">
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(170deg, #8a6a4a 0%, #6d4f33 40%, #4a3422 100%)"></div>
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: repeating-linear-gradient(100deg, rgba(0,0,0,0) 0 22px, rgba(0,0,0,0.05) 22px 24px, rgba(255,255,255,0.03) 24px 40px)"></div>
+<div aria-hidden="true" style="position: absolute; left: -40px; top: 520px; width: 200px; height: 60px; border-radius: 30px; background: rgba(255,255,255,0.08); filter: blur(10px)"></div>
+<div aria-hidden="true" style="position: absolute; left: 230px; top: 470px; width: 70px; height: 90px; border-radius: 12px; background: #2f6b5f; box-shadow: 0 18px 30px rgba(0,0,0,0.45)"><span style="position: absolute; left: 10px; top: -10px; width: 50px; height: 14px; border-radius: 7px; background: #3d8576"></span></div>
+<div class="sv-anim" aria-hidden="true" style="position: absolute; left: 70px; top: 196px; width: 236px; height: 312px; animation: sv-drift 6s ease-in-out infinite">
+<div style="position: absolute; left: 0; top: 0; width: 236px; height: 312px; background: linear-gradient(180deg, #F4F0E6, #E7E1D3); border-radius: 3px; box-shadow: 0 34px 60px rgba(0,0,0,0.5); padding: 18px; display: flex; flex-direction: column; gap: 10px; color: #1B1B1B">
+<span style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em">ELECTRICITY BILL (SAMPLE)</span><span style="width: 22px; height: 22px; border-radius: 11px; background: #214D47; opacity: 0.8"></span></span>
+<span style="height: 2px; background: #1B1B1B; opacity: 0.7"></span>
+<span style="display: flex; justify-content: space-between; font-size: 11px"><span>Units used</span><span style="font-weight: 700">412</span></span>
+<span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; padding: 2px 4px; background: {{ hl }}"><span>Amount due</span><span>₹2,140</span></span>
+<span style="display: flex; justify-content: space-between; font-size: 11px"><span>Due date</span><span style="font-weight: 700">28 Nov 2026</span></span>
+<span style="height: 6px; width: 84%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 70%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 78%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="margin-top: auto; height: 34px; width: 34px; align-self: flex-end; background: repeating-linear-gradient(90deg, #1B1B1B 0 2px, transparent 2px 4px); opacity: 0.6"></span>
+</div>
+<div style="position: absolute; left: 196px; top: 236px; width: 92px; height: 120px; border-radius: 40px 46px 30px 52px; background: linear-gradient(160deg, #a97852, #7c5236); transform: rotate(-24deg); box-shadow: 0 10px 20px rgba(0,0,0,0.35)"></div>
+<div style="position: absolute; left: 186px; top: 230px; width: 28px; height: 54px; border-radius: 14px; background: linear-gradient(160deg, #b8865e, #8a5c3d); transform: rotate(-58deg)"></div>
+</div>
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 50% 42%, transparent 45%, rgba(0,0,0,0.55) 100%)"></div>
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; height: 200px; background: linear-gradient(rgba(0,0,0,0.6), transparent)"></div>
+<div aria-hidden="true" style="position: absolute; left: 0; bottom: 0; right: 0; height: 430px; background: linear-gradient(transparent, rgba(0,0,0,0.88) 45%)"></div>
+
+<sc-if value="{{ camArun }}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; background: linear-gradient(170deg, #4d5b52 0%, #34413a 50%, #1f2723 100%)">
+<div style="position: absolute; left: 96px; top: 210px; width: 190px; height: 290px; transform: rotate(5deg); background: linear-gradient(180deg, #fbfaf6, #ecebe4); box-shadow: 0 30px 50px rgba(0,0,0,0.5); padding: 14px; display: flex; flex-direction: column; gap: 7px; color: #1B1B1B; font-family: monospace">
+<span style="font-size: 10px; font-weight: 700; text-align: center">PHARMACY RECEIPT (SAMPLE)</span>
+<span style="border-top: 1px dashed #1B1B1B"></span>
+<span style="display: flex; justify-content: space-between; font-size: 10px"><span>Metformin 500</span><span>₹84</span></span>
+<span style="display: flex; justify-content: space-between; font-size: 10px"><span>BP strips x50</span><span>₹620</span></span>
+<span style="display: flex; justify-content: space-between; font-size: 10px"><span>Vitamin D3</span><span>₹210</span></span>
+<span style="border-top: 1px dashed #1B1B1B"></span>
+<span style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700"><span>TOTAL</span><span>₹914</span></span>
+</div>
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,0.55) 100%)"></div>
+</div>
+</sc-if>
+<sc-if value="{{ camOff }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; background: #151515; display: flex; align-items: center; justify-content: center; color: #8A8A85; font-size: 14px; font-weight: 600">Camera off</div>
+</sc-if>
+<div style="position: absolute; left: 0; top: 0; right: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 2">
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(0,0,0,0.5); font-size: 13px; font-weight: 700"><span class="sv-anim" style="width: 8px; height: 8px; border-radius: 4px; background: #E5533D; animation: sv-rec 1.4s ease-in-out infinite"></span>Live · Room 7K2Q · 12:40</span>
+<button onClick="{{ openInvite }}" style="height: 44px; padding: 0 14px; border-radius: 22px; border: 0; background: #E3B660; color: #1B1B1B; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg>Invite</button>
+</div>
+<div style="position: absolute; left: 12px; right: 12px; top: 68px; display: flex; flex-direction: row; justify-content: space-between; gap: 8px; z-index: 2">
+<div class="sv-anim" style="width: 84px; height: 100px; border-radius: 16px; background: linear-gradient(160deg, #2a2a2a, #121212); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; animation: sv-glow 1.6s ease-in-out infinite">
+<span class="sv-anim" style="width: 42px; height: 42px; border-radius: 21px; background: radial-gradient(circle at 35% 35%, #F6E3B8, #E3B660 45%, #C96846); animation: sv-orb 1.2s ease-in-out infinite"></span>
+<span style="font-size: 12px; font-weight: 700">Gemini</span>
+</div><sc-for list="{{ tiles }}" as="p" hint-placeholder-count="3">
+<div style="position: relative; width: 84px; height: 100px; border-radius: 16px; overflow: hidden; box-shadow: {{ p.ring }}">
+<svg viewBox="0 0 84 100" width="84" height="100" aria-hidden="true" style="display: block"><rect width="84" height="100" fill="{{ p.bg }}"/><rect x="0" y="0" width="84" height="40" fill="{{ p.wall }}"/><path d="M6 100c3-20 17-29 36-29s33 9 36 29z" fill="{{ p.shirt }}"/><rect x="36" y="58" width="12" height="16" rx="5" fill="{{ p.skin }}"/><ellipse cx="42" cy="45" rx="15" ry="18" fill="{{ p.skin }}"/><path d="{{ p.hair }}" fill="{{ p.hairC }}"/><circle cx="36" cy="46" r="1.7" fill="#1B1B1B"/><circle cx="48" cy="46" r="1.7" fill="#1B1B1B"/><path d="{{ p.mouth }}" stroke="#4a2a20" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+<span style="position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 6px; background: rgba(0,0,0,0.6); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px">{{ p.name }}<sc-if value="{{ p.muted }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#F5F4F2" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M4 4l16 16"/></svg></sc-if></span>
+<span style="position: absolute; top: 6px; left: 6px; padding: 1px 5px; border-radius: 6px; background: rgba(0,0,0,0.55); font-size: 9.5px; font-weight: 700">{{ p.lang }}</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ camRequest }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="position: absolute; left: 12px; right: 12px; top: 180px; z-index: 3; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: #F5F4F2; color: #1B1B1B; animation: sv-fade 0.25s ease both">
+<span style="font-size: 14.5px; font-weight: 700">Arun wants to show his camera</span>
+<span style="font-size: 12.5px; color: #5E5E5A">Everyone, and Gemini, will see Arun's camera instead of yours. You can take it back any time.</span>
+<div style="display: flex; gap: 8px"><button onClick="{{ allowCam }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #214D47; color: #fff; font-size: 13.5px; font-weight: 700; cursor: pointer">Allow</button><button onClick="{{ denyCam }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #fff; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Not now</button></div>
+</div>
+</sc-if>
+<sc-if value="{{ camArun }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="position: absolute; left: 12px; top: 180px; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 22px; background: rgba(0,0,0,0.65); animation: sv-fade 0.25s ease both"><span style="font-size: 13px; font-weight: 700">Showing Arun's camera</span><button onClick="{{ takeBack }}" style="min-height: 36px; padding: 0 12px; border-radius: 18px; border: 0; background: #E3B660; color: #1B1B1B; font-size: 12.5px; font-weight: 700; cursor: pointer">Take back</button></div>
+</sc-if>
+<sc-if value="{{ pinned }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="position: absolute; left: 12px; top: 180px; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 14px; background: rgba(0,0,0,0.6); animation: sv-fade 0.25s ease both"><span style="width: 34px; height: 44px; border-radius: 4px; background: #F4F0E6; display: flex; flex-direction: column; gap: 3px; padding: 5px 4px"><span style="height: 3px; background: #2B2B2B; opacity: 0.5"></span><span style="height: 3px; width: 80%; background: #2B2B2B; opacity: 0.25"></span></span><span style="display: flex; flex-direction: column"><span style="font-size: 12.5px; font-weight: 700">Page 1 pinned</span><span style="font-size: 11px; color: #D9D8D3">Everyone sees it</span></span></div>
+</sc-if>
+<sc-if value="{{ flash }}" hint-placeholder-val="{{ false }}"><div class="sv-anim" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 4; background: #fff; pointer-events: none; animation: sv-flash 0.35s ease both"></div></sc-if>
+
+<div style="position: absolute; left: 12px; right: 12px; bottom: 112px; z-index: 2; display: flex; flex-direction: column; gap: 8px">
+<sc-if value="{{ cPrivate }}" hint-placeholder-val="{{ true }}">
+<div class="sv-anim" style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: #F5F4F2; color: #1B1B1B; border: 2px dashed #214D47; animation: sv-fade 0.3s ease both">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #214D47"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Only you can see this</span>
+<span style="display: flex; gap: 10px; align-items: flex-start"><span role="img" aria-label="From Gmail" style="flex: none; width: 30px; height: 30px; border-radius: 15px; background: #fff; border: 1.5px solid #CFCBC1; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 6.5v1L7 10.4V19H4a1 1 0 0 1-1-1z" fill="#4285F4"/><path d="M21 6.5v1l-4 2.9V19h3a1 1 0 0 0 1-1z" fill="#34A853"/><path d="M17 6.3v4.1l4-2.9v-1a1.6 1.6 0 0 0-2.6-1.3z" fill="#FBBC04"/><path d="M7 10.4V6.3l5 3.7 5-3.7v4.1l-5 3.6z" fill="#EA4335"/><path d="M3 6.5v1l4 2.9V6.3L5.6 5.2A1.6 1.6 0 0 0 3 6.5z" fill="#C5221F"/></svg></span><span style="font-size: 14px; line-height: 1.4"><b>BESCOM emailed you on 3 Nov:</b> your autopay failed, so October's bill was carried over. That explains part of ₹2,140.</span></span>
+<div style="display: flex; gap: 8px"><button onClick="{{ share }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #214D47; color: #fff; font-size: 13.5px; font-weight: 700; cursor: pointer">Share with everyone</button><button onClick="{{ keep }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #fff; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Keep private</button></div>
+</div>
+</sc-if><sc-if value="{{ cReminder }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: #F5F4F2; color: #1B1B1B; animation: sv-fade 0.3s ease both">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>Remind you: pay the bill · 27 Nov, 7 PM</span>
+<div style="display: flex; gap: 8px"><button onClick="{{ add }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #E3B660; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Add reminder</button><button onClick="{{ add }}" style="flex: 1; min-height: 44px; border-radius: 22px; border: 2px solid #1B1B1B; background: #fff; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Add to Calendar</button></div>
+</div>
+</sc-if>
+<sc-if value="{{ cDone }}" hint-placeholder-val="{{ false }}"><span class="sv-anim" style="align-self: flex-start; padding: 6px 12px; border-radius: 14px; background: #D3E5E0; color: #214D47; font-size: 13px; font-weight: 700; animation: sv-fade 0.25s ease both">Reminder added · on Home and in Notifications</span></sc-if>
+<div style="display: flex; flex-direction: column; gap: 7px; padding: 11px 14px; border-radius: 18px; background: rgba(15,15,15,0.74)">
+<span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #BDBAB2">{{ capTitle }}</span>
+<div class="hide-scroll" style="display: flex; flex-direction: column; gap: 7px; max-height: {{ capMax }}px; overflow-y: auto">
+<sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13.5px; line-height: 1.4"><b style="color: #D3E5E0">Amma:</b> <span lang="ta">இந்த தடவை பில் ஏன் இவ்வளவு அதிகம்?</span></span>
+<span style="font-size: 13.5px; line-height: 1.4"><b style="color: #E3B660">Gemini:</b> <span lang="ta">இந்த மாதம் 412 யூனிட். போன பில் ₹900.</span></span>
+<span style="font-size: 13.5px; line-height: 1.4"><b style="color: #F6DCD2">Arun:</b> When do we have to pay it?</span>
+</sc-if>
+<span style="font-size: 14.5px; line-height: 1.4"><b style="color: #E3B660">Gemini:</b> By 28 November. After that there's a ₹150 late fee.</span>
+<sc-if value="{{ shared }}" hint-placeholder-val="{{ false }}">
+<span class="sv-anim" style="font-size: 14.5px; line-height: 1.4; animation: sv-fade 0.3s ease both"><b style="color: #E3B660">Gemini</b> <span style="font-size: 11px; color: #BDBAB2">(shared by you, from Gmail)</span>: BESCOM says autopay failed on 3 November, so October's ₹900 was added to this bill.</span>
+</sc-if>
+</div>
+</div>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 104px; z-index: 2; display: flex; align-items: center; justify-content: space-around; padding: 0 10px 16px">
+<button aria-label="{{ micLabel }}" aria-pressed="{{ muted }}" onClick="{{ toggleMic }}" style="width: 52px; height: 52px; border-radius: 26px; border: 0; background: {{ micBg }}; color: {{ micFg }}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><sc-if value="{{ muted }}" hint-placeholder-val="{{ false }}"><path d="M4 4l16 16"/></sc-if></svg></button>
+<button aria-label="{{ camLabel }}" aria-pressed="{{ hostCamOn }}" onClick="{{ toggleCam }}" style="width: 52px; height: 52px; border-radius: 26px; border: 0; background: {{ camBg }}; color: {{ camFg }}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 10l5-3v10l-5-3"/><sc-if value="{{ hostCamOff }}" hint-placeholder-val="{{ false }}"><path d="M3 3l18 18"/></sc-if></svg></button>
+<button aria-label="Pin this page for everyone" onClick="{{ pin }}" style="width: 68px; height: 68px; border-radius: 34px; border: 4px solid #F5F4F2; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="width: 52px; height: 52px; border-radius: 26px; background: #F5F4F2; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg></span></button>
+<button aria-label="Transcript" aria-pressed="{{ open }}" onClick="{{ toggleTranscript }}" style="width: 52px; height: 52px; border-radius: 26px; border: 0; background: {{ trBg }}; color: {{ trFg }}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-6.5L8 20.5V17H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2zM7 9h10M7 12.5h6"/></svg></button>
+<a href="LiveSaved.dc.html" aria-label="End call for everyone" style="width: 64px; height: 52px; border-radius: 26px; background: #E5533D; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="26" height="26" fill="#fff" aria-hidden="true"><path d="M3 14.5c5-4.7 13-4.7 18 0l-2.4 2.4-3.3-1.4v-2.6a12 12 0 0 0-6.6 0v2.6l-3.3 1.4z"/></svg></a>
+</div>
+<sc-if value="{{ invite }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: flex-end; z-index: 5">
+<div role="dialog" aria-label="Invite to this room" class="sv-anim" style="background: #F5F4F2; color: #1B1B1B; border-radius: 28px 28px 0 0; padding: 18px 22px 30px; display: flex; flex-direction: column; gap: 14px; animation: sv-up 0.3s ease both">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-size: 20px; font-weight: 700">Invite to Room 7K2Q</span><button onClick="{{ closeInvite }}" aria-label="Close" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: #EAE7E0; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1B1B1B" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div style="display: flex; gap: 16px; align-items: center">
+<div role="img" aria-label="QR code for the invite link" style="flex: none; width: 132px; height: 132px; padding: 10px; border-radius: 16px; background: #fff; border: 2px solid #1B1B1B"><svg viewBox="0 0 21 21" width="108" height="108" shape-rendering="crispEdges" aria-hidden="true"><path fill="#1B1B1B" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h2v1H8zM11 1h2v2h-2zM8 3h1v3H8zM10 4h3v1h-3zM9 8h3v1H9zM0 8h2v2H0zM3 9h3v1H3zM13 8h2v2h-2zM16 9h4v1h-4zM8 10h1v3H8zM10 11h2v2h-2zM14 11h1v3h-1zM17 11h3v1h-3zM1 11h2v2H1zM4 12h2v1H4zM9 14h3v1H9zM13 15h2v2h-2zM16 14h1v4h-1zM18 13h2v2h-2zM8 16h2v2H8zM11 17h1v4h-1zM13 19h3v1h-3zM18 17h3v1h-3zM17 19h2v2h-2zM9 19h1v2H9z"/></svg></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 14.5px; line-height: 1.4">Scan with any phone camera, or enter the room code at sarvam.app/join</span><span style="font-size: 22px; font-weight: 700; letter-spacing: 0.12em">7K2Q</span><span style="font-size: 12.5px; color: #5E5E5A">Expires in 30 min · up to 3 people</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: #fff; border: 2px solid #1B1B1B">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14.5px; font-weight: 700">Guests can show their camera</span><span style="font-size: 12px; color: #5E5E5A">When you turn yours off, the first guest to tap Show takes over. One camera at a time.</span></span>
+<button role="switch" aria-checked="{{ allowGuests }}" aria-label="Guests can show their camera" onClick="{{ toggleAllow }}" style="flex: none; width: 56px; height: 44px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><span style="display: block; position: relative; width: 50px; height: 28px; border-radius: 14px; background: {{ allowTrack }}; border: 2px solid #1B1B1B"><span style="position: absolute; top: 2px; left: {{ allowKnob }}px; width: 20px; height: 20px; border-radius: 10px; background: {{ allowKnobBg }}; transition: left 0.2s ease"></span></span></button>
+</div>
+<div style="display: flex; gap: 10px"><button style="flex: 1; min-height: 52px; border-radius: 26px; border: 2px solid #1B1B1B; background: #214D47; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer">Share on WhatsApp</button><button style="flex: none; min-height: 52px; padding: 0 18px; border-radius: 26px; border: 2px solid #1B1B1B; background: #F5F4F2; color: #1B1B1B; font-size: 15px; font-weight: 700; cursor: pointer">Copy link</button></div>
+<span style="display: flex; gap: 8px; font-size: 13px; line-height: 1.45; color: #2E4F49; padding: 10px 12px; border-radius: 14px; background: #D3E5E0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#214D47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>Guests see your camera and hear the room and Gemini until you end it. Anything from your Gmail, Drive or memory stays private until you tap Share. Nothing is recorded in the cloud.</span>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { invite: false, card: 'private', open: false, muted: false, pinned: false, flash: false, cam: 'host', allowGuests: false };
+this.t = null;
+}
+componentWillUnmount() { if (this.t) clearTimeout(this.t); }
+renderVals() {
+const s = this.state;
+const HAIR_SHORT = 'M27 44c-1-15 6-23 15-23s16 8 15 23c-2-8-7-12-15-12s-13 4-15 12z';
+const HAIR_LONG = 'M25 50c-3-19 5-29 17-29s20 10 17 29l-3-6c-1-8-6-12-14-12s-13 4-14 12z';
+const HAIR_GREY = 'M26 46c-2-16 6-25 16-25s18 9 16 25c-3-9-8-13-16-13s-13 4-16 13zM36 20a6 5 0 1 0 12 0a6 5 0 1 0-12 0z';
+const SMILE = 'M37 54q5 4 10 0', TALK = 'M38 54q4 5 8 0q-4 2-8 0', FLAT = 'M38 55h8';
+return {
+tiles: [
+{ name: 'Amma', lang: 'TA', bg: '#5b4a3a', wall: '#7a6450', shirt: '#2E7D6B', skin: '#8d5a3b', hair: HAIR_GREY, hairC: '#b9b4ad', mouth: SMILE, ring: 'none', muted: false },
+{ name: 'Arun', lang: 'EN', bg: '#33414d', wall: '#46586a', shirt: '#C96846', skin: '#a8724c', hair: HAIR_SHORT, hairC: '#1f1a17', mouth: TALK, ring: '0 0 0 2px #F6DCD2', muted: false },
+{ name: 'Priya', lang: 'HI', bg: '#4a3b4f', wall: '#5e4a66', shirt: '#E3B660', skin: '#c08a62', hair: HAIR_LONG, hairC: '#2a1d18', mouth: FLAT, ring: 'none', muted: true }
+],
+hl: s.card === 'private' || s.card === 'kept' ? '#F6E3B8' : '#D3E5E0',
+invite: s.invite,
+camArun: s.cam === 'arun',
+camOff: s.cam === 'off',
+camRequest: s.cam === 'request',
+hostCamOn: s.cam === 'host',
+hostCamOff: s.cam !== 'host',
+camLabel: s.cam === 'host' ? 'Turn camera off' : 'Turn camera on',
+camBg: s.cam === 'host' ? 'rgba(255,255,255,0.16)' : '#F5F4F2',
+camFg: s.cam === 'host' ? '#F5F4F2' : '#1B1B1B',
+toggleCam: () => this.setState({ cam: this.state.cam === 'host' ? (this.state.allowGuests ? 'arun' : 'request') : 'host' }),
+allowCam: () => this.setState({ cam: 'arun' }),
+denyCam: () => this.setState({ cam: 'off' }),
+takeBack: () => this.setState({ cam: 'host' }),
+allowGuests: s.allowGuests,
+toggleAllow: () => this.setState({ allowGuests: !this.state.allowGuests }),
+allowTrack: s.allowGuests ? '#214D47' : '#CFCBC1',
+allowKnob: s.allowGuests ? 24 : 2,
+allowKnobBg: s.allowGuests ? '#E3B660' : '#fff',
+openInvite: () => this.setState({ invite: true }),
+closeInvite: () => this.setState({ invite: false }),
+cPrivate: s.card === 'private',
+cReminder: s.card === 'shared' || s.card === 'kept',
+cDone: s.card === 'done',
+shared: s.card === 'shared' || s.card === 'done',
+share: () => this.setState({ card: 'shared' }),
+keep: () => this.setState({ card: 'kept' }),
+add: () => this.setState({ card: 'done' }),
+open: s.open,
+toggleTranscript: () => this.setState({ open: !this.state.open }),
+capTitle: s.open ? 'Transcript · saved on your phone' : 'Live captions',
+capMax: s.open ? 220 : 120,
+trBg: s.open ? '#F5F4F2' : 'rgba(255,255,255,0.16)',
+trFg: s.open ? '#1B1B1B' : '#F5F4F2',
+muted: s.muted,
+toggleMic: () => this.setState({ muted: !this.state.muted }),
+micLabel: s.muted ? 'Unmute' : 'Mute',
+micBg: s.muted ? '#F5F4F2' : 'rgba(255,255,255,0.16)',
+micFg: s.muted ? '#1B1B1B' : '#F5F4F2',
+pinned: s.pinned,
+flash: s.flash,
+pin: () => { this.setState({ pinned: true, flash: true }); if (this.t) clearTimeout(this.t); this.t = setTimeout(() => this.setState({ flash: false }), 380); }
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live session saved</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Noto+Sans+Tamil:wght@400;600&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #C96846;outline-offset:3px}
+@keyframes sv-wave{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion: reduce){.sv-anim{animation:none !important}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #F5F4F2; color: #1B1B1B; font-family: 'DM Sans','Noto Sans Tamil',system-ui,sans-serif; overflow: hidden">
+
+<div style="flex: none; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px">
+<a href="VoiceHome.dc.html" aria-label="Back to Home" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+<span style="font-size: 17px; font-weight: 700">Live session</span>
+<span style="width: 44px"></span>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 14px">
+
+<div style="display: flex; align-items: center; gap: 14px">
+<span style="flex: none; width: 64px; height: 80px; border-radius: 8px; background: #F2EEE4; border: 2px solid #1B1B1B; transform: rotate(-4deg); padding: 8px 6px; display: flex; flex-direction: column; gap: 4px">
+<span style="height: 4px; background: #2B2B2B; opacity: 0.6; border-radius: 2px"></span>
+<span style="height: 4px; width: 80%; background: #2B2B2B; opacity: 0.25; border-radius: 2px"></span>
+<span style="height: 4px; width: 90%; background: #2B2B2B; opacity: 0.25; border-radius: 2px"></span>
+<span style="height: 4px; width: 60%; background: #2B2B2B; opacity: 0.25; border-radius: 2px"></span>
+</span>
+<span style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Fraunces',Georgia,serif; font-size: 24px; font-weight: 500; line-height: 1.1">Train ticket</span>
+<span style="font-size: 14px; color: #5E5E5A">Bengaluru → Chennai · today 6:10 PM</span>
+<span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: #D3E5E0; color: #214D47"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>Saved to Scanned documents</span>
+</span>
+</div>
+
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #214D47">What Sarvam did</span>
+<sc-for list="{{ did }}" as="d" hint-placeholder-count="3">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span style="flex: none; width: 34px; height: 34px; border-radius: 17px; background: {{ d.bg }}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ d.icon }}"/></svg></span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 700; line-height: 1.3">{{ d.title }}</span><span style="font-size: 12.5px; color: #5E5E5A">{{ d.sub }}</span></span>
+</div>
+</sc-for>
+</div>
+
+<div style="background: #1B1B1B; color: #F5F4F2; border-radius: 26px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #E3B660">Send to family</span>
+<span lang="ta" style="font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; background: rgba(255,255,255,0.14)">தமிழ் voice note</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<button aria-label="{{ playLabel }}" onClick="{{ togglePlay }}" style="flex: none; width: 52px; height: 52px; border-radius: 26px; border: 0; background: #E3B660; color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></sc-if>
+<sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></sc-if>
+</button>
+<div style="flex: 1; display: flex; align-items: center; gap: 3px; height: 36px" aria-hidden="true">
+<sc-for list="{{ bars }}" as="b" hint-placeholder-count="26">
+<span class="sv-anim" style="flex: 1; height: {{ b.h }}px; border-radius: 2px; background: {{ b.c }}; animation: sv-wave {{ b.d }}s ease-in-out infinite; animation-play-state: {{ play }}"></span>
+</sc-for>
+</div>
+<span style="flex: none; font-size: 13px; font-weight: 600; color: #C9C6BD">0:42</span>
+</div>
+<span style="font-size: 13.5px; line-height: 1.45; color: #D9D8D3">A short summary of your talk, read in a natural voice: train time, coach and seat, and the 5:30 PM medicine reminder.</span>
+<button onClick="{{ share }}" style="min-height: 50px; border-radius: 25px; border: 0; background: #F5F4F2; color: #1B1B1B; font-size: 15.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>{{ shareLabel }}</button>
+<button style="min-height: 44px; border-radius: 22px; border: 1.5px solid rgba(255,255,255,0.35); background: transparent; color: #F5F4F2; font-size: 14px; font-weight: 600; cursor: pointer">Share the full conversation audio</button>
+</div>
+
+<div style="background: #fff; border: 2px solid #1B1B1B; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5E5E5A">Transcript · 6 messages</span>
+<button onClick="{{ toggleT }}" aria-expanded="{{ tOpen }}" style="min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #214D47; font-size: 13.5px; font-weight: 700; cursor: pointer">{{ tLabel }}</button>
+</div>
+<div lang="ta" style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14.5px; line-height: 1.5"><b lang="en">You</b> · இந்த ரயில் எப்போ கிளம்புது?</span>
+<span style="font-size: 14.5px; line-height: 1.5"><b lang="en">Sarvam</b> · இன்று மாலை 6:10-க்கு, கோச் S4, சீட் 32.</span>
+<sc-if value="{{ tOpen }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 14.5px; line-height: 1.5"><b lang="en">Sarvam</b> · கிளம்பும் முன் 5:30-க்கு மெட்ஃபார்மின் எடுத்துக்கோங்க.</span>
+<span style="font-size: 14.5px; line-height: 1.5"><b lang="en">You</b> · அம்மாவுக்கு இதை அனுப்பு.</span>
+</sc-if>
+</div>
+</div>
+
+<a href="Ask.dc.html" style="min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 28px; border: 2px solid #1B1B1B; background: #E3B660; font-size: 16px; font-weight: 700">Continue in Ask<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { playing: false, t: false, shared: false };
+}
+renderVals() {
+const s = this.state;
+const bars = [];
+for (let i = 0; i < 26; i++) {
+bars.push({ h: 10 + ((i * 37) % 26), c: i < 9 ? '#E3B660' : 'rgba(255,255,255,0.45)', d: (0.7 + ((i * 53) % 10) / 14).toFixed(2) });
+}
+return {
+did: [
+{ title: 'Reminder · 5:30 PM, Metformin', sub: 'Apple Reminders and Sarvam', bg: '#D3E5E0', icon: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2' },
+{ title: 'Event · 6:10 PM, train to Chennai', sub: 'Apple Calendar, with seat S4-32', bg: '#E3B660', icon: 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4' },
+{ title: 'Remembered: travelling today', sub: 'Memory · you can delete it', bg: '#E4DFF7', icon: 'M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3zM9.5 19h5M10.5 21h3' }
+],
+bars: bars,
+play: s.playing ? 'running' : 'paused',
+playing: s.playing,
+paused: !s.playing,
+playLabel: s.playing ? 'Pause voice note' : 'Play voice note',
+togglePlay: () => this.setState({ playing: !this.state.playing }),
+share: () => this.setState({ shared: true }),
+shareLabel: s.shared ? 'Opened WhatsApp · pick a contact' : 'Share voice note on WhatsApp',
+tOpen: s.t,
+tLabel: s.t ? 'Show less' : 'Show all',
+toggleT: () => this.setState({ t: !this.state.t })
+};
+}
+}
+</script>
+</body>
+</html>

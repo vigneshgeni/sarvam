@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scanned pages with Gemini Live</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid #C96846;outline-offset:3px}
+@keyframes sv-wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@keyframes sv-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sv-slide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.sv-anim{animation:none !important}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; display: flex; flex-direction: column; background: #E9E6DF; color: #1B1B1B; font-family: 'DM Sans','Noto Sans Tamil',system-ui,sans-serif; overflow: hidden">
+
+<div style="flex: none; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #F5F4F2">
+<a href="LiveScanner.dc.html" aria-label="Back to camera" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1px"><span style="font-size: 16.5px; font-weight: 700">Train ticket</span><span style="font-size: 12px; color: #5E5E5A">2 pages · scanned</span></div>
+<div role="group" aria-label="Page language" style="display: flex; padding: 3px; border-radius: 20px; background: #EAE7E0; margin-right: 6px">
+<button aria-pressed="{{ orig }}" onClick="{{ showOrig }}" style="min-height: 34px; padding: 0 10px; border: 0; border-radius: 17px; background: {{ origBg }}; color: #1B1B1B; font-size: 12.5px; font-weight: 700; cursor: pointer">Original</button>
+<button aria-pressed="{{ ta }}" onClick="{{ showTa }}" lang="ta" style="min-height: 34px; padding: 0 10px; border: 0; border-radius: 17px; background: {{ taBg }}; color: #1B1B1B; font-size: 12.5px; font-weight: 700; cursor: pointer">தமிழ்</button>
+</div>
+</div>
+
+<div style="flex: none; height: 400px; position: relative; display: flex; align-items: center; justify-content: center">
+<a href="RelayRoom.dc.html" style="position: absolute; top: 10px; right: 12px; z-index: 2; height: 44px; padding: 0 14px; border-radius: 22px; border: 2px solid #1B1B1B; background: #E3B660; color: #1B1B1B; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg>Invite family</a>
+<button aria-label="Previous page" onClick="{{ prev }}" style="position: absolute; left: 4px; top: 160px; width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(255,255,255,0.7); color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: {{ prevOp }}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<button aria-label="Next page" onClick="{{ next }}" style="position: absolute; right: 4px; top: 160px; width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(255,255,255,0.7); color: #1B1B1B; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: {{ nextOp }}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+
+<sc-if value="{{ p1 }}" hint-placeholder-val="{{ true }}">
+<div class="sv-anim" lang="{{ pageLang }}" style="width: 270px; height: 350px; background: #FFFFFF; box-shadow: 0 6px 22px rgba(0,0,0,0.16); padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; color: #1B1B1B; animation: sv-slide 0.3s ease both">
+<span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em">{{ t.title }}</span>
+<span style="height: 2px; background: #1B1B1B"></span>
+<div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 700"><span>{{ t.from }}</span><span>→</span><span>{{ t.to }}</span></div>
+<div style="display: flex; justify-content: space-between; font-size: 11.5px"><span style="padding: 2px 6px; border-radius: 4px; background: #F6E3B8">{{ t.dep }}</span><span>{{ t.arr }}</span></div>
+<span style="height: 1px; background: #CFCBC1"></span>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11.5px"><span>{{ t.date }}</span><span>{{ t.cls }}</span><span style="justify-self: start; padding: 2px 6px; border-radius: 4px; background: #F6E3B8">{{ t.coach }}</span><span style="justify-self: start; padding: 2px 6px; border-radius: 4px; background: #F6E3B8">{{ t.seat }}</span></div>
+<span style="height: 1px; background: #CFCBC1"></span>
+<span style="height: 6px; width: 88%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 72%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 80%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="margin-top: auto; align-self: flex-end; font-size: 10px; color: #8A8A85">1 / 2</span>
+</div>
+</sc-if>
+<sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}">
+<div class="sv-anim" lang="{{ pageLang }}" style="width: 270px; height: 350px; background: #FFFFFF; box-shadow: 0 6px 22px rgba(0,0,0,0.16); padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; color: #1B1B1B; animation: sv-slide 0.3s ease both">
+<span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em">{{ t.title2 }}</span>
+<span style="height: 2px; background: #1B1B1B"></span>
+<span style="font-size: 12px; line-height: 1.5; padding: 4px 6px; border-radius: 4px; background: #F6E3B8">{{ t.id }}</span>
+<span style="font-size: 12px; line-height: 1.5">{{ t.board }}</span>
+<span style="height: 6px; width: 90%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 76%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="height: 6px; width: 84%; background: #1B1B1B; opacity: 0.14; border-radius: 3px"></span>
+<span style="margin-top: auto; align-self: flex-end; font-size: 10px; color: #8A8A85">2 / 2</span>
+</div>
+</sc-if>
+
+<div style="position: absolute; bottom: 8px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px" aria-hidden="true">
+<span style="width: {{ d1w }}px; height: 8px; border-radius: 4px; background: {{ d1 }}"></span>
+<span style="width: {{ d2w }}px; height: 8px; border-radius: 4px; background: {{ d2 }}"></span>
+</div>
+</div>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: {{ sheetH }}px; z-index: 5; background: #1B1B1B; color: #F5F4F2; border-radius: 28px 28px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.18); display: flex; flex-direction: column; transition: height 0.3s ease">
+<button onClick="{{ toggleSheet }}" aria-expanded="{{ expanded }}" aria-label="{{ sheetLabel }}" style="flex: none; min-height: 44px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: #F5F4F2">
+<span style="width: 40px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.35)"></span>
+</button>
+<div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 16px 8px">
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700"><span style="display: inline-flex; gap: 3px; align-items: center; height: 16px"><span class="sv-anim" style="width: 3px; height: 16px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out infinite; animation-play-state: {{ play }}"></span><span class="sv-anim" style="width: 3px; height: 16px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out 0.2s infinite; animation-play-state: {{ play }}"></span><span class="sv-anim" style="width: 3px; height: 16px; border-radius: 2px; background: #E3B660; animation: sv-wave 0.9s ease-in-out 0.4s infinite; animation-play-state: {{ play }}"></span></span>{{ liveStatus }}</span>
+<span lang="ta" style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: rgba(255,255,255,0.12)">தமிழ்</span>
+</div>
+
+<div lang="ta" style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column-reverse; padding: 0 16px">
+<div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px">
+<div style="align-self: flex-end; max-width: 82%; padding: 9px 13px; border-radius: 18px 18px 6px 18px; background: rgba(255,255,255,0.14); font-size: 15px; line-height: 1.45">இந்த ரயில் எப்போ கிளம்புது?</div>
+<span style="font-size: 15px; line-height: 1.55">இன்று மாலை 6:10-க்கு, பெட்டி S4, இருக்கை 32. இரவு 11:25-க்கு சென்னை சேரும். பக்கம் 2-ன்படி புகைப்பட அடையாள அட்டை எடுத்துச் செல்லுங்கள்.</span>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: rgba(227,182,96,0.14); border: 1.5px solid rgba(227,182,96,0.6)">
+<span lang="en" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #E3B660"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3zM9.5 19h5"/></svg>From your memory</span>
+<span style="font-size: 15px; line-height: 1.5">கிளம்பும் முன் 5:30-க்கு மெட்ஃபார்மின் எடுத்துக்கோங்க.</span>
+<sc-if value="{{ medOpen }}" hint-placeholder-val="{{ true }}"><div lang="en" style="display: flex; flex-wrap: wrap; gap: 8px"><button onClick="{{ medRem }}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; border: 0; background: #E3B660; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Apple Reminders</button><button onClick="{{ medApp }}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1.5px solid rgba(255,255,255,0.4); background: transparent; color: #F5F4F2; font-size: 13.5px; font-weight: 600; cursor: pointer">Only in Sarvam</button></div></sc-if>
+<sc-if value="{{ medDone }}" hint-placeholder-val="{{ false }}"><span lang="en" style="align-self: flex-start; font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 13px; background: #214D47">{{ medText }}</span></sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.22)">
+<span lang="en" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #C9C6BD"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>From your Gmail</span>
+<span style="font-size: 15px; line-height: 1.5">சென்னையில் ஹோட்டல் புக்கிங் இருக்கு: இன்று இரவு 11:45 செக்-இன். காலண்டரில் சேர்க்கட்டுமா?</span>
+<sc-if value="{{ hotelOpen }}" hint-placeholder-val="{{ true }}"><div lang="en" style="display: flex; flex-wrap: wrap; gap: 8px"><button onClick="{{ hotelCal }}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; border: 0; background: #F5F4F2; color: #1B1B1B; font-size: 13.5px; font-weight: 700; cursor: pointer">Add to Calendar</button><button onClick="{{ hotelApp }}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1.5px solid rgba(255,255,255,0.4); background: transparent; color: #F5F4F2; font-size: 13.5px; font-weight: 600; cursor: pointer">Notify me in Sarvam</button></div></sc-if>
+<sc-if value="{{ hotelDone }}" hint-placeholder-val="{{ false }}"><span lang="en" style="align-self: flex-start; font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 13px; background: #214D47">{{ hotelText }}</span></sc-if>
+</div>
+</div>
+</div>
+
+<div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 16px 24px">
+<button aria-label="{{ micLabel }}" aria-pressed="{{ live }}" onClick="{{ toggleLive }}" style="flex: none; width: 52px; height: 52px; border-radius: 26px; border: 0; background: {{ micBg }}; color: {{ micFg }}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+<button aria-label="Type instead" style="flex: none; width: 52px; height: 52px; border-radius: 26px; border: 0; background: rgba(255,255,255,0.14); color: #F5F4F2; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></svg></button>
+<a href="LiveSaved.dc.html" style="flex: 1; min-height: 52px; border-radius: 26px; background: #C96846; color: #1B1B1B; display: flex; align-items: center; justify-content: center; font-size: 15.5px; font-weight: 700">End and save</a>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { page: 0, lang: 'orig', expanded: false, live: true, med: '', hotel: '' };
+}
+renderVals() {
+const s = this.state;
+const ta = s.lang === 'ta';
+const t = ta ? {
+title: 'மின்னணு முன்பதிவுச் சீட்டு', from: 'பெங்களூரு', to: 'சென்னை', dep: 'புறப்பாடு 18:10', arr: 'வருகை 23:25', date: 'தேதி: 20-11-2026', cls: 'வகுப்பு: SL', coach: 'பெட்டி: S4', seat: 'இருக்கை: 32 கீழ்',
+title2: 'பயணிகளுக்கான அறிவுறுத்தல்கள்', id: 'பயணத்தின் போது புகைப்பட அடையாள அட்டை வைத்திருக்கவும்.', board: 'புறப்படுவதற்கு 20 நிமிடம் முன் நடைமேடைக்கு வரவும்.'
+} : {
+title: 'ELECTRONIC RESERVATION SLIP', from: 'BENGALURU', to: 'CHENNAI', dep: 'Dep 18:10', arr: 'Arr 23:25', date: 'Date: 20-11-2026', cls: 'Class: SL', coach: 'Coach: S4', seat: 'Seat: 32 LB',
+title2: 'INSTRUCTIONS TO PASSENGERS', id: 'Carry a valid photo ID during the journey.', board: 'Reach the platform 20 minutes before departure.'
+};
+return {
+t: t,
+pageLang: ta ? 'ta' : 'en',
+orig: !ta, ta: ta,
+origBg: ta ? 'transparent' : '#fff', taBg: ta ? '#fff' : 'transparent',
+showOrig: () => this.setState({ lang: 'orig' }),
+showTa: () => this.setState({ lang: 'ta' }),
+p1: s.page === 0, p2: s.page === 1,
+prev: () => this.setState({ page: 0 }), next: () => this.setState({ page: 1 }),
+prevOp: s.page === 0 ? 0.35 : 1, nextOp: s.page === 1 ? 0.35 : 1,
+d1: s.page === 0 ? '#1B1B1B' : '#B8B3A8', d2: s.page === 1 ? '#1B1B1B' : '#B8B3A8',
+d1w: s.page === 0 ? 22 : 8, d2w: s.page === 1 ? 22 : 8,
+expanded: s.expanded,
+sheetH: s.expanded ? 640 : 380,
+sheetLabel: s.expanded ? 'Shrink conversation' : 'Expand conversation',
+toggleSheet: () => this.setState({ expanded: !this.state.expanded }),
+live: s.live,
+play: s.live ? 'running' : 'paused',
+liveStatus: s.live ? 'Gemini Live · listening' : 'Gemini Live · paused',
+toggleLive: () => this.setState({ live: !this.state.live }),
+micLabel: s.live ? 'Pause Gemini Live' : 'Resume Gemini Live',
+micBg: s.live ? '#E3B660' : 'rgba(255,255,255,0.14)',
+micFg: s.live ? '#1B1B1B' : '#F5F4F2',
+medOpen: s.med === '', medDone: s.med !== '',
+medText: s.med === 'rem' ? 'Reminder set · 5:30 PM · Apple Reminders' : 'Saved in Sarvam · notification at 5:30 PM',
+medRem: () => this.setState({ med: 'rem' }), medApp: () => this.setState({ med: 'app' }),
+hotelOpen: s.hotel === '', hotelDone: s.hotel !== '',
+hotelText: s.hotel === 'cal' ? 'Added to Apple Calendar · 11:45 PM' : 'Sarvam will notify you at 11:15 PM',
+hotelCal: () => this.setState({ hotel: 'cal' }), hotelApp: () => this.setState({ hotel: 'app' })
+};
+}
+}
+</script>
+</body>
+</html>
