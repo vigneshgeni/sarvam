@@ -4,7 +4,7 @@ import type { ReminderRow } from '../../utils/reminders'
 import { SUPPORTED_LANGS, LANG_LABELS, resolveLang, getLocalisedDocType } from '../../i18n'
 import { HOME_SAMPLES, HEALTH_SAMPLE, visualForDocument, filterGroup, type FilterGroup } from '../../design/catalog'
 import { chipFont, ensureOnboardingFonts } from '../../design/indicFont'
-import { DocIcon, IconA11y, IconArrow, IconCalendar, IconCamera, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconSearch, IconTick } from '../../ui/icons'
+import { DocIcon, IconA11y, IconArrow, IconCalendar, IconChevron, IconClose, IconFile, IconInfo, IconLock, IconSearch, IconTick } from '../../ui/icons'
 
 export interface NextUp {
   id: string
@@ -28,6 +28,7 @@ interface HomeProps {
   onOpenReminder: (recentId: string) => void
   onDismissNext: (id: string) => void
   onTakePhoto: () => void
+  onOpenRelay?: () => void
   onChooseFiles: () => void
   onChooseFolder?: () => void
   onSample: (file: string) => void
@@ -411,15 +412,31 @@ export default function HomeScreen(props: HomeProps) {
       )}
 
       <div className="flex flex-col gap-3">
-        <button type="button" onClick={props.onTakePhoto} className="sv-press flex items-center gap-4 p-5 border-[1.5px] border-[#1A1A1A] rounded-[32px] bg-[#034F46] text-[#F4F5F2] text-left">
-          <span className="w-14 h-14 rounded-full bg-[#E9B44C] border-[1.5px] border-[#1A1A1A] box-border shrink-0 flex items-center justify-center">
-            <IconCamera size={26} stroke="#1A1A1A" />
+        <button
+          type="button"
+          onClick={props.onOpenRelay || props.onTakePhoto}
+          className="sv-press flex items-center gap-3.5 p-4 sm:p-5 border-[2px] border-[#1B1B1B] rounded-[30px] bg-[#214D47] text-white text-left min-h-[92px]"
+          aria-label="Live Relay"
+        >
+          <span className="relative shrink-0 w-[52px] h-[52px] flex items-center justify-center">
+            <span className="sv-anim absolute w-[52px] h-[52px] rounded-full bg-[#E3B660]/40 animate-ping" />
+            <span className="relative w-[52px] h-[52px] rounded-full bg-[#E3B660] border-[2px] border-[#1B1B1B] flex items-center justify-center">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#1B1B1B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+                <path d="M8.5 10.5v3M12 8.5v7M15.5 10.5v3" strokeWidth="2.2" />
+              </svg>
+            </span>
           </span>
-          <span className="flex flex-col gap-1 flex-1">
-            <span className="text-[20px] font-bold">{t.takePhoto}</span>
-            <span className="text-[14px] text-[#CFE5E0] leading-[1.3]">{t.takePhotoSub}</span>
+          <span className="flex flex-col gap-0.5 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="text-[21px] font-bold tracking-[-0.01em]">{t.liveRelay || 'Live Relay'}</span>
+              <span className="text-[10.5px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5 rounded-lg bg-[#E3B660] text-[#1B1B1B]">Beta</span>
+            </span>
+            <span className="text-[14px] leading-[1.4] text-[#CFE0DB]">
+              {t.liveRelaySub || 'Scan or show anything, talk with Gemini Live and invite family.'}
+            </span>
           </span>
-          <IconChevron size={20} stroke="#F4F5F2" />
+          <IconChevron size={22} stroke="#FFFFFF" className="shrink-0" />
         </button>
         <button type="button" onClick={props.onChooseFiles} className="sv-press flex items-center gap-4 py-4 px-5 border-[1.5px] border-[#1A1A1A] rounded-[32px] bg-[#F4F5F2] text-[#1A1A1A] text-left">
           <span className="w-14 h-14 rounded-full bg-[#CFE5E0] shrink-0 flex items-center justify-center">

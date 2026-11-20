@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import {
   SUPPORTED_LANGS,
   getDictionary,
@@ -63,6 +63,10 @@ import { fetchSampleResult, isSampleFile, resolveSampleOpen } from './samples/lo
 import { shouldShowOnboarding, screenAfterReturn } from './design/onboarding'
 import { isNative } from './native/isNative.js'
 import { getLastOpenedURL, checkPendingScanResult } from './native/liveActivity.js'
+
+// Dev-only: Gemini Live spike page
+const RelaySpikeScreen = lazy(() => import('./features/relay/RelaySpikeScreen.js'))
+const CameraScreen = lazy(() => import('./features/relay/CameraScreen.js'))
 
 interface DeleteConfirmState {
   type: 'single' | 'all'
@@ -1461,6 +1465,15 @@ export default function App() {
     if (item) void handleOpenRecent(item)
   }
 
+  // Dev-only: /relay-spike route for Gemini Live spike testing
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.pathname === '/relay-spike') {
+    return (
+      <Suspense fallback={<div style={{ background: '#1B1B1B', color: '#F5F4F2', minHeight: '100dvh', padding: 32 }}>Loading spike…</div>}>
+        <RelaySpikeScreen />
+      </Suspense>
+    )
+  }
+
   return (
     <div className="min-h-[100dvh] bg-bg text-ink flex justify-center">
       {/* Hidden file inputs */}
@@ -1516,6 +1529,7 @@ export default function App() {
             onOpenReminder={openReminderDoc}
             onDismissNext={dismissHomeReminder}
             onTakePhoto={handleTakePhotoClick}
+            onOpenRelay={() => setScreen('relay-camera')}
             onChooseFiles={handleChooseFileClick}
             onChooseFolder={handleChooseFolderClick}
             onSample={handleSampleClick}
@@ -1628,6 +1642,18 @@ export default function App() {
               setSessionName(trimmed && trimmed !== sessionTitle ? trimmed : '')
             }}
           />
+        )}
+
+        {/* ========================================================
+            SCREEN 5: RELAY CAMERA (Live Relay)
+           ======================================================== */}
+        {screen === 'relay-camera' && (
+          <Suspense fallback={<div className="fixed inset-0 bg-[#0E0E0E]" />}>
+            <CameraScreen
+              onClose={() => setScreen('home')}
+              lang={selectedLang}
+            />
+          </Suspense>
         )}
       </main>
 

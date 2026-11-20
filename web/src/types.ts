@@ -368,4 +368,4 @@ export interface RecentResult {
   activity?: import('./utils/activity').DocumentActivity
 }
 
-export type AppScreen = 'home' | 'tray' | 'reading' | 'result'
+export type AppScreen = 'home' | 'tray' | 'reading' | 'result' | 'relay-camera'

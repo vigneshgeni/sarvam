@@ -2,6 +2,8 @@
   "hello": "आज आप क्या समझना चाहते हैं?",
   "takePhoto": "दस्तावेज़ स्कैन करें",
   "takePhotoSub": "एक पेज या कई। सर्वम सबको साथ पढ़ेगा।",
+  "liveRelay": "Live Relay",
+  "liveRelaySub": "Scan or show anything, talk with Gemini Live and invite family.",
   "chooseFile": "फ़ाइलें अपलोड करें",
   "chooseFileSub": "PDF या फ़ोटो",
   "samples": "नमूना आज़माएँ",

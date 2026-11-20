@@ -2,6 +2,8 @@
   "hello": "What would you like to understand today?",
   "takePhoto": "Take photo",
   "takePhotoSub": "One page or many. Sarvam reads them together.",
+  "liveRelay": "Live Relay",
+  "liveRelaySub": "Scan or show anything, talk with Gemini Live and invite family.",
   "chooseFile": "Choose file",
   "chooseFileSub": "PDF or photos",
   "samples": "Try a sample",

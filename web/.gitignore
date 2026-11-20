@@ -12,6 +12,8 @@ dist
 *.local
 .env
 .env.*
+!.env.example
+!.env.relay.example
 
 # Editor directories and files
 .vscode/*

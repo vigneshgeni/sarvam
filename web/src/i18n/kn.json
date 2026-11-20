@@ -2,6 +2,8 @@
   "hello": "ಇಂದು ನೀವು ಏನನ್ನು ಅರ್ಥಮಾಡಿಕೊಳ್ಳಲು ಬಯಸುತ್ತೀರಿ?",
   "takePhoto": "ಫೋಟೋ ತೆಗೆಯಿರಿ",
   "takePhotoSub": "ಒಂದು ಪುಟ ಅಥವಾ ಹಲವು. ಸರ್ವಂ ಒಟ್ಟಿಗೆ ಓದುತ್ತದೆ.",
+  "liveRelay": "Live Relay",
+  "liveRelaySub": "Scan or show anything, talk with Gemini Live and invite family.",
   "chooseFile": "ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
   "chooseFileSub": "PDF ಅಥವಾ ಫೋಟೋಗಳು",
   "samples": "ಮಾದರಿಯನ್ನು ಪ್ರಯತ್ನಿಸಿ",
